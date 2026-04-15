@@ -21,6 +21,11 @@ export interface LessonSlot {
   format?: 'number' | 'percentage' | 'text' | 'list' | 'score-badge';
 }
 
+export interface KeyPoint {
+  heading: string;
+  text: string;
+}
+
 export interface LessonConfig {
   id: string;
   courseId: string;
@@ -28,7 +33,10 @@ export interface LessonConfig {
   lessonNumber: number;
   title: string;
   description: string;
+  duration?: string;
   content: string;
+  coreInsight?: string;
+  keyPoints?: KeyPoint[];
   slots: LessonSlot[];
   linkedAgent?: string;
   linkedAgentLabel?: string;
@@ -53,9 +61,12 @@ export type CourseProgress = Record<
 
 export interface CourseConfig {
   id: string;
+  number: string;
   title: string;
+  subtitle: string;
   description: string;
   lessonCount: number;
   category: 'foundation' | 'resume' | 'linkedin' | 'job-search' | 'networking' | 'interview' | 'financial';
+  color: string;
   lessons: LessonConfig[];
 }

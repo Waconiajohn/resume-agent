@@ -19,6 +19,13 @@ const COURSE_1_LESSONS: LessonConfig[] = [
     lessonNumber: 1,
     title: 'Your Career Arc and Where You Really Stand',
     description: 'Most executives have far more career capital than their resume shows. This lesson reveals the gap.',
+    duration: '4 min',
+    coreInsight: 'Most executives\' professional lives are only about 1% reflected on their resume. The other 99% lives in your memory and your colleagues\' minds.',
+    keyPoints: [
+      { heading: 'The 1% Problem', text: 'Your resume captures a fraction of your professional life. The decisions made under pressure, the teams built from scratch, the crises navigated — none of this appears unless you deliberately surface it.' },
+      { heading: 'Career Capital', text: 'You have more career capital than you realize. The gap between who you are and what your resume says is where the opportunity lives.' },
+      { heading: 'The Evidence Library', text: 'Your trophies, accomplishments, and positioning evidence are the raw material. The AI surfaces what it can find — but the best material comes from you.' },
+    ],
     content: `## The Gap Between Who You Are and What Your Resume Says
 
 Most executives' professional lives are only about 1% reflected on their resume. The other 99% — the decisions made under pressure, the teams built from scratch, the crises navigated — lives in your memory and your colleagues' minds.
@@ -59,6 +66,13 @@ This lesson helps you see that gap clearly. Your career arc tells the story of y
     lessonNumber: 2,
     title: 'How ATS Systems Read Your Resume',
     description: 'What automated screening actually does — and the 5 keywords standing between you and a human reader.',
+    duration: '5 min',
+    coreInsight: 'Roughly 75% of resumes are filtered by ATS before a recruiter reads them. The problem isn\'t the technology — it\'s that most executives write resumes for humans, not for the software that sees it first.',
+    keyPoints: [
+      { heading: 'The ATS Reality', text: 'ATS systems scan for keyword matches, formatting compatibility, and structural signals. A resume can be excellent and still score 42% because the right language isn\'t present.' },
+      { heading: 'Keywords in Context', text: 'It\'s not about keyword stuffing. Enterprise ATS checks whether keywords appear in meaningful contexts: job titles, scope statements, achievement bullets.' },
+      { heading: 'The Fix Is Simple', text: 'It\'s not about gaming the system — it\'s about speaking the language of the job description you\'re targeting.' },
+    ],
     content: `## What Happens Before a Human Sees Your Resume
 
 Roughly 75% of resumes are filtered by ATS systems before a recruiter reads them. But the problem isn't the technology — it's that most executives write resumes for humans, not for the software that sees it first.
@@ -92,6 +106,13 @@ ATS systems scan for keyword matches, formatting compatibility, and structural s
     lessonNumber: 3,
     title: 'The Benchmark Candidate — Who You\'re Being Compared To',
     description: 'Every hiring manager has a mental model of the ideal candidate. This is yours.',
+    duration: '4 min',
+    coreInsight: 'When a hiring manager reads your resume, they\'re comparing you to the benchmark — the ideal candidate profile built from dozens of resumes and knowledge of their business.',
+    keyPoints: [
+      { heading: 'The Invisible Standard', text: 'Every role has a benchmark candidate the hiring manager has in their head. Understanding what that benchmark looks like tells you exactly what to emphasize.' },
+      { heading: 'Green, Yellow, Red', text: 'Mapping yourself against the benchmark reveals where you\'re strong, where you can reframe, and where you have genuine gaps.' },
+      { heading: 'The Good News', text: 'Most executives already have the experience that meets benchmark expectations. They just haven\'t framed it that way.' },
+    ],
     content: `## You Are Being Measured Against an Invisible Standard
 
 When a hiring manager reads your resume, they're comparing you to the benchmark — the ideal candidate profile they've built in their head from reading dozens of resumes and knowing their business.
@@ -123,8 +144,16 @@ Understanding what that benchmark looks like for your target role is one of the 
     courseId: 'course-1',
     courseTitle: 'Understanding the System',
     lessonNumber: 4,
-    title: 'The First Three Lines — Your Resume\'s Most Expensive Real Estate',
-    description: 'Recruiters decide in 6 seconds. Here\'s what your opening lines are currently communicating.',
+    title: 'Redefining What a Resume Actually Is',
+    description: 'A resume is not a career history. This single reframe changes everything.',
+    duration: '3 min',
+    coreInsight: 'A resume is not a career history. It is your explanation to the hiring company of why you are a perfect fit for their specific needs, using their words. That is it.',
+    keyPoints: [
+      { heading: 'The Wrong Definition', text: 'Most executives arrive with a fundamentally broken definition — a resume is documentation of their professional life. This is the definition that produces 4-page career histories nobody reads.' },
+      { heading: 'The Correct Definition', text: 'A resume is your explanation to the hiring company of why you are a perfect fit for their specific needs, in their words. Every word on the page must serve one purpose: that argument.' },
+      { heading: 'Why This Changes Everything', text: 'Not why you are broadly capable. Not a comprehensive record. A targeted, precise argument in their language. This single reframe is the most important mindset shift in the entire program.' },
+      { heading: 'The Test', text: 'If a word on your resume does not explain why you are the right fit for this specific company, it does not belong there. Apply this test to every bullet point you\'ve ever written.' },
+    ],
     content: `## Six Seconds
 
 That's the average time a recruiter spends on initial resume review before deciding to continue or discard. And those six seconds are almost entirely spent on the top third of the page.
@@ -156,8 +185,14 @@ Your summary, header, and first visible experience line are doing enormous work.
     courseId: 'course-1',
     courseTitle: 'Understanding the System',
     lessonNumber: 5,
-    title: 'The Gauntlet — Two Reasons You\'ll Be Eliminated',
-    description: 'The hiring manager\'s skeptical eye finds these two things first. Know them before they do.',
+    title: 'Standing in the Hiring Manager\'s Shoes',
+    description: 'The hiring manager\'s skeptical eye finds two things first. Know them before they do.',
+    duration: '4 min',
+    coreInsight: 'Every resume goes through an unofficial evaluation by a skeptical hiring manager asking: "What\'s wrong with this person? Why would I NOT hire them?"',
+    keyPoints: [
+      { heading: 'The Gauntlet', text: 'Experienced hiring managers have seen thousands of resumes and know exactly where the weak points hide: unexplained gaps, missing metrics, vague scope claims, industry mismatches.' },
+      { heading: 'See It First', text: 'Your job is to see your resume through that lens before they do — and address the two most likely elimination points before they\'re flagged.' },
+    ],
     content: `## The Gauntlet
 
 Every resume goes through an unofficial evaluation by a skeptical hiring manager asking: "What's wrong with this person? Why would I NOT hire them?"
@@ -185,10 +220,12 @@ const COURSE_2_LESSONS: LessonConfig[] = [
   {
     id: 'c2-l1',
     courseId: 'course-2',
-    courseTitle: 'The Super Bowl Story',
+    courseTitle: 'The Benchmark Candidate',
     lessonNumber: 1,
-    title: 'Your Career Arc Label and Top Capability',
+    title: 'The Tom Brady Lesson',
     description: 'The narrative frame that positions everything else. What your career is actually about.',
+    duration: '5 min',
+    coreInsight: 'Your career arc is the through-line that connects every role into a coherent story. Without it, your resume reads as a list of jobs rather than a career narrative.',
     content: `## What Is Your Career Arc?
 
 Your career arc is the through-line — the thing that connects every role, every accomplishment, every decision into a coherent story. Most executives can't articulate this clearly, which means their resume reads as a list of jobs rather than a career narrative.
@@ -225,10 +262,12 @@ The hiring manager who sees a clear arc — "this person builds operational capa
   {
     id: 'c2-l2',
     courseId: 'course-2',
-    courseTitle: 'The Super Bowl Story',
+    courseTitle: 'The Benchmark Candidate',
     lessonNumber: 2,
-    title: 'Why Me / Why Not Me',
+    title: 'The Why Me / Why Not Me Framework',
     description: 'The honest reckoning: why you\'re the right hire, and what objections will come up.',
+    duration: '4 min',
+    coreInsight: 'Great positioning starts with honesty. Not just "why me" — the easy half — but also "why not me" — the objections a hiring manager will raise.',
     content: `## The Honest Dual Framing
 
 Great positioning starts with honesty. Not just "why me" — the easy half — but also "why not me" — the objections a hiring manager will raise about your fit.
@@ -265,10 +304,12 @@ Executives who can answer both questions clearly are the ones who get hired. The
   {
     id: 'c2-l3',
     courseId: 'course-2',
-    courseTitle: 'The Super Bowl Story',
+    courseTitle: 'The Benchmark Candidate',
     lessonNumber: 3,
-    title: 'Your Trophy Cabinet — Surface Your Buried Accomplishments',
+    title: 'Finding Your Trophies',
     description: 'The results most executives forget to include. These are your trophies.',
+    duration: '6 min',
+    coreInsight: 'Your strongest interview stories are often your most overlooked resume bullets. The career library runs much deeper than the headline accomplishments.',
     content: `## The 99% You\'re Leaving Out
 
 Most executives can recall the headline accomplishments — the big P&L win, the major reorg, the product launch. But the career library runs much deeper: the team they rescued from attrition, the process change that freed up 40% of the finance team's time, the vendor relationship that saved a division.
@@ -298,10 +339,12 @@ These are your trophies. The AI has surfaced what it found in your resume. Now l
   {
     id: 'c2-l4',
     courseId: 'course-2',
-    courseTitle: 'The Super Bowl Story',
+    courseTitle: 'The Benchmark Candidate',
     lessonNumber: 4,
-    title: 'Your Benchmark Map — Green, Yellow, Red',
+    title: 'Targeting the Right Roles',
     description: 'Where you stand against the ideal hire for your target role, dimension by dimension.',
+    duration: '4 min',
+    coreInsight: 'Most executives are surprised: far more green than red. The problem is usually positioning, not capability.',
     content: `## The Benchmark Gap Map
 
 The benchmark candidate is the imaginary ideal hire — the person the job description was written for. Mapping yourself against that benchmark reveals exactly where you're strong, where you can reframe, and where you have genuine gaps.
@@ -331,10 +374,12 @@ Green means you meet or exceed the benchmark. Yellow means you have the experien
   {
     id: 'c2-l5',
     courseId: 'course-2',
-    courseTitle: 'The Super Bowl Story',
+    courseTitle: 'The Benchmark Candidate',
     lessonNumber: 5,
-    title: 'Your Positioning Statement, Headlines, and 10-Second Intro',
+    title: 'How Your Story Drives Everything',
     description: 'The four things you need to have memorized before you talk to anyone.',
+    duration: '3 min',
+    coreInsight: 'Get your positioning statement, resume headline, LinkedIn headline, and 10-second intro right and every other piece of your job search gets easier.',
     content: `## Four Deliverables That Open Every Door
 
 These four pieces of language are the output of your Super Bowl Story work. Each has a specific job:
@@ -393,6 +438,8 @@ const COURSE_3_LESSONS: LessonConfig[] = [
     lessonNumber: 1,
     title: 'The 5-Second Pass/Fail and the 15-Second Score',
     description: 'Two thresholds stand between your resume and a phone screen. Here\'s how yours performs.',
+    duration: '5 min',
+    coreInsight: 'Before any human judgment kicks in, your resume passes through two quick filters. Most executive resumes fail the 15-second score not because the content is weak, but because the right content isn\'t visible.',
     content: `## Two Readings That Decide Your Fate
 
 Before any human judgment kicks in, your resume passes through two quick filters.
@@ -421,6 +468,8 @@ The **15-second score**: If it passes the first filter, the recruiter skims for 
     lessonNumber: 2,
     title: 'ATS Compliance — Formatting, Keywords, and Parsing',
     description: 'The technical requirements that determine whether a human ever reads your resume.',
+    duration: '4 min',
+    coreInsight: 'ATS compliance isn\'t about writing differently — it\'s about structuring your document so the software can read it. Keyword context matters more than keyword frequency.',
     content: `## The Technical Layer Under Your Resume
 
 ATS compliance isn't about writing differently — it's about structuring your document so the software can read it. Tables, text boxes, headers and footers, and non-standard section names all cause parsing errors that can make your resume invisible.
@@ -468,6 +517,8 @@ Beyond formatting, keyword context matters more than keyword frequency. The ATS 
     lessonNumber: 3,
     title: 'The Job-Specific Workflow — 8 Steps from JD to Submission',
     description: 'Every application deserves a tailored resume. This is the repeatable process.',
+    duration: '6 min',
+    coreInsight: 'Generic resumes get generic results. The executives who consistently land interviews are the ones who tailor their resume to each role — following a disciplined process that takes less than 90 minutes.',
     content: `## The 8-Step Application Workflow
 
 Generic resumes get generic results. The executives who consistently land interviews are the ones who tailor their resume to each role — not by rewriting everything, but by following a disciplined 8-step process that takes less than 90 minutes.
@@ -501,6 +552,8 @@ Generic resumes get generic results. The executives who consistently land interv
     lessonNumber: 4,
     title: 'The Gauntlet Review — 4 Things the Hiring Manager Will Question',
     description: 'The adversarial read of your resume. See it before they do.',
+    duration: '4 min',
+    coreInsight: 'The gauntlet review imagines a hiring manager who has 10 seconds and wants to find a reason not to interview you. See these findings before they do.',
     content: `## Reading Your Resume Like a Skeptic
 
 The gauntlet review imagines a hiring manager who has 10 seconds and wants to find a reason not to interview you. They're looking for:
@@ -532,6 +585,8 @@ The goal isn't to be defensive about these — it's to see them clearly and deci
     lessonNumber: 5,
     title: '7 Mistakes Executive Resumes Make',
     description: 'The most common patterns that reduce strong executives to borderline candidates.',
+    duration: '3 min',
+    coreInsight: 'After reviewing thousands of executive resumes, seven patterns appear again and again — from the responsible-for trap to the AI tell that screams "ChatGPT wrote this."',
     content: `## The 7 Mistakes That Sink Executive Resumes
 
 After reviewing thousands of executive resumes, these seven patterns appear again and again:
@@ -583,6 +638,8 @@ const COURSE_4_LESSONS: LessonConfig[] = [
     lessonNumber: 1,
     title: 'How Hiring Managers Search LinkedIn',
     description: 'The Boolean searches that determine whether you show up.',
+    duration: '4 min',
+    coreInsight: 'If your profile doesn\'t contain the right language in the right fields, you simply don\'t appear in search results — no matter how qualified you are.',
     content: `## You Are Being Searched Right Now
 
 Senior hiring managers and executive recruiters run Boolean searches on LinkedIn every day. They search by title, function, geography, industry, and specific skills or keywords.
@@ -609,6 +666,8 @@ If your profile doesn't contain the right language in the right fields, you simp
     lessonNumber: 2,
     title: 'The About Section — Your 2,600-Character Positioning Statement',
     description: 'The most underused real estate on LinkedIn. Yours is either working hard or sitting empty.',
+    duration: '5 min',
+    coreInsight: 'The LinkedIn About section gives you 2,600 characters and most people write 200. This section should establish your positioning, name your top accomplishment areas, and signal the problems you solve.',
     content: `## 2,600 Characters and Most People Write 200
 
 The LinkedIn About section gives you 2,600 characters to tell your story. Most executives write a paragraph that sounds like a job description or leave it blank entirely.
@@ -635,6 +694,8 @@ This section should do four things: establish your positioning clearly, name you
     lessonNumber: 3,
     title: 'Content That Reaches Hiring Managers',
     description: 'The 360Brew algorithm rewards depth and expertise. Here\'s how to play it.',
+    duration: '4 min',
+    coreInsight: 'LinkedIn content isn\'t about going viral. The goal is reaching the right 50 people: hiring managers, board members, and senior recruiters in your target function.',
     content: `## LinkedIn Content Isn\'t About Going Viral
 
 Most executives who "do LinkedIn" are playing the wrong game. The goal isn't likes or follower count — it's reaching the right 50 people: hiring managers, board members, and senior recruiters in your target function and industry.
@@ -661,6 +722,8 @@ The 360Brew algorithm surfaces content to relevant professionals based on topic 
     lessonNumber: 4,
     title: 'The Network Effect — First Connections as Referral Paths',
     description: 'Your network is more valuable than you think. Here\'s the map.',
+    duration: '3 min',
+    coreInsight: '70-80% of executive-level jobs are filled through relationships, not applications. Your first-level LinkedIn connections are the bridge to companies you can\'t reach through cold applications.',
     content: `## Every Job Is a Referral Opportunity
 
 Studies consistently show that 70-80% of executive-level jobs are filled through relationships, not applications. Your first-level LinkedIn connections are the bridge to companies you can't reach through cold applications.
@@ -687,6 +750,8 @@ The question is: do you know which of your connections work at the companies you
     lessonNumber: 5,
     title: 'Engagement That Creates Inbound Opportunities',
     description: 'Comment strategy, connection requests, and the 30-minute weekly routine.',
+    duration: '4 min',
+    coreInsight: 'LinkedIn presence isn\'t about big moves — it\'s about consistent small ones that compound into inbound opportunities.',
     content: `## The Compound Interest of Consistent Presence
 
 LinkedIn presence isn't about big moves — it's about consistent small ones. A thoughtful comment on a senior leader's post. A congratulations message that opens a conversation. A connection request with a specific shared context.
@@ -718,6 +783,8 @@ const COURSE_5_LESSONS: LessonConfig[] = [
     lessonNumber: 1,
     title: 'Building a Target Company List That Actually Works',
     description: 'Most job searches are too broad. This lesson narrows the focus to where you have the best odds.',
+    duration: '4 min',
+    coreInsight: 'Senior-level candidates who apply to 15 precisely targeted roles and follow through with referral outreach consistently outperform the spray-and-pray approach.',
     content: `## The Quality-Over-Quantity Trap
 
 Most job seekers apply to 50+ roles and wonder why nothing happens. Senior-level candidates who apply to 15 precisely targeted roles and follow through with referral outreach consistently outperform the spray-and-pray approach.
@@ -744,6 +811,8 @@ Target company selection starts with understanding where your arc is valued — 
     lessonNumber: 2,
     title: 'The Hidden Job Market — Roles That Never Get Posted',
     description: 'Approximately 70% of executive roles are filled before they\'re advertised. Here\'s how to access them.',
+    duration: '5 min',
+    coreInsight: 'For executive roles, the posted job market is the slow lane. Most senior hires happen through search firm relationships, board referrals, and executive networks.',
     content: `## The Jobs You Won\'t Find on LinkedIn
 
 For executive roles, the posted job market is the slow lane. Most senior hires happen through search firm relationships, board referrals, direct outreach, and executive networks — all before a requisition is ever opened.
@@ -770,6 +839,8 @@ Getting access to the hidden market requires being known, not just being availab
     lessonNumber: 3,
     title: 'Reading a Job Description Like a Strategist',
     description: 'What\'s written and what\'s meant are often different. Here\'s how to decode both.',
+    duration: '4 min',
+    coreInsight: 'Every job description is written by someone with constraints. Reading a JD strategically means extracting the underlying problem the company is trying to solve.',
     content: `## The Job Description Is a Clue, Not a Specification
 
 Every job description is written by someone with constraints — legal, HR, political. What ends up on the page is a compromise between what the business actually needs, what HR thinks they can get, and what legal will approve.
@@ -810,6 +881,8 @@ Reading a JD strategically means extracting the underlying problem the company i
     lessonNumber: 4,
     title: 'Managing the Pipeline — Velocity, Timing, and Parallel Tracking',
     description: 'Job search is a pipeline management problem. Here\'s how to optimize the flow.',
+    duration: '5 min',
+    coreInsight: 'Parallel pipeline management — tracking 8-12 opportunities simultaneously at different stages — creates the conditions for multiple offers, real leverage, and better decisions.',
     content: `## The Pipeline That Never Gets Stale
 
 The most common mistake in executive job search is sequential thinking: finish with one company before starting with the next. This creates timing mismatches, negotiation disadvantages, and the psychological pressure of having "one shot."
@@ -836,6 +909,8 @@ Parallel pipeline management — tracking 8-12 opportunities simultaneously at d
     lessonNumber: 5,
     title: 'The Application-to-Interview Conversion Playbook',
     description: 'Why most applications fail and the five levers that move the odds.',
+    duration: '3 min',
+    coreInsight: 'Average executive application-to-phone-screen conversion rates are 3-5%. Best-in-class executives who follow a deliberate process convert 15-25%.',
     content: `## The Conversion Problem
 
 Average executive job application-to-phone-screen conversion rates are 3-5%. Best-in-class executives who follow a deliberate process convert 15-25% of applications into first conversations.
@@ -872,6 +947,8 @@ const COURSE_6_LESSONS: LessonConfig[] = [
     lessonNumber: 1,
     title: 'The Rule of Four — Your Four Most Important Conversations',
     description: 'The compound effect of four sustained relationships in your target market.',
+    duration: '4 min',
+    coreInsight: 'Having four active, sustained relationships with people inside your target companies dramatically increases your odds. Not 40. Not 400. Four deep, two-way relationships.',
     content: `## Why Four Is the Number
 
 Research on executive job searches shows that having four active, sustained relationships with people inside your target companies or function dramatically increases your odds of a successful search.
@@ -898,6 +975,8 @@ Not 40. Not 400. Four: deep, two-way, genuinely helpful relationships where you'
     lessonNumber: 2,
     title: 'Warm Outreach That Actually Gets Responses',
     description: 'The five-sentence message format with a 40%+ response rate.',
+    duration: '4 min',
+    coreInsight: 'The five-sentence format works because it does exactly one thing well: it makes it easy for the recipient to say yes to a single, specific, low-commitment ask.',
     content: `## The Message Nobody Ignores
 
 Most networking messages fail for one of three reasons: too long, too transactional ("I\'d love to pick your brain"), or too cold (no shared context to justify the ask).
@@ -924,6 +1003,8 @@ The five-sentence format works because it does exactly one thing well: it makes 
     lessonNumber: 3,
     title: 'The Informational Interview — What to Ask and What to Listen For',
     description: 'The 45-minute conversation structure that turns contacts into advocates.',
+    duration: '5 min',
+    coreInsight: 'A well-run informational interview establishes you as a serious candidate, reveals intelligence no job description contains, and often surfaces an opportunity before it\'s posted.',
     content: `## The Conversation That Changes the Search
 
 A well-run informational interview does four things: it establishes you as a serious candidate in their mental model, it reveals intelligence about the role/company that no job description contains, it creates a relationship where they want to advocate for you, and it often surfaces an opportunity before it's posted.
@@ -950,6 +1031,8 @@ Most executives are too generic in these conversations. The best ones are specif
     lessonNumber: 4,
     title: 'Board and Executive Search Relationships',
     description: 'How to get on the shortlist of firms that fill 70% of executive roles.',
+    duration: '4 min',
+    coreInsight: 'For roles above $250K, executive search firms are the primary channel. Build relationships with 3-5 firms before you need them — not when you\'re job searching.',
     content: `## The Executive Search Ecosystem
 
 For roles above $250K, executive search firms are the primary channel. Most executives don't know how to get on their radar — or they try at the wrong time (when they need a job, instead of when they're employed and successful).
@@ -983,6 +1066,8 @@ The right approach: build relationships with 3-5 firms before you need them, be 
     lessonNumber: 5,
     title: 'Maintaining Relationships Through the Transition',
     description: 'The weekly routine that keeps your network warm without feeling transactional.',
+    duration: '3 min',
+    coreInsight: 'The biggest mistake executives make is treating networking as a job-search activity rather than a career-long practice.',
     content: `## Relationships Don\'t Maintain Themselves
 
 The biggest mistake executives make is treating networking as a job-search activity rather than a career-long practice. Relationships go cold when the only communication is "I need something."
@@ -1014,6 +1099,8 @@ const COURSE_7_LESSONS: LessonConfig[] = [
     lessonNumber: 1,
     title: 'The Hiring Manager\'s Actual Decision Framework',
     description: 'What\'s really being evaluated in the first 20 minutes — it\'s not your qualifications.',
+    duration: '4 min',
+    coreInsight: 'The first 20 minutes of an executive interview are not about your qualifications. The hiring manager is evaluating pattern recognition, confidence calibration, and chemistry fit.',
     content: `## The Interview Is Not a Competency Assessment
 
 The first 20 minutes of an executive interview are not spent evaluating your qualifications. The hiring manager already believes you can do the job — otherwise they wouldn't have invited you. They're evaluating three things:
@@ -1051,6 +1138,8 @@ Your qualifications get you in the door. These three things get you the offer.
     lessonNumber: 2,
     title: 'Building STAR Stories That Win Offers',
     description: 'The structure that turns your experiences into compelling evidence.',
+    duration: '5 min',
+    coreInsight: 'Experienced executives often give the worst interview answers. They answer automatically — summarizing without the specific details that create credibility.',
     content: `## Why Most Executive Answers Don\'t Land
 
 Experienced executives often give the worst interview answers. They've been in so many conversations that they answer questions automatically — summarizing, abstracting, giving conclusions without the evidence that makes them credible.
@@ -1077,6 +1166,8 @@ The STAR format (Situation, Task, Action, Result) forces specificity. Not becaus
     lessonNumber: 3,
     title: 'The Company Research Deep Dive',
     description: 'The intelligence a hiring manager expects you to have — and the intelligence that will surprise them.',
+    duration: '4 min',
+    coreInsight: 'Level 3 research — primary research through talking to customers, recent employees, or industry contacts — turns a good interview into an unforgettable one.',
     content: `## Three Levels of Company Research
 
 **Level 1** (what everyone does): Website, about page, recent news, LinkedIn.
@@ -1107,6 +1198,8 @@ Level 3 research turns a good interview into an unforgettable one.
     lessonNumber: 4,
     title: 'Salary Negotiation — The Four Moves That Add $30K',
     description: 'When to negotiate, what to say, and the four tactics that consistently improve outcomes.',
+    duration: '5 min',
+    coreInsight: 'Hiring managers expect executives to negotiate. A candidate who accepts the first offer leaves money on the table and signals lower market awareness.',
     content: `## Negotiation Is Expected
 
 Hiring managers expect executives to negotiate. A candidate who accepts the first offer leaves money on the table and signals lower market awareness — neither of which is the impression you want to make entering a new role.
@@ -1137,6 +1230,8 @@ The four moves that consistently work:
     lessonNumber: 5,
     title: 'The Follow-Up That Keeps You First',
     description: 'What to do in the 24 hours after an interview to stay top of mind.',
+    duration: '3 min',
+    coreInsight: 'The 24 hours after an interview are when you can still influence the decision. Don\'t waste them on a generic "Thanks for your time."',
     content: `## The Interview Continues After You Leave the Room
 
 Most candidates treat the thank-you note as a formality. The candidates who get offers treat it as the third act of the interview.
@@ -1170,6 +1265,8 @@ const COURSE_8_LESSONS: LessonConfig[] = [
     lessonNumber: 1,
     title: 'Your Retirement Bridge — Protecting the Long Term During Transition',
     description: 'What displaced executives need to know about their 401(k), benefits, and runway.',
+    duration: '4 min',
+    coreInsight: 'Most executive transitions take 3-9 months. Most executives are financially prepared for 3. This mismatch causes poor decisions during the search.',
     content: `## The Financial Reality of Executive Transition
 
 Most executive transitions take 3-9 months. Most executives are financially prepared for 3. This mismatch is the most common source of poor decisions during a job search: accepting the wrong offer, failing to negotiate properly, making decisions from scarcity rather than strategy.
@@ -1196,6 +1293,8 @@ Understanding your actual runway — not your estimated runway — and making pr
     lessonNumber: 2,
     title: 'COBRA vs. ACA Marketplace — The Real Numbers',
     description: 'The decision most displaced executives get wrong, and what it costs them.',
+    duration: '5 min',
+    coreInsight: 'Most executives assume COBRA is the safe choice and pay 2-3x what they need to. The right choice depends on your income, family, and expected transition length.',
     content: `## Healthcare Is the Most Expensive Transition Decision
 
 COBRA lets you keep your existing coverage. The ACA Marketplace may give you significantly better coverage for less. But the comparison isn't straightforward — it depends on your income, family situation, and how long you expect the transition to take.
@@ -1222,6 +1321,8 @@ This lesson walks through the actual decision framework and shows you which opti
     lessonNumber: 3,
     title: 'The 401(k) Decision — When to Touch It and When Not To',
     description: 'The four decision scenarios and the framework for thinking through each one.',
+    duration: '4 min',
+    coreInsight: 'Americans make $1.1 trillion in early 401(k) withdrawals annually, often during job transitions. The 10% penalty plus taxes can cost $30-50K on a $100K withdrawal.',
     content: `## The $1.1 Trillion Mistake
 
 Americans make $1.1 trillion in early 401(k) withdrawals annually, often during job transitions. The 10% penalty plus ordinary income tax can cost $30-50K on a $100K withdrawal — and permanently reduces the compounding base.
@@ -1240,6 +1341,8 @@ This lesson walks through the four scenarios where it makes sense — and the si
     lessonNumber: 4,
     title: 'Compensation Negotiation for the Total Package',
     description: 'Base salary is only part of the number. The rest is where the real leverage is.',
+    duration: '5 min',
+    coreInsight: 'For executive roles, base salary typically represents 40-60% of total compensation. The rest — equity, bonus, benefits, severance — often has more negotiating room.',
     content: `## The Number Is Bigger Than the Salary
 
 For executive roles, base salary typically represents 40-60% of total compensation. The rest — equity, bonus structure, benefits, severance terms, non-compete scope — often has more long-term value and more negotiating room.
@@ -1270,6 +1373,8 @@ Most candidates optimize for base salary and leave the rest on the table. The mo
     lessonNumber: 5,
     title: 'Planning the Next 90 Days of Your Search',
     description: 'The financial and strategic plan that keeps your search focused and your options open.',
+    duration: '4 min',
+    coreInsight: 'Most job search anxiety comes from uncertainty about time. The 90-day plan addresses this by making the timeline concrete and the financial picture explicit.',
     content: `## The 90-Day Plan That Reduces Anxiety
 
 Most job search anxiety comes from uncertainty about time: how long will this take, and will the money last? The 90-day plan addresses both by making the timeline concrete and the financial picture explicit.
@@ -1299,66 +1404,90 @@ The plan has three components:
 export const COURSE_CONFIGS: CourseConfig[] = [
   {
     id: 'course-1',
+    number: '01',
     title: 'Understanding the System',
+    subtitle: 'Why your search isn\'t working — and what\'s actually broken',
     description: 'How hiring decisions are actually made — and what it means for your search.',
     lessonCount: 5,
     category: 'foundation',
+    color: '#C49A2A',
     lessons: COURSE_1_LESSONS,
   },
   {
     id: 'course-2',
-    title: 'The Super Bowl Story',
+    number: '02',
+    title: 'The Benchmark Candidate',
+    subtitle: 'Building the profile, brand, and presence no one can match',
     description: 'Building your positioning, trophies, and the four things you need memorized.',
     lessonCount: 5,
     category: 'foundation',
+    color: '#2A6AC4',
     lessons: COURSE_2_LESSONS,
   },
   {
     id: 'course-3',
-    title: 'Resume Mastery',
+    number: '03',
+    title: 'The Benchmark Resume',
+    subtitle: 'The 30-minute targeted rewrite — every single time',
     description: 'The technical and strategic craft of building a resume that opens doors.',
     lessonCount: 5,
     category: 'resume',
+    color: '#C42A2A',
     lessons: COURSE_3_LESSONS,
   },
   {
     id: 'course-4',
+    number: '04',
     title: 'LinkedIn Mastery',
+    subtitle: 'Profile, content, and the algorithm that reaches hiring managers',
     description: 'Profile, content, and engagement strategy for executive-level visibility.',
     lessonCount: 5,
     category: 'linkedin',
+    color: '#2A8AC4',
     lessons: COURSE_4_LESSONS,
   },
   {
     id: 'course-5',
+    number: '05',
     title: 'Job Search Mastery',
+    subtitle: 'Target companies, hidden markets, and pipeline velocity',
     description: 'Target company selection, pipeline management, and application-to-interview conversion.',
     lessonCount: 5,
     category: 'job-search',
+    color: '#7A2AC4',
     lessons: COURSE_5_LESSONS,
   },
   {
     id: 'course-6',
+    number: '06',
     title: 'Networking Strategy',
+    subtitle: 'The Rule of Four and relationships that generate inbound',
     description: 'The Rule of Four, warm outreach, and relationships that generate inbound opportunities.',
     lessonCount: 5,
     category: 'networking',
+    color: '#2AC47A',
     lessons: COURSE_6_LESSONS,
   },
   {
     id: 'course-7',
+    number: '07',
     title: 'Interview Excellence',
+    subtitle: 'What hiring managers evaluate in the first 20 minutes',
     description: 'STAR stories, company research, and the post-interview follow-up that keeps you first.',
     lessonCount: 5,
     category: 'interview',
+    color: '#C4742A',
     lessons: COURSE_7_LESSONS,
   },
   {
     id: 'course-8',
+    number: '08',
     title: 'Financial Resilience',
+    subtitle: 'Protecting the long term during transition',
     description: 'Retirement bridge, healthcare decisions, and the 90-day search plan.',
     lessonCount: 5,
     category: 'financial',
+    color: '#2AC4C4',
     lessons: COURSE_8_LESSONS,
   },
 ];

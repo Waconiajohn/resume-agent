@@ -1,16 +1,28 @@
 /**
  * LessonRenderer
  *
- * Renders a single LMS lesson with personalized data injections.
- * Handles all five formats: number, percentage, text, list, score-badge.
- * Shows an "unavailable" card with an action link when data isn't yet generated.
+ * Renders a single LMS lesson with a two-tab layout:
+ *   - Lesson tab: core insight, key points, markdown content, next lesson
+ *   - Your Situation tab: personalized injection cards from agent data
+ *
+ * Design reference: CareerIQ_LMS.jsx prototype
  */
 
-import { useMemo } from 'react';
-import { GlassCard } from '@/components/GlassCard';
-import { GlassButton } from '@/components/GlassButton';
+import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { ExternalLink, Lock, TrendingUp, List, Hash, AlignLeft, Award } from 'lucide-react';
+import {
+  ExternalLink,
+  Lock,
+  TrendingUp,
+  List,
+  Hash,
+  AlignLeft,
+  Award,
+  ChevronDown,
+  ChevronRight,
+  Sparkles,
+  ArrowRight,
+} from 'lucide-react';
 import type { LessonConfig, LessonInjection, LessonSlot } from '@/types/lms';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -19,6 +31,8 @@ interface LessonRendererProps {
   lesson: LessonConfig;
   injections: LessonInjection[];
   onLaunchTool?: (agentRoom: string) => void;
+  nextLesson?: LessonConfig | null;
+  onSelectLesson?: (lesson: LessonConfig) => void;
 }
 
 // ─── Score Badge sub-component ────────────────────────────────────────────────
@@ -78,15 +92,30 @@ function AvailableInjection({ slot, injection }: { slot: LessonSlot; injection: 
       const pct = typeof value === 'number' ? value : parseFloat(String(value));
       const display = pct <= 1 ? Math.round(pct * 100) : Math.round(pct);
       return (
-        <span className="text-[26px] font-bold tabular-nums text-[var(--accent)]">
-          {display}%
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-[28px] font-extrabold tabular-nums text-[var(--accent)]"
+            style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+            {display}%
+          </span>
+          <div className="flex-1">
+            <div className="h-[3px] rounded-full bg-[var(--surface-3)]">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${Math.min(display, 100)}%`,
+                  background: display >= 70 ? 'var(--accent)' : display >= 40 ? '#EAB308' : '#EF4444',
+                }}
+              />
+            </div>
+          </div>
+        </div>
       );
     }
 
     if (slot.format === 'number') {
       return (
-        <span className="text-[26px] font-bold tabular-nums text-[var(--accent)]">
+        <span className="text-[28px] font-extrabold tabular-nums text-[var(--accent)]"
+          style={{ fontFamily: 'var(--font-mono, monospace)' }}>
           {typeof value === 'number' ? value : value}
         </span>
       );
@@ -94,17 +123,16 @@ function AvailableInjection({ slot, injection }: { slot: LessonSlot; injection: 
 
     if (slot.format === 'list' && Array.isArray(value)) {
       return (
-        <ul className="mt-1 space-y-1.5">
+        <div className="mt-1 flex flex-wrap gap-1.5">
           {value.map((item, index) => (
-            <li
+            <span
               key={index}
-              className="flex items-start gap-2 text-[14px] text-[var(--text-strong)] leading-relaxed"
+              className="inline-block rounded-full border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-1 text-[12px] text-[var(--text-muted)]"
             >
-              <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--accent)]" />
               {item}
-            </li>
+            </span>
           ))}
-        </ul>
+        </div>
       );
     }
 
@@ -117,8 +145,9 @@ function AvailableInjection({ slot, injection }: { slot: LessonSlot; injection: 
   };
 
   return (
-    <div className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-4">
-      <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.07em] text-[var(--text-soft)]">
+    <div className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-4">
+      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-soft)]"
+        style={{ fontFamily: 'var(--font-mono, monospace)' }}>
         <FormatIcon format={slot.format} />
         {slot.label}
       </div>
@@ -141,21 +170,22 @@ function UnavailableInjection({
   const agentRoom = injection.unavailableLink?.replace('/workspace?room=', '') ?? '';
 
   return (
-    <div className="rounded-[12px] border border-dashed border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
-      <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.07em] text-[var(--text-soft)]">
+    <div className="rounded-[8px] border border-dashed border-[var(--line-soft)] bg-[var(--surface-1)] p-4">
+      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-soft)]"
+        style={{ fontFamily: 'var(--font-mono, monospace)' }}>
         <Lock size={12} />
         {slot.label}
       </div>
-      <p className="mb-3 text-[13px] leading-relaxed text-[var(--text-muted)]">
+      <p className="mb-3 text-[12px] leading-relaxed text-[var(--text-muted)]">
         {injection.unavailableMessage}
       </p>
       {injection.unavailableLink && (
         <button
           type="button"
           onClick={() => onLaunchTool?.(agentRoom)}
-          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
         >
-          Go there now
+          Run to unlock
           <ExternalLink size={12} />
         </button>
       )}
@@ -163,9 +193,41 @@ function UnavailableInjection({
   );
 }
 
+// ─── Core Insight badge ──────────────────────────────────────────────────────
+
+function CoreInsightBadge({ text }: { text: string }) {
+  return (
+    <div className="mb-7 rounded-[8px] border border-[var(--accent)]/20 bg-gradient-to-br from-[var(--accent)]/8 to-[var(--accent)]/3 p-5"
+      style={{ borderLeftWidth: '3px', borderLeftColor: 'var(--accent)' }}>
+      <div className="mb-2 flex items-center gap-2">
+        <Sparkles size={14} className="text-[var(--accent)]" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--accent)]"
+          style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+          Core Insight
+        </span>
+      </div>
+      <p className="text-[14px] italic leading-relaxed text-[var(--text-strong)]">
+        &ldquo;{text}&rdquo;
+      </p>
+    </div>
+  );
+}
+
+// ─── Key Point card ──────────────────────────────────────────────────────────
+
+function KeyPointCard({ heading, text }: { heading: string; text: string }) {
+  return (
+    <div className="mb-2.5 rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-5">
+      <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--accent)]"
+        style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+        {heading}
+      </div>
+      <p className="text-[13px] leading-relaxed text-[var(--text-muted)]">{text}</p>
+    </div>
+  );
+}
+
 // ─── Simple markdown-ish renderer ────────────────────────────────────────────
-// Supports: ## headers, **bold**, bullet lists (- ), blank lines → paragraphs.
-// No external dependency needed for this level of content.
 
 function renderMarkdown(content: string): React.ReactNode {
   const lines = content.split('\n');
@@ -178,7 +240,7 @@ function renderMarkdown(content: string): React.ReactNode {
       const text = paragraphBuffer.join(' ').trim();
       if (text) {
         nodes.push(
-          <p key={key++} className="text-[15px] leading-relaxed text-[var(--text-muted)]">
+          <p key={key++} className="text-[14px] leading-relaxed text-[var(--text-muted)]">
             {renderInline(text)}
           </p>,
         );
@@ -194,7 +256,7 @@ function renderMarkdown(content: string): React.ReactNode {
       nodes.push(
         <ul key={key++} className="ml-4 space-y-1.5">
           {listBuffer.map((item, i) => (
-            <li key={i} className="flex items-start gap-2 text-[15px] leading-relaxed text-[var(--text-muted)]">
+            <li key={i} className="flex items-start gap-2 text-[14px] leading-relaxed text-[var(--text-muted)]">
               <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--accent)]" />
               {renderInline(item)}
             </li>
@@ -214,7 +276,7 @@ function renderMarkdown(content: string): React.ReactNode {
       nodes.push(
         <h2
           key={key++}
-          className="mt-4 text-[18px] font-bold text-[var(--text-strong)] first:mt-0"
+          className="mt-4 text-[17px] font-bold text-[var(--text-strong)] first:mt-0"
         >
           {trimmed.slice(3)}
         </h2>,
@@ -234,7 +296,7 @@ function renderMarkdown(content: string): React.ReactNode {
       continue;
     }
 
-    if (trimmed.startsWith('1.') || /^\d+\. /.test(trimmed)) {
+    if (/^\d+\. /.test(trimmed)) {
       flushParagraph();
       listBuffer.push(trimmed.replace(/^\d+\.\s*/, ''));
       continue;
@@ -257,7 +319,6 @@ function renderMarkdown(content: string): React.ReactNode {
 }
 
 function renderInline(text: string): React.ReactNode {
-  // Replace **bold** with <strong>
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   if (parts.length === 1) return text;
 
@@ -277,7 +338,16 @@ function findInjection(injections: LessonInjection[], key: string): LessonInject
 
 // ─── LessonRenderer ──────────────────────────────────────────────────────────
 
-export function LessonRenderer({ lesson, injections, onLaunchTool }: LessonRendererProps) {
+export function LessonRenderer({
+  lesson,
+  injections,
+  onLaunchTool,
+  nextLesson,
+  onSelectLesson,
+}: LessonRendererProps) {
+  const [activeTab, setActiveTab] = useState<'lesson' | 'situation'>('lesson');
+  const [situationOpen, setSituationOpen] = useState(true);
+
   const availableCount = useMemo(
     () => injections.filter((i) => i.available).length,
     [injections],
@@ -285,83 +355,195 @@ export function LessonRenderer({ lesson, injections, onLaunchTool }: LessonRende
   const hasSlots = lesson.slots.length > 0;
 
   return (
-    <article className="mx-auto max-w-[780px] pb-16 pt-6">
-      {/* Header */}
+    <article className="mx-auto max-w-[720px] pb-16 pt-2">
+      {/* Breadcrumb */}
+      <div className="mb-6 flex items-center gap-2 text-[11px]"
+        style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+        <span className="text-[var(--text-soft)]">{lesson.courseTitle}</span>
+        <span className="text-[var(--line-strong)]">&rsaquo;</span>
+        <span className="text-[var(--accent)]">Lesson {lesson.lessonNumber}</span>
+      </div>
+
+      {/* Title */}
       <header className="mb-8">
-        <div className="mb-2 flex items-center gap-2">
-          <span className="rounded-[6px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-soft)]">
-            {lesson.courseTitle}
-          </span>
-          <span className="text-[var(--text-soft)]">·</span>
-          <span className="text-[12px] text-[var(--text-soft)]">
-            Lesson {lesson.lessonNumber}
-          </span>
-        </div>
         <h1 className="text-[26px] font-bold leading-tight text-[var(--text-strong)]">
           {lesson.title}
         </h1>
-        <p className="mt-2 text-[15px] text-[var(--text-muted)]">{lesson.description}</p>
+        <div className="mt-3 flex items-center gap-3">
+          {lesson.duration && (
+            <>
+              <span className="text-[11px] text-[var(--text-soft)]"
+                style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+                {lesson.duration}
+              </span>
+              <span className="h-1 w-1 rounded-full bg-[var(--line-strong)]" />
+            </>
+          )}
+          <span className="text-[12px] text-[var(--text-muted)]">{lesson.description}</span>
+        </div>
       </header>
 
-      {/* Lesson content */}
-      <GlassCard className="mb-8 space-y-4 p-6">
-        {renderMarkdown(lesson.content)}
-      </GlassCard>
-
-      {/* Your Situation section */}
+      {/* Tab Toggle */}
       {hasSlots && (
-        <section aria-label="Your Situation">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-[16px] font-bold text-[var(--text-strong)]">
-              Your Situation
-            </h2>
-            {lesson.slots.length > 0 && (
-              <span className="text-[12px] text-[var(--text-soft)]">
-                {availableCount} of {lesson.slots.length} data points available
-              </span>
+        <div className="mb-7 flex w-fit rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('lesson')}
+            className={cn(
+              'rounded-[8px] px-5 py-2 text-[12px] font-medium transition-all',
+              activeTab === 'lesson'
+                ? 'bg-[var(--surface-3)] text-[var(--text-strong)] shadow-sm'
+                : 'text-[var(--text-soft)] hover:text-[var(--text-muted)]',
             )}
-          </div>
-
-          <div className="grid gap-3">
-            {lesson.slots.map((slot) => {
-              const injection = findInjection(injections, slot.key);
-
-              if (!injection) return null;
-
-              if (injection.available) {
-                return (
-                  <AvailableInjection
-                    key={slot.key}
-                    slot={slot}
-                    injection={injection}
-                  />
-                );
-              }
-
-              return (
-                <UnavailableInjection
-                  key={slot.key}
-                  slot={slot}
-                  injection={injection}
-                  onLaunchTool={onLaunchTool}
-                />
-              );
-            })}
-          </div>
-        </section>
+          >
+            Lesson
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('situation')}
+            className={cn(
+              'flex items-center gap-2 rounded-[8px] px-5 py-2 text-[12px] font-medium transition-all',
+              activeTab === 'situation'
+                ? 'bg-[var(--surface-3)] text-[var(--text-strong)] shadow-sm'
+                : 'text-[var(--text-soft)] hover:text-[var(--text-muted)]',
+            )}
+          >
+            Your Situation
+            <span className="rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
+              {availableCount > 0 ? 'Live' : `${lesson.slots.length}`}
+            </span>
+          </button>
+        </div>
       )}
 
-      {/* Launch tool button */}
-      {lesson.linkedAgent && lesson.linkedAgentLabel && (
+      {/* ─── Lesson Tab ─── */}
+      {activeTab === 'lesson' && (
+        <div className="animate-in fade-in duration-200">
+          {/* Core Insight */}
+          {lesson.coreInsight && (
+            <CoreInsightBadge text={lesson.coreInsight} />
+          )}
+
+          {/* Key Points */}
+          {lesson.keyPoints && lesson.keyPoints.length > 0 && (
+            <div className="mb-8">
+              <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-soft)]"
+                style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+                Key Points
+              </h3>
+              {lesson.keyPoints.map((pt, i) => (
+                <KeyPointCard key={i} heading={pt.heading} text={pt.text} />
+              ))}
+            </div>
+          )}
+
+          {/* Full content */}
+          <div className="mb-8 space-y-4">
+            {renderMarkdown(lesson.content)}
+          </div>
+
+          {/* Next Lesson */}
+          {nextLesson && (
+            <button
+              type="button"
+              onClick={() => onSelectLesson?.(nextLesson)}
+              className="mb-10 flex w-full items-center justify-between rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-5 text-left transition-colors hover:border-[var(--accent)]/30"
+            >
+              <div>
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-soft)]"
+                  style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+                  Next Lesson
+                </div>
+                <div className="text-[14px] font-medium text-[var(--text-muted)]">
+                  {nextLesson.title}
+                </div>
+              </div>
+              <ArrowRight size={16} className="flex-shrink-0 text-[var(--accent)]" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ─── Your Situation Tab ─── */}
+      {activeTab === 'situation' && hasSlots && (
+        <div className="animate-in fade-in duration-200">
+          <p className="mb-4 text-[13px] leading-relaxed text-[var(--text-soft)]">
+            This lesson applied to your current resume, target role, and career data.
+          </p>
+
+          {/* Collapsible situation panel */}
+          <div className="rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setSituationOpen(!situationOpen)}
+              className="flex w-full items-center justify-between p-5 text-left"
+            >
+              <div className="flex items-center gap-2.5">
+                <Sparkles size={14} className="text-[var(--accent)]" />
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--accent)]"
+                  style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+                  Your Situation
+                </span>
+                <span className="text-[11px] text-[var(--text-soft)]">
+                  {availableCount}/{lesson.slots.length} data points
+                </span>
+              </div>
+              {situationOpen ? (
+                <ChevronDown size={14} className="text-[var(--text-soft)]" />
+              ) : (
+                <ChevronRight size={14} className="text-[var(--text-soft)]" />
+              )}
+            </button>
+
+            {situationOpen && (
+              <div className="border-t border-[var(--line-soft)] p-5">
+                <div className="grid gap-3">
+                  {lesson.slots.map((slot) => {
+                    const injection = findInjection(injections, slot.key);
+                    if (!injection) return null;
+
+                    if (injection.available) {
+                      return <AvailableInjection key={slot.key} slot={slot} injection={injection} />;
+                    }
+                    return (
+                      <UnavailableInjection
+                        key={slot.key}
+                        slot={slot}
+                        injection={injection}
+                        onLaunchTool={onLaunchTool}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Launch tool CTA */}
+                {lesson.linkedAgent && lesson.linkedAgentLabel && (
+                  <button
+                    type="button"
+                    onClick={() => onLaunchTool?.(lesson.linkedAgent ?? '')}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-[8px] border border-[var(--accent)]/30 bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent)]/8 px-5 py-3 text-[12px] font-bold uppercase tracking-[0.05em] text-[var(--accent)] transition-colors hover:from-[var(--accent)]/25 hover:to-[var(--accent)]/12"
+                  >
+                    <Award size={16} />
+                    {lesson.linkedAgentLabel}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Launch Tool — shown on lesson tab when no situation tab exists */}
+      {!hasSlots && lesson.linkedAgent && lesson.linkedAgentLabel && (
         <div className="mt-10 flex items-center gap-3">
-          <GlassButton
-            variant="primary"
-            size="lg"
+          <button
+            type="button"
             onClick={() => onLaunchTool?.(lesson.linkedAgent ?? '')}
+            className="inline-flex items-center gap-2 rounded-[10px] border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-5 py-3 text-[13px] font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/20"
           >
             <Award size={16} />
             {lesson.linkedAgentLabel}
-          </GlassButton>
+          </button>
         </div>
       )}
     </article>
