@@ -9,6 +9,15 @@ export const LEGACY_WORKSPACE_ALIASES = {
   'salary-negotiation': { room: 'interview', focus: 'negotiation' },
   'financial-wellness': { room: 'financial' },
   'retirement-bridge': { room: 'financial' },
+  // LMS linked agent aliases
+  'resume-v2': { room: 'resume' },
+  'onboarding': { room: 'career-profile' },
+  'linkedin-optimizer': { room: 'linkedin' },
+  'linkedin-content': { room: 'linkedin', focus: 'content' },
+  'networking-outreach': { room: 'networking' },
+  'job-finder': { room: 'jobs' },
+  'job-tracker': { room: 'jobs', focus: 'tracker' },
+  'interview-prep': { room: 'interview' },
 } as const;
 
 export type LegacyWorkspaceAlias = keyof typeof LEGACY_WORKSPACE_ALIASES;

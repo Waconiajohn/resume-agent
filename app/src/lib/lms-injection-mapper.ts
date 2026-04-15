@@ -17,9 +17,11 @@ export interface AgentDataSources {
   resumePipelineResult?: V2PipelineData | null;
   positioningProfile?: CareerProfileV2 | null;
   jobFinderResults?: Record<string, unknown> | null;
-  networkingResults?: Record<string, unknown> | null;
+  jobTrackerResults?: Record<string, unknown> | null;
   linkedInProfile?: Record<string, unknown> | null;
   interviewPrepResult?: Record<string, unknown> | null;
+  networkingResults?: Record<string, unknown> | null;
+  retirementBridgeResult?: Record<string, unknown> | null;
   evidenceLibrary?: Array<{ text: string; source: string }> | null;
 }
 
@@ -56,6 +58,26 @@ const UNAVAILABLE_CONFIG: Record<
   networking: {
     message: 'Import your LinkedIn connections to unlock this data.',
     link: '/workspace?room=networking',
+  },
+  'job-tracker': {
+    message: 'Start tracking job applications to unlock this data.',
+    link: '/workspace?room=jobs',
+  },
+  'linkedin-content': {
+    message: 'Create LinkedIn content to unlock this data.',
+    link: '/workspace?room=linkedin',
+  },
+  'salary-negotiation': {
+    message: 'Run Salary Negotiation prep to unlock this data.',
+    link: '/workspace?room=interview',
+  },
+  'retirement-bridge': {
+    message: 'Complete your Retirement Bridge assessment to unlock this data.',
+    link: '/workspace?room=financial',
+  },
+  'ninety-day-plan': {
+    message: 'Build your 90-Day Plan to unlock this data.',
+    link: '/workspace?room=interview',
   },
 };
 
@@ -102,6 +124,21 @@ function resolveSource(
 
     case 'networking':
       return dataSources.networkingResults ?? null;
+
+    case 'job-tracker':
+      return dataSources.jobTrackerResults ?? null;
+
+    case 'linkedin-content':
+      return dataSources.linkedInProfile ?? null;
+
+    case 'salary-negotiation':
+      return dataSources.interviewPrepResult ?? null;
+
+    case 'retirement-bridge':
+      return dataSources.retirementBridgeResult ?? null;
+
+    case 'ninety-day-plan':
+      return dataSources.interviewPrepResult ?? null;
 
     default:
       return null;

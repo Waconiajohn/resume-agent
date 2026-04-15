@@ -14,9 +14,14 @@ export interface LessonSlot {
     | 'gap-analysis'
     | 'positioning'
     | 'job-finder'
+    | 'job-tracker'
     | 'interview-prep'
     | 'linkedin'
-    | 'networking';
+    | 'linkedin-content'
+    | 'networking'
+    | 'salary-negotiation'
+    | 'retirement-bridge'
+    | 'ninety-day-plan';
   dataPath: string;
   format?: 'number' | 'percentage' | 'text' | 'list' | 'score-badge';
 }
@@ -37,6 +42,7 @@ export interface LessonConfig {
   content: string;
   coreInsight?: string;
   keyPoints?: KeyPoint[];
+  videoNotes?: string[];
   slots: LessonSlot[];
   linkedAgent?: string;
   linkedAgentLabel?: string;

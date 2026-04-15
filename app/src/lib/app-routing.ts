@@ -94,7 +94,7 @@ export function getNormalizedWorkspaceRedirect(search: string): string | null {
   if (!alias) return null;
   params.set('room', alias.room);
   if ('focus' in alias && alias.focus && !params.get('focus')) {
-    params.set('focus', alias.focus);
+    params.set('focus', alias.focus as string);
   }
   return buildWorkspaceRoute(undefined, Object.fromEntries(params.entries()));
 }
