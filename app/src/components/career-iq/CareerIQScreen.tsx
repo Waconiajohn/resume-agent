@@ -232,6 +232,7 @@ export function CareerIQScreen({
           .from('coach_sessions')
           .select('id, tailored_sections')
           .eq('user_id', user.id)
+          .eq('product_type', 'resume_v2')
           .eq('pipeline_status', 'complete')
           .order('created_at', { ascending: false })
           .limit(1)
