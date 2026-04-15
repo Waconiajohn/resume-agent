@@ -340,37 +340,21 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
 
     const provenanceSessionId = await ensureProfileSetupProvenanceSession(user.id, currentSessionState);
 
-    // Save to user_platform_context — try career_iq_profile first, fall back to career_profile
-    // if the DB constraint hasn't been updated yet. Either way, return the profile to the user.
-    let saved = await upsertUserContext(
+    // Save to user_platform_context as career_profile (CareerProfileV2 format)
+    const saved = await upsertUserContext(
       user.id,
-      'career_iq_profile',
+      'career_profile',
       profile as unknown as Record<string, unknown>,
       'profile-setup',
       provenanceSessionId ?? undefined,
     );
-
-    if (!saved) {
-      // Fallback: save as career_profile (always in the constraint)
-      logger.warn(
-        { userId: user.id, sessionId: session_id },
-        'Profile setup: career_iq_profile save failed, falling back to career_profile',
-      );
-      saved = await upsertUserContext(
-        user.id,
-        'career_profile',
-        profile as unknown as Record<string, unknown>,
-        'profile-setup',
-        provenanceSessionId ?? undefined,
-      );
-    }
 
     if (saved) {
       logger.info({ userId: user.id, sessionId: session_id }, 'Profile setup complete: profile saved');
     } else {
       logger.warn(
         { userId: user.id, sessionId: session_id },
-        'Profile setup: DB save failed on both context types — returning profile without persistence',
+        'Profile setup: DB save failed — returning profile without persistence',
       );
     }
 

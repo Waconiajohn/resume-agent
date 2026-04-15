@@ -12,46 +12,10 @@
 import { llm, MODEL_PRIMARY } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import logger from '../../lib/logger.js';
-import type { ProfileSetupInput, IntakeAnalysis, InterviewAnswer, CareerIQProfileFull } from './types.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+import type { ProfileSetupInput, IntakeAnalysis, InterviewAnswer } from './types.js';
 
-const SYSTEM_PROMPT = `You are the CareerIQ synthesis agent. The intake analysis and interview are complete. Now you must produce the finished profile.
-
-Six components: CAREER THREAD, TOP CAPABILITIES, SIGNATURE STORY, HONEST ANSWER, RIGHTEOUS CLOSE, and WHY ME FINAL.
-
-CAREER THREAD
-
-One to two sentences. Names the defining capability that runs through this career. It must be grounded in specific evidence from the interview answers — not just the resume. If the interview revealed something the resume did not capture, the career thread should reflect the fuller picture.
-
-TOP CAPABILITIES
-
-Three to five capabilities. Each one must have:
-- A name (short, non-resume-speak — not "stakeholder management" but "reading a room before it turns against you")
-- Evidence from at least two sources: resume, LinkedIn, or interview answers
-- A source field: 'resume', 'linkedin', 'interview', or 'all'
-
-Prioritize capabilities that appeared in the interview answers. The interview is the most authentic source.
-
-SIGNATURE STORY
-
-The one story that, if told well, makes the hiring manager lean forward. It must come from the interview answers — specifically from the defining moment or hidden accomplishment responses. Structure it as STAR+R (Situation, Task, Action, Result, Reflection).
-
-Each component is two to four sentences. The reflection is the most important — it should show what this person learned and why that insight matters for their next role.
-
-HONEST ANSWER
-
-Two fields:
-- concern: the one objection a hiring manager will raise about this background
-- response: the honest, factual response that neutralizes it without defensiveness
-
-The response must not deny the concern. It must reframe it with evidence. If the interview addressed this directly, use that. If not, reason from what you know.
-
-RIGHTEOUS CLOSE
-
-One paragraph. Three to four sentences. This is the candidate's positioning statement — the paragraph they would use to open a networking conversation or close a cover letter. It must:
-- Name the career thread
-- Name one specific capability with one specific proof point
-- State clearly what kind of role they are targeting and why
-- Sound like a person, not a press release
+const SYSTEM_PROMPT = `You are the CareerIQ synthesis agent. The intake analysis and interview are complete. Now you must produce the finished career profile in CareerProfileV2 format.
 
 FORBIDDEN PHRASES — none of these should appear anywhere in the output:
 - "results-driven"
@@ -67,55 +31,123 @@ FORBIDDEN PHRASES — none of these should appear anywhere in the output:
 - "thought leader"
 - any phrase that sounds like it was written by a job posting generator
 
-WHY ME FINAL
+FIELD GUIDANCE:
 
-Two fields: headline and body. Together they answer: "Why would a company hire this person?"
+targeting.target_roles — List of specific role titles the candidate is pursuing. Derive from stated target roles and career direction revealed in the interview.
 
-HEADLINE: Two to three sentences. This is the positioning statement — it explains WHY companies hire this type of person, not what they did at one company. It must:
-- Open with the VALUE the person brings, not a project description: "Companies hire me when they need someone who can..." or "I bring [rare combination] that produces [outcome]."
-- Describe a REPEATABLE PATTERN of impact — something they bring to every role, not something that happened once
-- Name the RARE COMBINATION that makes them hard to replace: the intersection of 2-3 capabilities that most candidates don't have together
-- Do NOT name a specific company. Do NOT recap a single project. This must work for ANY job they apply to.
-- Include scope/metrics as proof, not as the headline: team sizes, budget scale, percentage improvements support the claim but don't lead it.
+targeting.target_industries — Industries where the candidate's experience is strongest or where they are explicitly targeting.
 
-Good example: "Companies hire me when they need someone who can step into a complex environment, stabilize it, and make it perform at a higher level. I bring a rare combination of frontline operations expertise and technical leadership — I understand service delivery well enough to improve it in real time, and I understand technology well enough to lead platform deployments and workflow automation. That means I translate between technical teams, business stakeholders, and operational staff without losing momentum."
+targeting.seniority — The level: "director", "vp", "c-suite", "senior-manager", etc.
 
-Bad example: "Transformed Nimbus Technologies by migrating 60+ legacy apps to AWS, reducing costs by 35%." — This is a project recap at one company, not a positioning statement.
+targeting.transition_type — "growth" (moving up), "pivot" (changing direction), "lateral" (same level new context), "return" (re-entering), or "voluntary".
 
-Bad example: "I bring a unique combination of technical expertise and leadership skills." — Generic, could describe anyone.
+positioning.core_strengths — 3-5 specific capabilities. Not resume-speak. What EXACTLY are they good at, backed by evidence.
 
-BODY: Three to five sentences. These prove the headline with specific evidence — metrics, outcomes, patterns. The body CAN name companies. Structure: first sentence names the biggest quantified impact. Second and third sentences show the pattern repeating across roles. Final sentence addresses HOW they lead (values, approach, what they build in teams).
+positioning.proof_themes — 2-4 repeatable patterns of impact that show up across multiple roles.
 
-The WHY ME FINAL is the single most important output of this entire profile. It will seed every professional summary, cover letter, and interview prep this platform generates.
+positioning.differentiators — What makes this person unusual or hard to replace. The intersection of capabilities most candidates don't have together.
 
-OUTPUT FORMAT: Return valid JSON:
+positioning.positioning_statement — The one sentence that explains why companies hire this person. Must be repeatable-pattern language, not a single-project recap.
+
+positioning.narrative_summary — 2-3 sentences. The career story told for maximum positioning impact.
+
+positioning.leadership_scope — The scale of their biggest leadership footprint (team size, budget, revenue responsibility, geographic scope).
+
+positioning.scope_of_responsibility — What domains they have owned at their peak.
+
+narrative.colleagues_came_for_what — What colleagues consistently bring to this person that has nothing to do with their job title. First person. Specific.
+
+narrative.known_for_what — What this person is most known for professionally. Should match the positioning_statement but in a more personal register.
+
+narrative.why_not_me — The honest answer to the hardest hiring-manager objection about this background. Not denial. A factual reframe.
+
+narrative.story_snippet — The one story that makes a hiring manager lean forward. 2-4 sentences. From the interview answers.
+
+preferences.must_haves — Non-negotiable requirements for the next role.
+
+preferences.constraints — Real constraints: geography, travel tolerance, company stage, culture fit.
+
+preferences.compensation_direction — What they need directionally (not a specific number).
+
+coaching.financial_segment — "crisis", "stressed", "ideal", or "comfortable". Infer from context — never ask directly.
+
+coaching.emotional_state — "denial", "anger", "bargaining", "depression", or "acceptance".
+
+coaching.coaching_tone — "direct", "supportive", or "exploratory".
+
+coaching.urgency_score — 1-10. How urgently they need to land a role.
+
+coaching.recommended_starting_point — "resume", "interview-prep", "positioning", or "networking".
+
+evidence_positioning_statements — 3-5 statements that connect a specific capability to a specific role requirement. Format: "[strength] demonstrated through [specific evidence], directly applicable to [role type]."
+
+profile_signals.clarity — How clearly defined their direction is: "green" (clear), "yellow" (emerging), "red" (unclear).
+
+profile_signals.alignment — How well their background aligns with their target: "green", "yellow", "red".
+
+profile_signals.differentiation — How differentiated their positioning is: "green", "yellow", "red".
+
+completeness — Score each section 0-100 and classify as "ready" (>=85), "partial" (>=45), or "missing" (<45). Overall score is the average.
+
+profile_summary — The 2-3 sentence positioning statement that will seed the resume summary, cover letters, and interview prep across the platform.
+
+OUTPUT FORMAT: Return valid JSON matching this structure exactly:
 {
-  "career_thread": "one to two sentences",
-  "top_capabilities": [
-    {
-      "capability": "name",
-      "evidence": "specific evidence from resume, linkedin, and/or interview",
-      "source": "resume|linkedin|interview|all"
-    }
-  ],
-  "signature_story": {
-    "situation": "two to four sentences",
-    "task": "two to four sentences",
-    "action": "two to four sentences",
-    "result": "two to four sentences",
-    "reflection": "two to four sentences — the most important part"
+  "version": "career_profile_v2",
+  "source": "profile-setup",
+  "generated_at": "ISO 8601 timestamp",
+  "targeting": {
+    "target_roles": ["role 1", "role 2"],
+    "target_industries": ["industry 1"],
+    "seniority": "director|vp|c-suite|senior-manager|manager",
+    "transition_type": "growth|pivot|lateral|return|voluntary",
+    "preferred_company_environments": ["environment 1"]
   },
-  "honest_answer": {
-    "concern": "the objection",
-    "response": "the factual reframe"
+  "positioning": {
+    "core_strengths": ["strength 1", "strength 2", "strength 3"],
+    "proof_themes": ["theme 1", "theme 2"],
+    "differentiators": ["differentiator 1"],
+    "adjacent_positioning": ["adjacent area 1"],
+    "positioning_statement": "one sentence — why companies hire this person",
+    "narrative_summary": "2-3 sentence career story",
+    "leadership_scope": "scale of biggest leadership footprint",
+    "scope_of_responsibility": "domains owned at peak"
   },
-  "righteous_close": "one paragraph",
-  "why_me_final": {
-    "headline": "one sentence — the hook",
-    "body": "two to three sentences — the proof"
+  "narrative": {
+    "colleagues_came_for_what": "what colleagues bring to them beyond their title",
+    "known_for_what": "what they are most known for",
+    "why_not_me": "honest answer to the hardest objection",
+    "story_snippet": "the story that makes a hiring manager lean forward"
   },
-  "target_roles": ["role 1", "role 2"],
-  "created_at": "ISO 8601 timestamp"
+  "preferences": {
+    "must_haves": ["must-have 1"],
+    "constraints": ["constraint 1"],
+    "compensation_direction": "directional statement"
+  },
+  "coaching": {
+    "financial_segment": "crisis|stressed|ideal|comfortable",
+    "emotional_state": "denial|anger|bargaining|depression|acceptance",
+    "coaching_tone": "direct|supportive|exploratory",
+    "urgency_score": 5,
+    "recommended_starting_point": "resume|interview-prep|positioning|networking"
+  },
+  "evidence_positioning_statements": ["statement 1", "statement 2", "statement 3"],
+  "profile_signals": {
+    "clarity": "green|yellow|red",
+    "alignment": "green|yellow|red",
+    "differentiation": "green|yellow|red"
+  },
+  "completeness": {
+    "overall_score": 75,
+    "dashboard_state": "new-user|refining|strong",
+    "sections": [
+      { "id": "direction", "label": "Direction", "status": "ready|partial|missing", "score": 85, "summary": "one sentence" },
+      { "id": "positioning", "label": "Positioning", "status": "ready|partial|missing", "score": 75, "summary": "one sentence" },
+      { "id": "narrative", "label": "Narrative", "status": "ready|partial|missing", "score": 70, "summary": "one sentence" },
+      { "id": "constraints", "label": "Preferences", "status": "ready|partial|missing", "score": 65, "summary": "one sentence" }
+    ]
+  },
+  "profile_summary": "2-3 sentence positioning statement"
 }
 
 CRITICAL JSON RULES:
@@ -179,37 +211,70 @@ function buildUserMessage(
 function buildDeterministicFallback(
   input: ProfileSetupInput,
   intake: IntakeAnalysis,
-): CareerIQProfileFull {
+): CareerProfileV2 {
   const targetRolesArray = input.target_roles
     .split(/[,\n]/)
     .map((r) => r.trim())
     .filter((r) => r.length > 0);
 
+  const now = new Date().toISOString();
+
   return {
-    career_thread: intake.career_thread,
-    top_capabilities: intake.top_capabilities.map((c) => ({
-      capability: c.capability,
-      evidence: c.evidence,
-      source: 'resume' as const,
-    })),
-    signature_story: {
-      situation: 'The candidate has navigated significant professional challenges across their career.',
-      task: 'In their most impactful role, they were responsible for meaningful organizational outcomes.',
-      action: 'They applied their core capabilities to navigate the challenge with deliberate decisions.',
-      result: 'The outcome demonstrated their ability to deliver results under pressure.',
-      reflection: 'This experience sharpened their judgment in ways that directly apply to their target roles.',
+    version: 'career_profile_v2',
+    source: 'profile-setup',
+    generated_at: now,
+    targeting: {
+      target_roles: targetRolesArray,
+      target_industries: [],
+      seniority: 'not yet defined',
+      transition_type: 'voluntary',
+      preferred_company_environments: [],
     },
-    honest_answer: {
-      concern: intake.primary_concern ?? 'Career transition timeline may raise questions',
-      response: 'The background, read carefully, shows consistent forward momentum and deliberate role choices.',
+    positioning: {
+      core_strengths: intake.top_capabilities.map((c) => c.capability),
+      proof_themes: [],
+      differentiators: [],
+      adjacent_positioning: [],
+      positioning_statement: intake.why_me_draft,
+      narrative_summary: intake.career_thread,
+      leadership_scope: '',
+      scope_of_responsibility: '',
     },
-    righteous_close: intake.why_me_draft,
-    why_me_final: {
-      headline: intake.why_me_draft,
-      body: '',
+    narrative: {
+      colleagues_came_for_what: '',
+      known_for_what: intake.why_me_draft,
+      why_not_me: intake.primary_concern ?? '',
+      story_snippet: intake.career_thread,
     },
-    target_roles: targetRolesArray,
-    created_at: new Date().toISOString(),
+    preferences: {
+      must_haves: [],
+      constraints: [],
+      compensation_direction: '',
+    },
+    coaching: {
+      financial_segment: 'ideal',
+      emotional_state: 'acceptance',
+      coaching_tone: 'direct',
+      urgency_score: 5,
+      recommended_starting_point: 'resume',
+    },
+    evidence_positioning_statements: [],
+    profile_signals: {
+      clarity: 'yellow',
+      alignment: 'yellow',
+      differentiation: 'yellow',
+    },
+    completeness: {
+      overall_score: 40,
+      dashboard_state: 'refining',
+      sections: [
+        { id: 'direction', label: 'Direction', status: targetRolesArray.length > 0 ? 'partial' : 'missing', score: targetRolesArray.length > 0 ? 65 : 15, summary: 'Target roles identified from input.' },
+        { id: 'positioning', label: 'Positioning', status: 'partial', score: 50, summary: 'Core strengths identified from resume.' },
+        { id: 'narrative', label: 'Narrative', status: 'partial', score: 40, summary: 'Career thread established from intake.' },
+        { id: 'constraints', label: 'Preferences', status: 'missing', score: 15, summary: 'Preferences not yet defined.' },
+      ],
+    },
+    profile_summary: intake.why_me_draft,
   };
 }
 
@@ -219,86 +284,116 @@ function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
   return error instanceof Error && /aborted/i.test(error.message);
 }
 
-function normalizeCareerIQProfile(raw: unknown, fallback: CareerIQProfileFull): CareerIQProfileFull {
+function str(value: unknown, fallback = ''): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
+function strArr(value: unknown, fallback: string[] = []): string[] {
+  if (!Array.isArray(value)) return fallback;
+  const result = value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+  return result.length > 0 ? result : fallback;
+}
+
+function numField(value: unknown, fallback: number): number {
+  return typeof value === 'number' ? value : fallback;
+}
+
+function subRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function normalizeCareerProfileV2(raw: unknown, fallback: CareerProfileV2): CareerProfileV2 {
   const r = raw as Record<string, unknown>;
 
-  const capabilitiesRaw = Array.isArray(r.top_capabilities) ? r.top_capabilities : [];
-  const top_capabilities = capabilitiesRaw
-    .filter((c): c is Record<string, unknown> => Boolean(c && typeof c === 'object'))
-    .map((c) => ({
-      capability: typeof c.capability === 'string' ? c.capability : '',
-      evidence: typeof c.evidence === 'string' ? c.evidence : '',
-      source: (['resume', 'linkedin', 'interview', 'all'] as const).includes(c.source as 'resume' | 'linkedin' | 'interview' | 'all')
-        ? (c.source as 'resume' | 'linkedin' | 'interview' | 'all')
-        : 'resume' as const,
-    }))
-    .filter((c) => c.capability.length > 0);
+  const targeting = subRecord(r.targeting);
+  const positioning = subRecord(r.positioning);
+  const narrative = subRecord(r.narrative);
+  const preferences = subRecord(r.preferences);
+  const coaching = subRecord(r.coaching);
+  const profileSignals = subRecord(r.profile_signals);
+  const completeness = subRecord(r.completeness);
 
-  const storyRaw = r.signature_story && typeof r.signature_story === 'object' && !Array.isArray(r.signature_story)
-    ? r.signature_story as Record<string, unknown>
-    : {};
+  const sectionsRaw = Array.isArray(completeness.sections) ? completeness.sections : [];
+  const validSectionIds = ['direction', 'positioning', 'narrative', 'constraints'] as const;
+  const sections = sectionsRaw
+    .filter((s): s is Record<string, unknown> => Boolean(s && typeof s === 'object'))
+    .filter((s) => validSectionIds.includes(s.id as typeof validSectionIds[number]))
+    .map((s) => ({
+      id: s.id as typeof validSectionIds[number],
+      label: str(s.label, String(s.id)),
+      status: (['ready', 'partial', 'missing'] as const).includes(s.status as 'ready' | 'partial' | 'missing')
+        ? (s.status as 'ready' | 'partial' | 'missing')
+        : 'partial' as const,
+      score: numField(s.score, 50),
+      summary: str(s.summary),
+    }));
 
-  const honestRaw = r.honest_answer && typeof r.honest_answer === 'object' && !Array.isArray(r.honest_answer)
-    ? r.honest_answer as Record<string, unknown>
-    : {};
+  const overallScore = numField(completeness.overall_score, fallback.completeness.overall_score);
+  const dashboardStateRaw = str(completeness.dashboard_state);
+  const dashboardState = (['new-user', 'refining', 'strong'] as const).includes(dashboardStateRaw as 'new-user' | 'refining' | 'strong')
+    ? (dashboardStateRaw as 'new-user' | 'refining' | 'strong')
+    : fallback.completeness.dashboard_state;
 
-  const targetRolesRaw = Array.isArray(r.target_roles) ? r.target_roles : [];
-  const target_roles = targetRolesRaw
-    .filter((role): role is string => typeof role === 'string' && role.length > 0);
+  const signalFor = (key: string): 'green' | 'yellow' | 'red' => {
+    const v = str(profileSignals[key]);
+    return (['green', 'yellow', 'red'] as const).includes(v as 'green' | 'yellow' | 'red')
+      ? (v as 'green' | 'yellow' | 'red')
+      : 'yellow';
+  };
 
   return {
-    career_thread: typeof r.career_thread === 'string' && r.career_thread.length > 0
-      ? r.career_thread
-      : fallback.career_thread,
-    top_capabilities: top_capabilities.length > 0 ? top_capabilities : fallback.top_capabilities,
-    signature_story: {
-      situation: typeof storyRaw.situation === 'string' && storyRaw.situation.length > 0
-        ? storyRaw.situation
-        : fallback.signature_story.situation,
-      task: typeof storyRaw.task === 'string' && storyRaw.task.length > 0
-        ? storyRaw.task
-        : fallback.signature_story.task,
-      action: typeof storyRaw.action === 'string' && storyRaw.action.length > 0
-        ? storyRaw.action
-        : fallback.signature_story.action,
-      result: typeof storyRaw.result === 'string' && storyRaw.result.length > 0
-        ? storyRaw.result
-        : fallback.signature_story.result,
-      reflection: typeof storyRaw.reflection === 'string' && storyRaw.reflection.length > 0
-        ? storyRaw.reflection
-        : fallback.signature_story.reflection,
+    version: 'career_profile_v2',
+    source: 'profile-setup',
+    generated_at: str(r.generated_at) || new Date().toISOString(),
+    targeting: {
+      target_roles: strArr(targeting.target_roles, fallback.targeting.target_roles),
+      target_industries: strArr(targeting.target_industries, fallback.targeting.target_industries),
+      seniority: str(targeting.seniority, fallback.targeting.seniority),
+      transition_type: str(targeting.transition_type, fallback.targeting.transition_type),
+      preferred_company_environments: strArr(targeting.preferred_company_environments, fallback.targeting.preferred_company_environments),
     },
-    honest_answer: {
-      concern: typeof honestRaw.concern === 'string' && honestRaw.concern.length > 0
-        ? honestRaw.concern
-        : fallback.honest_answer.concern,
-      response: typeof honestRaw.response === 'string' && honestRaw.response.length > 0
-        ? honestRaw.response
-        : fallback.honest_answer.response,
+    positioning: {
+      core_strengths: strArr(positioning.core_strengths, fallback.positioning.core_strengths),
+      proof_themes: strArr(positioning.proof_themes, fallback.positioning.proof_themes),
+      differentiators: strArr(positioning.differentiators, fallback.positioning.differentiators),
+      adjacent_positioning: strArr(positioning.adjacent_positioning, fallback.positioning.adjacent_positioning),
+      positioning_statement: str(positioning.positioning_statement, fallback.positioning.positioning_statement),
+      narrative_summary: str(positioning.narrative_summary, fallback.positioning.narrative_summary),
+      leadership_scope: str(positioning.leadership_scope, fallback.positioning.leadership_scope),
+      scope_of_responsibility: str(positioning.scope_of_responsibility, fallback.positioning.scope_of_responsibility),
     },
-    righteous_close: typeof r.righteous_close === 'string' && r.righteous_close.length > 0
-      ? r.righteous_close
-      : fallback.righteous_close,
-    why_me_final: (() => {
-      const whyMeRaw = r.why_me_final;
-      if (whyMeRaw && typeof whyMeRaw === 'object' && !Array.isArray(whyMeRaw)) {
-        const wm = whyMeRaw as Record<string, unknown>;
-        return {
-          headline: typeof wm.headline === 'string' && wm.headline.length > 0
-            ? wm.headline : fallback.why_me_final.headline,
-          body: typeof wm.body === 'string' && wm.body.length > 0
-            ? wm.body : fallback.why_me_final.body,
-        };
-      } else if (typeof whyMeRaw === 'string' && whyMeRaw.length > 0) {
-        // Legacy string — use as headline, empty body
-        return { headline: whyMeRaw, body: '' };
-      }
-      return fallback.why_me_final;
-    })(),
-    target_roles: target_roles.length > 0 ? target_roles : fallback.target_roles,
-    created_at: typeof r.created_at === 'string' && r.created_at.length > 0
-      ? r.created_at
-      : new Date().toISOString(),
+    narrative: {
+      colleagues_came_for_what: str(narrative.colleagues_came_for_what, fallback.narrative.colleagues_came_for_what),
+      known_for_what: str(narrative.known_for_what, fallback.narrative.known_for_what),
+      why_not_me: str(narrative.why_not_me, fallback.narrative.why_not_me),
+      story_snippet: str(narrative.story_snippet, fallback.narrative.story_snippet),
+    },
+    preferences: {
+      must_haves: strArr(preferences.must_haves, fallback.preferences.must_haves),
+      constraints: strArr(preferences.constraints, fallback.preferences.constraints),
+      compensation_direction: str(preferences.compensation_direction, fallback.preferences.compensation_direction),
+    },
+    coaching: {
+      financial_segment: str(coaching.financial_segment, fallback.coaching.financial_segment),
+      emotional_state: str(coaching.emotional_state, fallback.coaching.emotional_state),
+      coaching_tone: str(coaching.coaching_tone, fallback.coaching.coaching_tone),
+      urgency_score: numField(coaching.urgency_score, fallback.coaching.urgency_score),
+      recommended_starting_point: str(coaching.recommended_starting_point, fallback.coaching.recommended_starting_point),
+    },
+    evidence_positioning_statements: strArr(r.evidence_positioning_statements, fallback.evidence_positioning_statements),
+    profile_signals: {
+      clarity: signalFor('clarity'),
+      alignment: signalFor('alignment'),
+      differentiation: signalFor('differentiation'),
+    },
+    completeness: {
+      overall_score: overallScore,
+      dashboard_state: dashboardState,
+      sections: sections.length > 0 ? sections : fallback.completeness.sections,
+    },
+    profile_summary: str(r.profile_summary, fallback.profile_summary),
   };
 }
 
@@ -307,7 +402,7 @@ export async function synthesizeProfile(
   intake: IntakeAnalysis,
   answers: InterviewAnswer[],
   signal?: AbortSignal,
-): Promise<CareerIQProfileFull> {
+): Promise<CareerProfileV2> {
   const userMessage = buildUserMessage(input, intake, answers);
   const fallback = buildDeterministicFallback(input, intake);
 
@@ -321,8 +416,8 @@ export async function synthesizeProfile(
       signal,
     });
 
-    const parsed = repairJSON<CareerIQProfileFull>(response.text);
-    if (parsed) return normalizeCareerIQProfile(parsed, fallback);
+    const parsed = repairJSON<CareerProfileV2>(response.text);
+    if (parsed) return normalizeCareerProfileV2(parsed, fallback);
 
     logger.warn(
       { sessionId: input.session_id, rawSnippet: response.text.substring(0, 500) },
@@ -347,8 +442,8 @@ export async function synthesizeProfile(
       signal,
     });
 
-    const retryParsed = repairJSON<CareerIQProfileFull>(retry.text);
-    if (retryParsed) return normalizeCareerIQProfile(retryParsed, fallback);
+    const retryParsed = repairJSON<CareerProfileV2>(retry.text);
+    if (retryParsed) return normalizeCareerProfileV2(retryParsed, fallback);
 
     logger.error(
       { sessionId: input.session_id, rawSnippet: retry.text.substring(0, 500) },

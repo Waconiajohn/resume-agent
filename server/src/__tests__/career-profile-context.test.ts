@@ -3,25 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockGetLatestUserContext = vi.hoisted(() => vi.fn());
 const mockGetUserContext = vi.hoisted(() => vi.fn());
 const mockGetWhyMeContext = vi.hoisted(() => vi.fn());
-const mockUpsertUserContext = vi.hoisted(() => vi.fn());
 const mockGetEmotionalBaseline = vi.hoisted(() => vi.fn());
-const mockFrom = vi.hoisted(() => vi.fn());
 
 vi.mock('../lib/platform-context.js', () => ({
   getLatestUserContext: mockGetLatestUserContext,
   getUserContext: mockGetUserContext,
   getWhyMeContext: mockGetWhyMeContext,
-  upsertUserContext: mockUpsertUserContext,
 }));
 
 vi.mock('../lib/emotional-baseline.js', () => ({
   getEmotionalBaseline: mockGetEmotionalBaseline,
-}));
-
-vi.mock('../lib/supabase.js', () => ({
-  supabaseAdmin: {
-    from: mockFrom,
-  },
 }));
 
 vi.mock('../lib/logger.js', () => ({
@@ -35,14 +26,54 @@ vi.mock('../lib/logger.js', () => ({
 
 import { loadAgentContextBundle, loadCareerProfileContext } from '../lib/career-profile-context.js';
 
-function makeChain(resolvedValue: unknown) {
-  const chain: Record<string, unknown> = {};
-  for (const method of ['select', 'eq', 'order', 'limit', 'maybeSingle']) {
-    chain[method] = vi.fn(() => chain);
-  }
-  (chain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue(resolvedValue);
-  return chain;
-}
+const v2Profile = {
+  version: 'career_profile_v2' as const,
+  source: 'career_profile' as const,
+  generated_at: '2026-04-14T00:00:00.000Z',
+  targeting: {
+    target_roles: ['Senior Program Manager'],
+    target_industries: ['Technology'],
+    seniority: 'director',
+    transition_type: 'voluntary',
+    preferred_company_environments: [],
+  },
+  positioning: {
+    core_strengths: ['Program leadership', 'Cross-functional execution'],
+    proof_themes: ['Strong operator with repeatable execution systems.'],
+    differentiators: ['Bridges strategy and delivery'],
+    adjacent_positioning: [],
+    positioning_statement: 'Operator who turns ambiguity into execution momentum',
+    narrative_summary: 'Turns ambiguity into execution momentum.',
+    leadership_scope: '14+ years of experience',
+    scope_of_responsibility: 'Focused on Senior Program Manager',
+  },
+  narrative: {
+    colleagues_came_for_what: 'People brought me failing cross-functional programs.',
+    known_for_what: 'Turning ambiguity into execution momentum.',
+    why_not_me: 'I have led equivalent scope in adjacent environments.',
+    story_snippet: 'Turns ambiguity into execution momentum.',
+  },
+  preferences: {
+    must_haves: ['Senior Program Manager'],
+    constraints: ['Remote preferred'],
+    compensation_direction: '',
+  },
+  coaching: {
+    financial_segment: 'ideal',
+    emotional_state: 'acceptance',
+    coaching_tone: 'direct',
+    urgency_score: 6,
+    recommended_starting_point: 'resume',
+  },
+  evidence_positioning_statements: ['Program leadership positioned against Senior Program Manager requirements.'],
+  profile_signals: { clarity: 'green' as const, alignment: 'green' as const, differentiation: 'green' as const },
+  completeness: {
+    overall_score: 85,
+    dashboard_state: 'strong' as const,
+    sections: [],
+  },
+  profile_summary: 'Operator who turns ambiguity into execution momentum',
+};
 
 describe('loadCareerProfileContext', () => {
   beforeEach(() => {
@@ -50,87 +81,34 @@ describe('loadCareerProfileContext', () => {
     mockGetLatestUserContext.mockResolvedValue(null);
     mockGetUserContext.mockResolvedValue([]);
     mockGetWhyMeContext.mockResolvedValue(null);
-    mockUpsertUserContext.mockResolvedValue(null);
-    mockGetEmotionalBaseline.mockResolvedValue({
-      emotional_state: 'acceptance',
-      financial_segment: 'ideal',
-      coaching_tone: 'direct',
-      urgency_score: 5,
-      distress_detected: false,
-    });
-    mockFrom.mockReturnValue(makeChain({ data: null, error: null }));
+    mockGetEmotionalBaseline.mockResolvedValue(null);
   });
 
-  it('builds a normalized profile from legacy onboarding and why-me data', async () => {
-    mockGetLatestUserContext.mockImplementation(async (_userId: string, contextType: string) => {
-      if (contextType === 'client_profile') {
-        return {
-          content: {
-            career_level: 'director',
-            industry: 'Technology',
-            years_experience: 14,
-            financial_segment: 'ideal',
-            emotional_state: 'acceptance',
-            transition_type: 'voluntary',
-            goals: ['Senior Program Manager'],
-            constraints: ['Remote preferred'],
-            strengths_self_reported: ['Program leadership', 'Cross-functional execution'],
-            urgency_score: 6,
-            recommended_starting_point: 'resume',
-            coaching_tone: 'direct',
-          },
-        };
-      }
+  it('returns null when no career_profile row exists', async () => {
+    mockGetLatestUserContext.mockResolvedValue(null);
+    const profile = await loadCareerProfileContext('user-1');
+    expect(profile).toBeNull();
+  });
 
-      if (contextType === 'positioning_strategy') {
-        return {
-          content: {
-            target_role: 'Senior Program Manager',
-            target_industry: 'Technology',
-            angle: 'Operator who turns ambiguity into execution momentum',
-            differentiators: ['Bridges strategy and delivery'],
-          },
-        };
-      }
-
-      return null;
+  it('returns null when stored profile is not V2 format', async () => {
+    mockGetLatestUserContext.mockResolvedValue({
+      content: { career_thread: 'Old format without version field' },
     });
+    const profile = await loadCareerProfileContext('user-1');
+    expect(profile).toBeNull();
+  });
 
-    mockGetWhyMeContext.mockResolvedValue({
-      colleaguesCameForWhat: 'People brought me failing cross-functional programs.',
-      knownForWhat: 'Turning ambiguity into execution momentum.',
-      whyNotMe: 'I have led equivalent scope in adjacent environments.',
-    });
-
-    mockFrom.mockReturnValue(makeChain({
-      data: {
-        client_profile: {
-          career_level: 'director',
-        },
-        assessment_summary: {
-          key_insights: ['Strong operator with repeatable execution systems.'],
-          financial_signals: [],
-          emotional_signals: [],
-          recommended_actions: ['Refine positioning'],
-        },
-        created_at: '2026-03-16T12:00:00.000Z',
-      },
-      error: null,
-    }));
+  it('returns the V2 profile directly when version matches', async () => {
+    mockGetLatestUserContext.mockResolvedValue({ content: v2Profile });
 
     const profile = await loadCareerProfileContext('user-1');
 
     expect(profile).not.toBeNull();
+    expect(profile?.version).toBe('career_profile_v2');
     expect(profile?.targeting.target_roles).toContain('Senior Program Manager');
     expect(profile?.positioning.core_strengths).toContain('Program leadership');
     expect(profile?.narrative.known_for_what).toBe('Turning ambiguity into execution momentum.');
     expect(profile?.completeness.dashboard_state).toBe('strong');
-    expect(mockUpsertUserContext).toHaveBeenCalledWith(
-      'user-1',
-      'career_profile',
-      expect.any(Object),
-      'career-profile-migration',
-    );
   });
 });
 
@@ -140,16 +118,16 @@ describe('loadAgentContextBundle', () => {
     mockGetLatestUserContext.mockResolvedValue(null);
     mockGetUserContext.mockResolvedValue([]);
     mockGetWhyMeContext.mockResolvedValue(null);
-    mockUpsertUserContext.mockResolvedValue(null);
     mockGetEmotionalBaseline.mockResolvedValue(null);
-    mockFrom.mockReturnValue(makeChain({ data: null, error: null }));
   });
 
-  it('returns normalized career profile plus requested legacy context', async () => {
+  it('returns V2 career profile plus requested context', async () => {
     mockGetLatestUserContext.mockImplementation(async (_userId: string, contextType: string) => {
       if (contextType === 'career_profile') {
         return {
           content: {
+            version: 'career_profile_v2',
+            source: 'career_profile',
             generated_at: '2026-03-16T12:00:00.000Z',
             targeting: { target_roles: ['Head of Operations'], target_industries: ['Healthcare'], seniority: 'director', transition_type: 'voluntary', preferred_company_environments: [] },
             positioning: {
@@ -212,6 +190,7 @@ describe('loadAgentContextBundle', () => {
       includeEmotionalBaseline: false,
     });
 
+    expect(bundle.careerProfile?.version).toBe('career_profile_v2');
     expect(bundle.careerProfile?.profile_summary).toContain('Operations leader');
     expect(bundle.platformContext.career_profile).toBeTruthy();
     expect(bundle.platformContext.positioning_strategy).toEqual({ angle: 'Operator-builder' });

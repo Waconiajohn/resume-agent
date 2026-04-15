@@ -11,32 +11,56 @@ vi.mock('react-router-dom', () => ({
 
 function makeProfile() {
   return {
-    career_thread: 'Operator to engineering leader',
-    top_capabilities: [
-      {
-        capability: 'Executive communication',
-        evidence: 'Built trust with cross-functional leaders.',
-        source: 'interview' as const,
-      },
-    ],
-    signature_story: {
-      situation: '',
-      task: '',
-      action: '',
-      result: '',
-      reflection: '',
+    version: 'career_profile_v2' as const,
+    source: 'career_profile' as const,
+    generated_at: '2026-04-07T00:00:00.000Z',
+    targeting: {
+      target_roles: ['VP Engineering'],
+      target_industries: [],
+      seniority: 'executive',
+      transition_type: 'lateral',
+      preferred_company_environments: [],
     },
-    honest_answer: {
-      concern: '',
-      response: '',
+    positioning: {
+      core_strengths: ['Executive communication'],
+      proof_themes: [],
+      differentiators: [],
+      adjacent_positioning: [],
+      positioning_statement: 'Operator to engineering leader',
+      narrative_summary: '',
+      leadership_scope: '',
+      scope_of_responsibility: '',
     },
-    righteous_close: '',
-    why_me_final: {
-      headline: 'Engineering leader',
-      body: 'Scales platforms and teams.',
+    narrative: {
+      colleagues_came_for_what: 'Scales platforms and teams.',
+      known_for_what: 'Engineering leader',
+      why_not_me: '',
+      story_snippet: '',
     },
-    target_roles: ['VP Engineering'],
-    created_at: '2026-04-07T00:00:00.000Z',
+    preferences: {
+      must_haves: [],
+      constraints: [],
+      compensation_direction: '',
+    },
+    coaching: {
+      financial_segment: 'ideal',
+      emotional_state: 'confident',
+      coaching_tone: 'direct',
+      urgency_score: 5,
+      recommended_starting_point: 'resume',
+    },
+    evidence_positioning_statements: [],
+    profile_signals: {
+      clarity: 'green' as const,
+      alignment: 'green' as const,
+      differentiation: 'green' as const,
+    },
+    completeness: {
+      overall_score: 80,
+      dashboard_state: 'strong' as const,
+      sections: [],
+    },
+    profile_summary: '',
   };
 }
 

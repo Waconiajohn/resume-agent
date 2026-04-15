@@ -4,7 +4,7 @@ export type CareerProfileCompletenessStatus = 'ready' | 'partial' | 'missing';
 
 export interface CareerProfileV2 {
   version: 'career_profile_v2';
-  source: 'career_profile' | 'legacy_migration';
+  source: 'career_profile' | 'legacy_migration' | 'profile-setup' | 'discovery';
   generated_at: string;
   targeting: {
     target_roles: string[];

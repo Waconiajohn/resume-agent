@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { CareerIQProfileFull } from '@/types/profile-setup';
+import type { CareerProfileV2 } from '@/types/career-profile';
 
 interface ProfileRevealProps {
-  profile: CareerIQProfileFull;
+  profile: CareerProfileV2;
   masterResumeCreated?: boolean | null;
   masterResumeRecovered?: boolean;
   onRetryMasterResume?: () => void;
@@ -110,7 +110,7 @@ export function ProfileReveal({
           )}
         </FadeInSection>
 
-        {/* Section 1: Career Thread */}
+        {/* Section 1: Positioning Statement (was Career Thread) */}
         <FadeInSection delayMs={STAGGER_DELAYS[1] ?? 200}>
           <div className="mb-12">
             <p className="text-xs uppercase tracking-widest font-semibold text-[var(--text-muted)] mb-4">
@@ -120,7 +120,7 @@ export function ProfileReveal({
               className="text-xl font-light leading-relaxed text-[var(--text-strong)]"
               style={{ fontFamily: 'var(--font-display)' }}
             >
-              {profile.career_thread}
+              {profile.positioning.positioning_statement}
             </p>
           </div>
         </FadeInSection>
@@ -132,7 +132,7 @@ export function ProfileReveal({
               Where You Are Exceptional
             </p>
             <div className="space-y-3">
-              {profile.top_capabilities.map((cap, i) => (
+              {profile.positioning.core_strengths.map((strength, i) => (
                 <div
                   key={i}
                   className="rounded-xl px-5 py-4"
@@ -141,11 +141,8 @@ export function ProfileReveal({
                     border: '1px solid var(--line-soft)',
                   }}
                 >
-                  <p className="text-sm font-medium text-[var(--text-strong)] mb-1">
-                    {cap.capability}
-                  </p>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    {cap.evidence}
+                  <p className="text-sm font-medium text-[var(--text-strong)]">
+                    {strength}
                   </p>
                 </div>
               ))}
@@ -159,28 +156,16 @@ export function ProfileReveal({
             <p className="text-xs uppercase tracking-widest font-semibold text-[var(--text-muted)] mb-4">
               Positioning Statement
             </p>
-            {typeof profile.why_me_final === 'string' ? (
-              // Legacy string format
-              <p
-                className="text-xl font-light leading-relaxed text-[var(--text-strong)]"
-                style={{ fontFamily: 'var(--font-display)' }}
-              >
-                {profile.why_me_final}
+            <p
+              className="text-xl font-light leading-relaxed text-[var(--text-strong)] mb-4"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              {profile.narrative.known_for_what}
+            </p>
+            {profile.narrative.colleagues_came_for_what && (
+              <p className="text-sm leading-relaxed text-[var(--text-soft)]">
+                {profile.narrative.colleagues_came_for_what}
               </p>
-            ) : (
-              <>
-                <p
-                  className="text-xl font-light leading-relaxed text-[var(--text-strong)] mb-4"
-                  style={{ fontFamily: 'var(--font-display)' }}
-                >
-                  {profile.why_me_final.headline}
-                </p>
-                {profile.why_me_final.body && (
-                  <p className="text-sm leading-relaxed text-[var(--text-soft)]">
-                    {profile.why_me_final.body}
-                  </p>
-                )}
-              </>
             )}
           </div>
 

@@ -97,10 +97,7 @@ function collectBenchmarkRequirements(benchmark: Record<string, unknown> | null)
 export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): SharedContext {
   const context = createEmptySharedContext();
 
-  const clientProfile = (
-    asRecord(args.clientProfileRow?.content)
-    ?? (args.careerProfile?.legacy_client_profile as unknown as Record<string, unknown> | null)
-  ) as ClientProfile | null;
+  const clientProfile = asRecord(args.clientProfileRow?.content) as ClientProfile | null;
   const positioningStrategy = asRecord(args.positioningStrategyRow?.content);
   const benchmarkCandidate = asRecord(args.benchmarkCandidateRow?.content);
   const gapAnalysis = asRecord(args.gapAnalysisRow?.content);

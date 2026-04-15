@@ -1,3 +1,7 @@
+import type { CareerProfileV2 } from '@/types/career-profile';
+
+export type { CareerProfileV2 };
+
 export interface StructuredExperience {
   company: string;
   title: string;
@@ -30,29 +34,8 @@ export interface InterviewResponse {
   complete: boolean;
 }
 
-export interface CareerIQProfileFull {
-  career_thread: string;
-  top_capabilities: Array<{
-    capability: string;
-    evidence: string;
-    source: 'resume' | 'linkedin' | 'interview' | 'all';
-  }>;
-  signature_story: {
-    situation: string;
-    task: string;
-    action: string;
-    result: string;
-    reflection: string;
-  };
-  honest_answer: {
-    concern: string;
-    response: string;
-  };
-  righteous_close: string;
-  why_me_final: {
-    headline: string; // 1 sentence — the 3-5 second hook
-    body: string;     // 2-3 sentences — proof that backs up the headline
-  };
-  target_roles: string[];
-  created_at: string;
-}
+/**
+ * CareerIQProfileFull is now an alias for CareerProfileV2.
+ * The profile-setup flow returns CareerProfileV2 from the server.
+ */
+export type CareerIQProfileFull = CareerProfileV2;

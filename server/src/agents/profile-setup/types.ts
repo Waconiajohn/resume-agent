@@ -5,6 +5,8 @@
  * the profile-setup routes.
  */
 
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+
 export interface ProfileSetupInput {
   resume_text: string;
   linkedin_about: string;
@@ -39,33 +41,6 @@ export interface IntakeAnalysis {
   structured_experience: StructuredExperience[];
 }
 
-export interface CareerIQProfileFull {
-  career_thread: string;
-  top_capabilities: Array<{
-    capability: string;
-    evidence: string;
-    source: 'resume' | 'linkedin' | 'interview' | 'all';
-  }>;
-  signature_story: {
-    situation: string;
-    task: string;
-    action: string;
-    result: string;
-    reflection: string;
-  };
-  honest_answer: {
-    concern: string;
-    response: string;
-  };
-  righteous_close: string;
-  why_me_final: {
-    headline: string; // 1 sentence — the 3-5 second hook
-    body: string;     // 2-3 sentences — proof that backs up the headline
-  };
-  target_roles: string[];
-  created_at: string;
-}
-
 export interface InterviewAnswer {
   question_index: number;
   question: string;
@@ -85,7 +60,7 @@ export interface ProfileSetupSessionState {
   input: ProfileSetupInput;
   intake: IntakeAnalysis;
   answers: InterviewAnswer[];
-  completed_profile?: CareerIQProfileFull | null;
+  completed_profile?: CareerProfileV2 | null;
   provenance_session_id?: string | null;
   created_at: number;
   last_active_at: number;

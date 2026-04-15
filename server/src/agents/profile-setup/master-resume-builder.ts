@@ -8,7 +8,8 @@
 
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
-import type { ProfileSetupInput, IntakeAnalysis, InterviewAnswer, CareerIQProfileFull } from './types.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+import type { ProfileSetupInput, IntakeAnalysis, InterviewAnswer } from './types.js';
 
 interface MasterResumeExperience {
   company: string;
@@ -47,7 +48,7 @@ export function buildMasterResumePayload(
   input: ProfileSetupInput,
   intake: IntakeAnalysis,
   answers: InterviewAnswer[],
-  profile: CareerIQProfileFull,
+  profile: CareerProfileV2,
   sourceSessionId: string,
 ): MasterResumePayload {
   const now = new Date().toISOString();
@@ -107,15 +108,8 @@ export function buildMasterResumePayload(
   // 6. Parse certifications section from the resume text.
   const certifications = parseCertifications(input.resume_text);
 
-  // 7. Build the summary from the synthesized Why Me headline + body.
-  const whyMe = profile.why_me_final;
-  let summary: string;
-  if (typeof whyMe === 'object' && whyMe !== null) {
-    summary = [whyMe.headline, whyMe.body].filter(Boolean).join(' ');
-  } else {
-    logger.warn('Master resume builder: why_me_final is not an object — summary will be empty');
-    summary = '';
-  }
+  // 7. Build the summary from the CareerProfileV2 profile_summary field.
+  const summary = profile.profile_summary || profile.positioning.positioning_statement || '';
 
   // Filter evidence items that are too short for the Zod min(10) constraint on /resumes
   const validEvidence = evidence_items.filter((e) => e.text.length >= 10);

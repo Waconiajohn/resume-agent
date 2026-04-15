@@ -13,48 +13,77 @@
 import { llm, MODEL_PRIMARY } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import logger from '../../lib/logger.js';
+import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 import type { CandidateIntelligenceOutput, JobIntelligenceOutput, BenchmarkCandidateOutput } from '../resume-v2/types.js';
-import type { DiscoveryOutput, CareerIQProfile } from './types.js';
+import type { DiscoveryOutput } from './types.js';
 
-const SYSTEM_PROMPT = `You are the CareerIQ synthesis engine. You have conducted a full discovery flow with this candidate — you read their resume, analyzed the job, delivered a recognition statement, and ran an excavation conversation. Now you must synthesize everything into a durable profile.
+const SYSTEM_PROMPT = `You are the CareerIQ synthesis engine. You have conducted a full discovery flow with this candidate — you read their resume, analyzed the job, delivered a recognition statement, and ran an excavation conversation. Now you must synthesize everything into a durable CareerProfileV2.
 
-This profile will be used by future AI agents across the platform. It must be specific, evidence-backed, and useful as a foundation for generating cover letters, interview prep, LinkedIn content, and salary negotiation strategy.
+This profile will be used by future AI agents across the platform. It must be specific, evidence-backed, and useful as a foundation for generating resumes, cover letters, interview prep, and LinkedIn content.
 
-Produce four elements:
+FORBIDDEN PHRASES — none of these should appear anywhere in the output:
+- "results-driven", "leveraged", "spearheaded", "aligns with", "strong candidate"
+- "unique combination", "proven track record", "extensive experience"
+- "passionate about", "dynamic professional", "thought leader"
+- any phrase that sounds like it was written by a job posting generator
 
-## 1. CAREER THREAD
-The single most defensible narrative about who this person is professionally. Not their job title. Not their industry. The thing that shows up across every chapter of their career, made clearer by the excavation answers. 2-3 sentences. Specific enough that it could ONLY apply to this person.
-
-## 2. EXCEPTIONAL AREAS
-3-5 areas where this person has genuine evidence of being in the top tier. Not "strong communicator." What EXACTLY are they exceptional at, and what SPECIFICALLY proves it? Each area must be backed by a concrete evidence statement — a project, an outcome, a decision, a scale indicator.
-
-## 3. ROLE FIT POINTS
-3-5 specific points that make this person a fit for the target role. Not generic fit language. Each point maps a specific requirement from the job description to a specific piece of evidence from the candidate's background (including the excavation conversation).
-
-## 4. HIRING MANAGER CONCERNS
-The 2-3 most likely concerns a hiring manager would have after reviewing this person's materials, alongside a specific factual response to each. Not cheerleading. Not denial. A credible, evidence-backed response that acknowledges the concern and reframes it.
-
-OUTPUT FORMAT: Return valid JSON:
+OUTPUT FORMAT: Return valid JSON matching this structure exactly:
 {
-  "career_thread": "2-3 sentences — the durable professional narrative",
-  "exceptional_areas": [
-    {
-      "area": "the specific capability or domain",
-      "evidence": "the specific proof — project, outcome, scale, or decision"
-    }
-  ],
-  "role_fit_points": [
-    {
-      "point": "the specific fit claim",
-      "evidence": "what from their background proves it"
-    }
-  ],
-  "hiring_manager_concerns": [
-    {
-      "concern": "the specific concern",
-      "response": "the specific factual response"
-    }
-  ]
+  "version": "career_profile_v2",
+  "source": "discovery",
+  "generated_at": "ISO 8601 timestamp",
+  "targeting": {
+    "target_roles": ["role from JD and career themes"],
+    "target_industries": ["industry from JD"],
+    "seniority": "director|vp|c-suite|senior-manager|manager",
+    "transition_type": "growth|pivot|lateral|return|voluntary",
+    "preferred_company_environments": []
+  },
+  "positioning": {
+    "core_strengths": ["3-5 specific capabilities — what they are actually exceptional at"],
+    "proof_themes": ["2-4 repeatable patterns of impact"],
+    "differentiators": ["what makes them unusual or hard to replace"],
+    "adjacent_positioning": [],
+    "positioning_statement": "one sentence — why companies hire this person (repeatable-pattern language)",
+    "narrative_summary": "2-3 sentence career story optimized for positioning",
+    "leadership_scope": "scale of biggest leadership footprint",
+    "scope_of_responsibility": "domains owned at peak"
+  },
+  "narrative": {
+    "colleagues_came_for_what": "what colleagues bring to them beyond their title — first person, specific",
+    "known_for_what": "what they are most known for professionally",
+    "why_not_me": "honest factual reframe of the hardest hiring-manager objection",
+    "story_snippet": "the one story that makes a hiring manager lean forward — 2-4 sentences"
+  },
+  "preferences": {
+    "must_haves": [],
+    "constraints": [],
+    "compensation_direction": ""
+  },
+  "coaching": {
+    "financial_segment": "ideal",
+    "emotional_state": "acceptance",
+    "coaching_tone": "direct",
+    "urgency_score": 5,
+    "recommended_starting_point": "resume"
+  },
+  "evidence_positioning_statements": ["3-5 statements: [strength] demonstrated through [evidence], applicable to [role type]"],
+  "profile_signals": {
+    "clarity": "green|yellow|red",
+    "alignment": "green|yellow|red",
+    "differentiation": "green|yellow|red"
+  },
+  "completeness": {
+    "overall_score": 75,
+    "dashboard_state": "new-user|refining|strong",
+    "sections": [
+      { "id": "direction", "label": "Direction", "status": "ready|partial|missing", "score": 85, "summary": "one sentence" },
+      { "id": "positioning", "label": "Positioning", "status": "ready|partial|missing", "score": 75, "summary": "one sentence" },
+      { "id": "narrative", "label": "Narrative", "status": "ready|partial|missing", "score": 70, "summary": "one sentence" },
+      { "id": "constraints", "label": "Preferences", "status": "missing", "score": 15, "summary": "Preferences not yet collected." }
+    ]
+  },
+  "profile_summary": "2-3 sentence positioning statement that will seed resume summaries and cover letters"
 }
 
 CRITICAL JSON RULES:
@@ -131,25 +160,68 @@ function buildDeterministicFallback(input: {
   job_intelligence: JobIntelligenceOutput;
   benchmark: BenchmarkCandidateOutput;
   discovery: DiscoveryOutput;
-}): CareerIQProfile {
-  const { candidate, job_intelligence: _job_intelligence, benchmark, discovery } = input;
+}): CareerProfileV2 {
+  const { candidate, job_intelligence, benchmark, discovery } = input;
+  const now = new Date().toISOString();
+
+  const coreStrengths = candidate.career_themes.slice(0, 5);
+  const differentiators = benchmark.hiring_manager_objections.slice(0, 2).map((o) => o.neutralization_strategy);
+  const positioningStatement = discovery.recognition.differentiator || discovery.recognition.career_thread;
 
   return {
-    career_thread: discovery.recognition.career_thread,
-    exceptional_areas: candidate.career_themes.slice(0, 3).map((theme, i) => ({
-      area: theme,
-      evidence: candidate.quantified_outcomes[i]
-        ? `${candidate.quantified_outcomes[i].outcome}: ${candidate.quantified_outcomes[i].value}`
-        : candidate.hidden_accomplishments[i] ?? 'Demonstrated across multiple roles',
-    })),
-    role_fit_points: benchmark.direct_matches.slice(0, 3).map((m) => ({
-      point: m.jd_requirement,
-      evidence: m.candidate_evidence,
-    })),
-    hiring_manager_concerns: benchmark.hiring_manager_objections.slice(0, 3).map((o) => ({
-      concern: o.objection,
-      response: o.neutralization_strategy,
-    })),
+    version: 'career_profile_v2',
+    source: 'discovery',
+    generated_at: now,
+    targeting: {
+      target_roles: [job_intelligence.role_title].filter(Boolean),
+      target_industries: [job_intelligence.industry].filter(Boolean),
+      seniority: 'not yet defined',
+      transition_type: 'voluntary',
+      preferred_company_environments: [],
+    },
+    positioning: {
+      core_strengths: coreStrengths,
+      proof_themes: candidate.quantified_outcomes.slice(0, 3).map((o) => `${o.outcome}: ${o.value}`),
+      differentiators,
+      adjacent_positioning: [],
+      positioning_statement: positioningStatement,
+      narrative_summary: discovery.recognition.career_thread,
+      leadership_scope: '',
+      scope_of_responsibility: '',
+    },
+    narrative: {
+      colleagues_came_for_what: '',
+      known_for_what: discovery.recognition.role_fit,
+      why_not_me: benchmark.hiring_manager_objections[0]?.neutralization_strategy ?? '',
+      story_snippet: discovery.recognition.career_thread,
+    },
+    preferences: {
+      must_haves: [],
+      constraints: [],
+      compensation_direction: '',
+    },
+    coaching: {
+      financial_segment: 'ideal',
+      emotional_state: 'acceptance',
+      coaching_tone: 'direct',
+      urgency_score: 5,
+      recommended_starting_point: 'resume',
+    },
+    evidence_positioning_statements: benchmark.direct_matches.slice(0, 3).map(
+      (m) => `${m.jd_requirement}: ${m.candidate_evidence}`,
+    ),
+    profile_signals: { clarity: 'yellow', alignment: 'yellow', differentiation: 'yellow' },
+    completeness: {
+      overall_score: 50,
+      dashboard_state: 'refining',
+      sections: [
+        { id: 'direction', label: 'Direction', status: 'partial', score: 65, summary: 'Target role identified from job description.' },
+        { id: 'positioning', label: 'Positioning', status: 'partial', score: 55, summary: 'Core themes identified from resume.' },
+        { id: 'narrative', label: 'Narrative', status: 'partial', score: 45, summary: 'Career thread established from discovery.' },
+        { id: 'constraints', label: 'Preferences', status: 'missing', score: 15, summary: 'Preferences not yet collected.' },
+      ],
+    },
+    profile_summary: positioningStatement,
   };
 }
 
@@ -159,46 +231,116 @@ function shouldRethrowForAbort(error: unknown, signal?: AbortSignal): boolean {
   return error instanceof Error && /aborted/i.test(error.message);
 }
 
-function normalizeCareerIQProfile(
-  raw: CareerIQProfile,
-  fallback: CareerIQProfile,
-): CareerIQProfile {
-  const r = raw as unknown as Record<string, unknown>;
+function s(value: unknown, fallback = ''): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
 
-  const exceptionalRaw = Array.isArray(r.exceptional_areas) ? r.exceptional_areas : [];
-  const exceptional_areas = exceptionalRaw
-    .filter((a): a is Record<string, unknown> => Boolean(a && typeof a === 'object'))
-    .map((a) => ({
-      area: typeof a.area === 'string' ? a.area : '',
-      evidence: typeof a.evidence === 'string' ? a.evidence : '',
-    }))
-    .filter((a) => a.area.length > 0);
+function sa(value: unknown, fallback: string[] = []): string[] {
+  if (!Array.isArray(value)) return fallback;
+  const result = value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+  return result.length > 0 ? result : fallback;
+}
 
-  const fitRaw = Array.isArray(r.role_fit_points) ? r.role_fit_points : [];
-  const role_fit_points = fitRaw
-    .filter((p): p is Record<string, unknown> => Boolean(p && typeof p === 'object'))
-    .map((p) => ({
-      point: typeof p.point === 'string' ? p.point : '',
-      evidence: typeof p.evidence === 'string' ? p.evidence : '',
-    }))
-    .filter((p) => p.point.length > 0);
+function n(value: unknown, fallback: number): number {
+  return typeof value === 'number' ? value : fallback;
+}
 
-  const concernsRaw = Array.isArray(r.hiring_manager_concerns) ? r.hiring_manager_concerns : [];
-  const hiring_manager_concerns = concernsRaw
-    .filter((c): c is Record<string, unknown> => Boolean(c && typeof c === 'object'))
-    .map((c) => ({
-      concern: typeof c.concern === 'string' ? c.concern : '',
-      response: typeof c.response === 'string' ? c.response : '',
-    }))
-    .filter((c) => c.concern.length > 0);
+function rec(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function normalizeCareerProfileV2Discovery(raw: unknown, fallback: CareerProfileV2): CareerProfileV2 {
+  const r = raw as Record<string, unknown>;
+
+  const targeting = rec(r.targeting);
+  const positioning = rec(r.positioning);
+  const narrative = rec(r.narrative);
+  const preferences = rec(r.preferences);
+  const coaching = rec(r.coaching);
+  const profileSignals = rec(r.profile_signals);
+  const completeness = rec(r.completeness);
+
+  const validSectionIds = ['direction', 'positioning', 'narrative', 'constraints'] as const;
+  const sectionsRaw = Array.isArray(completeness.sections) ? completeness.sections : [];
+  const sections = sectionsRaw
+    .filter((sec): sec is Record<string, unknown> => Boolean(sec && typeof sec === 'object'))
+    .filter((sec) => validSectionIds.includes(sec.id as typeof validSectionIds[number]))
+    .map((sec) => ({
+      id: sec.id as typeof validSectionIds[number],
+      label: s(sec.label, String(sec.id)),
+      status: (['ready', 'partial', 'missing'] as const).includes(sec.status as 'ready' | 'partial' | 'missing')
+        ? (sec.status as 'ready' | 'partial' | 'missing')
+        : 'partial' as const,
+      score: n(sec.score, 50),
+      summary: s(sec.summary),
+    }));
+
+  const overallScore = n(completeness.overall_score, fallback.completeness.overall_score);
+  const dashboardStateRaw = s(completeness.dashboard_state);
+  const dashboardState = (['new-user', 'refining', 'strong'] as const).includes(dashboardStateRaw as 'new-user' | 'refining' | 'strong')
+    ? (dashboardStateRaw as 'new-user' | 'refining' | 'strong')
+    : fallback.completeness.dashboard_state;
+
+  const signalFor = (key: string): 'green' | 'yellow' | 'red' => {
+    const v = s(profileSignals[key]);
+    return (['green', 'yellow', 'red'] as const).includes(v as 'green' | 'yellow' | 'red')
+      ? (v as 'green' | 'yellow' | 'red')
+      : 'yellow';
+  };
 
   return {
-    career_thread: typeof r.career_thread === 'string' && r.career_thread.length > 0
-      ? r.career_thread
-      : fallback.career_thread,
-    exceptional_areas: exceptional_areas.length > 0 ? exceptional_areas : fallback.exceptional_areas,
-    role_fit_points: role_fit_points.length > 0 ? role_fit_points : fallback.role_fit_points,
-    hiring_manager_concerns: hiring_manager_concerns.length > 0 ? hiring_manager_concerns : fallback.hiring_manager_concerns,
+    version: 'career_profile_v2',
+    source: 'discovery',
+    generated_at: s(r.generated_at) || new Date().toISOString(),
+    targeting: {
+      target_roles: sa(targeting.target_roles, fallback.targeting.target_roles),
+      target_industries: sa(targeting.target_industries, fallback.targeting.target_industries),
+      seniority: s(targeting.seniority, fallback.targeting.seniority),
+      transition_type: s(targeting.transition_type, fallback.targeting.transition_type),
+      preferred_company_environments: sa(targeting.preferred_company_environments, fallback.targeting.preferred_company_environments),
+    },
+    positioning: {
+      core_strengths: sa(positioning.core_strengths, fallback.positioning.core_strengths),
+      proof_themes: sa(positioning.proof_themes, fallback.positioning.proof_themes),
+      differentiators: sa(positioning.differentiators, fallback.positioning.differentiators),
+      adjacent_positioning: sa(positioning.adjacent_positioning, fallback.positioning.adjacent_positioning),
+      positioning_statement: s(positioning.positioning_statement, fallback.positioning.positioning_statement),
+      narrative_summary: s(positioning.narrative_summary, fallback.positioning.narrative_summary),
+      leadership_scope: s(positioning.leadership_scope, fallback.positioning.leadership_scope),
+      scope_of_responsibility: s(positioning.scope_of_responsibility, fallback.positioning.scope_of_responsibility),
+    },
+    narrative: {
+      colleagues_came_for_what: s(narrative.colleagues_came_for_what, fallback.narrative.colleagues_came_for_what),
+      known_for_what: s(narrative.known_for_what, fallback.narrative.known_for_what),
+      why_not_me: s(narrative.why_not_me, fallback.narrative.why_not_me),
+      story_snippet: s(narrative.story_snippet, fallback.narrative.story_snippet),
+    },
+    preferences: {
+      must_haves: sa(preferences.must_haves, fallback.preferences.must_haves),
+      constraints: sa(preferences.constraints, fallback.preferences.constraints),
+      compensation_direction: s(preferences.compensation_direction, fallback.preferences.compensation_direction),
+    },
+    coaching: {
+      financial_segment: s(coaching.financial_segment, fallback.coaching.financial_segment),
+      emotional_state: s(coaching.emotional_state, fallback.coaching.emotional_state),
+      coaching_tone: s(coaching.coaching_tone, fallback.coaching.coaching_tone),
+      urgency_score: n(coaching.urgency_score, fallback.coaching.urgency_score),
+      recommended_starting_point: s(coaching.recommended_starting_point, fallback.coaching.recommended_starting_point),
+    },
+    evidence_positioning_statements: sa(r.evidence_positioning_statements, fallback.evidence_positioning_statements),
+    profile_signals: {
+      clarity: signalFor('clarity'),
+      alignment: signalFor('alignment'),
+      differentiation: signalFor('differentiation'),
+    },
+    completeness: {
+      overall_score: overallScore,
+      dashboard_state: dashboardState,
+      sections: sections.length > 0 ? sections : fallback.completeness.sections,
+    },
+    profile_summary: s(r.profile_summary, fallback.profile_summary),
   };
 }
 
@@ -211,7 +353,7 @@ export async function buildCareerIQProfile(
     excavation_answers: Array<{ question: string; answer: string }>;
   },
   signal?: AbortSignal,
-): Promise<CareerIQProfile> {
+): Promise<CareerProfileV2> {
   const userMessage = buildUserMessage(input);
   const fallback = buildDeterministicFallback(input);
 
@@ -225,8 +367,8 @@ export async function buildCareerIQProfile(
       signal,
     });
 
-    const parsed = repairJSON<CareerIQProfile>(response.text);
-    if (parsed) return normalizeCareerIQProfile(parsed, fallback);
+    const parsed = repairJSON<CareerProfileV2>(response.text);
+    if (parsed) return normalizeCareerProfileV2Discovery(parsed, fallback);
 
     logger.warn(
       { rawSnippet: response.text.substring(0, 500) },
@@ -251,8 +393,8 @@ export async function buildCareerIQProfile(
       signal,
     });
 
-    const retryParsed = repairJSON<CareerIQProfile>(retry.text);
-    if (retryParsed) return normalizeCareerIQProfile(retryParsed, fallback);
+    const retryParsed = repairJSON<CareerProfileV2>(retry.text);
+    if (retryParsed) return normalizeCareerProfileV2Discovery(retryParsed, fallback);
 
     logger.error(
       { rawSnippet: retry.text.substring(0, 500) },
