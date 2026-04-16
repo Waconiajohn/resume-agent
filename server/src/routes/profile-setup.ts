@@ -123,8 +123,8 @@ profileSetupRoutes.post('/analyze', authMiddleware, rateLimitMiddleware(5, 60_00
   if (resume_text.length > 30_000) {
     return c.json({ error: 'resume_text must be under 30,000 characters' }, 400);
   }
-  if (linkedin_about.length > 10_000) {
-    return c.json({ error: 'linkedin_about must be under 10,000 characters' }, 400);
+  if (linkedin_about.length > 50_000) {
+    return c.json({ error: 'linkedin_about must be under 50,000 characters' }, 400);
   }
   if (target_roles.length > 500) {
     return c.json({ error: 'target_roles must be under 500 characters' }, 400);
