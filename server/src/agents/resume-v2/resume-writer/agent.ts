@@ -1522,8 +1522,9 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
     // If the LLM wrote fewer bullets than the original, backfill original bullets
     if (draftBulletCount < originalBulletCount) {
       let added = 0;
-      for (const bulletText of uncoveredSourceBullets) {
+      for (const rawBulletText of uncoveredSourceBullets) {
         if ((draftExp.bullets ?? []).length >= originalBulletCount) break;
+        const bulletText = rawBulletText.replace(/\s*•\s*$/, '').trim();
         draftExp.bullets = draftExp.bullets ?? [];
         draftExp.bullets.push({
           text: bulletText,
@@ -1563,7 +1564,8 @@ function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriter
     let replaced = 0;
     const consumedDraftIndexes = new Set<number>();
 
-    for (const sourceBulletText of uncoveredSourceBullets) {
+    for (const rawSourceBulletText of uncoveredSourceBullets) {
+      const sourceBulletText = rawSourceBulletText.replace(/\s*•\s*$/, '').trim();
       const match = findBestDraftBulletMatch(sourceBulletText, draftBullets, consumedDraftIndexes);
       if (match.index === -1 || match.score < 0.35) continue;
 
@@ -2707,7 +2709,7 @@ function deduplicateWithinRole(draft: ResumeDraftOutput): ResumeDraftOutput {
         const existTokens = new Set(existingNorm.split(/\s+/));
         const overlap = [...tokens].filter((t) => existTokens.has(t)).length;
         const maxLen = Math.max(tokens.size, existTokens.size);
-        if (maxLen > 0 && overlap / maxLen > 0.5) return true;
+        if (maxLen > 0 && overlap / maxLen >= 0.35) return true;
         // Also flag as duplicate if the first 8 words are identical (catches near-duplicates
         // that differ only in metrics or trailing phrases).
         const firstWords = normalized.split(/\s+/).slice(0, 8).join(' ');

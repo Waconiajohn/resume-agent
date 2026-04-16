@@ -1,5 +1,15 @@
 # Changelog — Resume Agent
 
+## 2026-04-16 — Fix duplicate bullets and trailing bullet characters
+**Sprint:** Bug Fix | **Story:** Duplicate bullets in resume output
+**Summary:** Strip trailing `•` from backfilled bullets and lower dedup overlap threshold to catch semantic near-duplicates.
+
+### Changes Made
+- `server/src/agents/resume-v2/resume-writer/agent.ts` — (1) In `ensureMinimumBulletCounts`, strip trailing `•` and surrounding whitespace from bullet text in both the backfill and replacement paths. (2) In `deduplicateWithinRole`, lower the token-overlap threshold from `> 0.5` to `>= 0.35` so rewrites of the same bullet are caught as duplicates.
+
+### Known Issues
+- None introduced
+
 ## 2026-04-16 — Fix Education section rendering as wall of text (complete)
 **Sprint:** Bug Fix | **Story:** Education blob rendering bug
 **Summary:** Two-part fix preventing structured resume fields from being overwritten with raw text strings.
