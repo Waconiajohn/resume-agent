@@ -50,7 +50,7 @@ const KNOWN_SECTION_HEADINGS = new Set([
   'personal interests',
 ]);
 
-const BULLET_PREFIX_RE = /^[-*•▪◦]\s+/;
+const BULLET_PREFIX_RE = /^[-*•●▪◦◆►▸‣⁃»→⮞]\s*/;
 const MONTH_PATTERN = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
 const YEAR_PATTERN = '(?:19|20)\\d{2}';
 const MONTH_YEAR_PATTERN = `(?:${MONTH_PATTERN}\\s+${YEAR_PATTERN}|${YEAR_PATTERN})`;
