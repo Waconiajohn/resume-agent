@@ -150,31 +150,6 @@ export interface RunPipelineOptions {
 }
 
 /**
- * Normalize resume text that may have lost line breaks from PDF paste.
- * Adds line breaks before bullet markers, role headers, and company names.
- */
-function normalizeResumeText(text: string): string {
-  if (!text) return text;
-  // If the text already has reasonable line structure, skip normalization
-  const lineCount = (text.match(/\n/g) || []).length;
-  if (lineCount > 10) return text;
-
-  let normalized = text;
-  // Add newlines before bullet markers (●, •, ■, ▪, ◆)
-  normalized = normalized.replace(/([^\n])\s*(●|•|■|▪|◆)/g, '$1\n$2');
-  // Add newlines before date patterns like "Jan 2024" or "2024 –" that signal new roles
-  normalized = normalized.replace(/([.!?])\s+((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})/g, '$1\n\n$2');
-  // Add newlines before ALL-CAPS company names (3+ consecutive uppercase words)
-  normalized = normalized.replace(/([.!?\n])\s*([A-Z][A-Z\s&]+(?:,\s*(?:Inc|LLC|Corp|Ltd|Co))?)(\s*[|,])/g, '$1\n\n$2$3');
-  // Collapse runs of 3+ spaces into newlines (common in PDF extraction)
-  normalized = normalized.replace(/\s{3,}/g, '\n');
-  // Remove excessive blank lines
-  normalized = normalized.replace(/\n{4,}/g, '\n\n\n');
-
-  return normalized.trim();
-}
-
-/**
  * Load interview-sourced evidence from the user's master resume (if one exists).
  * Returns enriched resume text with evidence appended, or the original text if
  * no master resume or no interview evidence is found.
@@ -285,22 +260,18 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
     const analysisStart = Date.now();
 
-    // Normalize resume text — PDF pastes often strip all line breaks, producing a wall
-    // of text that the parsing agents can't structure. Add breaks before bullets and roles.
-    const normalizedResumeText = normalizeResumeText(options.resume_text);
-
     // Enrich resume text with interview evidence from master resume (if available).
     // When the route pre-loads evidence in parallel, options.interview_evidence_lines
     // is provided and the DB query inside the function is skipped.
     const enrichedResumeText = await enrichResumeWithMasterEvidence(
       options.user_id,
-      normalizedResumeText,
+      options.resume_text,
       options.interview_evidence_lines,
     );
 
     const [jobIntelResult, candidateIntel] = await Promise.all([
       runJobIntelligenceWithConfidence({ job_description: options.job_description }, signal),
-      runCandidateIntelligence({ resume_text: normalizedResumeText }, signal),
+      runCandidateIntelligence({ resume_text: options.resume_text }, signal),
     ]);
 
     const jobIntel = jobIntelResult.output;

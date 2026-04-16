@@ -339,15 +339,32 @@ function cleanPosition(position: SourceResumePosition): SourceResumePosition {
 }
 
 function mergeBulletLists(primary: string[], secondary: string[]): string[] {
-  const seen = new Set<string>();
+  // Combine both lists, keeping the longest version of each bullet when
+  // one is a substring of another (common when LLM truncates source bullets).
+  const all = [...primary, ...secondary]
+    .map((b) => b.trim())
+    .filter(Boolean);
+
   const result: string[] = [];
 
-  for (const bullet of [...primary, ...secondary]) {
-    const trimmed = bullet.trim();
-    const normalized = trimmed.toLowerCase();
-    if (!trimmed || seen.has(normalized)) continue;
-    seen.add(normalized);
-    result.push(trimmed);
+  for (const bullet of all) {
+    const lower = bullet.toLowerCase();
+    // Check if this bullet is already covered by a longer existing bullet
+    const coveredBy = result.findIndex((existing) =>
+      existing.toLowerCase().includes(lower),
+    );
+    if (coveredBy >= 0) continue; // existing bullet already contains this one
+
+    // Check if this bullet covers (is longer than) an existing bullet
+    const covers = result.findIndex((existing) =>
+      lower.includes(existing.toLowerCase()),
+    );
+    if (covers >= 0) {
+      result[covers] = bullet; // replace with longer version
+      continue;
+    }
+
+    result.push(bullet);
   }
 
   return result;

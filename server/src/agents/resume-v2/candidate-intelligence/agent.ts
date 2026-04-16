@@ -112,6 +112,9 @@ Strength: strong = 4+ signal families, moderate = 2-3, minimal = 1, none = 0.
 
 RULES:
 - Extract ALL experience entries, not just recent ones
+- bullets: copy the FULL TEXT of each bullet point from the source resume. Do NOT summarize, truncate, or abbreviate. If the source says "Led quoting and platform initiatives in a complex regulated environment, cutting cycle time 69% by simplifying workflow and accelerating adoption from beta to full rollout within 8 months" then your bullet must include ALL of that text — every metric, every detail.
+- Extract ALL bullets for each role, not just the first 2-3. Most roles have 3-6 bullets.
+- The resume text may have poor formatting (missing line breaks, bullets on separate lines from their text). Parse by meaning, not by formatting. If you see a bullet character (●, •, -, etc.) followed by text on the same or next line, that is one bullet.
 - inferred_scope fields: only populate from explicit resume text; leave empty string if not stated
 - hidden_accomplishments: only list things clearly implied by explicit statements (e.g. "managed 3 direct reports who each managed teams of 10" implies ~30 people under them); do NOT fabricate scope from team size alone
 - Career themes: look across the entire career, not just the most recent role
