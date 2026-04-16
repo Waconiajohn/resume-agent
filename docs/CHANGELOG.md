@@ -1,5 +1,25 @@
 # Changelog — Resume Agent
 
+## 2026-04-16 — Vertex 429 Rate Limit Handling
+**Sprint:** Infrastructure | **Story:** Fix Vertex 429 rate limiting in resume writer pipeline
+**Summary:** Added exponential backoff retry on 429 for all providers, plus automatic Vertex→DeepSeek direct failover for the writer LLM.
+
+### Changes Made
+- `server/src/lib/llm-provider.ts` — Added exported `isRateLimitError()` helper that detects HTTP 429 errors from any provider's error message.
+- `server/src/lib/llm-retry.ts` — `chatWithTruncationRetry` now retries on 429 with exponential backoff (3s, 6s, 12s, up to 3 attempts) before the existing truncation retry logic. All callers (section-writer, job-intelligence, candidate-intelligence, etc.) benefit automatically.
+- `server/src/lib/llm.ts` — Added `RateLimitFailoverProvider` class that catches a single 429 on the primary and immediately retries with an alternate provider + model. `writerLlm` now wraps Vertex in this provider with DeepSeek direct (`deepseek-chat` via `DEEPSEEK_API_KEY`) as the 429 fallback. Chain: `FailoverProvider(RateLimitFailoverProvider(Vertex, DeepSeek), globalLlm)`.
+
+### Decisions Made
+- 429 retry in `chatWithTruncationRetry` is provider-agnostic — benefits Groq, DeepSeek, Vertex equally.
+- `RateLimitFailoverProvider` switches model ID (`deepseek-ai/deepseek-v3.2-maas` → `deepseek-chat`) when falling back, since Vertex and DeepSeek direct use different model identifiers for the same underlying model.
+- The 429 failover is immediate (single error triggers switch) unlike `FailoverProvider` which requires N consecutive 5xx failures.
+
+### Known Issues
+- None introduced
+
+### Next Steps
+- Monitor 429 rate in production logs to tune backoff delays if needed
+
 ## 2026-04-12 — Session 96
 **Sprint:** LMS + CareerIQ Integration | **Story:** Story 2.1 — Lesson Injection Schema and Renderer
 **Summary:** Built the complete LMS foundation: types, 8-course configuration, injection mapper, lesson renderer, room component, and sidebar + routing integration.

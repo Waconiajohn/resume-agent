@@ -1043,6 +1043,14 @@ const FAILOVER_THRESHOLD = 3;
 const RECOVERY_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
+ * Detect HTTP 429 (rate limit) errors from any provider.
+ * Error messages follow the pattern "{provider} API error 429: ..."
+ */
+export function isRateLimitError(err: unknown): boolean {
+  return err instanceof Error && /API error 429/.test(err.message);
+}
+
+/**
  * Classify an error thrown by a provider's chat() or stream() method to
  * determine whether it warrants a failover attempt.
  *

@@ -1,10 +1,14 @@
 /**
- * Truncation-safe LLM call wrapper.
+ * Truncation-safe LLM call wrapper with 429 rate-limit retry.
  *
  * When an LLM call hits max_tokens and the output is truncated
  * (finish_reason === 'length'), this wrapper automatically retries
  * with double the token budget. This prevents corrupted JSON from
  * repairJSON closing truncated strings mid-word.
+ *
+ * When a provider returns HTTP 429 (rate limited), retries up to 3 times
+ * with exponential backoff (3s, 6s, 12s) before throwing. This applies
+ * to all providers — Vertex, DeepSeek, Groq, etc.
  *
  * Root cause context: Groq/Llama truncates JSON mid-word at max_tokens.
  * repairJSON recovers the structure but the truncated text becomes
@@ -14,13 +18,24 @@
 
 import { llm } from './llm.js';
 import type { LLMProvider, ChatParams, ChatResponse } from './llm-provider.js';
+import { isRateLimitError } from './llm-provider.js';
 import logger from './logger.js';
 
+/** Exponential backoff delays for 429 retry (3s, 6s, 12s). */
+const RATE_LIMIT_BACKOFF_MS = [3_000, 6_000, 12_000];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 /**
- * Call llm.chat with automatic retry on truncation.
+ * Call llm.chat with automatic retry on truncation and 429 rate limiting.
  *
- * If the response has finish_reason === 'length' (output truncated at max_tokens),
- * retries once with double the max_tokens budget.
+ * 429 handling: If the provider returns HTTP 429, waits with exponential
+ * backoff (3s, 6s, 12s) and retries up to 3 times before throwing.
+ *
+ * Truncation handling: If the response has finish_reason === 'length'
+ * (output truncated at max_tokens), retries once with double the max_tokens budget.
  *
  * @param params - Standard ChatParams
  * @param options - Optional: retryMaxTokens override (default: 2x original),
@@ -32,8 +47,34 @@ export async function chatWithTruncationRetry(
   options?: { retryMaxTokens?: number; provider?: LLMProvider },
 ): Promise<ChatResponse> {
   const provider = options?.provider ?? llm;
-  const response = await provider.chat(params);
 
+  // Phase 1: Attempt call with 429 exponential backoff retry
+  let response: ChatResponse;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      response = await provider.chat(params);
+      break;
+    } catch (err) {
+      if (isRateLimitError(err) && attempt < RATE_LIMIT_BACKOFF_MS.length) {
+        const delayMs = RATE_LIMIT_BACKOFF_MS[attempt];
+        logger.warn(
+          {
+            attempt: attempt + 1,
+            maxRetries: RATE_LIMIT_BACKOFF_MS.length,
+            delayMs,
+            model: params.model,
+            provider: provider.name,
+          },
+          'Rate limited (429) — retrying with exponential backoff',
+        );
+        await sleep(delayMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  // Phase 2: Truncation retry (existing logic)
   if (response.finish_reason === 'length') {
     const originalMax = params.max_tokens;
     const retryMax = options?.retryMaxTokens ?? originalMax * 2;

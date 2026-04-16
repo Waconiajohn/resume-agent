@@ -1,4 +1,5 @@
-import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider, DeepInfraProvider, VertexProvider, getVertexAccessToken, FailoverProvider } from './llm-provider.js';
+import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider, DeepInfraProvider, VertexProvider, getVertexAccessToken, FailoverProvider, isRateLimitError } from './llm-provider.js';
+import type { ChatParams, ChatResponse, StreamEvent } from './llm-provider.js';
 import logger from './logger.js';
 import { MODEL as ANTHROPIC_MODEL, MAX_TOKENS as ANTHROPIC_MAX_TOKENS } from './anthropic.js';
 import {
@@ -202,6 +203,52 @@ function createProvider(): LLMProvider {
 /** Active LLM provider — wraps a FailoverProvider that auto-switches on repeated failures */
 export const llm: LLMProvider = createProvider();
 
+// ─── Rate-limit failover provider ───────────────────────────────────
+// Catches 429 errors on the primary and immediately retries with an
+// alternate provider + model. Unlike FailoverProvider (which tracks
+// consecutive 5xx failures), this switches on a single 429.
+
+class RateLimitFailoverProvider implements LLMProvider {
+  get name(): string { return this.primary.name; }
+
+  constructor(
+    private readonly primary: LLMProvider,
+    private readonly fallbackProvider: LLMProvider,
+    private readonly fallbackModel: string,
+  ) {}
+
+  async chat(params: ChatParams): Promise<ChatResponse> {
+    try {
+      return await this.primary.chat(params);
+    } catch (err) {
+      if (isRateLimitError(err)) {
+        logger.warn(
+          { primary: this.primary.name, fallback: this.fallbackProvider.name, fallbackModel: this.fallbackModel },
+          'Rate limited (429) on writer primary — falling back to alternate provider',
+        );
+        return this.fallbackProvider.chat({ ...params, model: this.fallbackModel });
+      }
+      throw err;
+    }
+  }
+
+  async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
+    try {
+      yield* this.primary.stream(params);
+    } catch (err) {
+      if (isRateLimitError(err)) {
+        logger.warn(
+          { primary: this.primary.name, fallback: this.fallbackProvider.name, fallbackModel: this.fallbackModel },
+          'Rate limited (429) on writer primary stream — falling back to alternate provider',
+        );
+        yield* this.fallbackProvider.stream({ ...params, model: this.fallbackModel });
+        return;
+      }
+      throw err;
+    }
+  }
+}
+
 // ─── Feature-scoped provider: High-quality writing ──────────────────
 // DeepSeek V3.2 via Vertex/DeepInfra produces dramatically better writing
 // than Groq (6.7/10 vs 5.2/10 on resume, similar gaps on other products).
@@ -209,12 +256,26 @@ export const llm: LLMProvider = createProvider();
 // high-trust prose generation. The global `llm` stays on Groq for fast
 // agent-loop orchestration and tool-calling.
 // Falls back to the global provider if DeepSeek key is not available.
+//
+// When Vertex is primary, wraps with RateLimitFailoverProvider so 429s
+// automatically fall back to DeepSeek direct (different quota pool).
 
 export const writerLlm: LLMProvider = (() => {
   const resumeProvider = RESUME_V2_WRITER_PROVIDER;
   if (resumeProvider === ACTIVE_PROVIDER) return llm;
   try {
-    const primary = buildProvider(resumeProvider);
+    let primary: LLMProvider = buildProvider(resumeProvider);
+
+    // Vertex 429 failover: wrap with DeepSeek direct as rate-limit backup
+    if (resumeProvider === 'vertex' && process.env.DEEPSEEK_API_KEY) {
+      const deepseekFallback = buildProvider('deepseek');
+      primary = new RateLimitFailoverProvider(primary, deepseekFallback, 'deepseek-chat');
+      logger.info(
+        { primary: 'vertex', rateLimitFallback: 'deepseek' },
+        'Writer LLM: Vertex with DeepSeek direct fallback on 429',
+      );
+    }
+
     return new FailoverProvider(primary, llm);
   } catch {
     return llm;
