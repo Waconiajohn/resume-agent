@@ -144,11 +144,11 @@
     --text-strong: rgba(15, 23, 42, 0.95);
     --text-muted: rgba(51, 65, 85, 0.8);
     --text-soft: rgba(71, 85, 105, 0.7);
-    --accent: #334155;
-    --accent-strong: #1e293b;
-    --accent-ink: #f8fafc;
-    --accent-muted: rgba(51, 65, 85, 0.1);
-    --focus-ring: rgba(51, 65, 85, 0.3);
+    --accent: #475569;
+    --accent-strong: #2563eb;
+    --accent-ink: #ffffff;
+    --accent-muted: rgba(37, 99, 235, 0.08);
+    --focus-ring: rgba(37, 99, 235, 0.3);
     /* Semantic accent colors */
     --link: #2563eb;
     --link-hover: #1d4ed8;
