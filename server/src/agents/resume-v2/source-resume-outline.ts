@@ -222,6 +222,7 @@ function parsePositionHeader(
     };
   }
 
+  // 2-line format: title+company on line 1, dates on line 2
   if (
     nextLine
     && DATE_RANGE_RE.test(nextLine)
@@ -233,6 +234,21 @@ function parsePositionHeader(
     };
   }
 
+  // 3-line format: title on line 1, company on line 2, dates on line 3
+  // Common format: "Senior Product Manager ,\nNOLDOR, US — Remote\nJan 2024 – Feb 2025"
+  if (
+    nextLine
+    && nextNextLine
+    && DATE_RANGE_RE.test(nextNextLine)
+    && (TITLE_HINT_RE.test(line) || inExperienceSection)
+    && !BULLET_PREFIX_RE.test(nextLine)
+  ) {
+    return {
+      position: buildPositionFromHeader(`${line} | ${nextLine} | ${nextNextLine}`),
+      nextIndex: index + 2,
+    };
+  }
+
   return null;
 }
 
@@ -241,15 +257,54 @@ function buildPositionFromHeader(header: string): SourceResumePosition {
   const start_date = dateMatch?.[1]?.trim() ?? '';
   const end_date = dateMatch?.[2]?.trim() ?? '';
   const headerWithoutDates = header.replace(DATE_RANGE_RE, '').replace(/\s+[|•]\s*$/, '').trim();
-  const parts = headerWithoutDates
-    .split(/\s+[|•]\s+|\s+@\s+|\s+at\s+|\s+[-–—]\s+/i)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .filter((part) => !LOCATION_RE.test(part));
 
-  const titledParts = parts.filter((part) => TITLE_HINT_RE.test(part));
-  const title = titledParts[0] ?? parts[0] ?? 'Role';
-  const company = parts.find((part) => part !== title) ?? (parts.length > 1 ? parts[1] : 'Prior Experience');
+  // Split on pipe separators (added by us for multi-line headers), commas, @, "at"
+  const rawParts = headerWithoutDates
+    .split(/\s*\|\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  // Identify title (has job title keywords), company (ALL CAPS or remaining), location (city/state pattern)
+  let title = '';
+  let company = '';
+
+  for (const part of rawParts) {
+    // Strip trailing comma/period
+    const cleaned = part.replace(/[,.\s]+$/, '').trim();
+    if (!cleaned) continue;
+
+    // Skip location-only parts like "US — Remote", "Cleveland, OH"
+    const withoutLocation = cleaned.replace(/,?\s*(US\s*[-–—]\s*)?(Remote|Hybrid|Onsite)\s*$/i, '').replace(/,\s*[A-Z]{2}\s*$/, '').trim();
+
+    if (TITLE_HINT_RE.test(cleaned) && !title) {
+      title = withoutLocation || cleaned;
+    } else if (!company && cleaned.length > 2) {
+      company = withoutLocation || cleaned;
+    }
+  }
+
+  // If we still don't have a company, try splitting the title on comma
+  // "Product Manager , AG INTERACTIVE (American Greetings Interactive), Cleveland, OH"
+  if (!company && title.includes(',')) {
+    const commaParts = title.split(',').map(p => p.trim()).filter(Boolean);
+    if (commaParts.length >= 2) {
+      title = commaParts[0];
+      // Find the first non-location comma part as company
+      for (let i = 1; i < commaParts.length; i++) {
+        const cp = commaParts[i].trim();
+        if (cp.length > 3 && !LOCATION_RE.test(cp) && !/^[A-Z]{2}$/.test(cp)) {
+          company = cp;
+          break;
+        }
+      }
+    }
+  }
+
+  if (!title) title = rawParts[0] ?? 'Role';
+  if (!company) company = rawParts.length > 1 ? rawParts[1] : 'Prior Experience';
+  // Clean trailing commas from both
+  title = title.replace(/[,\s]+$/, '').trim();
+  company = company.replace(/[,\s]+$/, '').trim();
 
   return {
     company,
