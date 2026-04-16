@@ -1,14 +1,16 @@
 # Changelog — Resume Agent
 
-## 2026-04-16 — Fix Education section rendering as wall of text
+## 2026-04-16 — Fix Education section rendering as wall of text (complete)
 **Sprint:** Bug Fix | **Story:** Education blob rendering bug
-**Summary:** Fixed `handleResumeUpdate` overwriting structured `FinalResume` fields (education, experience, skills, certifications) with raw strings.
+**Summary:** Two-part fix preventing structured resume fields from being overwritten with raw text strings.
 
 ### Changes Made
-- `app/src/hooks/useSSEEventHandlers.ts` — Added guard in `handleResumeUpdate` to skip structured sections (`education`, `experience`, `skills`, `certifications`). These typed array/object fields are set correctly by `pipeline_complete` and `export_ready` handlers; the `resume_update` handler should only update string-valued fields like `summary`.
+- `app/src/hooks/useSSEEventHandlers.ts` — (1) Hoisted `STRUCTURED_SECTIONS` set to module scope. (2) `handleResumeUpdate` returns early for structured sections so they aren't overwritten with strings. (3) `handlePipelineComplete` fallback branch now strips structured section keys from `_raw_sections` so education/experience/skills/certifications text blobs don't leak into the resume object.
 
 ### Root Cause
-`handleResumeUpdate` coerced all content to a string and applied it via `{ ...base, [section]: content }`. When the backend emitted `resume_update` with `section: 'education'`, the typed `MasterResumeEducation[]` array was silently overwritten with a raw string, causing the Education section to render as a wall of text containing the entire work history.
+Two paths were corrupting typed fields on `FinalResume`:
+1. `handleResumeUpdate` coerced all content to a string and set it via `{ ...base, [section]: content }`, overwriting typed arrays with strings.
+2. `handlePipelineComplete` fallback built `_raw_sections` from the full `sectionsMapRef.current`, which included raw text for education/experience/skills/certifications — downstream rendering consumed these strings instead of the typed empty arrays.
 
 ### Known Issues
 - None introduced

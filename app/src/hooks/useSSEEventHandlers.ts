@@ -29,6 +29,10 @@ import { safeString } from '@/lib/safe-cast';
 const MAX_TOOL_STATUS_ENTRIES = 20;
 const MAX_ACTIVITY_MESSAGES = 20;
 
+/** Sections whose FinalResume fields are typed arrays/objects, not strings.
+ *  They must only be set by pipeline_complete / export_ready, never by resume_update. */
+const STRUCTURED_SECTIONS = new Set(['education', 'experience', 'skills', 'certifications']);
+
 let activityMessageCounter = 0;
 
 function pushActivityMessage(
@@ -394,9 +398,6 @@ export function handleResumeUpdate(
       ? data.content
       : '';
   const section = typeof data.section === 'string' ? data.section : '';
-  // Structured sections are typed arrays/objects on FinalResume — never overwrite
-  // them with a raw string. These are set correctly by pipeline_complete / export_ready.
-  const STRUCTURED_SECTIONS = new Set(['education', 'experience', 'skills', 'certifications']);
   if (STRUCTURED_SECTIONS.has(section)) return;
   state.setResume((prev) => {
     const base = prev ?? {
@@ -1202,7 +1203,9 @@ export function handlePipelineComplete(
       selected_accomplishments: sections.selected_accomplishments ?? '',
       ats_score: 0,
       section_order: Object.keys(sections),
-      _raw_sections: sections,
+      _raw_sections: Object.fromEntries(
+        Object.entries(sections).filter(([k]) => !STRUCTURED_SECTIONS.has(k)),
+      ),
     };
     state.setResume(builtResume);
   }
