@@ -50,7 +50,9 @@ const KNOWN_SECTION_HEADINGS = new Set([
   'personal interests',
 ]);
 
-const BULLET_PREFIX_RE = /^[-*•●▪◦◆►▸‣⁃»→⮞]\s*/;
+// Match ANY non-alphanumeric, non-whitespace character at the start of a line as a bullet prefix.
+// This handles all Unicode bullet chars (•●▪◆►etc), dashes, asterisks, and anything PDF tools produce.
+const BULLET_PREFIX_RE = /^[^\w\s]\s*/;
 const MONTH_PATTERN = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
 const YEAR_PATTERN = '(?:19|20)\\d{2}';
 const MONTH_YEAR_PATTERN = `(?:${MONTH_PATTERN}\\s+${YEAR_PATTERN}|${YEAR_PATTERN})`;
@@ -146,11 +148,34 @@ export function getAuthoritativeSourceExperience(
 }
 
 function normalizeResumeLines(resumeText: string): string[] {
-  return resumeText
-    .replace(/\r/g, '')
-    .split('\n')
-    .map((line) => line.replace(/\s+/g, ' ').trim())
-    .filter(Boolean);
+  let text = resumeText.replace(/\r/g, '');
+
+  // Wall-of-text fix: if fewer than 5 newlines in 1000+ chars, the text lost
+  // line breaks during PDF paste. Split on triple-spaces and bullet chars.
+  const newlineCount = (text.match(/\n/g) || []).length;
+  if (text.length > 1000 && newlineCount < 5) {
+    // Insert newlines before any non-alphanumeric bullet-like char followed by uppercase
+    text = text.replace(/\s{3,}/g, '\n');
+    text = text.replace(/([.!?])\s+([A-Z])/g, '$1\n$2');
+  }
+
+  const rawLines = text.split('\n').map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+
+  // Merge lone bullet-character lines with the next line.
+  // PDF extraction often puts ● or • on its own line with the text on the next.
+  const merged: string[] = [];
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    // A line is a "lone bullet" if it's 1-2 chars and is NOT alphanumeric
+    if (line.length <= 2 && /[^\w\s]/.test(line) && i + 1 < rawLines.length) {
+      merged.push(`${line} ${rawLines[i + 1]}`);
+      i++; // skip next line since we merged it
+    } else {
+      merged.push(line);
+    }
+  }
+
+  return merged;
 }
 
 function extractStructuredPositions(lines: string[]): SourceResumePosition[] {
