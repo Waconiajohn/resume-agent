@@ -121,19 +121,6 @@ function preScoresEqual(a: PreScores | undefined, b: PreScores): boolean {
     && JSON.stringify(a.keywords_missing) === JSON.stringify(b.keywords_missing);
 }
 
-/**
- * Pending gap-question resolvers, keyed by session_id.
- *
- * This is retained for the legacy gap-question response path. The current
- * clarification stage does not hard-pause the pipeline for these questions,
- * but older flows can still register a resolver here and resume with the
- * user's answers afterward.
- */
-export const pendingGapResolvers = new Map<
-  string,
-  (responses: GapCoachingResponse[]) => void
->();
-
 export type EmitFn = (event: V2PipelineSSEEvent) => void;
 
 export interface RunPipelineOptions {
@@ -461,43 +448,11 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
         });
       }
 
-      // Emit a pipeline gate event so the frontend knows to pause and collect responses
-      emit({ type: 'pipeline_gate', gate: 'gap_coaching' });
-
-      // Register a resolver and wait for the user to POST to /respond-gaps.
-      // If the request is aborted while waiting, reject immediately so the
-      // pipeline can tear down cleanly rather than leaking a dangling Promise.
-      const gapResponse = await new Promise<GapCoachingResponse[]>((resolve, reject) => {
-        pendingGapResolvers.set(options.session_id, resolve);
-
-        if (signal) {
-          const onAbort = () => {
-            pendingGapResolvers.delete(options.session_id);
-            reject(signal.reason);
-          };
-          if (signal.aborted) {
-            onAbort();
-          } else {
-            signal.addEventListener('abort', onAbort, { once: true });
-          }
-        }
-      });
-
-      // Clean up resolver immediately after it fires
-      pendingGapResolvers.delete(options.session_id);
-
-      if (gapResponse.length > 0) {
-        state.gap_coaching_responses = gapResponse;
-        allApproved = buildApprovedStrategies(gapResponse, gapAnalysis);
-      } else {
-        // User dismissed without responding — approve only strong matches
-        allApproved = gapAnalysis.pending_strategies
-          .filter(ps => {
-            const req = gapAnalysis.requirements.find(r => r.requirement === ps.requirement);
-            return req?.classification === 'strong';
-          })
-          .map(ps => ({ requirement: ps.requirement, strategy: ps.strategy }));
-      }
+      // Auto-approve all pending strategies — gap analysis is informational, not blocking
+      allApproved = gapAnalysis.pending_strategies.map(ps => ({
+        requirement: ps.requirement,
+        strategy: ps.strategy,
+      }));
     } else {
       // Case 4: No pending strategies
       allApproved = [];

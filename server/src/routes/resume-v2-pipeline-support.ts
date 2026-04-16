@@ -432,16 +432,6 @@ export function applyEventToSnapshot(snapshot: StoredV2Snapshot, event: V2Pipeli
   };
 }
 
-export const gapResponseSchema = z.object({
-  responses: z.array(z.object({
-    requirement: z.string().min(1),
-    action: z.enum(['approve', 'context', 'skip']),
-    user_context: z.string().optional(),
-    target_section: z.enum(['auto', 'summary', 'competencies', 'accomplishments', 'experience']).optional(),
-    target_company: z.string().optional(),
-  })),
-});
-
 export const draftStateSchema = z.object({
   draft_state: z.object({
     editable_resume: z.unknown().nullable(),
