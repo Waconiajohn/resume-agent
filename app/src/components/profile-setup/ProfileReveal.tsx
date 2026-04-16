@@ -173,11 +173,11 @@ export function ProfileReveal({
           <div className="mt-16 flex flex-col gap-3">
             <button
               type="button"
-              onClick={() => navigate('/workspace?room=career-profile')}
+              onClick={() => navigate('/workspace')}
               className="w-full py-4 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
               style={{ background: 'var(--link)', color: 'var(--bg-0)' }}
             >
-              Go to Your Profile →
+              Go to Workspace →
             </button>
             <div className="flex gap-3">
               <button

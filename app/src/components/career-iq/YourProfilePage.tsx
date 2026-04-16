@@ -637,11 +637,20 @@ export function YourProfilePage({
   return (
     <div className="mx-auto flex max-w-[900px] flex-col gap-6 px-6 py-8">
       {/* Page title */}
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[var(--text-strong)]">Your Profile</h1>
-        <p className="mt-1 text-sm text-[var(--text-soft)]">
-          Your career foundation. Everything here feeds into your resumes, cover letters, and interview prep. The stronger this profile, the better every tool works for you.
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Your Profile</h1>
+          <p className="mt-1 text-sm text-[var(--text-soft)]">
+            Your career foundation. Everything here feeds into your resumes, cover letters, and interview prep. The stronger this profile, the better every tool works for you.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => _navigate('/profile-setup')}
+          className="flex-shrink-0 rounded-[10px] border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[12px] font-semibold text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
+        >
+          Re-run Career Assessment
+        </button>
       </div>
 
       {/* Section A — Why Me Story */}

@@ -60,6 +60,7 @@ export function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       <Sidebar
         activeRoom={getActiveRoom()}
         onNavigate={handleNavigate}
+        onNavigateRoute={(route) => navigate(route)}
         dashboardState={dashboardState}
         defaultCollapsed={location.pathname === RESUME_BUILDER_SESSION_ROUTE || location.pathname === '/profile-setup'}
       />

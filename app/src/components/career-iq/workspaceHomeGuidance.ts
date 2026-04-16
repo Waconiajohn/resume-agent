@@ -6,6 +6,7 @@ import type { DashboardState } from './useWhyMeStory';
 interface GuidanceAction {
   label: string;
   room: CareerIQRoom;
+  route?: string;
 }
 
 export interface WorkspaceHomeGuidance {
@@ -47,12 +48,12 @@ export function deriveWorkspaceHomeGuidance(params: {
   if (dashboardState === 'new-user') {
     return {
       eyebrow: 'Start here',
-      title: 'Finish your Career Profile first',
+      title: 'Complete your Career Assessment',
       description:
-        'This is the shared why-me story every agent reads. Get this right first so Resume Builder, Job Search, LinkedIn, and Interview Prep stop guessing.',
+        'Upload your resume, answer 8 interview questions, and we\'ll build your complete career profile and master resume. Every tool in the workspace reads from this.',
       mobileInsight:
-        'Finish your Career Profile first so the rest of the workspace has a real story to work from.',
-      primary: { label: 'Open Career Profile', room: 'career-profile' },
+        'Upload your resume and answer 8 questions to build your career profile. Every tool reads from this.',
+      primary: { label: 'Start Career Assessment', room: 'career-profile', route: '/profile-setup' },
     };
   }
 

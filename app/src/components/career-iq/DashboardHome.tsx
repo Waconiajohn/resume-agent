@@ -30,6 +30,7 @@ interface DashboardHomeProps {
   coachRecommendation?: CoachRecommendation | null;
   onInterviewPrepClick?: (card: PipelineCard) => void;
   onNegotiationPrepClick?: (card: PipelineCard) => void;
+  onNavigateRoute?: (route: string) => void;
 }
 
 const NUDGE_DISMISS_KEY = 'workspace_home_nudge_dismissed';
@@ -111,6 +112,7 @@ function HomeGuideCard({
   coachRecommendation,
   onNavigateRoom,
   onRefineWhyMe,
+  onNavigateRoute,
 }: {
   hasResumeSessions: boolean;
   sessionCount: number;
@@ -118,6 +120,7 @@ function HomeGuideCard({
   coachRecommendation?: CoachRecommendation | null;
   onNavigateRoom?: (room: CareerIQRoom) => void;
   onRefineWhyMe?: () => void;
+  onNavigateRoute?: (route: string) => void;
 }) {
   const guidance = deriveWorkspaceHomeGuidance({
     dashboardState,
@@ -144,7 +147,15 @@ function HomeGuideCard({
           <GlassButton
             variant="primary"
             size="sm"
-            onClick={() => (guidance.primary.room === 'career-profile' ? onRefineWhyMe?.() : onNavigateRoom?.(guidance.primary.room))}
+            onClick={() => {
+              if (guidance.primary.route) {
+                onNavigateRoute?.(guidance.primary.route);
+              } else if (guidance.primary.room === 'career-profile') {
+                onRefineWhyMe?.();
+              } else {
+                onNavigateRoom?.(guidance.primary.room);
+              }
+            }}
           >
             {guidance.primary.label}
           </GlassButton>
@@ -152,7 +163,15 @@ function HomeGuideCard({
             <GlassButton
               variant="ghost"
               size="sm"
-              onClick={() => (secondaryAction.room === 'career-profile' ? onRefineWhyMe?.() : onNavigateRoom?.(secondaryAction.room))}
+              onClick={() => {
+                if (secondaryAction.route) {
+                  onNavigateRoute?.(secondaryAction.route);
+                } else if (secondaryAction.room === 'career-profile') {
+                  onRefineWhyMe?.();
+                } else {
+                  onNavigateRoom?.(secondaryAction.room);
+                }
+              }}
             >
               {secondaryAction.label}
             </GlassButton>
@@ -164,10 +183,10 @@ function HomeGuideCard({
         <div className="grid gap-3 border-t border-[var(--line-soft)] bg-[var(--bg-1)]/10 p-4 lg:grid-cols-[1.05fr_0.85fr_0.85fr]">
           <StepCard
             icon={Target}
-            title="Career story"
+            title="Career Assessment"
             description="Tighten the positioning story every other tool reads."
-            actionLabel="Review story"
-            onClick={onRefineWhyMe}
+            actionLabel="Start assessment"
+            onClick={() => onNavigateRoute?.('/profile-setup')}
             className="border-[var(--link)]/18 bg-[var(--link)]/[0.08]"
           />
           <StepCard
@@ -246,6 +265,7 @@ export function DashboardHome({
   coachRecommendation,
   onInterviewPrepClick,
   onNegotiationPrepClick,
+  onNavigateRoute,
 }: DashboardHomeProps) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
   const _handleDismiss = (key: string) => {
@@ -268,6 +288,7 @@ export function DashboardHome({
         coachRecommendation={coachRecommendation}
         onNavigateRoom={onNavigateRoom}
         onRefineWhyMe={onRefineWhyMe}
+        onNavigateRoute={onNavigateRoute}
       />
 
       {/* CoachingNudgeBar removed — momentum nudges are not ready for production */}

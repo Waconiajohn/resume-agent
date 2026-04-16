@@ -366,6 +366,7 @@ export function CareerIQScreen({
           coachRecommendation={coachRec}
           onInterviewPrepClick={handleInterviewPrepClick}
           onNegotiationPrepClick={handleNegotiationPrepClick}
+          onNavigateRoute={onNavigate}
         />
       );
     }
@@ -488,6 +489,7 @@ export function CareerIQScreen({
             sessionCount={sessions.length}
             coachRecommendation={coachRec}
             feedEvents={mobileFeedEvents}
+            onNavigateRoute={onNavigate}
           />
         </>
       );

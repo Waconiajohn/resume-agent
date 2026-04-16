@@ -358,6 +358,19 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
       );
     }
 
+    // Sync to why_me_stories so workspace unlocks and YourProfilePage populates
+    try {
+      const narrative = (profile as unknown as { narrative?: { colleagues_came_for_what?: string; known_for_what?: string; why_not_me?: string } }).narrative;
+      await supabaseAdmin.from('why_me_stories').upsert({
+        user_id: user.id,
+        colleagues_came_for_what: narrative?.colleagues_came_for_what ?? '',
+        known_for_what: narrative?.known_for_what ?? '',
+        why_not_me: narrative?.why_not_me ?? '',
+      }, { onConflict: 'user_id' });
+    } catch (err) {
+      logger.warn({ userId: user.id, error: err instanceof Error ? err.message : String(err) }, 'profile-setup: failed to sync why_me_stories');
+    }
+
     // Persist interview transcript for downstream consumers
     const transcriptContent = {
       questions_and_answers: sessionState.answers.map((a) => {

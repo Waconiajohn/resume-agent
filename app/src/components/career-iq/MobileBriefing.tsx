@@ -31,15 +31,17 @@ interface MobileBriefingProps {
   feedEvents?: RealFeedEvent[];
   /** When true, renders only the bottom nav (used when a room is active) */
   navOnly?: boolean;
+  onNavigateRoute?: (route: string) => void;
 }
 
 // --- Card 1: One Action Today ---
 
-function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom, hasResumeSessions, sessionCount, coachRecommendation }: {
+function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom, onNavigateRoute, hasResumeSessions, sessionCount, coachRecommendation }: {
   userName: string;
   dashboardState: DashboardState;
   onRefineWhyMe: () => void;
   onNavigateRoom: (room: CareerIQRoom) => void;
+  onNavigateRoute?: (route: string) => void;
   hasResumeSessions: boolean;
   sessionCount: number;
   coachRecommendation?: CoachRecommendation | null;
@@ -67,7 +69,15 @@ function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom, h
       </p>
       <button
         type="button"
-        onClick={() => (guidance.primary.room === 'career-profile' ? onRefineWhyMe() : onNavigateRoom(guidance.primary.room))}
+        onClick={() => {
+          if (guidance.primary.route) {
+            onNavigateRoute?.(guidance.primary.route);
+          } else if (guidance.primary.room === 'career-profile') {
+            onRefineWhyMe();
+          } else {
+            onNavigateRoom(guidance.primary.room);
+          }
+        }}
         className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--link)]/45 bg-[linear-gradient(180deg,rgba(158,184,255,0.2),rgba(158,184,255,0.1))] px-4 py-3 text-[14px] font-medium text-white shadow-[0_10px_28px_-18px_rgba(132,160,255,0.9)]"
       >
         {guidance.primary.label}
@@ -261,6 +271,7 @@ export function MobileBriefing({
   coachRecommendation = null,
   feedEvents,
   navOnly = false,
+  onNavigateRoute,
 }: MobileBriefingProps) {
   // navOnly mode: render only the bottom nav bar (used when a room is displayed above)
   if (navOnly) {
@@ -284,6 +295,7 @@ export function MobileBriefing({
             dashboardState={dashboardState}
             onRefineWhyMe={onRefineWhyMe}
             onNavigateRoom={onNavigateRoom}
+            onNavigateRoute={onNavigateRoute}
             hasResumeSessions={hasResumeSessions}
             sessionCount={sessionCount}
             coachRecommendation={coachRecommendation}

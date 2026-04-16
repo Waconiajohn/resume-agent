@@ -11,6 +11,7 @@ import {
   User,
   Users,
   GraduationCap,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { DashboardState } from './useWhyMeStory';
@@ -21,6 +22,7 @@ export type CareerIQRoom = ExposedWorkspaceRoom;
 interface SidebarProps {
   activeRoom: WorkspaceRoom;
   onNavigate: (room: CareerIQRoom) => void;
+  onNavigateRoute?: (route: string) => void;
   dashboardState: DashboardState;
   defaultCollapsed?: boolean;
 }
@@ -65,7 +67,7 @@ const ROOM_TOUR_TARGETS: Partial<Record<CareerIQRoom, string>> = {
   interview: 'nav-interview',
 };
 
-export function Sidebar({ activeRoom, onNavigate, dashboardState, defaultCollapsed }: SidebarProps) {
+export function Sidebar({ activeRoom, onNavigate, onNavigateRoute, dashboardState, defaultCollapsed }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed ?? false);
   const isLocked = dashboardState === 'new-user';
 
@@ -166,6 +168,24 @@ export function Sidebar({ activeRoom, onNavigate, dashboardState, defaultCollaps
             </div>
           </div>
         ))}
+
+        {/* Career Assessment link */}
+        <div className={collapsed ? 'mb-1 mt-2' : 'mb-4 mt-2 border-t border-[var(--line-soft)] pt-3'}>
+          <button
+            type="button"
+            onClick={() => onNavigateRoute?.('/profile-setup')}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors',
+              'text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]',
+            )}
+            title="Career Assessment"
+          >
+            <ClipboardCheck size={18} className="flex-shrink-0" />
+            {!collapsed && (
+              <span className="text-[13px] font-medium leading-tight">Career Assessment</span>
+            )}
+          </button>
+        </div>
 
       </nav>
 
