@@ -4,51 +4,20 @@ import type {
   SourceResumePosition,
 } from './types.js';
 
-const EXPERIENCE_HEADINGS = [
-  'professional experience',
-  'work experience',
-  'experience',
-  'career history',
-  'employment history',
-  'relevant experience',
-  'additional work experience',
-  'earlier career',
-];
+// Keyword-based heading detection — matches "Career Experience", "Areas of Expertise",
+// "Education & Certifications", etc. without enumerating every exact string.
+const EXPERIENCE_KEYWORDS = /\b(experience|career\s+history|employment|work\s+history|earlier\s+career)\b/i;
+const NON_EXPERIENCE_KEYWORDS = /\b(summary|competenc|skill|accomplishment|achievement|expertise|education|certification|award|publication|board|volunteer|affiliation|membership|language|interest|development|honor|civic|community)\b/i;
 
-const KNOWN_SECTION_HEADINGS = new Set([
-  ...EXPERIENCE_HEADINGS,
-  'executive summary',
-  'summary',
-  'core competencies',
-  'competencies',
-  'selected accomplishments',
-  'education',
-  'certifications',
-  'technical skills',
-  'skills',
-  'awards',
-  'publications',
-  'board experience',
-  'board & community',
-  'board and community',
-  'professional development',
-  'advisory',
-  'advisory board',
-  'volunteer',
-  'volunteer experience',
-  'volunteering',
-  'affiliations',
-  'professional affiliations',
-  'community involvement',
-  'civic engagement',
-  'memberships',
-  'professional memberships',
-  'honors',
-  'honors and awards',
-  'languages',
-  'interests',
-  'personal interests',
-]);
+function isExperienceHeading(line: string): boolean {
+  if (line.length > 60 || BULLET_PREFIX_RE.test(line)) return false;
+  return EXPERIENCE_KEYWORDS.test(line) && !NON_EXPERIENCE_KEYWORDS.test(line);
+}
+
+function isSectionHeading(line: string): boolean {
+  if (line.length > 60 || BULLET_PREFIX_RE.test(line)) return false;
+  return EXPERIENCE_KEYWORDS.test(line) || NON_EXPERIENCE_KEYWORDS.test(line);
+}
 
 // Match ANY non-alphanumeric, non-whitespace character at the start of a line as a bullet prefix.
 // This handles all Unicode bullet chars (•●▪◆►etc), dashes, asterisks, and anything PDF tools produce.
@@ -185,19 +154,16 @@ function extractStructuredPositions(lines: string[]): SourceResumePosition[] {
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
-    const heading = normalizeHeading(line);
-
-    if (heading && KNOWN_SECTION_HEADINGS.has(heading)) {
-      if (!EXPERIENCE_HEADINGS.includes(heading)) {
+    if (isSectionHeading(line)) {
+      if (isExperienceHeading(line)) {
+        inExperienceSection = true;
+      } else {
         if (current) {
           positions.push(cleanPosition(current));
           current = null;
         }
         inExperienceSection = false;
-        continue;
       }
-
-      inExperienceSection = true;
       continue;
     }
 
@@ -223,7 +189,7 @@ function extractStructuredPositions(lines: string[]): SourceResumePosition[] {
       continue;
     }
 
-    if (!looksLikeSectionHeading(line) && !DATE_RANGE_RE.test(line)) {
+    if (!isSectionHeading(line) && !DATE_RANGE_RE.test(line)) {
       current.bullets.push(line);
     }
   }
@@ -307,20 +273,12 @@ function looksLikeRoleContext(
 }
 
 function shouldIgnoreSupportingLine(line: string): boolean {
-  const normalized = normalizeHeading(line);
-  if (normalized && KNOWN_SECTION_HEADINGS.has(normalized)) return true;
+  if (isSectionHeading(line)) return true;
   if (line.length <= 3) return true;
   if (LOCATION_RE.test(line) && line.split(/\s+/).length <= 4) return true;
+  // Contact info blocks that repeat mid-resume (common in multi-page PDFs)
+  if (/@/.test(line) && /\d{3}/.test(line) && line.length < 120) return true;
   return false;
-}
-
-function looksLikeSectionHeading(line: string): boolean {
-  const normalized = normalizeHeading(line);
-  return Boolean(normalized && KNOWN_SECTION_HEADINGS.has(normalized));
-}
-
-function normalizeHeading(line: string): string {
-  return line.replace(/[:|]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
 function stripBulletPrefix(line: string): string {
