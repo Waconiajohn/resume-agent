@@ -1,5 +1,18 @@
 # Changelog — Resume Agent
 
+## 2026-04-16 — Fix Education section rendering as wall of text
+**Sprint:** Bug Fix | **Story:** Education blob rendering bug
+**Summary:** Fixed `handleResumeUpdate` overwriting structured `FinalResume` fields (education, experience, skills, certifications) with raw strings.
+
+### Changes Made
+- `app/src/hooks/useSSEEventHandlers.ts` — Added guard in `handleResumeUpdate` to skip structured sections (`education`, `experience`, `skills`, `certifications`). These typed array/object fields are set correctly by `pipeline_complete` and `export_ready` handlers; the `resume_update` handler should only update string-valued fields like `summary`.
+
+### Root Cause
+`handleResumeUpdate` coerced all content to a string and applied it via `{ ...base, [section]: content }`. When the backend emitted `resume_update` with `section: 'education'`, the typed `MasterResumeEducation[]` array was silently overwritten with a raw string, causing the Education section to render as a wall of text containing the entire work history.
+
+### Known Issues
+- None introduced
+
 ## 2026-04-16 — Vertex 429 Rate Limit Handling
 **Sprint:** Infrastructure | **Story:** Fix Vertex 429 rate limiting in resume writer pipeline
 **Summary:** Added exponential backoff retry on 429 for all providers, plus automatic Vertex→DeepSeek direct failover for the writer LLM.

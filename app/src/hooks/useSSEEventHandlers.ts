@@ -394,6 +394,10 @@ export function handleResumeUpdate(
       ? data.content
       : '';
   const section = typeof data.section === 'string' ? data.section : '';
+  // Structured sections are typed arrays/objects on FinalResume — never overwrite
+  // them with a raw string. These are set correctly by pipeline_complete / export_ready.
+  const STRUCTURED_SECTIONS = new Set(['education', 'experience', 'skills', 'certifications']);
+  if (STRUCTURED_SECTIONS.has(section)) return;
   state.setResume((prev) => {
     const base = prev ?? {
       summary: '',
