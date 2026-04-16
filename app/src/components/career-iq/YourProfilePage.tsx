@@ -78,9 +78,10 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   const [resumeError, setResumeError] = useState(false);
   const loadAttemptedRef = useRef(false);
 
-  // Load default resume once on mount — ref guards against double-runs
+  // Load default resume once on mount
   useEffect(() => {
-    if (!onGetDefaultResume || loadAttemptedRef.current) return;
+    if (!onGetDefaultResume) return;
+    if (loadAttemptedRef.current) { setResumeLoading(false); return; }
     loadAttemptedRef.current = true;
     let cancelled = false;
     setResumeLoading(true);
