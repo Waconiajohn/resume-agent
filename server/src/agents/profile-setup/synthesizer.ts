@@ -332,10 +332,9 @@ function normalizeCareerProfileV2(raw: unknown, fallback: CareerProfileV2): Care
     }));
 
   const overallScore = numField(completeness.overall_score, fallback.completeness.overall_score);
-  const dashboardStateRaw = str(completeness.dashboard_state);
-  const dashboardState = (['new-user', 'refining', 'strong'] as const).includes(dashboardStateRaw as 'new-user' | 'refining' | 'strong')
-    ? (dashboardStateRaw as 'new-user' | 'refining' | 'strong')
-    : fallback.completeness.dashboard_state;
+  // Compute dashboard_state deterministically from score — never trust the LLM's value
+  const dashboardState: 'new-user' | 'refining' | 'strong' =
+    overallScore >= 80 ? 'strong' : overallScore >= 30 ? 'refining' : 'new-user';
 
   const signalFor = (key: string): 'green' | 'yellow' | 'red' => {
     const v = str(profileSignals[key]);
