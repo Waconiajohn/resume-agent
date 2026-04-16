@@ -271,7 +271,7 @@ export async function runV2Pipeline(options: RunPipelineOptions): Promise<V2Pipe
 
     const [jobIntelResult, candidateIntel] = await Promise.all([
       runJobIntelligenceWithConfidence({ job_description: options.job_description }, signal),
-      runCandidateIntelligence({ resume_text: enrichedResumeText }, signal),
+      runCandidateIntelligence({ resume_text: options.resume_text }, signal),
     ]);
 
     const jobIntel = jobIntelResult.output;
