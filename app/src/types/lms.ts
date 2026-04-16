@@ -13,6 +13,7 @@ export interface LessonSlot {
     | 'resume-v2'
     | 'gap-analysis'
     | 'positioning'
+    | 'master-resume'
     | 'job-finder'
     | 'job-tracker'
     | 'interview-prep'

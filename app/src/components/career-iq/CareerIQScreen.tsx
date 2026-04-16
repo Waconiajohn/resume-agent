@@ -223,37 +223,55 @@ export function CareerIQScreen({
 
     let cancelled = false;
 
-    async function loadLatestResumePipelineResult() {
+    async function loadLmsDataSources() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || cancelled) return;
 
-        const { data } = await supabase
-          .from('coach_sessions')
-          .select('id, tailored_sections')
-          .eq('user_id', user.id)
-          .eq('product_type', 'resume_v2')
-          .eq('pipeline_status', 'complete')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        // Load resume pipeline result + master resume in parallel
+        const [sessionResult, masterResumeResult] = await Promise.all([
+          supabase
+            .from('coach_sessions')
+            .select('id, tailored_sections')
+            .eq('user_id', user.id)
+            .eq('product_type', 'resume_v2')
+            .eq('pipeline_status', 'complete')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from('master_resumes')
+            .select('id, summary, experience, skills, education, certifications, contact_info, raw_text, version, evidence_items')
+            .eq('user_id', user.id)
+            .eq('is_default', true)
+            .limit(1)
+            .maybeSingle(),
+        ]);
 
-        if (cancelled || !data) return;
+        if (cancelled) return;
 
-        const stored = data.tailored_sections as Record<string, unknown> | null;
-        if (!stored || stored.version !== 'v2') return;
+        const sources: AgentDataSources = {};
 
-        const body = stored as unknown as LoadSessionResponseBody;
-        const hydrated = hydrateV2SessionLoad(data.id as string, body);
-        if (!hydrated || cancelled) return;
+        // Pipeline result
+        const stored = sessionResult.data?.tailored_sections as Record<string, unknown> | null;
+        if (stored && stored.version === 'v2') {
+          const body = stored as unknown as LoadSessionResponseBody;
+          const hydrated = hydrateV2SessionLoad(sessionResult.data!.id as string, body);
+          if (hydrated) sources.resumePipelineResult = hydrated.data;
+        }
 
-        setLmsAgentDataSources({ resumePipelineResult: hydrated.data });
+        // Master resume
+        if (masterResumeResult.data) {
+          sources.masterResume = masterResumeResult.data as Record<string, unknown>;
+        }
+
+        setLmsAgentDataSources(sources);
       } catch {
         // Data unavailable — LMS slots gracefully show as unavailable
       }
     }
 
-    void loadLatestResumePipelineResult();
+    void loadLmsDataSources();
     return () => { cancelled = true; };
   }, [activeRoom]);
 

@@ -16,6 +16,7 @@ import type { V2PipelineData } from '@/types/resume-v2';
 export interface AgentDataSources {
   resumePipelineResult?: V2PipelineData | null;
   positioningProfile?: CareerProfileV2 | null;
+  masterResume?: Record<string, unknown> | null;
   jobFinderResults?: Record<string, unknown> | null;
   jobTrackerResults?: Record<string, unknown> | null;
   linkedInProfile?: Record<string, unknown> | null;
@@ -58,6 +59,10 @@ const UNAVAILABLE_CONFIG: Record<
   networking: {
     message: 'Import your LinkedIn connections to unlock this data.',
     link: '/workspace?room=networking',
+  },
+  'master-resume': {
+    message: 'Upload your master resume to unlock this data.',
+    link: '/workspace?room=resume',
   },
   'job-tracker': {
     message: 'Start tracking job applications to unlock this data.',
@@ -112,6 +117,9 @@ function resolveSource(
 
     case 'positioning':
       return dataSources.positioningProfile ?? null;
+
+    case 'master-resume':
+      return dataSources.masterResume ?? null;
 
     case 'job-finder':
       return dataSources.jobFinderResults ?? null;

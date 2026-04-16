@@ -43,9 +43,9 @@ const COURSE_1_LESSONS: LessonConfig[] = [
       },
       {
         key: 'trophy_count_resume',
-        label: 'Trophies on Resume',
-        agentSource: 'resume-v2',
-        dataPath: 'candidateIntelligence.quantified_outcomes',
+        label: 'Bullet Points on Your Resume',
+        agentSource: 'master-resume',
+        dataPath: 'experience',
         format: 'number',
       },
     ],
@@ -357,9 +357,9 @@ const COURSE_2_LESSONS: LessonConfig[] = [
       },
       {
         key: 'buried_trophies',
-        label: 'Buried Trophies',
-        agentSource: 'resume-v2',
-        dataPath: 'candidateIntelligence.hidden_accomplishments',
+        label: 'Roles on Your Resume',
+        agentSource: 'master-resume',
+        dataPath: 'experience',
         format: 'list',
       },
       {
@@ -699,9 +699,9 @@ const COURSE_3_LESSONS: LessonConfig[] = [
       },
       {
         key: 'master_resume_exists',
-        label: 'Master Resume Status',
-        agentSource: 'resume-v2',
-        dataPath: 'candidateIntelligence.contact.name',
+        label: 'Your Master Resume',
+        agentSource: 'master-resume',
+        dataPath: 'summary',
         format: 'text',
       },
     ],
