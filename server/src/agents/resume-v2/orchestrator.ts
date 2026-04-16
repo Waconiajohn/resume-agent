@@ -216,9 +216,10 @@ async function enrichResumeWithMasterEvidence(
     const lines = [
       '',
       '---',
-      'ADDITIONAL CONTEXT FROM CAREER PROFILE INTERVIEW',
+      'INTERNAL REFERENCE ONLY — DO NOT INCLUDE IN RESUME OUTPUT',
       'The following evidence was provided by the candidate during their career profile interview.',
-      'Use this to strengthen experience sections where relevant.',
+      'Use this evidence to strengthen experience bullet points. DO NOT copy this section into the resume.',
+      'This section must NEVER appear in any resume section, summary, or output.',
       '',
       ...evidenceLines.flatMap((line) => [line, '']),
     ];
