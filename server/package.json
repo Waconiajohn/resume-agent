@@ -23,7 +23,8 @@
     "verify": "npm run typecheck && npm run lint && npm test && npm run build",
     "smoke-test": "node scripts/smoke-test.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "fixtures": "tsx src/v3/test-fixtures/runner.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -32,6 +33,7 @@
     "@sentry/node": "^10.39.0",
     "@supabase/supabase-js": "^2.49.0",
     "diff-match-patch": "^1.0.5",
+    "gray-matter": "^4.0.3",
     "hono": "^4.7.0",
     "ioredis": "^5.10.0",
     "openai": "^6.34.0",
