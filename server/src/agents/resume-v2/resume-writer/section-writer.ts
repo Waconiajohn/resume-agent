@@ -23,7 +23,7 @@
 import { resumeV2Llm } from '../../../lib/llm.js';
 import { RESUME_V2_WRITER_MODEL } from '../../../lib/model-constants.js';
 import { chatWithTruncationRetry as _chatWithTruncationRetry } from '../../../lib/llm-retry.js';
-import type { ChatParams, ChatResponse } from '../../../lib/llm-provider.js';
+import { createCombinedAbortSignal, type ChatParams, type ChatResponse } from '../../../lib/llm-provider.js';
 
 /** Section-writer LLM call — uses the Resume V2-scoped provider (DeepSeek when available) */
 function chatWithRetry(params: ChatParams, options?: { retryMaxTokens?: number }): Promise<ChatResponse> {
@@ -774,13 +774,13 @@ async function callCustomSections(
 
 // ─── Section 5: Professional Experience ──────────────────────────────
 
-const EXPERIENCE_SYSTEM = `You are a ghostwriter for a senior executive. You are writing the Professional Experience section of their resume.
+const EXPERIENCE_SYSTEM = `You are a ghostwriter for a senior executive. You are rewriting ONE role in their Professional Experience section. A separate parallel call handles each other role, so focus only on the single role in the user message.
 
 ## EVIDENCE-BOUND WRITING — YOUR #1 RULE
 
 You are rewriting the candidate's resume to better address the target role. You may ONLY use facts from these sources:
 
-1. The candidate's original resume text (provided in SOURCE POSITIONS below)
+1. The candidate's original resume text (provided in SOURCE POSITION below)
 2. User-confirmed evidence (marked "USER CONFIRMED" in the gap strategies)
 3. Conservative inferences the user explicitly approved
 
@@ -792,22 +792,23 @@ You may NOT:
 
 When evidence is thin for a requirement, write a SHORTER, HONEST bullet rather than a LONGER, FABRICATED one. A resume with 3 strong honest bullets per role is better than 6 polished lies.
 
-STEP 1 — READ THE SOURCE RESUME
-Before writing, study the candidate's original experience entries. For each role, note:
+STEP 1 — READ THE SOURCE ROLE
+Before writing, study the candidate's original entry for this role. Note:
 - Their actual job title and company
 - Their real scope (team size, budget, geography)
 - The specific metrics and outcomes they reported
 - Their natural language — how THEY describe their work
 You will preserve their facts and echo their voice. You will NOT invent new facts.
 
-STEP 2 — MAP JD REQUIREMENTS TO ROLES
+STEP 2 — MAP JD REQUIREMENTS TO THIS ROLE
 The user message includes the top 3 JD requirements. Before writing any bullets, decide:
-- Which role(s) have the strongest evidence for each requirement?
-- Put the strongest proof for each requirement in the MOST RECENT qualifying role
-- If a requirement has no evidence in any role, skip it — do not fabricate
+- Does this role have strong evidence for any of these requirements?
+- For requirements this role can prove, prioritize them in the bullets you write
+- If this role has no evidence for a requirement, do not address it here — another role will cover it
+- Never fabricate evidence to hit a requirement
 
-STEP 3 — WRITE EACH ROLE
-For each role, write:
+STEP 3 — WRITE THE ROLE
+Write:
 
 A) SCOPE STATEMENT (1 natural sentence about the role's scale):
   ✓ "Ran day-to-day operations across 3 manufacturing plants, 1,100 employees, and a $210M operating budget."
@@ -839,9 +840,9 @@ Prefer story-format bullets when the source evidence supports them. But never fo
 STEP 4 — CHECK YOUR WORK
 Before finalizing, scan your output:
 
-VERB DEDUP — check each role:
-  If any verb appears as the opener of 2+ bullets in the same role, rewrite one.
-  NEVER use "Led" more than once in the entire section.
+VERB DEDUP — check this role:
+  If any verb appears as the opener of 2+ bullets in this role, rewrite one.
+  Avoid "Led" as an opener — use more specific verbs (Built, Grew, Negotiated, Restructured, Closed, Won, Shipped, etc.).
 
 BANNED LANGUAGE — these are AI fingerprints. Using them WILL be caught:
   Spearheaded, Championed, Orchestrated, Fostered, Pioneered
@@ -857,11 +858,10 @@ PREFERRED VERBS (concrete, human):
 
 STEP 5 — SELF-CRITIQUE
 Before outputting, verify:
-1. Every position from the source resume appears (count them)
-2. Every metric in your output comes from the source resume or user-confirmed evidence (no invented numbers)
-3. No verb appears as opener of 2+ bullets in the same role
-4. No sentence sounds like it was written by ChatGPT — read each aloud mentally
-5. You did not upgrade any verb (e.g., "collaborated" → "led") without user confirmation
+1. Every metric in your output comes from the source resume or user-confirmed evidence (no invented numbers)
+2. No verb appears as opener of 2+ bullets in this role
+3. No sentence sounds like it was written by ChatGPT — read each aloud mentally
+4. You did not upgrade any verb (e.g., "collaborated" → "led") without user confirmation
 
 If any check fails, fix it before outputting.
 
@@ -871,8 +871,8 @@ If any check fails, fix it before outputting.
 - If a candidate has 20+ years of experience, weight recent roles (last 10 years) heavily with full bullet detail. Older roles get fewer bullets and should emphasize transferable themes, not dated specifics. Use "Earlier Career" section for roles 15+ years ago that have low relevance to the target.
 
 ## SECTION BOUNDARIES — DO NOT MIX
-The positions array must contain ONLY professional experience entries (roles with company, title, dates, bullets).
-Do NOT include any of the following as experience bullets or positions:
+This is a professional experience entry ONLY (role with company, title, dates, bullets).
+Do NOT include any of the following in the bullets or scope:
 - CERTIFICATIONS (e.g., "AWS SA Pro, CKA, Terraform Associate")
 - SKILLS lists (e.g., "AWS, GCP, Docker, Kubernetes...")
 - EDUCATION entries (e.g., "B.S. Computer Science | Oregon State University")
@@ -881,45 +881,41 @@ Do NOT include any of the following as experience bullets or positions:
 These belong in separate resume sections, NOT inside professional experience.
 
 ## HARD RULES
-- EVERY position from the candidate experience MUST appear in your output — count them before writing
-- Never drop a position that would create an employment gap greater than 6 months
-- Scope statement required for every role with meaningful responsibility (team size, budget, geography, P&L)
+- Scope statement required for this role if it has meaningful responsibility (team size, budget, geography, P&L)
 - Scope statements must read as natural sentences about the role's scale — NEVER start with labels like "Brief scope:", "Scope:", "Team:", or "Budget:" — write it as a sentence a human would say
 - Preserve ALL specific metrics, dollar amounts, percentages, team sizes, site counts from the original
 - Do NOT repeat proof points already used in Selected Accomplishments or custom sections (see Used Evidence below)
-- Professional Experience bullets for a role must cover DIFFERENT achievements than its Selected Accomplishment
+- Professional Experience bullets for this role must cover DIFFERENT achievements than any Selected Accomplishment drawn from it
 - Mark is_new: true for ANY content you wrote, rephrased, or enhanced beyond the original resume
 - BANNED openers: "Responsible for", "Helped", "Assisted", "Supported", "Participated in", "Worked on"
 - Include metrics where the source provides them — but NEVER invent a number to meet a quota
 - No first-person pronouns
 
 ## OUTPUT FORMAT
-Return this JSON object:
+Return this JSON object for the single role you just rewrote:
 {
-  "positions": [
-    {
-      "company": "Company Name",
-      "title": "Job Title",
-      "start_date": "Start",
-      "end_date": "End",
-      "scope_statement": "Ran day-to-day operations across 3 manufacturing plants, 1,100 employees, and a $210M operating budget.",
-      "scope_statement_is_new": true,
-      "scope_statement_source": "enhanced",
-      "scope_statement_confidence": "strong",
-      "scope_statement_evidence_found": "original text or empty string",
-      "bullets": [
-        {
-          "text": "Strong action verb sentence with metric",
-          "is_new": false,
-          "addresses_requirements": ["requirement name"],
-          "source": "original",
-          "requirement_source": "job_description",
-          "evidence_found": "quote from original resume or empty string",
-          "confidence": "strong"
-        }
-      ]
-    }
-  ]
+  "position": {
+    "company": "Company Name",
+    "title": "Job Title",
+    "start_date": "Start",
+    "end_date": "End",
+    "scope_statement": "Ran day-to-day operations across 3 manufacturing plants, 1,100 employees, and a $210M operating budget.",
+    "scope_statement_is_new": true,
+    "scope_statement_source": "enhanced",
+    "scope_statement_confidence": "strong",
+    "scope_statement_evidence_found": "original text or empty string",
+    "bullets": [
+      {
+        "text": "Strong action verb sentence with metric",
+        "is_new": false,
+        "addresses_requirements": ["requirement name"],
+        "source": "original",
+        "requirement_source": "job_description",
+        "evidence_found": "quote from original resume or empty string",
+        "confidence": "strong"
+      }
+    ]
+  }
 }
 
 ${SOURCE_DISCIPLINE}
@@ -952,38 +948,45 @@ interface ExperienceResult {
   positions: ExperiencePositionRaw[];
 }
 
-async function callExperienceSection(
+type SourcePosition = ReturnType<typeof getAuthoritativeSourceExperience>[number];
+
+/** Per-position call timeout — was 60s (observed timeout), raised to 90s for safety. */
+const PER_POSITION_TIMEOUT_MS = 90_000;
+
+/** Cross-role context shared by every per-position LLM call. Built once per section run. */
+interface SharedExperienceContext {
+  topRequirements: string;
+  top3RequirementBlock: string;
+  experienceStrategies: string;
+  relevantGapEntries: string;
+  framingEntries: string;
+  primaryNarrative: string;
+  positioningFrame: string;
+  accomplishmentTexts: string[];
+  usedEvidence: string[];
+}
+
+function buildSharedExperienceContext(
   input: ResumeWriterInput,
   usedEvidence: string[],
   accomplishmentTexts: string[],
-  signal?: AbortSignal,
-): Promise<ExperienceResult> {
-  const { candidate, job_intelligence, narrative, gap_analysis: _gap_analysis, approved_strategies } = input;
-  const sourceExperience = getAuthoritativeSourceExperience(candidate);
+): SharedExperienceContext {
+  const { job_intelligence, narrative, approved_strategies } = input;
 
-  // Build the source positions block
-  const positionsBlock = sourceExperience.map((exp) => {
-    const scopeParts = exp.inferred_scope
-      ? `team=${exp.inferred_scope.team_size ?? '?'}, budget=${exp.inferred_scope.budget ?? '?'}, geo=${exp.inferred_scope.geography ?? '?'}`
-      : 'unknown scope';
-    const bulletLines = exp.bullets.map((b) => `  - ${b}`).join('\n');
-    return [
-      `### ${exp.title} at ${exp.company} (${exp.start_date} – ${exp.end_date})`,
-      `  Scope signals: ${scopeParts}`,
-      bulletLines,
-      `  [DETAIL FLOOR: Preserve at least ${exp.bullets.length} distinct bullet-level proof points if this role stays in professional_experience.]`,
-      `  [PROOF FLOOR: Keep all concrete specifics — metrics, named systems, site counts, geographies, product names, dollar amounts. Improve wording without genericizing evidence.]`,
-    ].join('\n');
-  }).join('\n\n');
-
-  // Gap positioning map entries for experience section
-  const relevantGapEntries = (narrative.gap_positioning_map ?? [])
-    .filter((entry) => entry.where_to_feature.toLowerCase().includes('experience'))
-    .slice(0, 5)
-    .map((entry) => `- Requirement: ${entry.requirement}\n  How to frame: ${entry.narrative_positioning}\n  Justification: ${entry.narrative_justification}`)
+  const topRequirements = job_intelligence.core_competencies
+    .slice(0, 8)
+    .map((c) => `- [${c.importance}] ${c.competency}`)
     .join('\n');
 
-  // Approved strategies with experience placement
+  const top3 = (input.gap_analysis?.requirements ?? [])
+    .filter((r) => r.classification === 'strong' || r.classification === 'partial')
+    .slice(0, 3)
+    .map((r) => r.requirement);
+
+  const top3RequirementBlock = top3.length > 0
+    ? `## TOP 3 JD REQUIREMENTS — cover any you have evidence for in this role\n${top3.map((r, i) => `${i + 1}. ${r}`).join('\n')}`
+    : '';
+
   const experienceStrategies = approved_strategies
     .filter((s) => !s.target_section || s.target_section === 'auto' || s.target_section === 'experience')
     .slice(0, 6)
@@ -999,129 +1002,97 @@ async function callExperienceSection(
     })
     .join('\n');
 
-  // Top JD requirements for bullet targeting
-  const topRequirements = job_intelligence.core_competencies
-    .slice(0, 8)
-    .map((c) => `- [${c.importance}] ${c.competency}`)
+  const relevantGapEntries = (narrative.gap_positioning_map ?? [])
+    .filter((entry) => entry.where_to_feature.toLowerCase().includes('experience'))
+    .slice(0, 5)
+    .map((entry) => `- Requirement: ${entry.requirement}\n  How to frame: ${entry.narrative_positioning}\n  Justification: ${entry.narrative_justification}`)
     .join('\n');
 
   const experienceFraming = narrative.section_guidance.experience_framing ?? {};
-  const framingEntries = Object.entries(experienceFraming).slice(0, 6).map(
-    ([company, framing]) => `- ${company}: ${framing}`,
-  ).join('\n');
+  const framingEntries = Object.entries(experienceFraming)
+    .slice(0, 6)
+    .map(([company, framing]) => `- ${company}: ${framing}`)
+    .join('\n');
 
-  // Extract top 3 requirements for experience bullet targeting
-  const top3ExperienceRequirements = (input.gap_analysis?.requirements ?? [])
-    .filter((r) => r.classification === 'strong' || r.classification === 'partial')
-    .slice(0, 3)
-    .map((r) => r.requirement);
+  return {
+    topRequirements,
+    top3RequirementBlock,
+    experienceStrategies,
+    relevantGapEntries,
+    framingEntries,
+    primaryNarrative: narrative.primary_narrative,
+    positioningFrame: input.benchmark.positioning_frame ?? 'Not set',
+    accomplishmentTexts,
+    usedEvidence,
+  };
+}
 
-  const experienceRequirementBlock = top3ExperienceRequirements.length > 0
-    ? `\n## TOP 3 JD REQUIREMENTS — COVER THESE FIRST\nFor each requirement below, write at least one bullet in the MOST RECENT role where the candidate has relevant experience. These are non-negotiable:\n${top3ExperienceRequirements.map((r, i) => `${i + 1}. ${r}`).join('\n')}`
-    : '';
+function buildSinglePositionMessage(exp: SourcePosition, ctx: SharedExperienceContext): string {
+  const scopeParts = exp.inferred_scope
+    ? `team=${exp.inferred_scope.team_size ?? '?'}, budget=${exp.inferred_scope.budget ?? '?'}, geo=${exp.inferred_scope.geography ?? '?'}`
+    : 'unknown scope';
+  const bulletLines = exp.bullets.map((b) => `  - ${b}`).join('\n');
+  const positionBlock = [
+    `### ${exp.title} at ${exp.company} (${exp.start_date} – ${exp.end_date})`,
+    `  Scope signals: ${scopeParts}`,
+    bulletLines,
+    `  [DETAIL FLOOR: Preserve at least ${exp.bullets.length} distinct bullet-level proof points.]`,
+    `  [PROOF FLOOR: Keep all concrete specifics — metrics, named systems, site counts, geographies, product names, dollar amounts. Improve wording without genericizing evidence.]`,
+  ].join('\n');
 
-  const userMessage = [
-    `## SOURCE POSITIONS (${sourceExperience.length} total — ALL must appear in output)`,
-    positionsBlock,
+  return [
+    '## SOURCE POSITION (rewrite THIS ONE role only — a separate call handles each other role)',
+    positionBlock,
     '',
     '## CROSS-SECTION RULE — MANDATORY',
     'The following accomplishments are ALREADY featured in the Selected Accomplishments section above Professional Experience.',
     'A hiring manager reads top to bottom — if they see the same achievement twice, it looks sloppy.',
     '',
-    'THESE EXACT ACCOMPLISHMENTS MUST NOT APPEAR AS EXPERIENCE BULLETS (not even rephrased):',
-    ...accomplishmentTexts.map((t, i) => `  ${i + 1}. "${t}"`),
+    'THESE EXACT ACCOMPLISHMENTS MUST NOT APPEAR AS BULLETS FOR THIS ROLE (not even rephrased):',
+    ...ctx.accomplishmentTexts.map((t, i) => `  ${i + 1}. "${t}"`),
     '',
     'For each bullet you write, check: does it describe the SAME achievement as any accomplishment above?',
-    '- Same metric (e.g., "35% cost reduction", "50M+ API requests") → it overlaps. Write a DIFFERENT achievement from that role.',
+    '- Same metric (e.g., "35% cost reduction", "50M+ API requests") → it overlaps. Write a DIFFERENT achievement from this role.',
     '- Different aspect of the same project (the HOW, the team growth, the process) → acceptable, but do not repeat the headline metric.',
     '',
     'ADDITIONAL USED EVIDENCE (from custom sections):',
-    formatUsedEvidence(usedEvidence),
+    formatUsedEvidence(ctx.usedEvidence),
     '',
-    experienceRequirementBlock,
+    ctx.top3RequirementBlock,
     '',
     '## ALL JD REQUIREMENTS (broader targeting)',
-    topRequirements,
+    ctx.topRequirements,
     '',
-    experienceStrategies
+    ctx.experienceStrategies
       ? [
           '## EVIDENCE HIERARCHY — READ THIS BEFORE WRITING GAP STRATEGIES',
           'When writing bullets to address gap requirements:',
           '1. HIGHEST TRUST: Lines marked "USER CONFIRMED" — use these verbatim or lightly rewrite',
-          '2. MEDIUM TRUST: Original resume text (SOURCE POSITIONS above) — reframe for the target role but preserve facts',
+          '2. MEDIUM TRUST: Original resume text (SOURCE POSITION above) — reframe for the target role but preserve facts',
           '3. LOW TRUST: Lines marked "INFERRED" — use only if the user confirmed the inference',
           '4. NEVER USE: Any metric, scope, or claim not in the above three categories',
           '',
-          `## GAP STRATEGIES TO SURFACE IN EXPERIENCE\n${experienceStrategies}`,
+          `## GAP STRATEGIES TO SURFACE IN EXPERIENCE\n${ctx.experienceStrategies}`,
         ].join('\n')
       : '',
-    relevantGapEntries
-      ? `\n## GAP POSITIONING MAP (experience-targeted entries)\n${relevantGapEntries}`
+    ctx.relevantGapEntries
+      ? `\n## GAP POSITIONING MAP (experience-targeted entries)\n${ctx.relevantGapEntries}`
       : '',
-    framingEntries
-      ? `\n## EXPERIENCE FRAMING GUIDANCE (from narrative strategy)\n${framingEntries}`
+    ctx.framingEntries
+      ? `\n## EXPERIENCE FRAMING GUIDANCE (from narrative strategy)\n${ctx.framingEntries}`
       : '',
     '',
-    `## NARRATIVE NORTH STAR`,
-    `Primary narrative: ${narrative.primary_narrative}`,
-    `Positioning frame: ${input.benchmark.positioning_frame ?? 'Not set'}`,
+    '## NARRATIVE NORTH STAR',
+    `Primary narrative: ${ctx.primaryNarrative}`,
+    `Positioning frame: ${ctx.positioningFrame}`,
     '',
-    `POSITION COUNT CHECK: There are ${sourceExperience.length} positions above. Your output must include ALL ${sourceExperience.length}.`,
+    '## OUTPUT',
+    `Return JSON: { "position": { ... } } for the single role "${exp.title} at ${exp.company}".`,
   ].filter(Boolean).join('\n');
+}
 
-  const parse = (text: string): ExperienceResult | null => {
-    const parsed = repairJSON<ExperienceResult>(text);
-    if (parsed?.positions && Array.isArray(parsed.positions) && parsed.positions.length > 0) {
-      return parsed;
-    }
-    return null;
-  };
-
-  const start = Date.now();
-  logger.info({ position_count: sourceExperience.length }, 'section-writer: calling experience section');
-
-  try {
-    const response = await chatWithRetry({
-      model: RESUME_V2_WRITER_MODEL,
-      system: EXPERIENCE_SYSTEM,
-      messages: [{ role: 'user', content: userMessage }],
-      response_format: { type: 'json_object' },
-      max_tokens: 16384,
-      signal,
-    });
-
-    const result = parse(response.text);
-    if (result) {
-      logger.info({ duration_ms: Date.now() - start, position_count: result.positions.length }, 'section-writer: experience complete');
-      return result;
-    }
-
-    logger.warn({ snippet: response.text.slice(0, 300) }, 'section-writer: experience parse failed, retrying');
-
-    const retry = await chatWithRetry({
-      model: RESUME_V2_WRITER_MODEL,
-      system: RETRY_SYSTEM,
-      messages: [{ role: 'user', content: `${EXPERIENCE_SYSTEM}\n\n${userMessage}` }],
-      response_format: { type: 'json_object' },
-      max_tokens: 16384,
-      signal,
-    });
-
-    const retryResult = parse(retry.text);
-    if (retryResult) {
-      logger.info({ duration_ms: Date.now() - start }, 'section-writer: experience complete (retry)');
-      return retryResult;
-    }
-  } catch (error) {
-    if (shouldRethrowForAbort(error, signal)) throw error;
-    logger.warn(
-      { error: error instanceof Error ? error.message : String(error) },
-      'section-writer: experience LLM call failed, using deterministic fallback',
-    );
-  }
-
-  // Deterministic fallback: pass through original bullets with is_new=false
-  const fallbackPositions: ExperiencePositionRaw[] = sourceExperience.map((exp) => ({
+function sourcePositionFallback(exp: SourcePosition): ExperiencePositionRaw {
+  return {
     company: exp.company,
     title: exp.title,
     start_date: exp.start_date,
@@ -1144,10 +1115,150 @@ async function callExperienceSection(
       evidence_found: b,
       confidence: 'strong' as const,
     })),
-  }));
+  };
+}
 
-  logger.info({ duration_ms: Date.now() - start }, 'section-writer: experience fallback used');
-  return { positions: fallbackPositions };
+/**
+ * Write ONE position. Wrapped in its own 90-second abort signal so a stuck call
+ * doesn't hold up the parallel batch. Single retry with the strict JSON system
+ * prompt; on parse failure or provider error, falls back to source bullets for
+ * this role only (other roles still get LLM-authored output).
+ */
+async function callSinglePosition(
+  exp: SourcePosition,
+  ctx: SharedExperienceContext,
+  signal?: AbortSignal,
+): Promise<ExperiencePositionRaw> {
+  const userMessage = buildSinglePositionMessage(exp, ctx);
+
+  const parse = (text: string): ExperiencePositionRaw | null => {
+    const parsed = repairJSON<{ position?: ExperiencePositionRaw; positions?: ExperiencePositionRaw[] }>(text);
+    if (parsed?.position && typeof parsed.position === 'object' && !Array.isArray(parsed.position)) {
+      return parsed.position;
+    }
+    // Tolerate legacy { positions: [one] } shape in case the model ignores the new schema
+    if (parsed?.positions && Array.isArray(parsed.positions) && parsed.positions.length > 0) {
+      return parsed.positions[0] ?? null;
+    }
+    return null;
+  };
+
+  const { signal: combinedSignal, cleanup } = createCombinedAbortSignal(signal, PER_POSITION_TIMEOUT_MS);
+  const start = Date.now();
+
+  try {
+    const response = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
+      system: EXPERIENCE_SYSTEM,
+      messages: [{ role: 'user', content: userMessage }],
+      response_format: { type: 'json_object' },
+      max_tokens: 4096,
+      signal: combinedSignal,
+    });
+
+    const result = parse(response.text);
+    if (result) {
+      logger.info(
+        { duration_ms: Date.now() - start, company: exp.company, bullets: result.bullets?.length ?? 0 },
+        'section-writer: single position complete',
+      );
+      return result;
+    }
+
+    logger.warn(
+      { company: exp.company, snippet: response.text.slice(0, 200) },
+      'section-writer: single position parse failed, retrying',
+    );
+
+    const retry = await chatWithRetry({
+      model: RESUME_V2_WRITER_MODEL,
+      system: RETRY_SYSTEM,
+      messages: [{ role: 'user', content: `${EXPERIENCE_SYSTEM}\n\n${userMessage}` }],
+      response_format: { type: 'json_object' },
+      max_tokens: 4096,
+      signal: combinedSignal,
+    });
+
+    const retryResult = parse(retry.text);
+    if (retryResult) {
+      logger.info(
+        { duration_ms: Date.now() - start, company: exp.company },
+        'section-writer: single position complete (retry)',
+      );
+      return retryResult;
+    }
+
+    logger.warn(
+      { company: exp.company },
+      'section-writer: single position retry unparseable — source passthrough',
+    );
+    return sourcePositionFallback(exp);
+  } finally {
+    cleanup();
+  }
+}
+
+/**
+ * Parallelized experience writer.
+ *
+ * Prior implementation: one LLM call with all N positions in the payload, 16K
+ * max_tokens, regularly timing out at 60s on 8+ position resumes.
+ *
+ * Now: one LLM call per position via `Promise.all`. Each call runs with a 90s
+ * abort signal. Per-position 4K max_tokens is ample for one role. Wall time is
+ * bounded by the slowest position (~5-10s typical, ~15s worst case) instead of
+ * summing. A single-position failure falls back to source bullets for that role
+ * only — it does not break the other parallel calls.
+ *
+ * Trade-off: we lose the prior "write each role aware of every other role" prompt
+ * coherence. Cross-role dedup relied on by the old prompt (e.g. "NEVER use 'Led'
+ * more than once in the entire section") now becomes best-effort within-role.
+ * The accomplishments section still runs globally and handles the most important
+ * cross-role decisions. Post-processing in agent.ts (ensureBulletMetadata,
+ * deterministicRequirementMatch, applySectionPlanning) is unchanged.
+ */
+async function callExperienceSection(
+  input: ResumeWriterInput,
+  usedEvidence: string[],
+  accomplishmentTexts: string[],
+  signal?: AbortSignal,
+): Promise<ExperienceResult> {
+  const sourceExperience = getAuthoritativeSourceExperience(input.candidate);
+
+  if (sourceExperience.length === 0) {
+    return { positions: [] };
+  }
+
+  const ctx = buildSharedExperienceContext(input, usedEvidence, accomplishmentTexts);
+
+  const start = Date.now();
+  logger.info(
+    { position_count: sourceExperience.length },
+    'section-writer: calling experience section (parallel per-position)',
+  );
+
+  const positions = await Promise.all(
+    sourceExperience.map((exp) =>
+      callSinglePosition(exp, ctx, signal).catch((err) => {
+        if (shouldRethrowForAbort(err, signal)) throw err;
+        logger.warn(
+          {
+            company: exp.company,
+            title: exp.title,
+            error: err instanceof Error ? err.message : String(err),
+          },
+          'section-writer: single position LLM call failed — source passthrough for this role',
+        );
+        return sourcePositionFallback(exp);
+      }),
+    ),
+  );
+
+  logger.info(
+    { duration_ms: Date.now() - start, position_count: positions.length },
+    'section-writer: experience complete (parallel)',
+  );
+  return { positions };
 }
 
 // ─── Derive selected accomplishment targets ──────────────────────────

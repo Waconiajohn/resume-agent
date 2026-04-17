@@ -1,5 +1,23 @@
 # Changelog — Resume Agent
 
+## 2026-04-17 — Parallelize resume experience writer per position
+**Sprint:** Production Readiness | **Story:** Experience section LLM timeout
+**Summary:** Replaced the single "rewrite all N positions" LLM call with one call per position via `Promise.all`. Eliminates the 60-second timeout on 8+ position resumes and keeps total wall time bounded by the slowest position (~5–15s) instead of summing.
+
+### Changes Made
+- `server/src/agents/resume-v2/resume-writer/section-writer.ts` —
+  - `callExperienceSection` now fans out one LLM call per source position using `Promise.all`. Each call has a 90-second per-call abort signal (up from the provider-level 60s observed timeout) via the existing `createCombinedAbortSignal` helper. Per-position `max_tokens` dropped from 16384 to 4096 since each call writes one role.
+  - Added helpers `buildSharedExperienceContext` (shared cross-role context built once), `buildSinglePositionMessage` (per-role user message), `callSinglePosition` (single LLM call + retry + per-role fallback), and `sourcePositionFallback` (source-bullet passthrough if a specific role's LLM call fails or its response is unparseable — other parallel roles still get LLM-authored output).
+  - Modified `EXPERIENCE_SYSTEM` to scope guidance to ONE role: removed "every position must appear / count them" language, changed STEP 2 from cross-role mapping to per-role mapping, loosened STEP 4 verb dedup to within-role, and changed the OUTPUT FORMAT from `{ positions: [...] }` to `{ position: {...} }`. Parser tolerates the legacy array shape just in case.
+
+### Decisions Made
+- Kept the overall `callExperienceSection` signature (input/output shapes) identical so all post-processing in `agent.ts` (`ensureBulletMetadata`, `deterministicRequirementMatch`, `applySectionPlanning`, `sanitizeDraftForDisplay`) runs unchanged.
+- Traded the prior cross-role prompt coherence (e.g. "NEVER use 'Led' more than once across the entire section") for reliability. The accomplishments section still runs globally and handles the highest-stakes cross-role choices; within-role verb dedup still works. Net-negative AI-speak risk judged acceptable given the timeouts it replaces.
+- 90s per-call timeout at the section-writer layer is an upper bound. If the underlying provider (e.g. Vertex at `chatTimeoutMs: 60_000`) enforces a tighter timeout internally, that still fires first — tracked as follow-up if it bites.
+
+### Known Issues
+- No unit tests added for the parallel path. The prior test file (if any) was for the monolithic call shape; deferred to a follow-up along with the provider-timeout harmonization.
+
 ## 2026-04-17 — Vertex AI service account auth via JWT
 **Sprint:** Production Readiness | **Story:** Vertex auth without gcloud CLI
 **Summary:** Rewrote `getVertexAccessToken` to mint access tokens from a `GOOGLE_APPLICATION_CREDENTIALS` service account key via JWT + OAuth2 token exchange, so Vertex works in environments without the gcloud CLI.
