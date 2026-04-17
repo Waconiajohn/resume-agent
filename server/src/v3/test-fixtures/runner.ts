@@ -21,8 +21,10 @@ import {
   readFileSync,
 } from 'node:fs';
 import { resolve, join, extname, basename } from 'node:path';
+import yaml from 'js-yaml';
 import { createV3Logger } from '../observability/logger.js';
 import { runPipeline } from '../pipeline.js';
+import { slugifyFilename } from './slug.js';
 import type { PipelineInput, PipelineResult } from '../types.js';
 
 const logger = createV3Logger('fixtures');
@@ -47,14 +49,24 @@ const SUPPORTED_EXTS = new Set(['.txt', '.md', '.docx', '.pdf']);
 interface CliOptions {
   only?: string;
   promptVariant?: string;
+  filters: Record<string, string>;        // --filter category=executive -> { category: "executive" }
   fixturesRoot: string;
   snapshotsRoot: string;
+}
+
+interface FixtureMeta {
+  name: string;
+  file: string;
+  category?: string;
+  characteristics?: Record<string, unknown>;
+  notes?: string;
 }
 
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
     fixturesRoot: FIXTURES_ROOT,
     snapshotsRoot: SNAPSHOTS_ROOT,
+    filters: {},
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -66,6 +78,10 @@ function parseArgs(argv: string[]): CliOptions {
       options.promptVariant = requireValue(argv, ++i, '--prompt-variant');
     } else if (arg.startsWith('--prompt-variant=')) {
       options.promptVariant = arg.slice('--prompt-variant='.length);
+    } else if (arg === '--filter') {
+      addFilter(options.filters, requireValue(argv, ++i, '--filter'));
+    } else if (arg.startsWith('--filter=')) {
+      addFilter(options.filters, arg.slice('--filter='.length));
     } else if (arg === '--fixtures-root') {
       options.fixturesRoot = resolve(requireValue(argv, ++i, '--fixtures-root'));
     } else if (arg === '--snapshots-root') {
@@ -78,6 +94,20 @@ function parseArgs(argv: string[]): CliOptions {
     }
   }
   return options;
+}
+
+// --filter takes "key=value" (mechanical split — not semantic).
+function addFilter(filters: Record<string, string>, spec: string): void {
+  const eq = spec.indexOf('=');
+  if (eq < 1) {
+    throw new Error(`--filter expected key=value, got "${spec}"`);
+  }
+  const key = spec.slice(0, eq).trim();
+  const value = spec.slice(eq + 1).trim();
+  if (!key || !value) {
+    throw new Error(`--filter expected key=value with non-empty sides, got "${spec}"`);
+  }
+  filters[key] = value;
 }
 
 function requireValue(argv: string[], i: number, flag: string): string {
@@ -94,7 +124,9 @@ function printUsage(): void {
       'Usage: tsx src/v3/test-fixtures/runner.ts [options]',
       '',
       'Options:',
-      '  --only <name>                run a single fixture by base name',
+      '  --only <name>                run a single fixture by slug',
+      '  --filter <key=value>         run only fixtures whose meta matches (repeatable)',
+      '                                 e.g. --filter category=executive',
       '  --prompt-variant <suffix>    load prompts from the given variant (e.g. "v2-test")',
       '  --fixtures-root <path>       override fixture directory (default: server/test-fixtures/resumes)',
       '  --snapshots-root <path>      override snapshot directory (default: server/test-fixtures/snapshots)',
@@ -109,9 +141,12 @@ function printUsage(): void {
 // -----------------------------------------------------------------------------
 
 interface Fixture {
-  name: string;        // basename without extension
+  slug: string;        // stable kebab-case identifier (fixture-01-<surname>...)
+  rawName: string;     // original filename on disk
   path: string;        // absolute path to raw file
   ext: string;         // ".docx", ".pdf", ".txt", ".md"
+  meta: FixtureMeta | null;
+  extractedPath: string | null;  // path to server/test-fixtures/resumes/extracted/<slug>.txt if present
 }
 
 // Fixtures live in <root>/raw/. The `resumes/` README and any other
@@ -132,17 +167,80 @@ function discoverFixtures(root: string): Fixture[] {
     throw new Error(`${raw} exists but is not a directory`);
   }
 
+  // Build "fixture-NN-<slug>" base names in sort order. Slugs match the ones
+  // produced by scripts/extract-fixtures.mjs, so meta/ and extracted/ paths
+  // line up.
+  const rawNames = readdirSync(raw)
+    .filter((n) => !n.startsWith('.'))
+    .filter((n) => {
+      try {
+        return statSync(join(raw, n)).isFile();
+      } catch {
+        return false;
+      }
+    })
+    .filter((n) => SUPPORTED_EXTS.has(extname(n).toLowerCase()))
+    .sort((a, b) => a.localeCompare(b));
+
+  const metaDir = join(root, 'meta');
+  const extractedDir = join(root, 'extracted');
   const out: Fixture[] = [];
-  for (const entry of readdirSync(raw)) {
-    if (entry.startsWith('.')) continue;
-    const abs = join(raw, entry);
-    if (!statSync(abs).isFile()) continue;
-    const ext = extname(entry).toLowerCase();
-    if (!SUPPORTED_EXTS.has(ext)) continue;
-    out.push({ name: basename(entry, ext), path: abs, ext });
-  }
-  out.sort((a, b) => a.name.localeCompare(b.name));
+
+  rawNames.forEach((rawName, idx) => {
+    const n = String(idx + 1).padStart(2, '0');
+    const slug = `fixture-${n}-${slugifyFilename(rawName)}`;
+    const path = join(raw, rawName);
+    const ext = extname(rawName).toLowerCase();
+    const metaPath = join(metaDir, `${slug}.yaml`);
+    const extractedPath = join(extractedDir, `${slug}.txt`);
+    out.push({
+      slug,
+      rawName,
+      path,
+      ext,
+      meta: loadMeta(metaPath),
+      extractedPath: existsSync(extractedPath) ? extractedPath : null,
+    });
+  });
+
   return out;
+}
+
+function loadMeta(metaPath: string): FixtureMeta | null {
+  if (!existsSync(metaPath)) return null;
+  try {
+    const raw = readFileSync(metaPath, 'utf8');
+    const parsed = yaml.load(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(`meta file did not parse as an object: ${metaPath}`);
+    }
+    return parsed as FixtureMeta;
+  } catch (err) {
+    // Fail loud — silent parse errors would mask drift in the corpus metadata.
+    throw new Error(
+      `failed to load meta file ${metaPath}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+// Returns true if the fixture's meta satisfies every filter key=value pair.
+// Mechanical: we look up `filter[key]` in meta.characteristics[key] OR
+// meta.category, and compare string-equal.
+function matchesFilters(fixture: Fixture, filters: Record<string, string>): boolean {
+  if (Object.keys(filters).length === 0) return true;
+  const meta = fixture.meta;
+  for (const [key, value] of Object.entries(filters)) {
+    let actual: unknown;
+    if (key === 'category') {
+      actual = meta?.category;
+    } else if (meta?.characteristics && key in meta.characteristics) {
+      actual = meta.characteristics[key];
+    } else {
+      actual = undefined;
+    }
+    if (String(actual) !== value) return false;
+  }
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -159,7 +257,7 @@ interface FixtureOutcome {
 }
 
 async function runFixture(fixture: Fixture, options: CliOptions): Promise<FixtureOutcome> {
-  const snapshotDir = join(options.snapshotsRoot, fixture.name);
+  const snapshotDir = join(options.snapshotsRoot, fixture.slug);
   mkdirSync(snapshotDir, { recursive: true });
 
   const input = buildPipelineInput(fixture);
@@ -212,12 +310,13 @@ async function runFixture(fixture: Fixture, options: CliOptions): Promise<Fixtur
 }
 
 function buildPipelineInput(fixture: Fixture): PipelineInput {
-  // Phase 1: we don't actually read the file here — the extract stage will
-  // handle it in Phase 2. We pass through enough context for runPipeline to
-  // dispatch to the extract stub, which throws NotImplementedError.
+  // Phase 2: read the raw file into a Buffer so Stage 1 can extract it
+  // properly. The job description stays empty — Phase 4 wires in paired JDs.
+  const buffer = readFileSync(fixture.path);
   return {
     resume: {
-      filename: `${fixture.name}${fixture.ext}`,
+      buffer,
+      filename: fixture.rawName,
     },
     jobDescription: {
       text: '',
@@ -255,10 +354,20 @@ export async function runRunner(argv: string[] = process.argv.slice(2)): Promise
   }
 
   const all = discoverFixtures(options.fixturesRoot);
-  const fixtures = options.only ? all.filter((f) => f.name === options.only) : all;
 
+  // Apply --only (slug match), then --filter (meta match). Both optional.
+  let fixtures = options.only
+    ? all.filter((f) => f.slug === options.only)
+    : all;
   if (options.only && fixtures.length === 0) {
     throw new Error(`--only "${options.only}" matched no fixtures in ${options.fixturesRoot}`);
+  }
+
+  fixtures = fixtures.filter((f) => matchesFilters(f, options.filters));
+  if (Object.keys(options.filters).length > 0 && fixtures.length === 0) {
+    throw new Error(
+      `--filter ${JSON.stringify(options.filters)} matched no fixtures in ${options.fixturesRoot}`,
+    );
   }
 
   const outcomes: FixtureOutcome[] = [];
@@ -285,25 +394,42 @@ function printSummary(summary: RunnerSummary): void {
   lines.push(
     `${summary.found} fixtures found, ${summary.passed} passed, ${summary.failed} failed, ${summary.drifted} drifted, ${summary.fresh} new`,
   );
-  for (const outcome of summary.outcomes) {
-    switch (outcome.status) {
-      case 'passed':
-        lines.push(`  ✓ ${outcome.fixture.name}`);
-        break;
-      case 'new':
-        lines.push(`  + ${outcome.fixture.name}  (new snapshot)`);
-        break;
-      case 'drifted':
-        lines.push(
-          `  ~ ${outcome.fixture.name}  (drifted: ${(outcome.driftedFiles ?? []).join(', ')})`,
-        );
-        break;
-      case 'failed':
-        lines.push(`  ✗ ${outcome.fixture.name}  (${outcome.error ?? 'unknown error'})`);
-        break;
+
+  if (summary.outcomes.length > 0) {
+    // Fixed-width summary table: slug | category | status
+    const rows = summary.outcomes.map((o) => ({
+      slug: o.fixture.slug,
+      category: o.fixture.meta?.category ?? '(no meta)',
+      status: o.status,
+      extra:
+        o.status === 'failed'
+          ? o.error ?? 'unknown error'
+          : o.status === 'drifted'
+            ? `drifted: ${(o.driftedFiles ?? []).join(', ')}`
+            : '',
+    }));
+    const slugW = Math.max(4, ...rows.map((r) => r.slug.length));
+    const catW = Math.max(8, ...rows.map((r) => r.category.length));
+    const statW = Math.max(6, ...rows.map((r) => r.status.length));
+    lines.push('');
+    lines.push(
+      `  ${pad('slug', slugW)}  ${pad('category', catW)}  ${pad('status', statW)}  notes`,
+    );
+    lines.push(
+      `  ${'-'.repeat(slugW)}  ${'-'.repeat(catW)}  ${'-'.repeat(statW)}  -----`,
+    );
+    for (const r of rows) {
+      lines.push(
+        `  ${pad(r.slug, slugW)}  ${pad(r.category, catW)}  ${pad(r.status, statW)}  ${r.extra}`,
+      );
     }
   }
+
   process.stdout.write(lines.join('\n') + '\n');
+}
+
+function pad(s: string, width: number): string {
+  return s.length >= width ? s : s + ' '.repeat(width - s.length);
 }
 
 // Direct-invocation guard. When launched via `tsx src/v3/test-fixtures/runner.ts`
