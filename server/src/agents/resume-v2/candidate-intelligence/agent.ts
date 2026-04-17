@@ -216,8 +216,10 @@ export async function runCandidateIntelligence(
     };
   }
 
-  // Preserve full raw text for downstream agents
-  parsed.education = salvageEducationFromResume(parsed.education, input.resume_text);
+  // Preserve full raw text for downstream agents. Salvage re-runs deterministic
+  // extraction from the raw text; re-apply the phantom filter because that
+  // extraction can pull cert lines and gap prose back into education[].
+  parsed.education = filterPhantomEducation(salvageEducationFromResume(parsed.education, input.resume_text));
   parsed.raw_text = input.resume_text;
 
   // Deterministic AI readiness fallback — ensures extraction even when the LLM misses it
@@ -262,7 +264,7 @@ function normalizeCandidateIntelligence(
 ): CandidateIntelligenceOutput | null {
   if (!parsed) return null;
 
-  const normalizedEducation = coerceEducationArray(parsed.education);
+  const normalizedEducation = filterPhantomEducation(coerceEducationArray(parsed.education));
   const mergedExperience = mergeCandidateExperienceWithSourceOutline(
     coerceExperienceArray(parsed.experience),
     sourceResumeOutline,
@@ -303,37 +305,188 @@ function normalizeCandidateIntelligence(
   };
 }
 
+// Recognized role nouns — used both by the bullet-continuation exception and
+// the "no dates + no role noun" rejection rule below. Keep in sync.
+const ROLE_NOUN_RE = /\b(manager|director|engineer|lead|head|chief|officer|president|vp|vice\s+president|specialist|architect|analyst|coordinator|supervisor|consultant|intern|associate)\b/i;
+// Finite verbs that appear in narrative prose (career-gap notes, sabbatical
+// descriptions, etc.) and almost never in a real job title.
+const NARRATIVE_VERB_RE = /\b(took|moved|continued|cared|stayed|returned|pursued|completed|earned|spent)\b/i;
+// Loose "plausible date token" check — any 4-digit 19xx/20xx year, "present",
+// or "current" is enough to treat start/end_date as parseable.
+const DATE_SHAPE_RE = /(?:19|20)\d{2}|\bpresent\b|\bcurrent\b/i;
+
 /**
  * Remove phantom experience entries produced by fragmented resume parsing.
  * Catches: contact info parsed as company names, bullet fragments parsed as titles,
- * and duplicate (company, title) combinations.
+ * parent-company umbrellas leaking through as title==company, career-gap prose
+ * parsed as job entries, and positions with no dates nor role noun.
  */
 function filterPhantomExperience(experience: CandidateExperience[]): CandidateExperience[] {
   const seen = new Set<string>();
   return experience.filter(exp => {
+    const titleTrimmed = exp.title.trim();
+    const companyTrimmed = exp.company.trim();
+
     // Reject if company looks like contact info (phone numbers, email addresses)
     if (/\(\s*\d{3}\s*\)/.test(exp.company)) return false;
     if (/@/.test(exp.company)) return false;
 
     // Reject if company is too short to be real
-    if (exp.company.trim().length < 2) return false;
+    if (companyTrimmed.length < 2) return false;
+
+    // Reject if company starts with a non-alphanumeric character (":", ";", "-", "|", etc.)
+    // The specific case this catches: the Tatiana gap note where parser left
+    // ": Tatiana took time off..." as the company field.
+    if (companyTrimmed && /^[^\w]/.test(companyTrimmed)) {
+      logger.warn(
+        { company: companyTrimmed.slice(0, 120), title: exp.title.trim() },
+        'filterPhantomExperience: rejecting company with leading punctuation',
+      );
+      return false;
+    }
+
+    // Reject sentence-shaped company (career-gap prose leaking into the
+    // company field, symmetric to the same rule on title below).
+    const companyWordCount = companyTrimmed.split(/\s+/).filter(Boolean).length;
+    if (companyWordCount >= 10 || NARRATIVE_VERB_RE.test(companyTrimmed)) {
+      logger.warn(
+        { company: companyTrimmed.slice(0, 120), wordCount: companyWordCount },
+        'filterPhantomExperience: rejecting sentence-shaped company (career-gap prose)',
+      );
+      return false;
+    }
 
     // Reject if title starts with a lowercase word — likely a sentence fragment
-    const titleTrimmed = exp.title.trim();
     if (titleTrimmed && /^[a-z]/.test(titleTrimmed)) return false;
 
     // Reject if title contains obvious bullet continuation phrases
-    if (/^(and |to |with |for |by |in |of |the |a |an )/i.test(titleTrimmed) && !/\b(manager|director|engineer|lead|head|chief|officer|president|vp|specialist|architect|analyst|coordinator|supervisor)\b/i.test(titleTrimmed)) {
+    if (/^(and |to |with |for |by |in |of |the |a |an )/i.test(titleTrimmed) && !ROLE_NOUN_RE.test(titleTrimmed)) {
       return false;
     }
 
     // Reject if title contains "string" as a word (parsing artifact)
     if (/\bstring\b/i.test(titleTrimmed)) return false;
 
+    // Reject when title equals company (parent-company umbrella leaking
+    // through the outline fallback — e.g. "U.S. Bank at U.S. Bank").
+    if (titleTrimmed && companyTrimmed && titleTrimmed.toLowerCase() === companyTrimmed.toLowerCase()) {
+      logger.warn(
+        { company: companyTrimmed, title: titleTrimmed },
+        'filterPhantomExperience: rejecting position where title equals company',
+      );
+      return false;
+    }
+
+    // Reject sentence-shaped titles (career-gap prose, not a job title)
+    const titleWordCount = titleTrimmed.split(/\s+/).filter(Boolean).length;
+    if (titleWordCount >= 10 || NARRATIVE_VERB_RE.test(titleTrimmed)) {
+      logger.warn(
+        { company: companyTrimmed, title: titleTrimmed.slice(0, 120), wordCount: titleWordCount },
+        'filterPhantomExperience: rejecting sentence-shaped title (career-gap prose)',
+      );
+      return false;
+    }
+
+    // Reject if we have neither a parseable date range NOR any recognized role noun.
+    // A legit role always carries at least one of these signals.
+    const hasDates = DATE_SHAPE_RE.test(exp.start_date ?? '') || DATE_SHAPE_RE.test(exp.end_date ?? '');
+    const hasRoleNoun = ROLE_NOUN_RE.test(titleTrimmed);
+    if (!hasDates && !hasRoleNoun) {
+      logger.warn(
+        {
+          company: companyTrimmed,
+          title: titleTrimmed,
+          start_date: exp.start_date,
+          end_date: exp.end_date,
+        },
+        'filterPhantomExperience: rejecting position with neither dates nor role noun',
+      );
+      return false;
+    }
+
     // Deduplicate by normalized (company, title) key
-    const key = `${exp.company.trim().toLowerCase()}|${titleTrimmed.toLowerCase()}`;
+    const key = `${companyTrimmed.toLowerCase()}|${titleTrimmed.toLowerCase()}`;
     if (seen.has(key)) return false;
     seen.add(key);
+
+    return true;
+  });
+}
+
+// Certification tokens that frequently bleed into education entries when the
+// source resume lists certs adjacent to the degree block. Any of these in the
+// institution or year field means the entry was captured from a cert line, not
+// a real degree — it belongs in `certifications[]`, not `education[]`.
+const CERT_TOKEN_RE = /\b(?:certified|cbda|cspo|pmp|sspo)\b|pmc-|azure\s+fundamentals|devops\s+foundations/i;
+
+/**
+ * Remove phantom education entries produced when resume text gets merged into
+ * a single block by the PDF paste. Specifically catches:
+ * - Entries whose institution or degree starts with leading punctuation
+ *   (a career-gap note like ": Tatiana took time off..." bleeding into the
+ *   institution field).
+ * - Entries where the degree or institution is sentence-shaped (10+ words
+ *   or matches `NARRATIVE_VERB_RE` from the experience filter).
+ * - Entries whose institution contains a pipe `|` — a reliable signal that a
+ *   certifications list got merged into the degree block.
+ * - Entries whose institution or year contains a certification token; those
+ *   belong in `certifications[]`.
+ */
+function filterPhantomEducation(
+  entries: CandidateIntelligenceOutput['education'],
+): CandidateIntelligenceOutput['education'] {
+  return entries.filter((entry) => {
+    const degree = (entry.degree ?? '').trim();
+    const institution = (entry.institution ?? '').trim();
+    const year = (entry.year ?? '').trim();
+
+    if (degree && /^[^\w]/.test(degree)) {
+      logger.warn(
+        { degree: degree.slice(0, 120), institution },
+        'filterPhantomEducation: rejecting degree with leading punctuation',
+      );
+      return false;
+    }
+    if (institution && /^[^\w]/.test(institution)) {
+      logger.warn(
+        { degree, institution: institution.slice(0, 120) },
+        'filterPhantomEducation: rejecting institution with leading punctuation',
+      );
+      return false;
+    }
+
+    const degreeWordCount = degree.split(/\s+/).filter(Boolean).length;
+    if (degreeWordCount >= 10 || NARRATIVE_VERB_RE.test(degree)) {
+      logger.warn(
+        { degree: degree.slice(0, 120), wordCount: degreeWordCount },
+        'filterPhantomEducation: rejecting sentence-shaped degree',
+      );
+      return false;
+    }
+    const institutionWordCount = institution.split(/\s+/).filter(Boolean).length;
+    if (institutionWordCount >= 10 || NARRATIVE_VERB_RE.test(institution)) {
+      logger.warn(
+        { institution: institution.slice(0, 120), wordCount: institutionWordCount },
+        'filterPhantomEducation: rejecting sentence-shaped institution',
+      );
+      return false;
+    }
+
+    if (institution.includes('|')) {
+      logger.warn(
+        { institution: institution.slice(0, 120) },
+        'filterPhantomEducation: rejecting institution containing pipe (merged certifications list)',
+      );
+      return false;
+    }
+
+    if (CERT_TOKEN_RE.test(institution) || CERT_TOKEN_RE.test(year)) {
+      logger.warn(
+        { degree, institution: institution.slice(0, 120), year },
+        'filterPhantomEducation: rejecting entry with certification token (belongs in certifications[])',
+      );
+      return false;
+    }
 
     return true;
   });

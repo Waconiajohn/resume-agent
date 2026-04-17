@@ -1,5 +1,217 @@
 # Changelog — Resume Agent
 
+## 2026-04-17 — LLM-derived discipline + remove name-led summary framing
+**Sprint:** Production Readiness | **Stories:** Wrong-discipline opener on banking resume; bio-voice summary
+**Summary:** Two independent fixes. (1) Replaced the keyword-regex `deriveSourceBackedDiscipline` (which returned "manufacturing operations" for a banking candidate because "operations" appeared several times) with a small LLM call, precomputed in parallel with section writing and cached per-input for synchronous access from the deterministic-fallback chain. (2) Removed the name-led framing option from the summary prompt — it was producing third-person narrator prose ("Tatiana eliminated 90%...") that reads like a bio, not a resume. Summary is now active-voice only.
+
+### Changes Made
+- `server/src/agents/resume-v2/resume-writer/agent.ts` —
+  - Imported `resumeV2Llm` and `RESUME_V2_WRITER_MODEL`.
+  - Added module-scoped `disciplineCache: WeakMap<ResumeWriterInput, string>`. WeakMap keyed on the input object reference so entries GC with the pipeline run.
+  - Added `async precomputeDiscipline(input, signal)` — one `resumeV2Llm.chat` call with a 3000-char source excerpt + target role, 32 max_tokens, temperature 0.2, system prompt that demands "ONLY a 2-4 word discipline phrase" and empty string if ambiguous. Validates the response (1-6 words, ≤60 chars) before caching; caches empty string on invalid/error. Rethrows on abort; absorbs all other errors with a WARN log.
+  - `deriveSourceBackedDiscipline` is now a one-line sync reader of the cache (returns `''` if not populated). The deterministic-fallback chain (`sanitizeDraftForDisplay` → `buildDeterministicResumeDraft` → `buildExecutiveSummary` → `buildSourceBackedIdentityLine` → here) can stay synchronous.
+  - Wired the precompute into `runResumeWriter`: kicked off as a Promise in parallel with `runSectionBySection` and awaited before any post-processing that might hit the deterministic draft path.
+- `server/src/agents/resume-v2/resume-writer/section-writer.ts` —
+  - Summary HARD CONSTRAINTS now bans BOTH pronouns AND name-led narrator voice. Examples updated to show two GOOD active-voice variants.
+  - Removed the `CANDIDATE FIRST NAME` line from the user message and the `candidateFirstName` derivation — the prompt no longer offers that framing option.
+
+### Decisions Made
+- **Pre-computed rather than lazy-async** because the caller chain of `deriveSourceBackedDiscipline` is entirely synchronous (`sanitizeDraftForDisplay` and everything it calls). Propagating async up would have touched 4+ functions and several callers. Pre-compute + cache is a small, surgical change.
+- **Parallel with section writing** because both use `resumeV2Llm` but the discipline prompt is tiny (≤50 tokens of output, short system prompt). Adds near-zero latency over the serial case.
+- **Cache miss returns empty string**, not a default like "executive leadership". `buildSourceBackedIdentityLine` already handles empty discipline by falling through to `${currentTitle} with ${years} of leadership experience`, which is the correct generic behavior when discipline is unknown.
+- Dropped the old regex branches entirely — every branch was guessing based on single-word keyword hits and would continue to produce incorrect disciplines for candidates whose resume mentions multiple industry terms.
+
+### Known Issues
+- If the LLM fails repeatedly, the deterministic summary reads "X with 20+ years of leadership experience" (no discipline). That's the documented graceful-degradation behavior — better than the prior "manufacturing operations" misfire on a finance resume.
+
+## 2026-04-17 — Close outline-path phantom leak + skip abbreviations in trim
+**Sprint:** Production Readiness | **Stories:** Outline-path phantom leak; "evaluating build vs." false truncation
+**Summary:** Two targeted fixes. (1) Mirror the phantom-experience filter onto `SourceResumePosition[]` in the deterministic outline parser so gap-note/umbrella phantoms no longer slip in through `mergeCandidateExperienceWithSourceOutline`. (2) Teach `trimConcatenationArtifacts` to skip known abbreviations (`vs.`, `etc.`, `i.e.`, `e.g.`, `u.s.`, etc.) so legitimate mid-sentence abbreviations don't trigger false truncation.
+
+### Root cause (leak)
+`filterPhantomExperience` only runs on `candidate.experience` (LLM-parsed array). `getAuthoritativeSourceExperience` merges that with `source_resume_outline.positions` via `mergeCandidateExperienceWithSourceOutline`. The outline's own phantom position (e.g. the Tatiana gap note that `extractStructuredPositions` picked up as a position-shaped entry with leading colon) had no matching LLM entry (because the LLM phantom was filtered), so the merge emitted it as a standalone merged entry — and downstream `trimConcatenationArtifacts` even logged a bullet truncation with `company: ": Tatiana took time off..."`. Confirmed by monitor output.
+
+### Root cause (false trim)
+`trimConcatenationArtifacts` regex `/\.\s+[a-z]/` matched on `"... build vs. and then..."` and truncated after `vs.`. Abbreviations legitimately end with period + lowercase continuation.
+
+### Changes Made
+- `server/src/agents/resume-v2/source-resume-outline.ts` —
+  - Added `logger` import and three constants: `OUTLINE_NARRATIVE_VERB_RE`, `OUTLINE_ROLE_NOUN_RE`, `OUTLINE_DATE_SHAPE_RE` (mirrors of the same patterns in `candidate-intelligence/agent.ts`).
+  - Added `filterPhantomOutlinePositions(positions)` with six WARN-logged rejection rules: contact-info-shaped company, leading-punctuation company, sentence-shaped company, lowercase-starting title, `title === company`, sentence-shaped title, and "no dates and no role noun." Kept the original "at least one content field" gate as the final check.
+  - Replaced the final `return positions.filter(...)` in `extractStructuredPositions` with `return filterPhantomOutlinePositions(positions)`.
+- `server/src/agents/resume-v2/resume-writer/agent.ts:trimConcatenationArtifacts` —
+  - Replaced single-pass `text.search(CONCAT_BOUNDARY_RE)` with a global regex + `exec()` loop so the function can skip past matches that land at known abbreviations.
+  - Added `ABBREV_BEFORE_PERIOD_RE`: `/(?:^|[^a-z])(vs|etc|inc|ltd|co|corp|dr|mr|mrs|ms|no|i\.e|e\.g|u\.s)$/i`. Anchored to word-boundary-or-start so `vs.` matches but `devs.` doesn't. Handles multi-dot abbreviations like `i.e.` / `e.g.` / `u.s.` by matching the core letters + internal period (the outer period is the one being tested).
+  - If the match is an abbreviation, the loop continues to the next match. If no non-abbreviation boundary exists, returns the text unchanged.
+
+### Decisions Made
+- **Option B (mirror in outline) over Option A (import predicates from agent.ts).** Module-boundary-correct — `source-resume-outline.ts` is lower-level than `agent.ts` and is already imported by it. Reversing the dependency would be backwards. Duplicated constants tracked by convention (both files list the same six words; if the set ever changes, update both).
+- Did NOT add an explicit word-boundary check after the period in the abbreviation regex (like requiring a following lowercase). The caller's `CONCAT_BOUNDARY_RE` already guarantees `\.\s+[a-z]` is what matched — we're just deciding whether to keep scanning or stop.
+
+### Known Issues
+- None observed. Expected effect on next Tatiana run: 5 positions (4 U.S. Bank sub-roles + real standalone roles), no `": Tatiana took..."` company rows, "evaluating build vs. ..." bullet rendered in full.
+
+## 2026-04-17 — Trim concatenation artifacts in bullets and scope statements
+**Sprint:** Production Readiness | **Story:** Bullets rendering "X. and leading Y" / "X. by implementing Y"
+**Summary:** Added `trimConcatenationArtifacts` post-processing step that truncates bullet text, scope statements, and accomplishments at the first `period + space + lowercase-letter` boundary — a reliable signal that two source fragments were joined without cleanup. Runs before `deduplicateWithinRole` so truncated siblings can collapse.
+
+### Root cause
+Source resume fragments were being assembled into single bullets by the LLM or by outline-to-bullet merging, producing strings like:
+- "Improved customer satisfaction through data-driven analysis of feedback. and leading an effort to improve customer communications regarding branch changes."
+- "Recovered a delayed IT project and delivered it within three months. by implementing Agile methods..."
+
+A period followed by space followed by a lowercase word (almost always a continuation like `and`, `by`, `through`, `with`, `for`) is not natural English prose — it indicates two sentences were concatenated from separate source fragments and the second lowercase opener is a conjunction/preposition that was meant to extend the first sentence.
+
+### Changes Made
+- `server/src/agents/resume-v2/resume-writer/agent.ts` —
+  - Added `trimConcatenationArtifacts(draft)` — iterates `professional_experience[].scope_statement`, `professional_experience[].bullets[].text`, and `selected_accomplishments[].content`. For each, searches for `/\.\s+[a-z]/` and, if found, slices the string to include only up to and including the period. WARN-logs every truncation with before/after text truncated to 160 chars.
+  - Wired into the post-processing chain in `runResumeWriter` between `ensureDatePopulation` and `deduplicateWithinRole` — runs after bullets are finalized in shape but before dedup, so trimmed text can match near-duplicate siblings.
+
+### Decisions Made
+- Used the simpler "truncate at first artifact" approach per task spec, rather than the alternative (replace period with space and re-lowercase). Truncation loses a bit of content but never produces an awkward run-on; the lost continuation is typically redundant anyway (`"...feedback. and leading an effort..."` — the "and leading an effort" was a source fragment that didn't belong in this bullet).
+- Did NOT apply the truncation to `evidence_found` fields. Those are for verification/traceback, not for display, and legitimately can span multi-sentence source quotes.
+- Did NOT tune the regex to exclude specific abbreviation patterns (`e.g.`, `i.e.`, `U.S.`). In practice executive-bullet style should avoid those anyway, and the false-positive cost (losing a short abbreviation-led tail clause) is far lower than the current false-negative cost of rendering joined-sentence mangles.
+
+### Known Issues
+- If a legitimate bullet ends with an abbreviation period followed by a lowercase word (e.g. "...in the U.S. market"), the trim will cut it to "...in the U.S." Rare in practice and easy to revisit if observed.
+
+## 2026-04-17 — Filter phantom education entries (gap prose + merged cert lists)
+**Sprint:** Production Readiness | **Story:** Tatiana Bachelor's entry rendering with gap note + all certifications merged in
+**Summary:** Added `filterPhantomEducation` in candidate-intelligence, applied at both education-normalization points (`normalizeCandidateIntelligence` and post-`salvageEducationFromResume`). Catches four failure modes: leading punctuation, sentence-shaped degree/institution, pipe-containing institution (merged cert list), and cert-token contamination.
+
+### Root cause
+The LLM and the deterministic education extractor both tried to cope with a PDF paste where the degree block, a career-gap note, and the certifications list had been collapsed into adjacent lines with no section separator. Output was an education entry like `{ degree: "Bachelor of Science, Business", institution: "University of Minnesota, Carlson School of Management 2024-Present: Tatiana took time off... Certified Business Data Analyst (CBDA with SQL), IIBA (2025) | Certified Scrum Product Owner..." }`. Nothing downstream was filtering by content quality; existing `dedupeEducationEntries` only dedup'd by institution/degree key.
+
+### Changes Made
+- `server/src/agents/resume-v2/candidate-intelligence/agent.ts` —
+  - Added `CERT_TOKEN_RE`: `/\b(?:certified|cbda|cspo|pmp|sspo)\b|pmc-|azure\s+fundamentals|devops\s+foundations/i`. Handles both word-boundary tokens and the hyphenated `PMC-` prefix (which `\b` wouldn't match cleanly).
+  - Added `filterPhantomEducation(entries)` — five rejection rules, each WARN-logged with the offending field truncated to 120 chars:
+    1. `degree` starts with non-word char (`:`, `;`, `-`, `|`, etc.)
+    2. `institution` starts with non-word char
+    3. `degree` is sentence-shaped (≥10 words OR matches `NARRATIVE_VERB_RE`)
+    4. `institution` is sentence-shaped (same rule)
+    5. `institution` contains `|` (merged cert list signal)
+    6. `institution` or `year` contains a `CERT_TOKEN_RE` match (entry belongs in `certifications[]`)
+  - Applied in `normalizeCandidateIntelligence`: `filterPhantomEducation(coerceEducationArray(parsed.education))` catches LLM-authored phantoms.
+  - Applied in `runCandidateIntelligence` after `salvageEducationFromResume`: the salvage step re-runs deterministic extraction from raw text and can re-introduce the same phantoms, so the filter runs again.
+
+### Decisions Made
+- Reused the `NARRATIVE_VERB_RE` constant from the experience filter rather than introducing a second copy. If the prose-detection verb list ever changes, both filters track together.
+- Did NOT scan `degree` for cert tokens per the task spec ("year or institution"). A short cert-shaped degree like `"PMP Certified"` is rare in practice and the sentence-shape + leading-punct rules catch most failure modes anyway.
+- Left `coerceEducationArray` and `extractEducationFromText` untouched. The filter is post-processing, not a parsing rewrite — intent is minimal surface area until we know whether fuzzy extraction problems go beyond this one resume.
+
+### Known Issues
+- The filter runs after dedup, so if a phantom is the ONLY entry for a given degree level, the candidate will show no education for that level. That's the correct behavior (better empty than wrong) but it's worth noting the LLM prompt could be tightened upstream too.
+
+## 2026-04-17 — Ban gendered pronouns in executive summary
+**Sprint:** Production Readiness | **Story:** Tatiana summary using "He eliminated..." and "His approach..."
+**Summary:** Added an explicit hard rule to the summary section system prompt forbidding any personal pronoun referring to the candidate (he/she/his/her/him/they/their/them). The LLM was guessing gender from names and getting it wrong. Prompt now directs either active-voice framing or name-led framing, with examples of both. Candidate's first name is now passed in the user message so the name-led variant is workable.
+
+### Changes Made
+- `server/src/agents/resume-v2/resume-writer/section-writer.ts` —
+  - `SUMMARY_SYSTEM` HARD CONSTRAINTS: added a new rule forbidding personal pronouns referring to the candidate, with BAD / GOOD (active voice) / ALSO GOOD (name-led) examples covering exactly the failure mode observed on Tatiana's resume.
+  - `callSummarySection` user message: derives `candidateFirstName` from `candidate.contact.name` and prepends a `CANDIDATE FIRST NAME (...)` line so the name-led framing option from the system prompt has the data it needs. Line is omitted if no name is available.
+
+### Decisions Made
+- Banned ALL third-person personal pronouns referring to the candidate, not just `he/she/his/her`. The task spec listed the gendered pair but `they/their/them` in a solo-executive summary reads oddly and is an easy path for the LLM to take as a workaround (seen in other genderless-framing systems). Safer to blanket-ban and require either active voice or the name.
+- Did not touch the other four section prompts (accomplishments, competencies, custom sections, experience). Those are already expressed as standalone action-verb lines or position-specific bullets that don't naturally invite pronouns. If pronoun leakage shows up in them, we'll mirror the rule later.
+
+### Known Issues
+- None.
+
+## 2026-04-17 — Mirror phantom filter rules onto company field
+**Sprint:** Production Readiness | **Story:** Tatiana gap note with narrative prose in company
+**Summary:** Extended `filterPhantomExperience` with two more rejection rules that run against the `company` field. The prior pass only checked `title`, so a career-gap entry whose prose ended up in `company` slipped through.
+
+### Root cause
+Post-umbrella-fix run (session `b2ef2d55-63e6-4b51-9f17-e02431a7a9b1`) still emitted a position with `company: ": Tatiana took time off to care for a parent, she moved, continued to complete her Master's Degree..."`. The three Fix 2 rules (`title === company`, sentence-shaped `title`, no-dates-nor-role-noun in `title`) all passed because the narrative prose was on `company`, not `title`.
+
+### Changes Made
+- `server/src/agents/resume-v2/candidate-intelligence/agent.ts:filterPhantomExperience` — added two new rejection rules, placed right after the existing "company too short" check:
+  1. **Leading-punctuation company:** reject when `company.trim()` starts with any non-word character (`:`, `;`, `-`, `|`, etc.). Real companies never start with punctuation; this specifically catches the Tatiana pattern where parser left a leading colon.
+  2. **Sentence-shaped company:** reject when company has ≥10 words OR matches the existing `NARRATIVE_VERB_RE` (`took|moved|continued|cared|stayed|returned|pursued|completed|earned|spent`). Mirrors the title-side rule introduced in the previous commit.
+- Both rules log at WARN with company text truncated to 120 chars.
+
+### Decisions Made
+- Did NOT mirror the "no dates + no role noun" rule onto company. That rule is title-specific by design — a legitimate company name doesn't contain a role noun, so applying it to `company` would be a false-positive factory.
+- Placed the new rules before any title-based rules so the rejection reason in the WARN log always identifies the true failure mode (company shape) rather than a downstream symptom.
+
+### Known Issues
+- If the LLM produces a legitimate company whose legal name genuinely includes 10+ words, it would be falsely rejected. Not plausible in practice; deferred.
+
+## 2026-04-17 — Fix phantom position parsing (umbrella headers + gap prose)
+**Sprint:** Production Readiness | **Story:** Candidate Intelligence ingesting parent-company headers and career-gap notes as job entries
+**Summary:** Two targeted fixes in the Candidate Intelligence parser. (1) Detect parent-company umbrella headers in the deterministic outline and attach them to sub-roles instead of emitting them as standalone positions. (2) Strengthen `filterPhantomExperience` with three additional rejection rules and WARN-level logs so we can see what's being filtered.
+
+### Root causes identified by audit
+- `source-resume-outline.ts:parsePositionHeader` treated ANY dated line inside the experience section as a role boundary via `looksLikeRoleContext`. A header like `U.S. Bank | Minneapolis, MN | 2014 – 2024` sitting above three sub-role entries was being emitted as a 4th position — with both `company` and `title` falling back to `"U.S. Bank"` because the line carries no `TITLE_HINT_RE` keyword.
+- `agent.ts:filterPhantomExperience` only checked for contact-info-shaped companies, lowercase-start titles, and bullet-continuation phrases. It accepted narrative-prose titles like `": Tatiana took time off to care for a parent, she moved, continued to complete her Master's Degree..."` and the title-equals-company umbrella phantoms downstream.
+
+### Changes Made
+- `server/src/agents/resume-v2/source-resume-outline.ts` —
+  - Added `looksLikeUmbrellaHeader(line, lines, index)`: line has `DATE_RANGE_RE` but no `TITLE_HINT_RE` keyword, AND the next non-bullet non-section-heading content line within 3 lines itself has `DATE_RANGE_RE`.
+  - Added `extractUmbrellaCompany(line)`: splits on `|`, skips location-shaped fragments and stray digit runs, returns the first real token.
+  - Added `shouldAdoptUmbrellaCompany(position)`: true when the sub-role's own parsed company is empty, `"prior experience"`, location-shaped, or equal to its title.
+  - Modified `extractStructuredPositions` to track an `umbrellaCompany` string that is captured on umbrella detection (no position emitted), cleared on non-experience section boundaries, and applied to any subsequent sub-role whose own header lacked a usable company.
+- `server/src/agents/resume-v2/candidate-intelligence/agent.ts` — `filterPhantomExperience` now additionally rejects:
+  1. `title.toLowerCase().trim() === company.toLowerCase().trim()` (umbrella phantoms that slip past outline detection, e.g. when the LLM produces them directly).
+  2. Sentence-shaped titles: word count ≥ 10 OR matches `/\b(took|moved|continued|cared|stayed|returned|pursued|completed|earned|spent)\b/i` (career-gap narrative prose).
+  3. Positions with neither a parseable date token (`19xx|20xx|present|current` in `start_date` or `end_date`) NOR any role noun in the title (`manager|director|engineer|lead|head|chief|officer|president|vp|vice president|specialist|architect|analyst|coordinator|supervisor|consultant|intern|associate`).
+  - Each new rejection is logged at WARN level with company/title/reason so filter behavior is visible in pipeline logs.
+  - Factored the role-noun pattern into a single `ROLE_NOUN_RE` constant shared between the existing bullet-continuation exception and the new date/role-noun rule.
+
+### Decisions Made
+- Umbrella detection is a small look-ahead (≤3 lines) rather than a full LLM-assisted structural pass. Keeps the fix inside the deterministic outline layer and avoids prompt/token changes.
+- The new `filterPhantomExperience` rules run BEFORE the dedup step so WARN logs actually fire (otherwise a phantom could be swallowed by the `(company, title)` dedup and disappear silently).
+- Did not touch the LLM prompt in `candidate-intelligence/agent.ts`. Parser-side fixes catch phantoms regardless of which path produced them (deterministic outline OR LLM).
+
+### Known Issues
+- If a parent-company umbrella is followed by sub-roles in a 2/3-line format where NO line carries a `DATE_RANGE_RE`, the umbrella detector won't fire. Not observed in current resumes; deferred.
+- The new "sentence-shaped title" rule uses a heuristic verb list. Rare legitimate titles containing those verbs (e.g. "Chief Returned Merchandise Officer") would be false-negative rejected, but none are plausible.
+
+## 2026-04-17 — Trust parallel experience writer output; stop source backfill
+**Sprint:** Production Readiness | **Story:** U.S. Bank rendering 46 bullets
+**Summary:** Added an early-continue at the top of `ensureMinimumBulletCounts` so all five source-passthrough restorers are skipped when the per-position LLM call produced any bullets. Only the true-failure case (zero LLM bullets) still backfills from source.
+
+### Root cause
+`ensureMinimumBulletCounts` was designed for the legacy sequential writer, which routinely under-produced bullets under a single 16K-token payload. It ran five coverage-restorers (direct backfill, low-density replacement, unused-draft replacement, residual coverage, duplicate coverage) that all pad drafts from raw source when draft count < source count. The new parallel per-position writer is specifically meant to consolidate — N source bullets legitimately become a smaller number of stronger ones — so those restorers now pile 38 source bullets on top of an 8-bullet LLM consolidation, producing the observed 46-bullet U.S. Bank render.
+
+### Changes Made
+- `server/src/agents/resume-v2/resume-writer/agent.ts` — Added `if ((draftExp.bullets ?? []).length >= 1) continue;` at the top of the per-position loop in `ensureMinimumBulletCounts`, before the `originalExp` lookup. Only the zero-bullet failure case falls through to the existing backfill logic (which still works unchanged for that case). Also updated the function's jsdoc to explain the new contract.
+
+### Decisions Made
+- Left the five coverage-restorer helpers (`findUncoveredSourceBulletsAndUnusedDraftIndexes`, `findResidualCoverageGaps`, `findDuplicateCoverageGaps`, `bulletPreservesProofDensity`, `bulletOverCompressesImportantSourceProof`) and `findBestDraftBulletMatch` in place. They are no longer reachable from `ensureMinimumBulletCounts` on the happy path but could be useful for the zero-bullet failure branch or future heuristics; dead-code removal is a separate concern.
+- Did not touch the parallel writer or its per-position prompt — per explicit instruction the LLM output is now trusted.
+
+### Known Issues
+- Candidate Intelligence is still parsing career gaps as positions and splitting U.S. Bank into multiple odd rows (e.g. title == company), plus branded-title garbage. Those are upstream of section-writer and tracked for the next pass.
+
+## 2026-04-17 — Fix duplicate positions after experience parallelization
+**Sprint:** Production Readiness | **Story:** Each role appearing 2-3x post-parallel
+**Summary:** Lock identity fields (company/title/start_date/end_date) from the source position in every `callSinglePosition` return value so downstream matchers don't treat LLM-paraphrased keys as "missing" and append a second source-bullet copy.
+
+### Root cause
+Parallelization meant each LLM call returned one position with LLM-authored `company`/`title` strings. Minor paraphrasing (dropped trailing period on a long gap-role company string, "U.S. Bank" at company "U.S. Bank" with title also "U.S. Bank" → real title, etc.) caused `agent.ts:ensureAllPositionsPresent` to compute a different `normalizeCompanyKey` than the source's, mark the source position as "missing," and backfill a full second copy via `buildProfessionalExperienceEntry`. A single resume showed:
+
+```
+Resume Writer: LLM dropped positions — backfilling to prevent truncation
+missing: [": Tatiana took time off...", "U.S. Bank at U.S. Bank"]
+Backfilled bullets — LLM wrote fewer than original
+  company: "U.S. Bank"  draftCount: 45  originalCount: 46  backfilled: 1
+```
+
+The 45-bullet bloat is a downstream cascade from the same cause — `ensureMinimumBulletCounts`' `.find()` using substring matching across loose identity strings.
+
+### Changes Made
+- `server/src/agents/resume-v2/resume-writer/section-writer.ts` — In `callSinglePosition`, after parsing the LLM response, overwrite `company`, `title`, `start_date`, `end_date` from the source `exp` via a `lockIdentity` helper. Applied in both the primary-parse and retry-parse success paths. LLM still owns `bullets`, `scope_statement`, and every field inside bullets; identity fields become canonical from source. `sourcePositionFallback` was already correct (it was built from `exp`).
+
+### Decisions Made
+- Considered also tightening the matcher in `ensureMinimumBulletCounts` (the loose `company includes title` substring check), but with locked identity the substring matcher stops false-firing in practice. Left as-is to keep the fix minimal per request.
+- Did not touch the parallelization itself — per-position fan-out is working correctly; the bug was entirely in how the output was reconciled with source by `agent.ts`.
+
+### Known Issues
+- If a real source resume ever has two positions with IDENTICAL `(company, title)` pairs, `ensureMinimumBulletCounts`' `sourceExperience.find()` would still only match the first — content merge would be wrong though positions would not duplicate. Unlikely in practice; deferred.
+
 ## 2026-04-17 — Parallelize resume experience writer per position
 **Sprint:** Production Readiness | **Story:** Experience section LLM timeout
 **Summary:** Replaced the single "rewrite all N positions" LLM call with one call per position via `Promise.all`. Eliminates the 60-second timeout on 8+ position resumes and keeps total wall time bounded by the slowest position (~5–15s) instead of summing.

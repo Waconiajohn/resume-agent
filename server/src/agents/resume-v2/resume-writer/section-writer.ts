@@ -121,6 +121,12 @@ If any test fails, revise that sentence before outputting.
 
 HARD CONSTRAINTS:
 - No first-person pronouns (I, my, we, our)
+- No personal pronouns referring to the candidate (he, she, his, her, him, they, their, them). We do not guess gender.
+- No name-led third-person narrator voice either — never start a sentence with the candidate's name. That reads like a bio, not a resume. Use ACTIVE VOICE exclusively: start sentences with the action verb or the identity descriptor.
+  BAD (pronoun): "He eliminated 90% of manual data input. His approach combines Lean and Six Sigma."
+  BAD (name-led narrator): "Tatiana eliminated 90% of manual data input — pairing Lean and Six Sigma to cut cycle time in regulated environments."
+  GOOD: "Eliminated 90% of manual data input. Combines Lean and Six Sigma frameworks to cut cycle time in regulated environments."
+  GOOD: "Operations executive who turns around underperforming manufacturing plants. Eliminated 90% of manual data input in the most recent role."
 - No naming the target company
 - Every metric must come from the source resume — never invent numbers
 - If career span > 20 years: say "deep expertise" not "30 years of experience"
@@ -1131,14 +1137,29 @@ async function callSinglePosition(
 ): Promise<ExperiencePositionRaw> {
   const userMessage = buildSinglePositionMessage(exp, ctx);
 
+  // Force identity fields from source so downstream matchers in agent.ts
+  // (ensureAllPositionsPresent, ensureMinimumBulletCounts, normalizeCompanyKey)
+  // see canonical company/title/dates. Without this, LLM paraphrasing of these
+  // fields causes those matchers to treat already-present positions as "missing"
+  // and append a second source-bullet copy — i.e. the same role appears 2-3x in
+  // the final output. The LLM's job here is to rewrite bullets + scope_statement;
+  // identity was never supposed to drift.
+  const lockIdentity = (pos: ExperiencePositionRaw): ExperiencePositionRaw => ({
+    ...pos,
+    company: exp.company,
+    title: exp.title,
+    start_date: exp.start_date,
+    end_date: exp.end_date,
+  });
+
   const parse = (text: string): ExperiencePositionRaw | null => {
     const parsed = repairJSON<{ position?: ExperiencePositionRaw; positions?: ExperiencePositionRaw[] }>(text);
     if (parsed?.position && typeof parsed.position === 'object' && !Array.isArray(parsed.position)) {
-      return parsed.position;
+      return lockIdentity(parsed.position);
     }
     // Tolerate legacy { positions: [one] } shape in case the model ignores the new schema
     if (parsed?.positions && Array.isArray(parsed.positions) && parsed.positions.length > 0) {
-      return parsed.positions[0] ?? null;
+      return parsed.positions[0] ? lockIdentity(parsed.positions[0]) : null;
     }
     return null;
   };

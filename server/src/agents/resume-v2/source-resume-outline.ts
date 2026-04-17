@@ -1,8 +1,16 @@
+import logger from '../../lib/logger.js';
 import type {
   CandidateExperience,
   SourceResumeOutline,
   SourceResumePosition,
 } from './types.js';
+
+// Mirror of the phantom-rejection vocabulary in candidate-intelligence/agent.ts.
+// Kept in sync by convention — both filters run the same six rules so the outline
+// path and the LLM path produce the same clean set of positions.
+const OUTLINE_NARRATIVE_VERB_RE = /\b(took|moved|continued|cared|stayed|returned|pursued|completed|earned|spent)\b/i;
+const OUTLINE_ROLE_NOUN_RE = /\b(manager|director|engineer|lead|head|chief|officer|president|vp|vice\s+president|specialist|architect|analyst|coordinator|supervisor|consultant|intern|associate)\b/i;
+const OUTLINE_DATE_SHAPE_RE = /(?:19|20)\d{2}|\bpresent\b|\bcurrent\b/i;
 
 // Keyword-based heading detection — matches "Career Experience", "Areas of Expertise",
 // "Education & Certifications", etc. without enumerating every exact string.
@@ -151,6 +159,11 @@ function extractStructuredPositions(lines: string[]): SourceResumePosition[] {
   const positions: SourceResumePosition[] = [];
   let current: SourceResumePosition | null = null;
   let inExperienceSection = false;
+  // Parent-company umbrella captured from a header like
+  // "U.S. Bank | Minneapolis, MN | 2014 – 2024" that sits above sub-role headers
+  // that don't repeat the company name. Propagates to subsequent sub-roles
+  // until the next umbrella or section boundary.
+  let umbrellaCompany = '';
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
@@ -163,7 +176,20 @@ function extractStructuredPositions(lines: string[]): SourceResumePosition[] {
           current = null;
         }
         inExperienceSection = false;
+        umbrellaCompany = '';
       }
+      continue;
+    }
+
+    // Umbrella detection: a dated line with no role keyword whose next non-bullet
+    // content line is itself a dated role header. Capture company + date span
+    // but DO NOT emit a standalone position for it — sub-roles adopt the company.
+    if (inExperienceSection && looksLikeUmbrellaHeader(line, lines, i)) {
+      if (current) {
+        positions.push(cleanPosition(current));
+        current = null;
+      }
+      umbrellaCompany = extractUmbrellaCompany(line);
       continue;
     }
 
@@ -171,6 +197,10 @@ function extractStructuredPositions(lines: string[]): SourceResumePosition[] {
     if (parsedHeader) {
       if (current) positions.push(cleanPosition(current));
       current = parsedHeader.position;
+      // If the sub-role header carried no usable company, adopt the umbrella.
+      if (umbrellaCompany && shouldAdoptUmbrellaCompany(current)) {
+        current.company = umbrellaCompany;
+      }
       i = parsedHeader.nextIndex;
       inExperienceSection = true;
       continue;
@@ -196,9 +226,141 @@ function extractStructuredPositions(lines: string[]): SourceResumePosition[] {
 
   if (current) positions.push(cleanPosition(current));
 
+  return filterPhantomOutlinePositions(positions);
+}
+
+/**
+ * Mirror of candidate-intelligence/agent.ts `filterPhantomExperience` applied
+ * to the deterministic outline path. Without this, the outline can emit the
+ * same gap-note/umbrella phantoms the LLM-path filter would have rejected —
+ * and `mergeCandidateExperienceWithSourceOutline` then reintroduces them into
+ * the merged experience array because no LLM-parsed entry matches the phantom.
+ */
+function filterPhantomOutlinePositions(positions: SourceResumePosition[]): SourceResumePosition[] {
   return positions.filter((position) => {
-    return Boolean(position.company || position.title || position.bullets.length > 0);
+    const company = position.company.trim();
+    const title = position.title.trim();
+
+    // Contact-info-shaped company (same as filterPhantomExperience)
+    if (/\(\s*\d{3}\s*\)/.test(company)) return false;
+    if (/@/.test(company)) return false;
+    if (company.length < 2 && title.length < 2 && position.bullets.length === 0) return false;
+
+    // Leading punctuation in company (career-gap prose pattern)
+    if (company && /^[^\w]/.test(company)) {
+      logger.warn(
+        { company: company.slice(0, 120), title },
+        'source-outline: rejecting company with leading punctuation',
+      );
+      return false;
+    }
+
+    // Sentence-shaped company
+    const companyWordCount = company.split(/\s+/).filter(Boolean).length;
+    if (companyWordCount >= 10 || OUTLINE_NARRATIVE_VERB_RE.test(company)) {
+      logger.warn(
+        { company: company.slice(0, 120), wordCount: companyWordCount },
+        'source-outline: rejecting sentence-shaped company',
+      );
+      return false;
+    }
+
+    // Title starts with lowercase (sentence-fragment indicator)
+    if (title && /^[a-z]/.test(title)) {
+      logger.warn({ company, title }, 'source-outline: rejecting title starting with lowercase');
+      return false;
+    }
+
+    // Title equals company (parent-company umbrella phantom — e.g. "U.S. Bank at U.S. Bank")
+    if (title && company && title.toLowerCase() === company.toLowerCase()) {
+      logger.warn(
+        { company, title },
+        'source-outline: rejecting position where title equals company',
+      );
+      return false;
+    }
+
+    // Sentence-shaped title
+    const titleWordCount = title.split(/\s+/).filter(Boolean).length;
+    if (titleWordCount >= 10 || OUTLINE_NARRATIVE_VERB_RE.test(title)) {
+      logger.warn(
+        { title: title.slice(0, 120), wordCount: titleWordCount },
+        'source-outline: rejecting sentence-shaped title',
+      );
+      return false;
+    }
+
+    // Neither dates nor a recognized role noun
+    const hasDates = OUTLINE_DATE_SHAPE_RE.test(position.start_date ?? '') || OUTLINE_DATE_SHAPE_RE.test(position.end_date ?? '');
+    const hasRoleNoun = OUTLINE_ROLE_NOUN_RE.test(title);
+    if (!hasDates && !hasRoleNoun) {
+      logger.warn(
+        { company, title, start_date: position.start_date, end_date: position.end_date },
+        'source-outline: rejecting position with neither dates nor role noun',
+      );
+      return false;
+    }
+
+    // Require at least one content field (unchanged from prior behavior)
+    return Boolean(company || title || position.bullets.length > 0);
   });
+}
+
+/**
+ * True when `line` looks like a parent-company umbrella rather than a role
+ * header — has a date range but no job-title keyword, and the next non-bullet
+ * content line is itself a dated header.
+ */
+function looksLikeUmbrellaHeader(
+  line: string,
+  lines: string[],
+  index: number,
+): boolean {
+  if (!DATE_RANGE_RE.test(line)) return false;
+  if (TITLE_HINT_RE.test(line)) return false;
+
+  // Scan the next few content lines for another dated header. A bullet or
+  // section heading appearing first means THIS line is a real role header.
+  for (let j = index + 1; j <= Math.min(index + 3, lines.length - 1); j += 1) {
+    const next = lines[j];
+    if (!next) continue;
+    if (isSectionHeading(next)) return false;
+    if (BULLET_PREFIX_RE.test(next)) return false;
+    if (DATE_RANGE_RE.test(next)) return true;
+  }
+  return false;
+}
+
+function extractUmbrellaCompany(line: string): string {
+  const withoutDates = line.replace(DATE_RANGE_RE, '').trim();
+  const parts = withoutDates
+    .split(/\s*\|\s*/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  for (const part of parts) {
+    // Skip location-only fragments ("Minneapolis, MN", "US — Remote")
+    if (LOCATION_RE.test(part) && part.split(/\s+/).length <= 4) continue;
+    // Skip stray digit runs (date fragments left over after stripping)
+    if (/^\d+$/.test(part)) continue;
+    return part.replace(/[,\s]+$/, '').trim();
+  }
+  return parts[0]?.replace(/[,\s]+$/, '').trim() ?? '';
+}
+
+/**
+ * True when the sub-role's own header didn't carry a usable company, so the
+ * umbrella should fill it in. Covers empty/generic/location-only company and
+ * the title-equals-company phantom that `buildPositionFromHeader` produces
+ * when a role header has no recognizable title keyword.
+ */
+function shouldAdoptUmbrellaCompany(position: SourceResumePosition): boolean {
+  const company = position.company.trim().toLowerCase();
+  const title = position.title.trim().toLowerCase();
+  if (!company) return true;
+  if (company === 'prior experience') return true;
+  if (company === title) return true;
+  if (LOCATION_RE.test(company) && company.split(/\s+/).length <= 4) return true;
+  return false;
 }
 
 function parsePositionHeader(

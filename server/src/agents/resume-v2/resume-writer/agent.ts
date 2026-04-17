@@ -11,6 +11,8 @@
  */
 
 import { runSectionBySection } from './section-writer.js';
+import { resumeV2Llm } from '../../../lib/llm.js';
+import { RESUME_V2_WRITER_MODEL } from '../../../lib/model-constants.js';
 import logger from '../../../lib/logger.js';
 import { BANNED_PHRASES, getResumeRulesPrompt, SOURCE_DISCIPLINE } from '../knowledge/resume-rules.js';
 import { getAuthoritativeSourceExperience } from '../source-resume-outline.js';
@@ -471,10 +473,20 @@ export async function runResumeWriter(
 ): Promise<ResumeDraftOutput> {
   const selectedAccomplishmentTargets = deriveSelectedAccomplishmentTargets(input);
 
+  // Kick off the discipline precompute in parallel with section writing. The
+  // cached value is read synchronously by deriveSourceBackedDiscipline inside
+  // the deterministic-fallback chain (sanitizeDraftForDisplay). Tiny prompt,
+  // ~50 tokens of output — adds near-zero latency.
+  const disciplinePromise = precomputeDiscipline(input, signal);
+
   // Section-by-section writing: 5 focused LLM calls instead of one massive 32K-token pass.
   // Each call gets section-specific rules and explicit cross-section evidence tracking.
   // Falls back to deterministic per-section if any individual call fails.
   let parsed = await runSectionBySection(input, signal);
+
+  // Make sure the discipline value is resolved before any post-processing that
+  // might fall through to the deterministic draft path.
+  await disciplinePromise;
 
   // NOTE: ensureSatisfiedYearsThresholdVisible and ensureStrongestProofVisible were removed.
   // They were designed for the old single-pass writer where the LLM often returned incomplete summaries.
@@ -514,6 +526,9 @@ export async function runResumeWriter(
   parsed = ensureBulletMetadata(parsed, input);
   // Guardrail: back-fill any missing or "undefined" date strings from source resume.
   parsed = ensureDatePopulation(parsed, input);
+  // Guardrail: truncate bullets at concatenation artifacts (period+space+lowercase)
+  // before dedup so that truncated siblings can match.
+  parsed = trimConcatenationArtifacts(parsed);
   // Guardrail: drop exact and near-duplicate bullets within each role.
   parsed = deduplicateWithinRole(parsed);
   // Guardrail: vary opening verbs when the same verb appears 3+ times in one role.
@@ -1476,15 +1491,29 @@ function dedupeEducationEntries(
 }
 
 /**
- * Guardrail: if the LLM produced fewer bullets for a position than the original resume had,
- * backfill missing original bullets to prevent content loss.
- * Matches positions by normalized company name.
+ * Guardrail: backfill source bullets ONLY when the per-position LLM call returned
+ * zero bullets (true failure). Any non-empty LLM output is trusted as-is.
+ *
+ * Rationale: this function originally ran five coverage-restorers that compared
+ * draft bullet count to source bullet count and padded from source to match. That
+ * was designed for the legacy sequential writer, which routinely under-produced
+ * under a single 16K-token payload. The parallel per-position writer (one dedicated
+ * LLM pass per role) is specifically meant to consolidate, so N source bullets
+ * legitimately become a smaller number of stronger ones. Running the old restorers
+ * now appends raw source passthrough on top of clean rewrites — e.g. a U.S. Bank
+ * role that the LLM consolidated from 46 source bullets into 8 clean ones ended
+ * up rendered as 46 bullets of mostly source text. The restorers are now actively
+ * harmful; skip them unless the LLM produced nothing at all.
  */
 function ensureMinimumBulletCounts(draft: ResumeDraftOutput, input: ResumeWriterInput): ResumeDraftOutput {
   const sourceExperience = getAuthoritativeSourceExperience(input.candidate);
   if (!Array.isArray(draft.professional_experience) || sourceExperience.length === 0) return draft;
 
   for (const draftExp of draft.professional_experience) {
+    // Trust non-empty LLM output. Only the zero-bullet case (true failure)
+    // falls through to source-passthrough backfill below.
+    if ((draftExp.bullets ?? []).length >= 1) continue;
+
     // Find the matching original experience entry
     const originalExp = sourceExperience.find((orig) => {
       const draftKey = `${draftExp.company} ${draftExp.title}`.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -2691,6 +2720,87 @@ function ensureRelevantPositionsRemainDetailed(
   };
 }
 
+// ─── Guardrail: Trim concatenation artifacts from bullets ───────────────────
+// When LLMs or the source outline merge fragments, we see patterns like
+// "Improved X through data-driven analysis of feedback. and leading an effort..."
+// — a period followed by space followed by a lowercase letter is almost always
+// two sentences joined without cleanup (continuation words like "and", "by",
+// "through" starting with lowercase after the period). Truncate at the first
+// such boundary, keeping the period. Runs before deduplicateWithinRole so the
+// trimmed text can match near-dup siblings.
+function trimConcatenationArtifacts(draft: ResumeDraftOutput): ResumeDraftOutput {
+  const CONCAT_BOUNDARY_RE = /\.\s+[a-z]/g;
+  // Common abbreviations that legitimately end with a period + lowercase word.
+  // Anchored to word-boundary-or-start so "vs." matches but "devs." doesn't.
+  // Includes multi-dot forms like i.e. / e.g. / u.s. (period escaped).
+  const ABBREV_BEFORE_PERIOD_RE = /(?:^|[^a-z])(vs|etc|inc|ltd|co|corp|dr|mr|mrs|ms|no|i\.e|e\.g|u\.s)$/i;
+
+  const trim = (text: string): string => {
+    if (!text) return text;
+    const re = new RegExp(CONCAT_BOUNDARY_RE.source, 'g');
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(text)) !== null) {
+      const periodIdx = match.index;
+      const before = text.slice(0, periodIdx);
+      if (ABBREV_BEFORE_PERIOD_RE.test(before)) {
+        // This period belongs to an abbreviation — keep scanning past it.
+        continue;
+      }
+      return text.slice(0, periodIdx + 1).trim();
+    }
+    return text;
+  };
+
+  for (const exp of draft.professional_experience ?? []) {
+    const originalScope = exp.scope_statement;
+    const trimmedScope = trim(originalScope ?? '');
+    if (trimmedScope !== originalScope) {
+      logger.warn(
+        {
+          company: exp.company,
+          original: (originalScope ?? '').slice(0, 160),
+          trimmed: trimmedScope.slice(0, 160),
+        },
+        'trimConcatenationArtifacts: truncated scope_statement at period+space+lowercase boundary',
+      );
+      exp.scope_statement = trimmedScope;
+    }
+
+    for (const bullet of exp.bullets ?? []) {
+      const original = bullet.text;
+      const trimmed = trim(original);
+      if (trimmed !== original) {
+        logger.warn(
+          {
+            company: exp.company,
+            original: original.slice(0, 160),
+            trimmed: trimmed.slice(0, 160),
+          },
+          'trimConcatenationArtifacts: truncated bullet at period+space+lowercase boundary',
+        );
+        bullet.text = trimmed;
+      }
+    }
+  }
+
+  for (const acc of draft.selected_accomplishments ?? []) {
+    const original = acc.content;
+    const trimmed = trim(original);
+    if (trimmed !== original) {
+      logger.warn(
+        {
+          original: original.slice(0, 160),
+          trimmed: trimmed.slice(0, 160),
+        },
+        'trimConcatenationArtifacts: truncated accomplishment at period+space+lowercase boundary',
+      );
+      acc.content = trimmed;
+    }
+  }
+
+  return draft;
+}
+
 // ─── Guardrail: Remove duplicate bullets within a single role ────────────────
 // If two bullets have >50% normalized token overlap, or one is a substring of
 // the other, or they share an identical opening phrase (first 8 words, >20 chars),
@@ -3079,15 +3189,86 @@ function buildSourceBackedIdentityLine(input: ResumeWriterInput): string {
   return currentTitle || years;
 }
 
+// Per-input discipline cache. Populated once at the top of runResumeWriter by
+// precomputeDiscipline (an LLM call); read synchronously by
+// deriveSourceBackedDiscipline deep inside the deterministic-fallback chain
+// (which is entirely synchronous and can't await). WeakMap keyed on the input
+// object reference so it GCs with the pipeline run.
+const disciplineCache = new WeakMap<ResumeWriterInput, string>();
+
+async function precomputeDiscipline(
+  input: ResumeWriterInput,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (disciplineCache.has(input)) return;
+
+  const sourceText = buildDraftSafetySourceCorpus(input).slice(0, 3000);
+  const targetRole = input.job_intelligence?.role_title?.trim() ?? '';
+
+  try {
+    const response = await resumeV2Llm.chat({
+      model: RESUME_V2_WRITER_MODEL,
+      system:
+        'You classify executive candidates into a professional discipline. Respond with ONLY a 2-4 word discipline phrase — no quotes, no period, no commentary. If the candidate\'s discipline is ambiguous, respond with an empty string.',
+      messages: [{
+        role: 'user',
+        content: [
+          `Target role: ${targetRole || 'not specified'}`,
+          '',
+          "Candidate's resume text (excerpt):",
+          sourceText,
+          '',
+          'Examples of good responses: "financial services program management", "product management", "enterprise risk and compliance", "manufacturing operations leadership".',
+          '',
+          'Return ONLY the 2-4 word discipline phrase.',
+        ].join('\n'),
+      }],
+      max_tokens: 32,
+      temperature: 0.2,
+      signal,
+    });
+
+    const cleaned = response.text
+      .trim()
+      .replace(/^["'`]+|["'`.,]+$/g, '')
+      .split('\n')[0]
+      .trim();
+    const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
+
+    if (cleaned.length > 0 && cleaned.length <= 60 && wordCount >= 1 && wordCount <= 6) {
+      disciplineCache.set(input, cleaned);
+      logger.info(
+        { discipline: cleaned, targetRole },
+        'precomputeDiscipline: LLM-derived discipline cached',
+      );
+    } else {
+      disciplineCache.set(input, '');
+      logger.warn(
+        { raw: response.text.slice(0, 120) },
+        'precomputeDiscipline: LLM response unusable, caching empty',
+      );
+    }
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    if (err instanceof Error && err.name === 'AbortError') throw err;
+    logger.warn(
+      { error: err instanceof Error ? err.message : String(err) },
+      'precomputeDiscipline: LLM call failed, caching empty',
+    );
+    disciplineCache.set(input, '');
+  }
+}
+
+/**
+ * Reads the LLM-derived discipline from `disciplineCache` (populated by
+ * `precomputeDiscipline` at the top of `runResumeWriter`). Synchronous because
+ * this is called from deep inside the deterministic-fallback chain
+ * (buildExecutiveSummary → buildSourceBackedIdentityLine → here) which cannot
+ * await. Returns empty string if the precompute hasn't run, was ambiguous, or
+ * failed — callers already fall back to a generic "leadership experience" line.
+ */
 function deriveSourceBackedDiscipline(input: ResumeWriterInput): string {
-  const sourceText = buildDraftSafetySourceCorpus(input);
-  if (/\bmanufacturing|plant|lean|six sigma|operations\b/.test(sourceText)) return 'manufacturing operations';
-  if (/\bmarketing|brand|demand generation|consumer\b/.test(sourceText)) return 'marketing and brand growth';
-  if (/\bsales|revenue|commercial|pipeline\b/.test(sourceText)) return 'commercial leadership';
-  if (/\bengineering|cloud|platform|software|infrastructure\b/.test(sourceText)) return 'engineering leadership';
-  if (/\bfinance|fp&a|treasury|accounting\b/.test(sourceText)) return 'finance leadership';
-  if (/\bsupply chain|distribution|logistics\b/.test(sourceText)) return 'operations and supply chain';
-  return 'executive leadership';
+  return disciplineCache.get(input) ?? '';
 }
 
 function buildSourceBackedRoleFocusLine(input: ResumeWriterInput): string {
