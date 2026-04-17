@@ -4,7 +4,7 @@ Paste this into Claude Code after Phase 4 is complete and the full v3 pipeline h
 
 ---
 
-You are starting Phase 5 of the CareerIQ v3 rebuild. Re-read `CLAUDE.md` and doc 02 (migration plan) before starting. Phase 4's pipeline is approved and tested. Now we deploy it.
+You are starting Phase 5 of the CareerIQ v3 rebuild. Re-read `docs/v3-rebuild/OPERATING-MANUAL.md` and doc 02 (migration plan) before starting. Phase 4's pipeline is approved and tested. Now we deploy it.
 
 This phase is different from Phases 1-4. Most of the work is observation, not construction. The human is more involved because we're now making changes that affect real users.
 

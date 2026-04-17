@@ -6,7 +6,7 @@ Paste this entire message into Claude Code to kick off Phase 1.
 
 You are starting Phase 1 of the CareerIQ v3 resume writer rebuild. Before doing anything else, read these files in order:
 
-1. `CLAUDE.md` at the repo root (operating manual, non-negotiables)
+1. `docs/v3-rebuild/OPERATING-MANUAL.md` (operating manual, non-negotiables)
 2. `docs/v3-rebuild/00-Executive-Summary.md`
 3. `docs/v3-rebuild/01-Architecture-Vision.md`
 4. `docs/v3-rebuild/02-Migration-Plan.md`
@@ -134,7 +134,7 @@ Add an npm script: `"fixtures": "tsx server/src/v3/test-fixtures/runner.ts"` or 
 - `npm run test` passes (stubs have placeholder tests that assert `NotImplementedError` is thrown)
 - `npm run fixtures` prints "0 fixtures found"
 - All files committed with a descriptive commit history on `rebuild/v3`
-- Phase report written to `docs/v3-rebuild/reports/phase-1-report.md` per the template in CLAUDE.md
+- Phase report written to `docs/v3-rebuild/reports/phase-1-report.md` per the template in `docs/v3-rebuild/OPERATING-MANUAL.md`
 
 ## What I will check when you hand this back
 

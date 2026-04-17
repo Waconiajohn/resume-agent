@@ -4,7 +4,7 @@ Paste this into Claude Code after Phase 2 is complete and you've reviewed the fi
 
 ---
 
-You are starting Phase 3 of the CareerIQ v3 rebuild. Re-read `CLAUDE.md`, doc 01 (architecture vision), and doc 03 (prompt library structure) before starting. Phase 2's fixture suite is at `server/test-fixtures/resumes/`.
+You are starting Phase 3 of the CareerIQ v3 rebuild. Re-read `docs/v3-rebuild/OPERATING-MANUAL.md`, doc 01 (architecture vision), and doc 03 (prompt library structure) before starting. Phase 2's fixture suite is at `server/test-fixtures/resumes/`.
 
 ## Goal of this phase
 

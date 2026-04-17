@@ -4,7 +4,7 @@ Paste this into Claude Code after Phase 3 is complete and classify has been appr
 
 ---
 
-You are starting Phase 4 of the CareerIQ v3 rebuild. Re-read `CLAUDE.md`, doc 01, doc 02, and doc 03 before starting. Phase 3's classify is trusted — every downstream stage consumes its output without re-parsing, re-validating, or second-guessing.
+You are starting Phase 4 of the CareerIQ v3 rebuild. Re-read `docs/v3-rebuild/OPERATING-MANUAL.md`, doc 01, doc 02, and doc 03 before starting. Phase 3's classify is trusted — every downstream stage consumes its output without re-parsing, re-validating, or second-guessing.
 
 ## Goal of this phase
 

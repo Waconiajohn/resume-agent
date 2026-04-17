@@ -4,7 +4,7 @@ Paste this into Claude Code after Phase 1 is complete and you've done your 15-mi
 
 ---
 
-You are starting Phase 2 of the CareerIQ v3 rebuild. Re-read `CLAUDE.md` if any session context has been lost. Phase 1's report is at `docs/v3-rebuild/reports/phase-1-report.md`; skim it for context on what was built.
+You are starting Phase 2 of the CareerIQ v3 rebuild. Re-read `docs/v3-rebuild/OPERATING-MANUAL.md` if any session context has been lost. Phase 1's report is at `docs/v3-rebuild/reports/phase-1-report.md`; skim it for context on what was built.
 
 ## Goal of this phase
 
