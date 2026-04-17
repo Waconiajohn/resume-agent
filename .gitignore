@@ -26,8 +26,9 @@ app/docs/agentic-ai-planning/
 docs/obsidian/.obsidian/
 
 # v3 resume fixtures — raw resumes and metadata may contain PII.
-# The README and snapshots directory remain tracked.
+# The README remains tracked; snapshots are regenerated on demand.
 server/test-fixtures/resumes/raw/
 server/test-fixtures/resumes/meta/
 server/test-fixtures/resumes/extracted/
+server/test-fixtures/resumes/fixture-map.json
 server/test-fixtures/snapshots/
