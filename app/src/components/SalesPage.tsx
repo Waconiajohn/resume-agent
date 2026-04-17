@@ -59,14 +59,97 @@ function Hero() {
           We fix that.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-white/60">
-          Career coaching that understands executive positioning
+          Ten specialized AI agents that find what you've already done —
+          and position you as the benchmark candidate.
         </p>
-        <div className="mt-10">
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <a href="/workspace">
             <GlassButton>
-              Get Started
+              Get started free
             </GlassButton>
           </a>
+          <a
+            href="#methodology"
+            className="rounded-lg border border-white/20 px-5 py-2.5 text-sm font-medium text-white/80 transition-colors hover:border-white/40 hover:text-white"
+          >
+            See how it works
+          </a>
+        </div>
+        <p className="mt-5 text-xs text-white/40">
+          No credit card required · 3 free pipeline runs every month
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ================================================================== */
+/*  1b. Trust/Stats Strip                                              */
+/* ================================================================== */
+
+const TRUST_STATS = [
+  { value: '10', label: 'specialized AI agents' },
+  { value: '3-step', label: 'coaching methodology' },
+  { value: 'ATS-ready', label: 'PDF + DOCX export' },
+  { value: 'Real', label: 'evidence, not fabrication' },
+];
+
+function TrustStrip() {
+  const ref = useFadeIn();
+  return (
+    <section className="border-y border-white/[0.06] bg-white/[0.015] py-10">
+      <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
+        <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+          {TRUST_STATS.map((stat) => (
+            <div key={stat.label} className="text-center">
+              <div className="text-2xl font-semibold text-white md:text-3xl">{stat.value}</div>
+              <div className="mt-1 text-xs uppercase tracking-wider text-white/50">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ================================================================== */
+/*  Built For Section — role personas, no fake testimonials           */
+/* ================================================================== */
+
+const PERSONAS = [
+  {
+    role: 'Mid-career executives',
+    desc: 'Making a pivot into a higher-scope role and struggling to reframe their past work for the next chapter.',
+  },
+  {
+    role: 'Senior leaders over 45',
+    desc: 'Tired of being quietly screened out. We surface the accomplishments that make age irrelevant.',
+  },
+  {
+    role: 'Operators with unusual paths',
+    desc: 'Non-linear careers, turnarounds, acquisitions — stories that generic resume tools flatten.',
+  },
+];
+
+function BuiltForSection() {
+  const ref = useFadeIn();
+  return (
+    <section className="py-20 md:py-28">
+      <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
+        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+          Built for executives the job boards forget
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-white/60">
+          Most executives have 20 years of real experience and a resume that shows 2.
+          We work best when there's a lot beneath the surface to surface.
+        </p>
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {PERSONAS.map((p) => (
+            <GlassCard key={p.role} className="p-6">
+              <h3 className="text-lg font-semibold text-white">{p.role}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/60">{p.desc}</p>
+            </GlassCard>
+          ))}
         </div>
       </div>
     </section>
@@ -131,7 +214,7 @@ const DIALOGUE: { isCoach: boolean; text: string }[] = [
 function CoachingSection() {
   const ref = useFadeIn();
   return (
-    <section className="py-20 md:py-32">
+    <section id="methodology" className="py-20 md:py-32 scroll-mt-16">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
         <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
           We start with the question hiring managers actually ask
@@ -566,12 +649,14 @@ export function SalesPage() {
     <div className="min-h-screen bg-surface">
       <SalesNav />
       <Hero />
+      <TrustStrip />
       <ProblemSection />
       <CoachingSection />
       <BlueprintSection />
       <AgeSmartSection />
       <QualitySection />
       <PositioningSection />
+      <BuiltForSection />
       <RoleTagsSection />
       <FAQSection />
       <CTASection />

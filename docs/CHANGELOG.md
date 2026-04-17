@@ -1,5 +1,24 @@
 # Changelog — Resume Agent
 
+## 2026-04-16 — Production push: admin users, pricing polish, marketing polish
+**Sprint:** Production Readiness | **Stories:** Admin user management, pricing polish, marketing polish
+**Summary:** Added admin user management panel (list/search/reset/plan change), pricing comparison table + FAQ + current-plan indicator, and marketing page trust strip + built-for personas + hero CTA.
+
+### Changes Made
+- `server/src/routes/admin.ts` — Added 3 endpoints: `GET /admin/users` (paginated list joining auth.users with user_subscriptions + user_usage, substring email search), `POST /admin/users/:id/password-reset` (sends Supabase reset email), `POST /admin/users/:id/plan` (manual plan override, upserts user_subscriptions). All protected by existing ADMIN_API_KEY guard.
+- `app/src/components/admin/UsersTab.tsx` — New Users tab component: search, list with plan badge + usage stats + sign-in dates, inline plan change dropdown, password reset button, paging.
+- `app/src/components/admin/AdminDashboard.tsx` — Wired UsersTab into tabs array and tab switch.
+- `app/src/components/PricingPage.tsx` — Added: "You are currently on the X plan" indicator banner when currentPlanId is set; feature comparison table (10 rows across 3 tiers); FAQ section (6 items) using native `<details>` for SEO-friendly collapse.
+- `app/src/components/SalesPage.tsx` — Hero: stronger subheadline, added secondary CTA ("See how it works"), added free-tier reassurance line. New `TrustStrip` section (4 honest stats, no fake user counts). New `BuiltForSection` with 3 role personas (no fabricated testimonials — consistent with product mission of never misrepresenting). Added `#methodology` anchor to CoachingSection.
+
+### Decisions Made
+- No fake testimonials or fabricated user counts on the marketing page — the product mission prohibits misrepresentation, and that extends to our own marketing. When the owner has real customer stories, a proper TestimonialsSection can replace/augment BuiltForSection.
+- Admin "is_admin" concept skipped — the system uses a shared ADMIN_API_KEY, not per-user admin flags. User management covers plan overrides and password resets, which are the real production operator needs.
+
+### Known Issues
+- No unit tests added for the new admin endpoints. Existing admin.ts has no test file; adding a test harness is a follow-up.
+- Plan override via `POST /admin/users/:id/plan` does NOT sync with Stripe — it only updates `user_subscriptions`. This is intentional for manual comping but should be clearly flagged in admin ops docs.
+
 ## 2026-04-16 — Fix duplicate bullets and trailing bullet characters
 **Sprint:** Bug Fix | **Story:** Duplicate bullets in resume output
 **Summary:** Strip trailing `•` from backfilled bullets and lower dedup overlap threshold to catch semantic near-duplicates.

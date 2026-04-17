@@ -514,4 +514,209 @@ admin.post(
   },
 );
 
+// ---------------------------------------------------------------------------
+// GET /api/admin/users?q=&limit=50&offset=0
+// List auth users joined with their subscription plan and current-period usage.
+// Supports email substring search via `q`.
+// ---------------------------------------------------------------------------
+admin.get('/users', async (c) => {
+  const limitParam = Number.parseInt(c.req.query('limit') ?? '50', 10);
+  const offsetParam = Number.parseInt(c.req.query('offset') ?? '0', 10);
+  const q = (c.req.query('q') ?? '').trim().toLowerCase();
+
+  const limit = Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 200 ? limitParam : 50;
+  const offset = Number.isFinite(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
+
+  // Supabase auth admin API uses 1-indexed pages. Fetch one page that contains
+  // the requested slice. For search we need a larger sample since filter is client-side.
+  const perPage = q ? 200 : limit;
+  const page = q ? 1 : Math.floor(offset / perPage) + 1;
+
+  try {
+    const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (listError) {
+      logger.error({ err: listError }, 'admin/users: auth.admin.listUsers failed');
+      return c.json({ error: 'Failed to list users' }, 500);
+    }
+
+    const allUsers = listData?.users ?? [];
+    const filtered = q
+      ? allUsers.filter((u) => (u.email ?? '').toLowerCase().includes(q))
+      : allUsers;
+
+    const total = q ? filtered.length : listData?.total ?? filtered.length;
+    const pageSlice = q ? filtered.slice(offset, offset + limit) : filtered;
+    const userIds = pageSlice.map((u) => u.id);
+
+    // Fetch subscriptions for this page only
+    const subsMap = new Map<string, { plan_id: string; status: string; current_period_end: string }>();
+    if (userIds.length > 0) {
+      const { data: subs, error: subsError } = await supabaseAdmin
+        .from('user_subscriptions')
+        .select('user_id, plan_id, status, current_period_end')
+        .in('user_id', userIds);
+      if (subsError) {
+        logger.warn({ err: subsError }, 'admin/users: subscription join failed');
+      } else {
+        for (const row of subs ?? []) {
+          subsMap.set(row.user_id as string, {
+            plan_id: (row.plan_id as string) ?? 'free',
+            status: (row.status as string) ?? 'active',
+            current_period_end: row.current_period_end as string,
+          });
+        }
+      }
+    }
+
+    // Fetch current-period usage for this page
+    const usageMap = new Map<string, { sessions_count: number; total_cost_usd: number }>();
+    if (userIds.length > 0) {
+      const periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const { data: usage, error: usageError } = await supabaseAdmin
+        .from('user_usage')
+        .select('user_id, sessions_count, total_cost_usd')
+        .in('user_id', userIds)
+        .gte('period_start', periodStart);
+      if (usageError) {
+        logger.warn({ err: usageError }, 'admin/users: usage join failed');
+      } else {
+        for (const row of usage ?? []) {
+          const prev = usageMap.get(row.user_id as string) ?? { sessions_count: 0, total_cost_usd: 0 };
+          usageMap.set(row.user_id as string, {
+            sessions_count: prev.sessions_count + ((row.sessions_count as number) ?? 0),
+            total_cost_usd: prev.total_cost_usd + ((row.total_cost_usd as number) ?? 0),
+          });
+        }
+      }
+    }
+
+    const users = pageSlice.map((u) => ({
+      id: u.id,
+      email: u.email ?? null,
+      created_at: u.created_at,
+      last_sign_in_at: u.last_sign_in_at ?? null,
+      email_confirmed_at: u.email_confirmed_at ?? null,
+      plan_id: subsMap.get(u.id)?.plan_id ?? 'free',
+      subscription_status: subsMap.get(u.id)?.status ?? 'active',
+      current_period_end: subsMap.get(u.id)?.current_period_end ?? null,
+      sessions_this_period: usageMap.get(u.id)?.sessions_count ?? 0,
+      cost_this_period_usd: usageMap.get(u.id)?.total_cost_usd ?? 0,
+    }));
+
+    return c.json({ users, total, limit, offset, query: q || null });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ err, message }, 'admin/users: unexpected failure');
+    return c.json({ error: `Failed to list users: ${message}` }, 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/users/:id/password-reset
+// Sends a password reset email to the user via Supabase auth.
+// ---------------------------------------------------------------------------
+admin.post('/users/:id/password-reset', async (c) => {
+  const userId = c.req.param('id');
+  if (!userId) {
+    return c.json({ error: 'Missing user id' }, 400);
+  }
+
+  try {
+    const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (getUserError || !userData?.user?.email) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+    const email = userData.user.email;
+
+    const redirectTo = (() => {
+      const appUrl = process.env.APP_URL;
+      if (!appUrl) return undefined;
+      return `${appUrl.replace(/\/$/, '')}/reset-password`;
+    })();
+
+    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : {});
+    if (error) {
+      logger.error({ err: error, userId }, 'admin/users/password-reset: send failed');
+      return c.json({ error: `Reset failed: ${error.message}` }, 500);
+    }
+
+    logger.info({ userId, email }, 'Admin triggered password reset');
+    return c.json({ success: true, email });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ err, userId, message }, 'admin/users/password-reset: unexpected failure');
+    return c.json({ error: `Reset failed: ${message}` }, 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/users/:id/plan
+// Body: { plan_id: 'free' | 'starter' | 'pro' }
+// Manually set a user's subscription plan (override). Does not sync Stripe.
+// ---------------------------------------------------------------------------
+const userPlanSchema = z.object({
+  plan_id: z.enum(['free', 'starter', 'pro']),
+});
+
+admin.post('/users/:id/plan', async (c) => {
+  const userId = c.req.param('id');
+  if (!userId) {
+    return c.json({ error: 'Missing user id' }, 400);
+  }
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  const parsed = userPlanSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
+
+  const { plan_id } = parsed.data;
+
+  try {
+    const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (getUserError || !userData?.user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+
+    const { error: upsertError } = await supabaseAdmin
+      .from('user_subscriptions')
+      .upsert(
+        {
+          user_id: userId,
+          plan_id,
+          status: 'active',
+          current_period_start: periodStart,
+          current_period_end: periodEnd,
+          updated_at: now.toISOString(),
+        },
+        { onConflict: 'user_id' },
+      );
+
+    if (upsertError) {
+      logger.error({ err: upsertError, userId, plan_id }, 'admin/users/plan: upsert failed');
+      return c.json({ error: `Plan update failed: ${upsertError.message}` }, 500);
+    }
+
+    logger.info({ userId, plan_id }, 'Admin updated user plan');
+    return c.json({ success: true, user_id: userId, plan_id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ err, userId, plan_id, message }, 'admin/users/plan: unexpected failure');
+    return c.json({ error: `Plan update failed: ${message}` }, 500);
+  }
+});
+
 export { admin };

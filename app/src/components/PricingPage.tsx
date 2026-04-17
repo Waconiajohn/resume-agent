@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Loader2, Zap, Shield, Star, Tag, Gift } from 'lucide-react';
+import { Check, Loader2, Zap, Shield, Star, Tag, Gift, Minus, ChevronDown } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
@@ -72,6 +72,53 @@ function formatPrice(cents: number): string {
   if (cents === 0) return 'Free';
   return `$${(cents / 100).toFixed(0)}/mo`;
 }
+
+interface ComparisonRow {
+  feature: string;
+  free: string | boolean;
+  starter: string | boolean;
+  pro: string | boolean;
+}
+
+const COMPARISON_ROWS: ComparisonRow[] = [
+  { feature: 'Resume pipeline runs / month', free: '3', starter: '15', pro: '50' },
+  { feature: 'Maximum runs with overage', free: '3', starter: '50', pro: '200' },
+  { feature: 'Full 3-agent workflow', free: true, starter: true, pro: true },
+  { feature: 'PDF + DOCX export', free: true, starter: true, pro: true },
+  { feature: 'ATS compliance check', free: true, starter: true, pro: true },
+  { feature: 'Executive tone polish', free: true, starter: true, pro: true },
+  { feature: 'Priority queue', free: false, starter: true, pro: true },
+  { feature: 'Early access to new features', free: false, starter: false, pro: true },
+  { feature: 'LinkedIn optimizer & editor', free: true, starter: true, pro: true },
+  { feature: 'Interview prep & salary negotiation', free: true, starter: true, pro: true },
+];
+
+const FAQ_ITEMS: { q: string; a: string }[] = [
+  {
+    q: 'What counts as a pipeline run?',
+    a: 'Each completed resume generation — resume + job description → tailored resume — counts as one run. Revisions to the same resume do not consume a new run.',
+  },
+  {
+    q: 'Can I cancel anytime?',
+    a: 'Yes. Cancel from your billing dashboard and you\'ll keep access through the end of your current billing period. No refunds for partial months.',
+  },
+  {
+    q: 'What happens if I hit my monthly limit?',
+    a: 'On Starter and Pro, you can continue with overage runs up to the maximum. Free users are blocked until the next period. You can upgrade at any time.',
+  },
+  {
+    q: 'Is my resume and job-description data private?',
+    a: 'Yes. Your inputs and generated resumes are stored only in your account. We never share or sell them. Our LLM providers process requests without retaining prompts.',
+  },
+  {
+    q: 'Do you offer annual billing or team plans?',
+    a: 'Annual billing is coming soon — contact us if you\'d like early access. Team and outplacement plans are available; reach out for details.',
+  },
+  {
+    q: 'Which payment methods do you accept?',
+    a: 'All major credit and debit cards via Stripe. We can accept ACH or wire for annual plans on request.',
+  },
+];
 
 interface PricingPageProps {
   accessToken: string | null;
@@ -162,6 +209,8 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
     }
   };
 
+  const activePlan = currentPlanId ? PLANS.find((p) => p.id === currentPlanId) ?? null : null;
+
   return (
     <div className="flex flex-col items-center gap-8 px-4 py-12">
       <div className="text-center">
@@ -173,6 +222,12 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
           <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] px-3 py-1 text-xs font-medium text-[var(--badge-green-text)]">
             <Gift className="h-3.5 w-3.5" />
             Referred by a friend
+          </div>
+        )}
+        {activePlan && (
+          <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[var(--link)]/30 bg-[var(--badge-blue-bg)] px-3 py-1 text-xs font-medium text-[var(--link)]">
+            <Check className="h-3.5 w-3.5" />
+            You are currently on the {activePlan.name} plan
           </div>
         )}
       </div>
@@ -253,6 +308,73 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
           );
         })}
       </div>
+
+      {/* Comparison table */}
+      <section className="w-full max-w-4xl">
+        <h3 className="mb-4 text-center text-lg font-semibold text-white">Compare plans</h3>
+        <GlassCard className="overflow-hidden p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/[0.02]">
+                  <th className="px-4 py-3 text-left font-medium text-white/60">Feature</th>
+                  <th className="px-4 py-3 text-center font-medium text-white/80">Free</th>
+                  <th className="px-4 py-3 text-center font-medium text-[var(--link)]">Starter</th>
+                  <th className="px-4 py-3 text-center font-medium text-white/80">Pro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARISON_ROWS.map((row, i) => (
+                  <tr
+                    key={row.feature}
+                    className={cn(
+                      'border-b border-white/5 last:border-0',
+                      i % 2 === 1 && 'bg-white/[0.01]',
+                    )}
+                  >
+                    <td className="px-4 py-3 text-white/70">{row.feature}</td>
+                    {(['free', 'starter', 'pro'] as const).map((plan) => {
+                      const value = row[plan];
+                      return (
+                        <td key={plan} className="px-4 py-3 text-center">
+                          {typeof value === 'boolean' ? (
+                            value ? (
+                              <Check className="mx-auto h-4 w-4 text-[var(--badge-green-text)]" />
+                            ) : (
+                              <Minus className="mx-auto h-4 w-4 text-white/20" />
+                            )
+                          ) : (
+                            <span className="text-white/90">{value}</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
+      </section>
+
+      {/* FAQ */}
+      <section className="w-full max-w-2xl">
+        <h3 className="mb-4 text-center text-lg font-semibold text-white">Frequently asked questions</h3>
+        <div className="flex flex-col gap-2">
+          {FAQ_ITEMS.map((item) => (
+            <details
+              key={item.q}
+              className="group rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/20"
+            >
+              <summary className="flex cursor-pointer items-center justify-between gap-4 text-sm font-medium text-white/90 [&::-webkit-details-marker]:hidden">
+                {item.q}
+                <ChevronDown className="h-4 w-4 flex-shrink-0 text-white/40 transition-transform group-open:rotate-180" />
+              </summary>
+              <p className="mt-2 text-sm leading-relaxed text-white/60">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
 
       {/* Promo code input */}
       <div className="flex w-full max-w-md flex-col items-center gap-2">

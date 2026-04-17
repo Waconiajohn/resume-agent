@@ -13,6 +13,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { API_BASE } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { UsersTab } from './UsersTab';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ interface ProductFunnelResponse {
   };
 }
 
-type AdminTab = 'stats' | 'funnel' | 'errors' | 'sessions';
+type AdminTab = 'stats' | 'funnel' | 'errors' | 'sessions' | 'users';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -800,6 +801,7 @@ export function AdminDashboard() {
   const tabs: { id: AdminTab; label: string }[] = [
     { id: 'stats', label: 'Stats' },
     { id: 'funnel', label: 'Funnel' },
+    { id: 'users', label: 'Users' },
     { id: 'errors', label: 'Errors' },
     { id: 'sessions', label: 'Sessions' },
   ];
@@ -872,6 +874,7 @@ export function AdminDashboard() {
 
         {!loading && !fetchError && activeTab === 'stats' && renderStats()}
         {!loading && !fetchError && activeTab === 'funnel' && renderFunnel()}
+        {!loading && !fetchError && activeTab === 'users' && <UsersTab adminKey={adminKey} />}
         {!loading && !fetchError && activeTab === 'errors' && renderErrors()}
         {!loading && !fetchError && activeTab === 'sessions' && renderSessions()}
       </div>
