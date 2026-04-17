@@ -125,7 +125,11 @@ lines.push(
 );
 lines.push('');
 lines.push(
-  'The raw fixtures and their extracted text remain gitignored. The human decides, per fixture, whether to redact before any extract/ content is ever force-added to git.',
+  'The `extracted/*.txt` files that this scan reads are the **post-redaction** output — `scripts/extract-fixtures.mjs` runs every raw fixture through Stage 1 and then through `src/v3/test-fixtures/redact.ts` before writing. The expected post-redaction result: zero emails, zero phones, zero LinkedIn URLs, zero candidate-name tokens. Any non-zero count on those rows is a defect in the redactor — raise it immediately. See `docs/v3-rebuild/fixture-provenance.md` for consent + redaction context.',
+);
+lines.push('');
+lines.push(
+  'Raw fixtures in `raw/` are gitignored and retain original content. If you need to inspect the pre-redaction text, re-run Stage 1 directly against a raw file (`extract()` returns the un-redacted plaintext).',
 );
 lines.push('');
 lines.push('## Method');
@@ -198,39 +202,27 @@ lines.push(`- **distinct_companies (sum across fixtures)**: ${distinctCompaniesT
 lines.push(`- **fixtures with a References section**: ${referencesTotal}`);
 lines.push('');
 
-// Risk notes
-lines.push('## Risk notes');
+// Post-redaction notes
+lines.push('## Reading the counts');
 lines.push('');
 lines.push(
-  '- **Every resume contains at least one email and one phone number** — expected for executive resumes; redact before publishing extracted/ files.',
+  '- **email / phone / LinkedIn / GitHub / street_address / portfolio_or_personal_site = 0** — expected. Any non-zero value in these columns is a redactor defect.',
 );
 lines.push(
-  '- **Third-party PII** (references sections listing 10+ names and email addresses) is the highest-severity class here because those individuals did not consent to appearing in a fixture corpus. See fixtures with a `✓` in the `refs` column.',
+  '- **`us_zip_code`** — 5-digit-number heuristic; catches dollar amounts like `$25000`, headcounts, and project cost figures. Noise, not PII. The candidate ZIP is caught by the street-address pattern (which pulls the full address block) or by the candidate-name pass when the ZIP sits next to the name.',
 );
 lines.push(
-  '- **Street addresses** appear only when a fixture includes a full mailing address in the contact block. Most resumes use city+state only; counts >0 here mean a precise home address is present.',
+  '- **`license_number`** — professional credentials (PE license, bar number) are public employment record per the provenance doc. Not personal PII. No action required.',
 );
 lines.push(
-  '- **`distinct_companies`** is noisy — a candidate who worked at 10 companies and mentions 30 distinct competitors / vendors can produce counts over 100. High counts are a prompt to skim for sensitive client names (law-firm clients, NDA-covered engagements, etc.), not a signal of compromise on their own.',
+  '- **`distinct_companies`** — company names are public employment records; not redacted by design. High counts indicate a candidate who mentions many vendors / clients / competitors by name.',
 );
 lines.push(
-  '- **`portfolio_or_personal_site`** — URLs to personal domains sometimes carry credentials (portfolio passwords) or link to sensitive work. One of the three portfolio URLs in this corpus has a password annotated inline in the contact block — non-sensitive-looking, but worth a glance before commit.',
+  '- **`has_references_section`** — should be empty (✓ not present) across the board. References sections contain third-party PII and are truncated during redaction.',
 );
 lines.push('');
-
-lines.push('## Recommended next steps');
-lines.push('');
 lines.push(
-  '1. **Do not commit extracted/ files** until redaction decisions are made per fixture.',
-);
-lines.push(
-  '2. **Handle the References section (fixture-19) first** — third-party emails are the most exposed category.',
-);
-lines.push(
-  '3. **Fixture-20 is a job description, not a resume** — it has no personal PII but also should not be classified. See `meta/fixture-20-*.yaml` for the flag.',
-);
-lines.push(
-  '4. If any candidate here is a real CareerIQ paying customer, confirm they consented to use as a fixture before proceeding to Phase 3 shadow runs.',
+  'Fixture-20 (the Under Armour job description that originally landed in `raw/`) has been relocated to `server/test-fixtures/job-descriptions/` and is not in this scan.',
 );
 lines.push('');
 
