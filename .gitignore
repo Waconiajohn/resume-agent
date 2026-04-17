@@ -32,3 +32,10 @@ server/test-fixtures/resumes/meta/
 server/test-fixtures/resumes/extracted/
 server/test-fixtures/resumes/fixture-map.json
 server/test-fixtures/snapshots/
+
+# v3 job description fixtures — raw JDs are public postings but treated
+# the same way as resumes for consistency with the resume corpus.
+# The README remains tracked.
+server/test-fixtures/job-descriptions/raw/
+server/test-fixtures/job-descriptions/meta/
+server/test-fixtures/job-descriptions/extracted/
