@@ -64,9 +64,9 @@ describe('loadPrompt', () => {
     expect(loaded.userMessageTemplate).toContain('{{resume_text}}');
   });
 
-  it('treats the whole body as system message when the user-template header is absent', () => {
+  it('throws a loud PromptLoadError when the "# User message template" header is absent', () => {
     stage(
-      'verify.v1',
+      'no-template.v1',
       [
         '---',
         'stage: verify',
@@ -78,9 +78,33 @@ describe('loadPrompt', () => {
         'You check the resume for errors.',
       ].join('\n'),
     );
-    const loaded = loadPrompt('verify.v1', { root });
-    expect(loaded.systemMessage).toContain('You check the resume for errors.');
-    expect(loaded.userMessageTemplate).toBe('');
+    expect(() => loadPrompt('no-template.v1', { root })).toThrow(PromptLoadError);
+    expect(() => loadPrompt('no-template.v1', { root })).toThrow(
+      /User message template/,
+    );
+  });
+
+  it('throws a loud PromptLoadError when the user-template section is empty', () => {
+    stage(
+      'empty-template.v1',
+      [
+        '---',
+        'stage: verify',
+        'version: "1.0"',
+        'model: claude-opus-4-7',
+        'temperature: 0.1',
+        '---',
+        '',
+        'You check the resume for errors.',
+        '',
+        '# User message template',
+        '',
+      ].join('\n'),
+    );
+    expect(() => loadPrompt('empty-template.v1', { root })).toThrow(PromptLoadError);
+    expect(() => loadPrompt('empty-template.v1', { root })).toThrow(
+      /empty|cannot feed/,
+    );
   });
 
   it('throws a loud PromptLoadError when the file is missing', () => {

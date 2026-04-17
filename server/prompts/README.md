@@ -51,7 +51,7 @@ You are ... (system message)
 Template body with placeholders like {{resume_text}}.
 ```
 
-The loader splits the body on the `# User message template` header. Anything before that header is the system message; anything after is the user-message template.
+The loader splits the body on the `# User message template` header. Anything before that header is the system message; anything after is the user-message template. Both sections are **required**: a prompt file without a `# User message template` section (or with an empty one) fails loudly at load time.
 
 ## Adding a new prompt
 

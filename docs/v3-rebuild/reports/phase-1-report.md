@@ -136,7 +136,13 @@ These are **v2 / platform concerns**, not v3. Per OPERATING-MANUAL.md "If you fi
 
 ---
 
-## 4. What I deferred
+## 4. Platform debt logged
+
+Tracking the 48 pre-existing platform test failures (§3g) as **[GitHub issue #1](https://github.com/Waconiajohn/resume-agent/issues/1)** so they don't block v3 and so the pattern doesn't get forgotten. Issue body describes the two dominant root causes (partial `vi.mock("../lib/llm.js", …)` missing `getModelForTier` export; writer-model tier drift `'primary'` vs asserted `'orchestrator'`) plus three outlier test files that need individual attention. Owned by whoever maintains the affected agent products; not on the v3 critical path.
+
+This section exists so the audit trail is preserved after the Phase 1 commits are archived.
+
+## 5. What I deferred
 
 - **Moving tests to colocated layout.** Deferred pending 3a decision.
 - **Adding `zod` schemas for the type shapes.** `zod` is already a server dependency. Phase 3's classify stage will need a zod schema to validate LLM output against `StructuredResume`. I defined the TS types in Phase 1 but did not add zod schemas yet — writing the schemas without the prompt to test against would be premature.
@@ -148,7 +154,7 @@ These are **v2 / platform concerns**, not v3. Per OPERATING-MANUAL.md "If you fi
 
 ---
 
-## 5. Next phase prerequisites
+## 6. Next phase prerequisites
 
 Phase 2 ("Fixtures") needs:
 
@@ -160,7 +166,7 @@ Nothing in Phase 2 requires touching v2 or any file outside the v3 scope beyond 
 
 ---
 
-## 6. Questions for the human
+## 7. Questions for the human
 
 1. **Test location (§3a).** Colocate via config extension, keep in `__tests__/v3/`, or another layout?
 2. **Prompt README caveat vs. doc 03.** I documented the "quote your version string" caveat in `server/prompts/README.md`. doc 03's example still shows unquoted versions. Update doc 03 now, wait until Phase 3 when the first real prompt is written, or leave the caveat only in the README?
@@ -171,7 +177,7 @@ Nothing in Phase 2 requires touching v2 or any file outside the v3 scope beyond 
 
 ---
 
-## 7. Commit history for this phase
+## 8. Commit history for this phase
 
 Intended commits (one logical chunk each, all on `rebuild/v3`):
 

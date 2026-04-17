@@ -12,7 +12,14 @@
 // path is "0 fixtures found, 0 passed, 0 failed". Phase 2 fills in extraction;
 // Phase 3+ wires in real snapshot diffing.
 
-import { readdirSync, statSync, existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import {
+  readdirSync,
+  statSync,
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+} from 'node:fs';
 import { resolve, join, extname, basename } from 'node:path';
 import { createV3Logger } from '../observability/logger.js';
 import { runPipeline } from '../pipeline.js';
@@ -109,10 +116,21 @@ interface Fixture {
 
 // Fixtures live in <root>/raw/. The `resumes/` README and any other
 // sibling files are not fixtures — the runner never treats them as input.
+// If <root>/raw/ does not exist, we create it and tell the user where to
+// drop files. A .gitkeep would be masked by the PII gitignore rule for
+// raw/, so the filesystem itself is the source of truth.
 function discoverFixtures(root: string): Fixture[] {
   const raw = join(root, 'raw');
-  if (!existsSync(raw)) return [];
-  if (!statSync(raw).isDirectory()) return [];
+  if (!existsSync(raw)) {
+    mkdirSync(raw, { recursive: true });
+    process.stderr.write(
+      `Created ${raw}. Drop resume files here.\n`,
+    );
+    return [];
+  }
+  if (!statSync(raw).isDirectory()) {
+    throw new Error(`${raw} exists but is not a directory`);
+  }
 
   const out: Fixture[] = [];
   for (const entry of readdirSync(raw)) {
@@ -223,7 +241,17 @@ export interface RunnerSummary {
 export async function runRunner(argv: string[] = process.argv.slice(2)): Promise<RunnerSummary> {
   const options = parseArgs(argv);
   if (options.promptVariant) {
-    logger.info({ promptVariant: options.promptVariant }, 'prompt variant requested (not yet wired)');
+    // TODO(phase-3): once the classify prompt lands, resolve `--prompt-variant`
+    // to a real prompt file suffix (e.g. `classify.v2-test`) and pass it into
+    // the classify stage. Switch this from a warning to a hard error at that
+    // point — a variant that doesn't resolve to a file should fail loudly.
+    process.stderr.write(
+      `--prompt-variant '${options.promptVariant}' specified but no prompts are loaded in Phase 1; flag will be honored starting Phase 3.\n`,
+    );
+    logger.warn(
+      { promptVariant: options.promptVariant },
+      'prompt variant flag received but no prompts are wired yet (Phase 1)',
+    );
   }
 
   const all = discoverFixtures(options.fixturesRoot);

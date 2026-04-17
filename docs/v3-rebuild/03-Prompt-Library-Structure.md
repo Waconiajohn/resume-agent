@@ -36,7 +36,7 @@ Each prompt is a standalone markdown file with a specific structure.
 ```markdown
 ---
 stage: classify
-version: 1.2
+version: "1.2"
 model: claude-opus-4-7
 temperature: 0.2
 last_edited: 2026-04-25
@@ -46,6 +46,8 @@ notes: |
   v1.1: Added career gap note detection.
   v1.0: Initial version.
 ---
+<!-- `version` is a quoted string. Unquoted `1.0` collapses to the integer `1` (YAML parses unquoted `1.0` as a float and then JS stringifies the float `1.0` as `"1"`, losing the trailing zero). Keep it quoted. -->
+
 
 # System
 

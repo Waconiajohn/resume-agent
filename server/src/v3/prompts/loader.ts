@@ -125,8 +125,12 @@ function requireField(
 /**
  * Splits the prompt body on the `# User message template` header.
  * Everything before the header becomes systemMessage; everything after becomes
- * userMessageTemplate. If the header is missing, the whole body is treated as
- * the system message and the user template is empty.
+ * userMessageTemplate.
+ *
+ * Every prompt MUST include a `# User message template` heading. A missing
+ * heading is a loud error per OPERATING-MANUAL.md "No silent fallbacks" — a
+ * prompt file without a user-template section is a mistake and we fail at
+ * load time so it cannot silently route zero runtime context to the LLM.
  */
 function splitPromptBody(
   body: string,
@@ -135,17 +139,20 @@ function splitPromptBody(
   const marker = /^#\s+User message template\s*$/im;
   const match = marker.exec(body);
   if (!match) {
-    // Allowed: some prompts (e.g. verify) may not need a user template.
-    // The loader surfaces an empty template rather than failing, so the caller
-    // decides whether that is valid for its stage. Flag in phase report if
-    // this turns out to mask real errors at Phase 3.
-    return { systemMessage: body.trim(), userMessageTemplate: '' };
+    throw new PromptLoadError(
+      `Prompt is missing the required "# User message template" section in ${path}. Add a heading "# User message template" followed by the user-message body.`,
+    );
   }
   const systemMessage = body.slice(0, match.index).trim();
   const userMessageTemplate = body.slice(match.index + match[0].length).trim();
   if (systemMessage.length === 0) {
     throw new PromptLoadError(
       `Prompt body has no system message before the "# User message template" header in ${path}`,
+    );
+  }
+  if (userMessageTemplate.length === 0) {
+    throw new PromptLoadError(
+      `Prompt "# User message template" section is empty in ${path}. A prompt without a user template cannot feed runtime context to the model.`,
     );
   }
   return { systemMessage, userMessageTemplate };
