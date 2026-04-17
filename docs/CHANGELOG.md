@@ -1,5 +1,20 @@
 # Changelog — Resume Agent
 
+## 2026-04-17 — Vertex AI service account auth via JWT
+**Sprint:** Production Readiness | **Story:** Vertex auth without gcloud CLI
+**Summary:** Rewrote `getVertexAccessToken` to mint access tokens from a `GOOGLE_APPLICATION_CREDENTIALS` service account key via JWT + OAuth2 token exchange, so Vertex works in environments without the gcloud CLI.
+
+### Changes Made
+- `server/src/lib/llm-provider.ts` — When `GOOGLE_APPLICATION_CREDENTIALS` points to a `service_account` JSON key, read it, build an RS256 JWT (iss/scope/aud/exp/iat), sign with the private key using Node's built-in `crypto.createSign`, and POST it to `https://oauth2.googleapis.com/token` (grant_type `urn:ietf:params:oauth:grant-type:jwt-bearer`). Cache the resulting access token at module scope for 50 minutes. Fall back to `gcloud auth print-access-token`, then `VERTEX_ACCESS_TOKEN`, as before. No new dependencies — uses `node:crypto`, `node:fs`, and `fetch`.
+
+### Decisions Made
+- Implemented JWT signing manually rather than adding `google-auth-library`, `googleapis`, or `jsonwebtoken`. Node's `crypto.createSign('RSA-SHA256')` + `Buffer.toString('base64url')` covers the full flow in ~40 lines with zero new deps.
+- Cache is module-scoped (not per `VertexProvider` instance) so multiple providers share one token and don't each hit the token endpoint.
+- `authorized_user` credentials (from `gcloud auth application-default login`) are rejected with a clear error — they require a refresh-token flow the service account path doesn't cover. Use the gcloud CLI fallback for those.
+
+### Known Issues
+- No unit tests for the new path. Mocking `fetch` + `readFileSync` + `createSign` against a test RSA key is straightforward but deferred.
+
 ## 2026-04-16 — Production push: admin users, pricing polish, marketing polish
 **Sprint:** Production Readiness | **Stories:** Admin user management, pricing polish, marketing polish
 **Summary:** Added admin user management panel (list/search/reset/plan change), pricing comparison table + FAQ + current-plan indicator, and marketing page trust strip + built-for personas + hero CTA.

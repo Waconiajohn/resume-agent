@@ -996,12 +996,46 @@ export class VertexProvider extends ZAIProvider {
   }
 }
 
+interface CachedAccessToken {
+  token: string;
+  expiresAt: number;
+}
+
+let cachedServiceAccountToken: CachedAccessToken | null = null;
+
 /**
- * Get a fresh access token from gcloud application default credentials.
- * Falls back to `gcloud auth print-access-token` if the metadata server is unavailable.
+ * Get a fresh access token for Vertex AI authentication.
+ *
+ * Preferred path: when GOOGLE_APPLICATION_CREDENTIALS points to a service account
+ * JSON key, sign a JWT with the private key and exchange it for an OAuth2 access
+ * token at https://oauth2.googleapis.com/token. Tokens are cached for 50 minutes
+ * (Google issues 60-minute tokens).
+ *
+ * Fallback: `gcloud auth print-access-token` (works in dev with
+ * `gcloud auth application-default login`), then VERTEX_ACCESS_TOKEN env var.
  */
 export async function getVertexAccessToken(): Promise<string> {
-  // Try the gcloud CLI first (works in dev)
+  const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (keyFile) {
+    if (cachedServiceAccountToken && Date.now() < cachedServiceAccountToken.expiresAt) {
+      return cachedServiceAccountToken.token;
+    }
+    try {
+      const token = await fetchServiceAccountAccessToken(keyFile);
+      cachedServiceAccountToken = {
+        token,
+        expiresAt: Date.now() + 50 * 60 * 1000,
+      };
+      return token;
+    } catch (err) {
+      logger.warn(
+        { error: err instanceof Error ? err.message : String(err) },
+        'getVertexAccessToken: service account auth failed, falling back to gcloud CLI',
+      );
+    }
+  }
+
+  // Fallback: gcloud CLI (dev environments with application-default credentials)
   try {
     const { execSync } = await import('node:child_process');
     const token = execSync('gcloud auth print-access-token', { timeout: 5000 })
@@ -1011,30 +1045,82 @@ export async function getVertexAccessToken(): Promise<string> {
     // Fall through
   }
 
-  // Try GOOGLE_APPLICATION_CREDENTIALS service account
-  const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (keyFile) {
-    try {
-      const { readFileSync } = await import('node:fs');
-      const key = JSON.parse(readFileSync(keyFile, 'utf-8'));
-      // For service accounts, we'd need to do JWT signing — complex.
-      // For now, rely on gcloud CLI or env var.
-      if (key.type === 'authorized_user' && key.access_token) {
-        return key.access_token;
-      }
-    } catch {
-      // Fall through
-    }
-  }
-
-  // Last resort: check for explicit env var
+  // Last resort: explicit env var
   const envToken = process.env.VERTEX_ACCESS_TOKEN;
   if (envToken) return envToken;
 
   throw new Error(
-    'Cannot get Vertex AI access token. Either run `gcloud auth application-default login` '
-    + 'or set VERTEX_ACCESS_TOKEN environment variable.',
+    'Cannot get Vertex AI access token. Set GOOGLE_APPLICATION_CREDENTIALS to a '
+    + 'service account JSON key, run `gcloud auth application-default login`, or '
+    + 'set VERTEX_ACCESS_TOKEN environment variable.',
   );
+}
+
+/**
+ * Read a service account JSON key, sign a JWT with its private key, and exchange
+ * the JWT for an OAuth2 access token at Google's token endpoint.
+ */
+async function fetchServiceAccountAccessToken(keyFilePath: string): Promise<string> {
+  const [{ readFileSync }, { createSign }] = await Promise.all([
+    import('node:fs'),
+    import('node:crypto'),
+  ]);
+
+  const key = JSON.parse(readFileSync(keyFilePath, 'utf-8')) as {
+    type?: string;
+    client_email?: string;
+    private_key?: string;
+    token_uri?: string;
+  };
+
+  if (key.type !== 'service_account') {
+    throw new Error(
+      `GOOGLE_APPLICATION_CREDENTIALS points to ${key.type ?? 'unknown'} credentials; expected service_account`,
+    );
+  }
+  if (!key.client_email || !key.private_key) {
+    throw new Error('Service account key is missing client_email or private_key');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = {
+    iss: key.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: key.token_uri ?? 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  };
+
+  const toB64Url = (obj: unknown): string =>
+    Buffer.from(JSON.stringify(obj)).toString('base64url');
+
+  const signingInput = `${toB64Url(header)}.${toB64Url(payload)}`;
+  const signer = createSign('RSA-SHA256');
+  signer.update(signingInput);
+  const signature = signer.sign(key.private_key).toString('base64url');
+  const jwt = `${signingInput}.${signature}`;
+
+  const tokenUrl = key.token_uri ?? 'https://oauth2.googleapis.com/token';
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }).toString(),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Google token exchange failed ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json() as { access_token?: string };
+  if (!data.access_token) {
+    throw new Error('Google token exchange returned no access_token');
+  }
+  return data.access_token;
 }
 
 // ─── Failover provider ───────────────────────────────────────────────
