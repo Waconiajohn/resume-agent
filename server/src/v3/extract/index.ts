@@ -187,6 +187,14 @@ async function extractDocx(
     warnings.push(`docx(${m.type}): ${m.message}`);
   }
 
+  // Detect base64 payloads before they're stripped so the warning survives
+  // normalization. Mechanical check.
+  if (containsBase64DataUri(result.value)) {
+    warnings.push(
+      'docx(images): inlined base64 image data stripped during normalization',
+    );
+  }
+
   const plaintext = normalizePlaintext(result.value);
   pushContentWarnings(plaintext, warnings);
 
@@ -262,18 +270,34 @@ function extractText(buffer: Buffer, _source: string): ExtractResult {
 // Shared post-processing (mechanical)
 // -----------------------------------------------------------------------------
 
-function normalizePlaintext(input: string): string {
-  // Mammoth's convertToMarkdown escapes punctuation that happens to be
-  // markdown syntax: phones come out as "303\-807\-6872", emails as
-  // "ben\.wedewer@gmail\.com". Strip those escapes — they are noise for
-  // the classifier and they break plain-text PII patterns. Meaningful
-  // markdown structure (leading "-" for bullets, "#" for headings) is
-  // untouched because it isn't preceded by a backslash.
-  const unescaped = input.replace(/\\([^A-Za-z0-9\s])/g, '$1');
+// Detect data:image/...;base64,... URIs in the input. Emits a boolean so the
+// extractor can surface a warning; the URIs are stripped by normalizePlaintext.
+function containsBase64DataUri(input: string): boolean {
+  return /data:image\/[a-z0-9+.-]+;base64,/i.test(input);
+}
 
-  // Normalize line endings to \n, trim trailing whitespace on each line,
-  // collapse runs of 3+ blank lines to 2. Preserve bullet/indentation.
-  const normalized = unescaped
+function normalizePlaintext(input: string): string {
+  // 1. Strip base64 data URIs. mammoth inlines embedded images as
+  //    "![](data:image/png;base64,....)" which bloats the text by hundreds
+  //    of KB per image and carries zero semantic content. This is a
+  //    mechanical cleanup, not a semantic decision — the URI syntax is
+  //    unambiguous.
+  let stripped = input
+    // "![alt](data:image/...;base64,...)" — markdown image with data URI
+    .replace(/!\[[^\]]*\]\(data:image\/[a-z0-9+.-]+;base64,[^)]*\)/gi, '')
+    // bare "data:image/...;base64,..." anywhere (any trailing chars up to whitespace)
+    .replace(/data:image\/[a-z0-9+.-]+;base64,[A-Za-z0-9+/=]+/gi, '');
+
+  // 2. Strip mammoth's markdown-escape sequences for punctuation.
+  //    Phones come out as "303\-807\-6872", emails as "ben\.wedewer@gmail\.com".
+  //    Strip the escapes — they are noise and they break plain-text PII
+  //    patterns. Meaningful markdown structure (leading "-" for bullets,
+  //    "#" for headings) is untouched because it isn't preceded by a backslash.
+  stripped = stripped.replace(/\\([^A-Za-z0-9\s])/g, '$1');
+
+  // 3. Normalize line endings to \n, trim trailing whitespace on each line,
+  //    collapse runs of 3+ blank lines to 2. Preserve bullet/indentation.
+  const normalized = stripped
     .replace(/\r\n?/g, '\n')
     .split('\n')
     .map((line) => line.replace(/[\t ]+$/g, ''))

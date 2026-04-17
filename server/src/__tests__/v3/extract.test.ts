@@ -71,3 +71,30 @@ describe('extract — docx', () => {
     ).rejects.toThrow(/mammoth failed to parse DOCX/);
   });
 });
+
+describe('extract — normalization', () => {
+  it('strips base64 data URIs in markdown image form and bare', async () => {
+    // Apply the normalization path directly through the text branch so we
+    // don't need a real DOCX — the same normalizePlaintext runs for text.
+    const input = [
+      'Lutz Johnson',
+      '![icon](data:image/png;base64,iVBORw0KGgoAAAAN)',
+      'Senior Program Manager',
+      'Inline: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEA',
+      'more content',
+    ].join('\n');
+    const result = await extract({ text: input, filename: 'x.txt' });
+    expect(result.plaintext).not.toMatch(/base64/i);
+    expect(result.plaintext).not.toMatch(/iVBORw0KG/);
+    expect(result.plaintext).toContain('Lutz Johnson');
+    expect(result.plaintext).toContain('Senior Program Manager');
+    expect(result.plaintext).toContain('more content');
+  });
+
+  it('removes mammoth-style backslash escapes from punctuation', async () => {
+    const input = 'Phone: 303\\-807\\-6872 | Email: name\\.test@example\\.com';
+    const result = await extract({ text: input, filename: 'x.txt' });
+    expect(result.plaintext).toContain('303-807-6872');
+    expect(result.plaintext).toContain('name.test@example.com');
+  });
+});
