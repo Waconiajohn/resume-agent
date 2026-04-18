@@ -1,10 +1,4 @@
 {
   "passed": true,
-  "issues": [
-    {
-      "severity": "warning",
-      "section": "positions[1].bullets[6]",
-      "message": "Claim 'enabling measurable throughput gains without proportional headcount increases' adds a headcount-efficiency framing not present in the source bullet, which only references monitoring, logging, and reliability practices."
-    }
-  ]
+  "issues": []
 }

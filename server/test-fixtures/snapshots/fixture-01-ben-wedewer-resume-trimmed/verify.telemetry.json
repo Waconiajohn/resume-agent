@@ -1,8 +1,10 @@
 {
   "promptName": "verify.v1",
-  "promptVersion": "1.0",
-  "model": "claude-opus-4-7",
-  "inputTokens": 10438,
-  "outputTokens": 132,
-  "durationMs": 3661
+  "promptVersion": "1.2.1",
+  "model": "gpt-4.1",
+  "capability": "strong-reasoning",
+  "backend": "openai",
+  "inputTokens": 11535,
+  "outputTokens": 13,
+  "durationMs": 2004
 }
