@@ -1,25 +1,37 @@
 // Provider factory for v3 stages.
 //
 // Stages NEVER import AnthropicProvider / VertexProvider / DeepInfraProvider
-// / DeepSeekProvider directly. They call getProvider(capability) and receive
-// a configured LLMProvider-compatible object that satisfies the capability.
+// / DeepSeekProvider / OpenAIProvider directly. They call getProvider(capability)
+// and receive a configured ResolvedProvider that satisfies the capability.
 //
-// Capabilities map to concrete models per environment. Production runs on
-// Vertex-hosted DeepSeek; development may override to Anthropic for
-// comparison. See docs/v3-rebuild/04-Decision-Log.md 2026-04-18 entry on
-// "Production routes through Vertex-hosted DeepSeek, not Anthropic models".
+// Phase 4.5 — HYBRID production routing:
+//   strong-reasoning → vertex (default)   (classify, strategize, verify)
+//   fast-writer      → vertex (default)   (write-summary, -accomplishments, -competencies, -custom-section)
+//   deep-writer      → openai (default)   (write-position only — Phase 4 cleanup I4 showed GPT-4.1 fixes
+//                                          the 1-5-error editorial-synthesis gap that DeepSeek-thinking
+//                                          could not close)
+//   deep-writer      → vertex (FALLBACK)  (if the OpenAI call fails, the wrapper transparently falls
+//                                          back to DeepSeek-thinking — the ONE explicit-fallback in the
+//                                          whole system, carved out because write-position is the
+//                                          quality-critical path)
 //
-// Env vars (all optional):
-//   RESUME_V3_PROVIDER         vertex (default) | anthropic
-//   RESUME_V3_STRONG_REASONING_MODEL
-//     - vertex default:    deepseek-ai/deepseek-v3.2-maas
-//     - anthropic default: claude-opus-4-7
-//   RESUME_V3_FAST_WRITER_MODEL
-//     - vertex default:    deepseek-ai/deepseek-v3.2-maas
-//     - anthropic default: claude-sonnet-4-6
+// Precedence of backend selection (per capability):
+//   RESUME_V3_<CAP>_BACKEND  (strongest)
+//   RESUME_V3_PROVIDER       (global fallback)
+//   built-in default         (vertex for strong-reasoning/fast-writer, openai for deep-writer)
 //
-// Providers instantiate lazily (one per capability per process) so that
-// constructing `factory.ts` at import time does NOT call Vertex auth.
+// Per-capability backend env vars:
+//   RESUME_V3_STRONG_REASONING_BACKEND
+//   RESUME_V3_FAST_WRITER_BACKEND
+//   RESUME_V3_DEEP_WRITER_BACKEND
+//
+// Model env vars (also per-backend suffix):
+//   RESUME_V3_STRONG_REASONING_MODEL         — used on vertex/anthropic (generic)
+//   RESUME_V3_STRONG_REASONING_MODEL_OPENAI  — used on openai (backend-specific)
+//   (same pattern for fast-writer / deep-writer)
+//
+// Providers instantiate lazily (one per capability per process) so constructing
+// factory.ts at import time does NOT call Vertex auth.
 
 import {
   AnthropicProvider,
@@ -40,6 +52,7 @@ import { createV3Logger } from '../observability/logger.js';
 const log = createV3Logger('providers');
 
 export type Capability = 'strong-reasoning' | 'fast-writer' | 'deep-writer';
+export type Backend = 'vertex' | 'openai' | 'anthropic';
 
 export interface ResolvedProvider {
   provider: LLMProvider;
@@ -47,29 +60,32 @@ export interface ResolvedProvider {
   model: string;
   /** Capability that was requested — useful for log tagging. */
   capability: Capability;
-  /** Configured backend name: 'vertex' | 'anthropic'. */
-  backend: string;
+  /** Configured backend name. */
+  backend: Backend;
   /**
    * Extra params the stage should spread into its provider.stream/chat call.
-   * Currently used by deep-writer to request DeepSeek thinking mode.
+   * Used by deep-writer-on-vertex to request DeepSeek thinking mode.
    */
   extraParams?: { thinking?: boolean };
 }
 
-const DEFAULT_BACKEND = 'vertex';
 const DEFAULT_VERTEX_MODEL = 'deepseek-ai/deepseek-v3.2-maas';
 const DEFAULT_OPUS_MODEL = 'claude-opus-4-7';
 const DEFAULT_SONNET_MODEL = 'claude-sonnet-4-6';
 
-// Phase 4 Intervention 4 — OpenAI is a comparison-only backend; production
-// stays on Vertex-DeepSeek unless a Decision Log entry says otherwise.
-// GPT-5 was the target; the available OpenAI project has access to gpt-4.1,
-// gpt-4o-mini, gpt-4-turbo but NOT gpt-5 / o-series. Defaults use gpt-4.1
-// as the flagship available to this project. Override via env vars
-// (RESUME_V3_STRONG_REASONING_MODEL_OPENAI etc.) if project access changes.
+// OpenAI defaults. The OpenAI project tested against (Phase 4 Intervention 4)
+// does not have gpt-5 / o-series access; gpt-4.1 is used as the flagship.
+// Override via env vars (RESUME_V3_*_MODEL_OPENAI) if the project gains gpt-5.
 const DEFAULT_OPENAI_STRONG_MODEL = 'gpt-4.1';
-const DEFAULT_OPENAI_FAST_MODEL = 'gpt-4o-mini';
+const DEFAULT_OPENAI_FAST_MODEL = 'gpt-4.1-mini';
 const DEFAULT_OPENAI_DEEP_MODEL = 'gpt-4.1';
+
+// Phase 4.5 hybrid production defaults per capability.
+const DEFAULT_CAPABILITY_BACKEND: Record<Capability, Backend> = {
+  'strong-reasoning': 'vertex',
+  'fast-writer': 'vertex',
+  'deep-writer': 'openai',
+};
 
 /** Capabilities that enable DeepSeek thinking mode when on the Vertex backend. */
 const THINKING_CAPABILITIES: Capability[] = ['deep-writer'];
@@ -85,7 +101,7 @@ export function getProvider(capability: Capability): ResolvedProvider {
   const existing = cache.get(capability);
   if (existing) return existing;
 
-  const backend = (process.env.RESUME_V3_PROVIDER ?? DEFAULT_BACKEND).toLowerCase();
+  const backend = resolveBackend(capability);
   const resolved = buildResolved(capability, backend);
 
   log.info(
@@ -107,7 +123,61 @@ export function _resetProviderCache(): void {
   cache.clear();
 }
 
-function buildResolved(capability: Capability, backend: string): ResolvedProvider {
+/**
+ * Resolve the backend for a given capability per the precedence contract:
+ *   RESUME_V3_<CAP>_BACKEND  >  RESUME_V3_PROVIDER  >  DEFAULT_CAPABILITY_BACKEND
+ */
+export function resolveBackend(capability: Capability): Backend {
+  const perCap = process.env[capabilityToBackendEnv(capability)];
+  if (perCap) {
+    return assertBackend(perCap, capabilityToBackendEnv(capability));
+  }
+  const global = process.env.RESUME_V3_PROVIDER;
+  if (global) {
+    return assertBackend(global, 'RESUME_V3_PROVIDER');
+  }
+  return DEFAULT_CAPABILITY_BACKEND[capability];
+}
+
+function assertBackend(value: string, sourceName: string): Backend {
+  const normalized = value.toLowerCase();
+  if (normalized === 'vertex' || normalized === 'openai' || normalized === 'anthropic') {
+    return normalized;
+  }
+  throw new Error(
+    `v3 provider factory: unknown backend "${value}" in ${sourceName}. ` +
+      `Expected one of: vertex, openai, anthropic.`,
+  );
+}
+
+function capabilityToBackendEnv(capability: Capability): string {
+  switch (capability) {
+    case 'strong-reasoning':
+      return 'RESUME_V3_STRONG_REASONING_BACKEND';
+    case 'fast-writer':
+      return 'RESUME_V3_FAST_WRITER_BACKEND';
+    case 'deep-writer':
+      return 'RESUME_V3_DEEP_WRITER_BACKEND';
+  }
+}
+
+function capabilityToModelEnv(capability: Capability): string {
+  switch (capability) {
+    case 'strong-reasoning':
+      return 'RESUME_V3_STRONG_REASONING_MODEL';
+    case 'fast-writer':
+      return 'RESUME_V3_FAST_WRITER_MODEL';
+    case 'deep-writer':
+      return 'RESUME_V3_DEEP_WRITER_MODEL';
+  }
+}
+
+function buildResolved(capability: Capability, backend: Backend): ResolvedProvider {
+  // deep-writer on openai gets wrapped with a Vertex-thinking fallback.
+  // Every other combination is a direct provider.
+  if (capability === 'deep-writer' && backend === 'openai') {
+    return buildDeepWriterHybrid();
+  }
   if (backend === 'vertex') {
     return buildVertexResolved(capability);
   }
@@ -117,17 +187,19 @@ function buildResolved(capability: Capability, backend: string): ResolvedProvide
   if (backend === 'openai') {
     return buildOpenAIResolved(capability);
   }
-  throw new Error(
-    `v3 provider factory: unknown RESUME_V3_PROVIDER "${backend}". ` +
-      `Expected one of: vertex, anthropic, openai.`,
-  );
+  // Exhaustiveness guard — TypeScript should have caught this.
+  throw new Error(`v3 provider factory: unhandled backend "${backend}"`);
 }
+
+// -----------------------------------------------------------------------------
+// Per-backend builders
+// -----------------------------------------------------------------------------
 
 function buildVertexResolved(capability: Capability): ResolvedProvider {
   const project = process.env.VERTEX_PROJECT ?? process.env.GCP_PROJECT;
   if (!project) {
     throw new Error(
-      'v3 provider factory: VERTEX_PROJECT (or GCP_PROJECT) env var is required when RESUME_V3_PROVIDER=vertex (the default).',
+      'v3 provider factory: VERTEX_PROJECT (or GCP_PROJECT) env var is required when capability resolves to vertex backend.',
     );
   }
 
@@ -138,10 +210,8 @@ function buildVertexResolved(capability: Capability): ResolvedProvider {
     accessToken: process.env.VERTEX_ACCESS_TOKEN ?? '',
   });
 
-  // Failover chain mirrors v2's writerLlm (see server/src/lib/llm.ts):
+  // Failover chain mirrors v2's writerLlm:
   //   RateLimitFailoverProvider(Vertex) → DeepInfra → DeepSeek direct
-  // Outer failover on 5xx/timeouts (FailoverProvider), inner layer on 429s
-  // (RateLimitFailover).
   let primary: LLMProvider = vertex;
   const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
   if (deepseekApiKey) {
@@ -155,8 +225,6 @@ function buildVertexResolved(capability: Capability): ResolvedProvider {
   let fallback: LLMProvider | null = null;
   if (process.env.DEEPINFRA_API_KEY) {
     fallback = new DeepInfraProvider({ apiKey: process.env.DEEPINFRA_API_KEY });
-  } else if (deepseekApiKey) {
-    // Skip — DeepSeek is already the 429-failover inside primary
   }
 
   const wrapped = fallback ? new FailoverProvider(primary, fallback) : primary;
@@ -173,8 +241,6 @@ function buildAnthropicResolved(capability: Capability): ResolvedProvider {
   const anthropic = new AnthropicProvider();
   const defensive = new DefensiveJsonProvider(anthropic);
 
-  // Dev-only Anthropic defaults: deep-writer maps to Opus as the closest
-  // analog to DeepSeek-thinking for debug runs.
   const defaultModel =
     capability === 'strong-reasoning'
       ? DEFAULT_OPUS_MODEL
@@ -187,24 +253,13 @@ function buildAnthropicResolved(capability: Capability): ResolvedProvider {
   return { provider: defensive, model, capability, backend: 'anthropic' };
 }
 
-function capabilityToModelEnv(capability: Capability): string {
-  switch (capability) {
-    case 'strong-reasoning':
-      return 'RESUME_V3_STRONG_REASONING_MODEL';
-    case 'fast-writer':
-      return 'RESUME_V3_FAST_WRITER_MODEL';
-    case 'deep-writer':
-      return 'RESUME_V3_DEEP_WRITER_MODEL';
-  }
-}
-
 function buildOpenAIResolved(capability: Capability): ResolvedProvider {
   // Env var name is `OpenAI_API_KEY` in this repo's .env (mixed case); also
   // accept `OPENAI_API_KEY` for tolerance of the standard convention.
   const apiKey = process.env.OpenAI_API_KEY ?? process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error(
-      'v3 provider factory: OpenAI_API_KEY (or OPENAI_API_KEY) env var is required when RESUME_V3_PROVIDER=openai.',
+      'v3 provider factory: OpenAI_API_KEY (or OPENAI_API_KEY) env var is required when capability resolves to openai backend.',
     );
   }
   const openai = new OpenAIProvider({ apiKey });
@@ -217,27 +272,144 @@ function buildOpenAIResolved(capability: Capability): ResolvedProvider {
         ? DEFAULT_OPENAI_DEEP_MODEL
         : DEFAULT_OPENAI_STRONG_MODEL;
 
-  // Per-backend model env overrides, so the same RESUME_V3_*_MODEL keys
-  // stay in control but the OpenAI backend picks different defaults.
+  // Per-backend model env overrides, so the operator can use different models
+  // on OpenAI than on vertex without conflict.
   const overrideKey = `${capabilityToModelEnv(capability)}_OPENAI`;
   const model = process.env[overrideKey] ?? process.env[capabilityToModelEnv(capability)] ?? defaultModel;
 
-  // GPT-5 reasoning (for deep-writer) is NOT the DeepSeek `thinking: true`
-  // mechanism. OpenAI's Chat Completions API routes reasoning via the
-  // model name (e.g., gpt-5) and a `reasoning_effort` parameter. We don't
-  // wire reasoning_effort in this phase — the comparison is diagnostic,
-  // not a production port, and plain GPT-5 vs plain DeepSeek-thinking is
-  // the apples-to-apples test. Note in the eval if this matters.
   return { provider: defensive, model, capability, backend: 'openai' };
+}
+
+/**
+ * Build the deep-writer hybrid: OpenAI primary with DeepSeek-thinking-on-Vertex
+ * as explicit fallback. Used only when deep-writer resolves to openai backend.
+ */
+function buildDeepWriterHybrid(): ResolvedProvider {
+  const primary = buildOpenAIResolved('deep-writer');
+  // Fallback: resolve deep-writer as if backend were vertex (thinking mode on).
+  let fallback: ResolvedProvider | null = null;
+  try {
+    fallback = buildVertexResolved('deep-writer');
+  } catch (err) {
+    // If vertex is also not configured, we have no fallback — log and proceed.
+    // Primary (OpenAI) must work; if it doesn't, we fail loudly at request time.
+    logger.warn(
+      {
+        capability: 'deep-writer',
+        primary: 'openai',
+        error: err instanceof Error ? err.message : String(err),
+      },
+      'deep-writer hybrid: Vertex fallback unavailable; OpenAI must succeed or stage will fail',
+    );
+  }
+
+  const wrapper = new DeepWriterFallbackProvider(primary, fallback);
+
+  // The ResolvedProvider surface reflects the PRIMARY backend. Stages see
+  // "backend: openai" and do not pass thinking: true. The wrapper handles
+  // thinking internally on the fallback path.
+  return {
+    provider: wrapper,
+    model: primary.model,
+    capability: 'deep-writer',
+    backend: 'openai',
+    extraParams: undefined,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// DeepWriterFallbackProvider — OpenAI primary with Vertex-thinking fallback
+// -----------------------------------------------------------------------------
+//
+// Per the Phase 4.5 task spec: "The OpenAI fallback on deep-writer failure is
+// the ONE explicit-fallback in the whole system. All other failures surface
+// loudly. This is an exception carved out specifically because write-position
+// on OpenAI is the quality-critical path and a degraded-but-working fallback
+// serves users better than an outage."
+//
+// Behavior:
+//   - Try OpenAI with the caller's params.
+//   - On failure (non-abort), log at WARN with the reason, retry on Vertex
+//     with DeepSeek-thinking mode enabled.
+//   - If Vertex also fails, propagate the Vertex error (so the caller sees
+//     the true blocker, not the primary OpenAI error).
+//
+// AbortError (user cancellation) bypasses the fallback — we do not retry a
+// cancelled stream.
+
+class DeepWriterFallbackProvider implements LLMProvider {
+  constructor(
+    private readonly primary: ResolvedProvider,
+    private readonly fallback: ResolvedProvider | null,
+  ) {}
+
+  get name(): string {
+    return this.primary.provider.name;
+  }
+
+  async chat(params: ChatParams): Promise<ChatResponse> {
+    try {
+      return await this.primary.provider.chat(this.primaryParams(params));
+    } catch (err) {
+      if (isAbort(err)) throw err;
+      if (!this.fallback) throw err;
+      logger.warn(
+        {
+          capability: 'deep-writer',
+          primary: this.primary.backend,
+          fallback: this.fallback.backend,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        'deep-writer fallback: primary call failed, retrying on fallback backend',
+      );
+      return this.fallback.provider.chat(this.fallbackParams(params));
+    }
+  }
+
+  async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
+    try {
+      yield* this.primary.provider.stream(this.primaryParams(params));
+      return;
+    } catch (err) {
+      if (isAbort(err)) throw err;
+      if (!this.fallback) throw err;
+      logger.warn(
+        {
+          capability: 'deep-writer',
+          primary: this.primary.backend,
+          fallback: this.fallback.backend,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        'deep-writer fallback: primary stream failed, retrying on fallback backend',
+      );
+    }
+    // Fallback path — Vertex with thinking mode.
+    yield* this.fallback!.provider.stream(this.fallbackParams(params));
+  }
+
+  private primaryParams(params: ChatParams): ChatParams {
+    // Strip thinking flag for OpenAI (it's a DeepSeek-specific kwarg).
+    const { thinking: _thinking, ...rest } = params;
+    return { ...rest, model: this.primary.model };
+  }
+
+  private fallbackParams(params: ChatParams): ChatParams {
+    // Apply the fallback's model and thinking flag (Vertex-thinking path).
+    return {
+      ...params,
+      model: this.fallback!.model,
+      ...(this.fallback!.extraParams?.thinking && { thinking: true }),
+    };
+  }
+}
+
+function isAbort(err: unknown): boolean {
+  return err instanceof Error && (err.name === 'AbortError' || /aborted/i.test(err.message));
 }
 
 // -----------------------------------------------------------------------------
 // RateLimitFailoverProvider (v3-local copy; identical shape to v2's)
 // -----------------------------------------------------------------------------
-// v2's class is file-private in server/src/lib/llm.ts. v3 needs the same
-// semantics (switch providers + models on a single 429) inside the factory
-// without importing from v2's agent code. We port the class here rather than
-// extract to /lib/ to avoid touching v2's file.
 
 class RateLimitFailoverProvider implements LLMProvider {
   get name(): string {
@@ -296,18 +468,6 @@ class RateLimitFailoverProvider implements LLMProvider {
 // -----------------------------------------------------------------------------
 // DefensiveJsonProvider — mechanical fence stripping + one-retry JSON handling
 // -----------------------------------------------------------------------------
-// Wraps an upstream provider. When stages set response_format: json_object,
-// this wrapper:
-//   1. Strips markdown code fences (```json ... ```) from the response text
-//      before returning — mechanical operation, belongs in code.
-//   2. If JSON.parse of the cleaned text fails, retries once with the parser
-//      error fed back into the system message. Retry is visible in logs.
-// Ordinary (non-JSON) calls pass through unchanged.
-//
-// The retry only fires on chat() paths with response_format set. stream()
-// pass-through matches the upstream provider; stage code that uses streaming
-// is responsible for its own fence handling (v3 classify uses streaming at
-// 32K max_tokens and does its own fence strip via stripMarkdownJsonFence).
 
 export class DefensiveJsonProvider implements LLMProvider {
   constructor(private readonly inner: LLMProvider) {}
@@ -327,7 +487,6 @@ export class DefensiveJsonProvider implements LLMProvider {
       return { ...first, text: cleaned };
     }
 
-    // First attempt failed — retry with the parser error in the system prompt.
     const parseError = captureParseError(cleaned);
     log.info(
       {
@@ -354,7 +513,6 @@ export class DefensiveJsonProvider implements LLMProvider {
       return { ...second, text: secondCleaned };
     }
 
-    // Second attempt also failed — fail loudly with both attempts in the error.
     throw new Error(
       `DefensiveJsonProvider: JSON parse failed on retry from ${this.inner.name}. ` +
         `First attempt error: ${parseError}. ` +
@@ -365,9 +523,6 @@ export class DefensiveJsonProvider implements LLMProvider {
   }
 
   async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
-    // Pass-through with mechanical fence-strip at the end would require
-    // buffering the entire stream; stage code (classify) already does its own
-    // fence-strip on the accumulated text. Keep stream transparent.
     yield* this.inner.stream(params);
   }
 }
