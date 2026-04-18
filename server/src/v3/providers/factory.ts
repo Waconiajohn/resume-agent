@@ -26,6 +26,7 @@ import {
   DeepInfraProvider,
   DeepSeekProvider,
   FailoverProvider,
+  OpenAIProvider,
   VertexProvider,
   isRateLimitError,
   type ChatParams,
@@ -59,6 +60,16 @@ const DEFAULT_BACKEND = 'vertex';
 const DEFAULT_VERTEX_MODEL = 'deepseek-ai/deepseek-v3.2-maas';
 const DEFAULT_OPUS_MODEL = 'claude-opus-4-7';
 const DEFAULT_SONNET_MODEL = 'claude-sonnet-4-6';
+
+// Phase 4 Intervention 4 — OpenAI is a comparison-only backend; production
+// stays on Vertex-DeepSeek unless a Decision Log entry says otherwise.
+// GPT-5 was the target; the available OpenAI project has access to gpt-4.1,
+// gpt-4o-mini, gpt-4-turbo but NOT gpt-5 / o-series. Defaults use gpt-4.1
+// as the flagship available to this project. Override via env vars
+// (RESUME_V3_STRONG_REASONING_MODEL_OPENAI etc.) if project access changes.
+const DEFAULT_OPENAI_STRONG_MODEL = 'gpt-4.1';
+const DEFAULT_OPENAI_FAST_MODEL = 'gpt-4o-mini';
+const DEFAULT_OPENAI_DEEP_MODEL = 'gpt-4.1';
 
 /** Capabilities that enable DeepSeek thinking mode when on the Vertex backend. */
 const THINKING_CAPABILITIES: Capability[] = ['deep-writer'];
@@ -103,9 +114,12 @@ function buildResolved(capability: Capability, backend: string): ResolvedProvide
   if (backend === 'anthropic') {
     return buildAnthropicResolved(capability);
   }
+  if (backend === 'openai') {
+    return buildOpenAIResolved(capability);
+  }
   throw new Error(
     `v3 provider factory: unknown RESUME_V3_PROVIDER "${backend}". ` +
-      `Expected one of: vertex, anthropic.`,
+      `Expected one of: vertex, anthropic, openai.`,
   );
 }
 
@@ -182,6 +196,39 @@ function capabilityToModelEnv(capability: Capability): string {
     case 'deep-writer':
       return 'RESUME_V3_DEEP_WRITER_MODEL';
   }
+}
+
+function buildOpenAIResolved(capability: Capability): ResolvedProvider {
+  // Env var name is `OpenAI_API_KEY` in this repo's .env (mixed case); also
+  // accept `OPENAI_API_KEY` for tolerance of the standard convention.
+  const apiKey = process.env.OpenAI_API_KEY ?? process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      'v3 provider factory: OpenAI_API_KEY (or OPENAI_API_KEY) env var is required when RESUME_V3_PROVIDER=openai.',
+    );
+  }
+  const openai = new OpenAIProvider({ apiKey });
+  const defensive = new DefensiveJsonProvider(openai);
+
+  const defaultModel =
+    capability === 'fast-writer'
+      ? DEFAULT_OPENAI_FAST_MODEL
+      : capability === 'deep-writer'
+        ? DEFAULT_OPENAI_DEEP_MODEL
+        : DEFAULT_OPENAI_STRONG_MODEL;
+
+  // Per-backend model env overrides, so the same RESUME_V3_*_MODEL keys
+  // stay in control but the OpenAI backend picks different defaults.
+  const overrideKey = `${capabilityToModelEnv(capability)}_OPENAI`;
+  const model = process.env[overrideKey] ?? process.env[capabilityToModelEnv(capability)] ?? defaultModel;
+
+  // GPT-5 reasoning (for deep-writer) is NOT the DeepSeek `thinking: true`
+  // mechanism. OpenAI's Chat Completions API routes reasoning via the
+  // model name (e.g., gpt-5) and a `reasoning_effort` parameter. We don't
+  // wire reasoning_effort in this phase — the comparison is diagnostic,
+  // not a production port, and plain GPT-5 vs plain DeepSeek-thinking is
+  // the apples-to-apples test. Note in the eval if this matters.
+  return { provider: defensive, model, capability, backend: 'openai' };
 }
 
 // -----------------------------------------------------------------------------

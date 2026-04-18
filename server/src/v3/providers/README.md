@@ -31,14 +31,34 @@ On the Anthropic backend, `deep-writer` maps to `claude-opus-4-7` as the closest
 
 | Variable                                  | Purpose                                            | Default   |
 |-------------------------------------------|----------------------------------------------------|-----------|
-| `RESUME_V3_PROVIDER`                      | Which backend to use: `vertex` or `anthropic`      | `vertex`  |
+| `RESUME_V3_PROVIDER`                      | Backend: `vertex` (prod) \| `anthropic` (dev) \| `openai` (comparison) | `vertex`  |
 | `RESUME_V3_STRONG_REASONING_MODEL`        | Override the model for `strong-reasoning`          | per-backend default |
 | `RESUME_V3_FAST_WRITER_MODEL`             | Override the model for `fast-writer`               | per-backend default |
 | `RESUME_V3_DEEP_WRITER_MODEL`             | Override the model for `deep-writer`               | per-backend default |
+| `RESUME_V3_<CAP>_MODEL_OPENAI`            | Per-backend override for the OpenAI backend only  | per-backend default |
 | `VERTEX_PROJECT` (or `GCP_PROJECT`)       | Required when backend is `vertex`                  | —         |
 | `VERTEX_REGION`                           | Region for Vertex; `global` for DeepSeek V3.2      | `global`  |
 | `DEEPSEEK_API_KEY`                        | Enables 429-failover from Vertex → DeepSeek direct | optional  |
 | `DEEPINFRA_API_KEY`                       | Enables 5xx/timeout-failover to DeepInfra          | optional  |
+| `OpenAI_API_KEY` (or `OPENAI_API_KEY`)    | Required when backend is `openai`                  | —         |
+
+### OpenAI backend (comparison only)
+
+OpenAI is NOT a production backend. It exists as a diagnostic tool — e.g., Phase 4 cleanup Intervention 4 compared GPT-5 against DeepSeek-thinking on a 5-fixture subset to determine whether remaining quality gaps are model-specific.
+
+Default model mapping (GPT-5 / o-series not available on the project we tested on; defaults use gpt-4.1 / gpt-4o-mini as the available flagships):
+- `strong-reasoning` → `gpt-4.1`
+- `fast-writer` → `gpt-4o-mini`
+- `deep-writer` → `gpt-4.1` (no `reasoning_effort` parameter wired — comparison is diagnostic, not a production port)
+
+Production defaults stay on Vertex-DeepSeek unless a Decision Log entry explicitly flips this.
+
+Project-level override (e.g. if the OpenAI project gains GPT-5 access):
+```
+RESUME_V3_STRONG_REASONING_MODEL_OPENAI=gpt-5
+RESUME_V3_FAST_WRITER_MODEL_OPENAI=gpt-5-mini
+RESUME_V3_DEEP_WRITER_MODEL_OPENAI=gpt-5
+```
 
 All Vertex auth is handled by `getVertexAccessToken()` in `server/src/lib/llm-provider.ts` (service-account JWT with 50-minute token cache).
 

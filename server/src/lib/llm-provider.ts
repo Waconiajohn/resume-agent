@@ -973,6 +973,26 @@ export class DeepInfraProvider extends ZAIProvider {
   }
 }
 
+// ─── OpenAI provider (GPT-5 family, OpenAI-compatible) ───────────────
+// Production path is Vertex-DeepSeek. OpenAI is a comparison / dev
+// backend only, used by v3 when RESUME_V3_PROVIDER=openai. Per the
+// Phase 4 cleanup plan it is a diagnostic tool for whether remaining
+// quality gaps are model-specific.
+
+export class OpenAIProvider extends ZAIProvider {
+  constructor(config: { apiKey: string; baseUrl?: string }) {
+    super({
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl ?? 'https://api.openai.com/v1',
+      providerName: 'openai',
+      // GPT-5 reasoning mode can take a while; give comfortable headroom.
+      chatTimeoutMs: 180_000,
+      streamTimeoutMs: 300_000,
+      disableParallelToolCalls: false,
+    });
+  }
+}
+
 // ─── Google Vertex AI provider (OpenAI-compatible endpoint) ──────────
 // Uses gcloud application default credentials for auth.
 // Endpoint: https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/endpoints/openapi
