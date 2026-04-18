@@ -219,6 +219,48 @@ Both decisions were mine. Both were wrong. The inventory caught them before they
 
 ---
 
+## 2026-04-18 — Stage coupling is real; every claim-producing stage runs a mechanical attribution check before emitting
+
+**Decision:** Every v3 stage that produces claims (quantitative, qualitative, proper-noun) which flow downstream to another stage MUST run a mechanical substring-attribution check against source material BEFORE emitting its output. If the check finds unattributed claims, the stage retries ONCE with structured context pointing at the offending phrases; a second failure surfaces as a loud error. This pattern is now the template for any future stage that produces content consumed by later stages.
+
+**Context:** Phase 4.5 hybrid validation (see `docs/v3-rebuild/reports/phase-4.5-validation.md`) surfaced a class of bug that no single-stage quality check catches: **stage coupling.** The specific failure:
+
+1. DeepSeek strategize emits `emphasizedAccomplishments.summary` fields that paraphrase source bullets with added causal framing ("by developing pricing strategies").
+2. OpenAI write-position is faithful to its input context. It inherits the strategize framing verbatim into bullets.
+3. Verify correctly flags the inherited phrases as fabrications — but by then the fabrication has flowed through one complete stage and been amplified.
+
+In pure-DeepSeek (Phase 4 I3), write-DeepSeek was itself embellishing, so the signal was dominated by write-level embellishment and verify's flags looked like write issues. In pure-OpenAI (Phase 4 I4 diagnostic), strategize-OpenAI didn't embellish, so write had clean input and passed. **The hybrid was the configuration that made the coupling visible** by fixing the write side (OpenAI faithfulness) and exposing the upstream side (DeepSeek strategize embellishment).
+
+The diagnostic insight: **one stage becoming more faithful exposes laxity in upstream stages that was previously masked by downstream sloppiness.** Every time we tighten a stage's output discipline, we need to check whether an upstream stage was relying on downstream sloppiness to absorb its embellishments.
+
+**Options considered:**
+
+- **Option A: Tighten the one failing prompt (strategize) and hope the coupling pattern doesn't recur.** Pros: smallest fix; passes this specific test. Cons: the next new stage (LinkedIn writer, cover letter, interview prep) will have the same coupling risk. Patch-by-patch, we keep re-learning the same lesson.
+
+- **Option B: Mechanical attribution check at EVERY claim-producing boundary.** Pros: structural fix; the pattern is the template. Each stage gets responsible for not passing embellishments downstream. The check is cheap (substring match over normalized text, ~1ms per summary). Cons: a few hundred lines of additional code per stage (one extractor call + one retry wrapper).
+
+- **Option C: Add a "superverify" stage that runs mechanical attribution across the whole pipeline's intermediate outputs.** Pros: centralized. Cons: complects the pipeline; turns each stage into a half-trusted source that needs external audit. The per-stage contract is cleaner.
+
+**Decision made:** Option B. Each claim-producing stage owns its output's attribution.
+
+**Consequences:**
+
+- `server/src/v3/verify/attribution.ts` gains `checkStrategizeAttribution` alongside the Phase 4 I2 `checkAttributionMechanically` (written-bullet check). The extractor helpers are shared.
+- `server/src/v3/strategize/index.ts` wraps its LLM call with a post-response attribution check + one-retry loop. Matches the JSON-parse-retry pattern already in `DefensiveJsonProvider`.
+- `server/prompts/strategize.v1.md` → v1.2: adds Rule 1b (source-traceability contract) with `<!-- Why: -->` comment explicitly naming this Decision Log entry.
+- **Pattern applies forward.** The next v3 stage that emits claims consumed downstream (e.g., a narrative layer for the cover letter product) gets the same treatment: mechanical attribution check + one retry + loud failure.
+- Verify's own attribution check (Phase 4 I2) is now one instance of this general pattern, not a one-off. The architecture is:
+  1. Stage produces output.
+  2. Mechanical attribution check runs against source.
+  3. If output has unattributed claims, retry ONCE with structured context.
+  4. If retry also fails, throw loudly. No silent acceptance.
+- Phase 4.6 Step A validated this works for strategize: **0/19 attribution retries fired** on the full fixture corpus, meaning strategize v1.2's prompt-level discipline was sufficient to pass the check on the first attempt. The retry is defense in depth, not load-bearing.
+- Phase 4.6 Step A did NOT achieve the 14/19 threshold (11/19) because a SECOND issue class exists — verify LLM compliance with its own Rule 1 — which is orthogonal to stage coupling. That issue gets its own fix, documented separately.
+
+**Limits of this principle:** The mechanical check's extractor is a heuristic. False positives (extracted phrases that differ from source by a function word like "the" or "of") can trigger the retry unnecessarily, or — in verify's case — produce LLM-side confusion when the verifier notices the match but the mechanical check didn't. The extractor needs ongoing calibration; the pattern itself is the architectural principle.
+
+---
+
 ## [Template for future entries]
 
 ## [YYYY-MM-DD] — [Title]
