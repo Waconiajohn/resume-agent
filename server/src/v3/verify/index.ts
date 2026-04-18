@@ -13,6 +13,7 @@ import { loadPrompt } from '../prompts/loader.js';
 import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
 import { VerifyResultSchema } from './schema.js';
+import { checkAttributionMechanically } from './attribution.js';
 import type {
   Strategy,
   StructuredResume,
@@ -78,10 +79,19 @@ export async function verifyWithTelemetry(
   const promptName = `verify.${variant}`;
   const prompt = loadPrompt(promptName);
 
+  // Mechanical attribution pre-check (Phase 4 Intervention 2). For each
+  // is_new:true bullet, extract claim tokens (dollar figures, percentages,
+  // number+unit phrases, proper nouns, acronyms) and check whether each
+  // appears as a substring in the source position's haystack. Results
+  // inlined into the verify prompt as structured evidence; the verify LLM
+  // uses this to focus attention on real attribution failures.
+  const attribution = checkAttributionMechanically(written, source);
+
   const userMessage = prompt.userMessageTemplate
     .replaceAll('{{strategy_json}}', JSON.stringify(strategy, null, 2))
     .replaceAll('{{resume_json}}', JSON.stringify(source, null, 2))
-    .replaceAll('{{written_json}}', JSON.stringify(written, null, 2));
+    .replaceAll('{{written_json}}', JSON.stringify(written, null, 2))
+    .replaceAll('{{attribution_json}}', JSON.stringify(attribution, null, 2));
 
   const { provider, model, backend } = getProvider(prompt.capability);
   const start = Date.now();
@@ -96,6 +106,10 @@ export async function verifyWithTelemetry(
       sourcePositions: source.positions.length,
       writtenPositions: written.positions.length,
       writtenCustomSections: written.customSections.length,
+      attributionBullets: attribution.summary.totalBullets,
+      attributionVerified: attribution.summary.verifiedCount,
+      attributionUnverified: attribution.summary.unverifiedCount,
+      attributionMissingTokens: attribution.summary.totalMissingTokens,
     },
     'verify start',
   );

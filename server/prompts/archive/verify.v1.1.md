@@ -1,26 +1,19 @@
 ---
 stage: verify
-version: "1.2"
+version: "1.1"
 capability: strong-reasoning
 temperature: 0.1
 last_edited: 2026-04-18
 last_editor: claude
 notes: |
-  v1.2 (Phase 4 cleanup — Intervention 2):
-    - Verify now receives a MECHANICAL ATTRIBUTION PRE-CHECK alongside
-      the other inputs. For each is_new:true bullet, a deterministic
-      code path (server/src/v3/verify/attribution.ts) extracts claim
-      tokens (dollar figures, percentages, number+unit phrases, proper
-      nouns, acronyms) and substring-matches them against the source
-      position's haystack. The results are inlined as JSON.
-    - Check 1 rewritten to CONSUME the pre-check: if the pre-check
-      says all tokens are verified, you do NOT need to second-guess
-      (no Check 1 error). If the pre-check flags a missing token, you
-      scan the source AGAIN (because the mechanical check is imperfect)
-      before emitting an error.
-    - This replaces DeepSeek-verify's from-scratch attribution attempt
-      that produced false positives in Phase 3.5.
-  v1.1 (Phase 3.5 port to DeepSeek-on-Vertex).
+  v1.1 (Phase 3.5 port to DeepSeek-on-Vertex):
+    - capability: strong-reasoning (replaces model: claude-opus-4-7)
+    - {{shared:json-rules}} reference
+    - Check 1 upgraded: uses the new bullet metadata (is_new, source,
+      evidence_found) to check attribution — every is_new:true bullet
+      must have a source reference that traces to the StructuredResume.
+    - Check for written custom-sections matches source custom-sections
+      (new WrittenResume.customSections field from Phase 3.5 schema).
   v1.0: Initial Phase 4 version. Stage 5 — last-line quality gate.
 ---
 
@@ -50,65 +43,52 @@ Your output shape is:
 
 Run every check. Do NOT stop at first issue.
 
-### Check 1 — Consume the mechanical attribution pre-check; emit Check-1 errors only for real fabrications.
+### Check 1 — Claims trace to source via bullet metadata.
 
-**A deterministic substring-attribution pre-check has already run against every `is_new: true` bullet**. You receive the results as `{{attribution_json}}` in the user message. For each bullet it contains:
+Phase 3.5 schema: every bullet in `WrittenResume.positions[].bullets` carries `is_new`, `source`, and `evidence_found`. Use these for attribution checks.
 
-```
-{
-  "path": "positions[N].bullets[M]",
-  "text": "...",
-  "sourceHint": "bullets[N]" | "bullets[N] + bullets[M]" | ... | null,
-  "verified": true | false,
-  "missingTokens": [strings],
-  "foundTokens": [strings]
-}
-```
+**About the `source` field**: it is a FREE-FORM STRING locator, not a strict format. Any of these are valid:
+- `"positions[0].bullets[1]"`, `"bullets[3]"`, `"bullet 2"` (dotted-path or loose path)
+- `"bullets[0] + bullets[2]"`, `"bullets[1] + scope"` (merges of two or more source items)
+- `"bullets[3] ($26M metric)"` (path with annotation)
+- Any free-form string that tells you which source bullet(s) the rewrite is based on
 
-**How to use it** (follow this in order):
+**Do NOT emit an error just because `source` is not a dotted path.** The format is a hint to you, the verifier — interpret it liberally, locate the referenced source bullet(s) in the StructuredResume, and do the real attribution check against the source TEXT.
 
-1. **If `verified: true`, emit no Check-1 error for that bullet.** Every claim token the mechanical check extracted was found in the source position's haystack (bullets + scope + title + crossRoleHighlights). Verify does not second-guess a verified-mechanically bullet; move on.
+Checks:
 
-2. **If `verified: false`, examine the `missingTokens` list and read the source bullets for that position.** The mechanical check is deterministic but imperfect — it may have missed:
-   - Tokens that were paraphrased (e.g., rewrite says "year-over-year growth"; source says "YoY growth" — mechanical check's substring compare may miss the gap).
-   - Tokens whose normalization differs (acronym vs expansion, hyphen vs en-dash).
-   - Tokens that appear in a different position's bullets where the writer legitimately drew from `crossRoleHighlights`.
-   - Heuristic extraction noise (e.g., "Led Strategy" captured as a proper noun when it's really the verb "Led" + noun).
-
-   For each flagged token: **scan ALL source bullets in the position, the position's scope, and the resume's crossRoleHighlights** for a semantic match. If you find the claim (even if the mechanical check missed it), DO NOT emit an error — the bullet is verified in practice.
-
-3. **Only emit a Check-1 error when a specific claim in the rewrite is NOT findable anywhere in the relevant source material** after you've done step 2. A SPECIFIC CLAIM is:
+1. **Every `is_new: true` bullet MUST have its claims traceable to source.** Use the `source` hint to find the relevant bullet(s) in the StructuredResume. Compare the rewrite's factual claims (metrics, named systems, scope, specific outcomes) against the source text. If a specific claim in the rewrite is NOT present in any source bullet, scope, or crossRoleHighlight, emit an `"error"`.
+2. **Specifically NOT errors** (downgrade or skip):
+   - (a) The rewrite changing tense, voice, or word order.
+   - (b) The rewrite combining two source bullets cited in `source`.
+   - (c) Adding generic framing verbs ("led", "drove", "managed") where the source used a different verb.
+   - (d) Minor paraphrase that preserves the source's specific claims.
+   - (e) Adding a qualifier from the position's scope field or from another source bullet in the same position.
+   - (f) **Expanding an acronym that the source used** (e.g. source: "SCARs"; rewrite: "Supplier Corrective Action Requests (SCARs)"). Not an error.
+   - (g) **Substituting a synonym for a source phrase** (e.g. source: "achieving 30% YoY growth"; rewrite: "driving 30% YoY growth"). Not an error.
+   - (h) **Tightening or loosening clause order** — not an error.
+   - (i) **Matching a claim across source bullets** — if a phrase in the rewrite appears in ANY bullet of the same position, or in the position's scope field, that's sourced.
+3. **Only emit a Check-1 error when a SPECIFIC CLAIM in the rewrite is NOT anywhere in the relevant source material**. A SPECIFIC CLAIM is:
    - A metric or number not in source.
    - A named system, product, or customer not in source.
    - A scope claim (staff count, budget, geography, sector, cadence) not in source.
    - An outcome the source doesn't state.
+4. **Editorial framing is a WARNING, not an error**. If the rewrite adds phrases like "driving operational excellence", "building a culture of X", "establishing X reputation" that are NOT in the source — emit a `"warning"` with severity noted, not an `"error"`. These are stylistic additions, not factual fabrications. (Write prompt Rule 1b asks the writer to avoid them, but verify treats them as warnings to avoid drowning real fabrications in style nitpicks.)
+5. **Legacy safety net**: for any numeric claim anywhere in the WrittenResume (summary, selectedAccomplishments, custom sections, competencies), trace to the StructuredResume. An unsourceable number is an `"error"`.
 
-4. **Editorial framing without specific claims is a WARNING, not an error.** Phrases like "driving operational excellence", "building a culture of X", "establishing reputation for innovation" are stylistic; emit as `"warning"`. The writer should suppress them (Rule 0 in write-position) but they're not factual fabrications.
+**Before emitting any Check-1 error, do this two-step check**:
+  1. Read the rewrite bullet text.
+  2. Scan ALL source bullets IN THE SAME POSITION, plus the position's scope, plus crossRoleHighlights. Even if the rewrite's `source: "bullets[0]"` names a specific bullet, the real sourcing may be across multiple bullets.
+  3. Only if the specific claim is NOT findable anywhere in that scope should you emit an error.
 
-5. **Legacy safety net**: for any numeric claim in `summary`, `selectedAccomplishments`, `coreCompetencies`, or `customSections`, trace to the StructuredResume. An unsourceable number is an `"error"`.
+A false-positive error is worse than a missing real error: false positives force the writer to retrain on phantom issues. Calibrate toward precision.
 
-### What IS NOT a Check-1 error (do not emit errors for these):
+  ✓ bullet text: "Delivered $26M ROI"; source: "bullets[1]"; source text says "$26M in automation ROI". → OK
+  ✓ bullet text: "Led strategy across 15 Agile Release Trains, driving cost reduction"; source: "bullets[0] + scope"; bullets[0] says "Led strategy across 15 Agile Release Trains" and scope says "cost-governed platform". → OK (combining source + scope is valid)
+  ✗ bullet text: "Delivered $40M ROI"; source: "bullets[1]"; source text says "$26M". → error (fabricated metric)
+  ✗ bullet text: "Built consultative sales culture focused on solution selling"; source: "bullets[0] + bullets[2]"; neither source bullet mentions culture or selling philosophy. → error (unsourced claim added during synthesis)
 
-- (a) The rewrite changing tense, voice, or word order.
-- (b) The rewrite combining two source bullets cited in `source`.
-- (c) Adding generic framing verbs ("led", "drove", "managed") where the source used a different verb.
-- (d) Minor paraphrase that preserves the source's specific claims.
-- (e) Adding a qualifier from the position's scope field or from another source bullet in the same position.
-- (f) Expanding an acronym the source used (source: "SCARs"; rewrite: "Supplier Corrective Action Requests (SCARs)"). Not an error.
-- (g) Substituting a synonym for a source phrase ("achieving 30% YoY growth" → "driving 30% YoY growth"). Not an error.
-- (h) Tightening or loosening clause order.
-- (i) Matching a claim across source bullets: if a phrase in the rewrite appears in ANY bullet of the same position, or in the position's scope, that's sourced.
-
-### Examples:
-
-  ✓ pre-check reports `verified: true` → no Check-1 error, period.
-  ✓ pre-check reports `missingTokens: ["15 Agile Release Trains"]`; source bullets[0] contains "15 Agile Release Trains" → mechanical miss; no error.
-  ✗ pre-check reports `missingTokens: ["$40M", "12 business units"]`; neither appears in source bullets or scope → emit error (fabricated).
-  ✗ rewrite says "Built consultative sales culture focused on solution selling"; source mentions neither "culture" nor "selling philosophy" → emit error (unsourced claim).
-
-A false-positive error is worse than a missing real error. Calibrate toward precision: the mechanical check is the floor, your job is to remove its false positives, not to add more.
-
-<!-- Why: Phase 3.5 iteration + Phase 4 Intervention 1 showed DeepSeek-verify from-scratch attribution produces many false positives: it flags phrases that ARE in source when the phrase is paraphrased, or flags a synonym substitution as fabrication. Intervention 2 moves the deterministic part to code (attribution.ts) and constrains verify's LLM to filter-down that list, not generate its own. See docs/v3-rebuild/reports/phase-3.5-report.md "verify false-positive residue". 2026-04-18. -->
+<!-- Why: v2 fabricated metrics. Phase 3.5 added per-bullet metadata so verify can do precise attribution checks. The verify prompt must not emit errors for the source-reference FORMAT; it must only error on the CONTENT mismatch. Phase 3.5 pilot iteration caught DeepSeek-verify generating "not a valid source reference" errors for legitimate `"bullets[X] + bullets[Y]"` strings — that's a false positive. 2026-04-18. -->
 
 ### Check 1b — evidence_found consistency.
 
@@ -239,17 +219,4 @@ If you're unsure whether an issue is error vs. warning, pick the more conservati
 {{written_json}}
 ```
 
-## Mechanical attribution pre-check
-
-A deterministic substring-attribution check has already run against every
-`is_new: true` bullet in the Written resume. Use this as the floor for
-Check 1: bullets marked `verified: true` need no Check-1 error; bullets
-with `missingTokens` need a second look (the mechanical check may have
-missed a paraphrase or synonym — scan the source before emitting an
-error). See Check 1 in the system prompt for the full protocol.
-
-```json
-{{attribution_json}}
-```
-
-Run all 10 checks per the system-prompt rules and emit the JSON result.
+Run all 9 checks per the system-prompt rules and emit the JSON result.
