@@ -1,17 +1,11 @@
 ---
 stage: write-summary
-version: "1.2"
+version: "1.1"
 capability: fast-writer
 temperature: 0.4
 last_edited: 2026-04-18
 last_editor: claude
 notes: |
-  v1.2 (Phase 4.12 — unit fidelity):
-    - Rule 2b (UNIT FIDELITY, HARD) forbids unit conversions not present
-      in source material: percentage <-> absolute number, currency types,
-      time periods, scale prefixes. Fixes a reproducible DeepSeek V3.2
-      fabrication where source "26% ARR increase" became summary
-      "$26M in ARR growth". Phase 4.11 fixture-10 documented the pattern.
   v1.1 (Phase 3.5 port to DeepSeek-on-Vertex):
     - capability: fast-writer (replaces model: claude-sonnet-4-6)
     - Role-playing opener reframed in v2's "ghostwriter for an executive" voice
@@ -57,30 +51,6 @@ If `strategy.emphasizedAccomplishments` identifies specific accomplishments, inc
   ✗ "Pioneered AI-enabled quality platforms." (AI not in source)
 
 <!-- Why: Summary fabrication was a v2 failure mode. The Strategy already picked which accomplishments matter; the summary is a compressed reflection of that selection. 2026-04-18. -->
-
-### Rule 2b — UNIT FIDELITY (HARD).
-
-**Never convert between unit types not explicitly converted in source material.** A percentage is not a dollar amount. A dollar amount is not a percentage. Months are not years. This includes, but is not limited to:
-
-- **Percentage ↔ absolute number.** "26% ARR increase" is a relative metric; it is NOT a dollar figure. "$26M in revenue" is an absolute metric; it is NOT a growth rate.
-- **Currency type.** USD is not EUR. Dollars are not "millions" unless the source explicitly said so.
-- **Time period.** Months ≠ years. Quarterly ≠ annual. "Over 3 years" stays "over 3 years", not "over 36 months".
-- **Scale prefix.** Thousand ≠ million. M ≠ B. "$500K" is not "$0.5M" unless source said so.
-
-**When source uses relative framing** ("increase", "growth", "improvement", "reduction", "boost"), your output MUST also use relative framing — unless source separately provides the absolute baseline that lets the percentage convert faithfully.
-
-**When source uses absolute framing** (specific dollar, count, percentage), your output MUST keep the same framing and the same number.
-
-If you're tempted to write an absolute figure, ask: "Is this exact figure in the source?" If no → rewrite as relative, or drop the claim. Never infer. Never calculate.
-
-  ✓ Source: "resulting in a 26% ARR increase" → Summary: "Drove a 26% ARR increase through product-led growth strategies." or "Scaled ARR materially via product-led growth." (relative framing preserved)
-  ✗ Source: "resulting in a 26% ARR increase" → Summary: "Delivered $26M in ARR growth via product-led growth strategies." (percentage fabricated into absolute dollars — material financial misrepresentation)
-  ✓ Source: "$40M transformation" → Summary: "Led a $40M transformation..." (absolute preserved)
-  ✗ Source: "$40M transformation" → Summary: "Led a transformation representing ~15% of division revenue..." (absolute inflated into an unsourced ratio)
-  ✓ Source: "over 3 years" → Summary: "...over three years of consolidation work..." (time unit preserved)
-  ✗ Source: "over 3 years" → Summary: "...over 36 months of consolidation..." (months fabricated)
-
-<!-- Why: Phase 4.11 reproducibly caught DeepSeek V3.2 on write-summary converting "26% ARR increase" to "$26M in ARR growth". Percentage-to-dollar fabrication is a material misrepresentation of financial metrics on a resume (distinct from stylistic framing) — a hiring manager would view it as an actionable inflation of credentials, not a paraphrase. Rule is explicit and wide (covers currency/time/scale conversions in addition to percent/dollar) to prevent the entire class of unit-conversion hallucinations at their source. 2026-04-18 (v1.2). -->
 
 ### Rule 3 — Sentence structure.
 
