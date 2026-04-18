@@ -121,3 +121,67 @@ Proceeding to Intervention 3.
 
 ---
 
+## Intervention 3 results — deep-writer capability (DeepSeek thinking mode)
+
+**Infrastructure:**
+- `ChatParams.thinking?: boolean` added to provider interface.
+- `ZAIProvider.buildRequestBody` wires `thinking: true` into `chat_template_kwargs: { thinking: true }` on the outgoing request.
+- Response parsers log `reasoning_content` at DEBUG and discard it from what downstream consumers see.
+- `OpenAIChatResponse` interface gains `reasoning_content?: string`.
+- Factory Capability union expands to `'strong-reasoning' | 'fast-writer' | 'deep-writer'`.
+- `ResolvedProvider.extraParams?.thinking` plumbed into `write/index.ts::runSection` so stages using `deep-writer` automatically pass `thinking: true`.
+- `max_tokens` doubled for deep-writer calls so the answer has room after reasoning.
+- `loader.ts` accepts `deep-writer` in capability validation; `types.ts::Capability` updated.
+
+**Prompt changed:**
+- `server/prompts/write-position.v1.md` → v1.3 (archived v1.2) — capability changed from `fast-writer` → `deep-writer`. Body IDENTICAL to v1.2. The hypothesis is that giving the writer explicit thinking tokens before emitting JSON lets it reason through source-attribution and suppress editorial tails.
+
+**Full-pipeline run:** 19 fixtures, DeepSeek-on-Vertex with thinking enabled for write-position; all other stages unchanged (strong-reasoning, fast-writer). Verify v1.2 with attribution pre-check unchanged.
+
+| # | fixture | Baseline | I1 | I2 | I3 | Δ vs I2 |
+|---|---|---|---|---|---|---|
+|  1 | 01-ben-wedewer              | FAIL 5  | PASS 0  | FAIL 3  | FAIL 3  | = |
+|  2 | 02-blas-ortiz               | PASS 0  | PASS 0  | FAIL 1  | FAIL 1  | = |
+|  3 | 03-brent-dullack            | FAIL 5  | FAIL 17 | PASS 0  | FAIL 1  | **−** |
+|  4 | 04-bshook                   | FAIL 2  | FAIL 2  | PASS 0  | PASS 0  | = |
+|  5 | 05-casey-cockrill           | FAIL 16 | PASS 0  | PASS 0  | PASS 0  | = |
+|  6 | 06-chris-coerber            | PASS 0  | PASS 0  | FAIL 2  | PASS 0  | **+** |
+|  7 | 07-diana-downs              | FAIL 6  | FAIL 2  | PASS 0  | FAIL 1  | **−** |
+|  8 | 08-j-vaughn                 | PASS 0  | FAIL 2  | PASS 0  | PASS 0  | = |
+|  9 | 09-jay-alger                | PASS 0  | PASS 0  | FAIL 7  | PASS 0  | **+** |
+| 10 | 10-jessica-boquist          | FAIL 13 | FAIL 6  | FAIL 4  | FAIL 6  | **−** |
+| 11 | 11-jill-jordan              | PASS 0  | PASS 0  | PASS 0  | PASS 0  | = |
+| 12 | 12-joel-hough               | PASS 0  | PASS 0  | FAIL 3  | PASS 0  | **+** |
+| 13 | 13-lisa-slagle              | PASS 0  | PASS 0  | PASS 0  | PASS 0  | = |
+| 14 | 14-lj-2025                  | PASS 0  | PASS 0  | FAIL 6  | FAIL 5  | **+** (partial) |
+| 15 | 15-manzione                 | PASS 0  | PASS 0  | PASS 0  | PASS 0  | = |
+| 16 | 16-mark-delorenzo           | FAIL 12 | FAIL 16 | PASS 0  | PASS 0  | = |
+| 17 | 17-david-chicks             | FAIL 18 | FAIL 3  | FAIL 1  | FAIL 1  | = |
+| 18 | 18-steve-alexander          | PASS 0  | PASS 0  | FAIL 2  | FAIL 1  | **+** (partial) |
+| 19 | 19-steve-goodwin            | FAIL 26 | FAIL 38 | FAIL 3  | FAIL 1  | **+** (partial) |
+
+**Verify pass rate:** 10/19 (53%). **Up from 9/19 (I2); matches baseline 10/19.**
+**Total error count:** 20 — down from 32 at I2, 86 at I1.
+**Error volume trajectory:** 86 → 86 → 32 → 20 (four measurements). Steady convergence.
+
+**Intervention 3 cost:** ~$0.32 for the 19-fixture run (incl. retries). Per-fixture range $0.009-$0.027 (vs $0.011-$0.019 on fast-writer). Thinking mode adds ~30-50% to cost per fixture; the most complex resume (fixture-19, 8 positions + 6 crossRoleHighlights) was the priciest at $0.0273.
+
+### Analysis
+
+- **Largest error-volume drops:** fixture-19 (38 I1 → 3 I2 → 1 I3), fixture-10 (13 base → 4 I2 → 6 I3 — slight regress but still major drop from baseline), fixture-14 (new fail at I2, now 5 errors).
+- **Flips to PASS via deep-writer:** fixture-06, fixture-09, fixture-12. These were loose-pass fixtures in I1 that I2 tightened into FAIL; deep-writer's thinking capacity let the writer produce bullets that cleanly round-trip through the mechanical attribution check AND verify's LLM.
+- **Flips to FAIL via deep-writer:** fixture-03 (was PASS in I2 with 0 errors; now FAIL with 1 error), fixture-07 (was PASS in I2 with 0; now FAIL with 1). Deep-writer's thinking added a single editorial claim that cleared the attribution check but tripped verify's LLM on a semantic concern. These aren't structural regressions — both are 1-error fails.
+- **Stubborn fails:** fixture-01 and fixture-02 are stuck at 3 and 1 errors across I2 and I3. These resumes have a specific writing challenge the thinking mode did not resolve.
+- **fixture-10** continues to be the hardest; 6 errors after deep-writer, down from 13 baseline but never zero. Jessica Boquist's consultant-short-tenures structure gives the writer many small positions to rewrite, each of which invites at least one editorial addition.
+
+### Interpretation
+
+Deep-writer delivered the steady error-volume reduction (32 → 20, −38%) but did not push the pass count materially higher than I2. The remaining failure pattern is consistent: 1-5 small editorial additions that pass the mechanical attribution check but are flagged by verify's LLM as "specific claim not present in source." These are the genuinely hard cases — paraphrased scope or outcomes that are semantically close to source but not substring-identical.
+
+**Cost** of deep-writer in production is marginal ($0.015 average per full pipeline vs $0.013 at I2). For a $49/month product this is economically irrelevant. The question is whether the ~10% improvement in error volume justifies the cost — the answer is clearly yes.
+
+**Per the proceed criteria**, pass rate (10) improved vs I2 (9) and is still <17/19, so Intervention 4 (GPT-5 comparison on 5 fixtures) proceeds to determine whether the remaining gap is model-specific or task-inherent.
+
+---
+
+

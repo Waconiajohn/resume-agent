@@ -92,9 +92,13 @@ export function loadPrompt(
   let capability: string;
   if (hasCapability) {
     capability = String(frontmatter.capability);
-    if (capability !== 'strong-reasoning' && capability !== 'fast-writer') {
+    if (
+      capability !== 'strong-reasoning' &&
+      capability !== 'fast-writer' &&
+      capability !== 'deep-writer'
+    ) {
       throw new PromptLoadError(
-        `Prompt frontmatter field "capability" must be one of: strong-reasoning, fast-writer. Got "${capability}" in ${path}.`,
+        `Prompt frontmatter field "capability" must be one of: strong-reasoning, fast-writer, deep-writer. Got "${capability}" in ${path}.`,
       );
     }
   } else {
@@ -124,7 +128,7 @@ export function loadPrompt(
     // capability string here so telemetry has something to log; the factory
     // resolves the concrete model at call time.
     model: hasCapability ? capability : String(frontmatter.model),
-    capability: capability as 'strong-reasoning' | 'fast-writer',
+    capability: capability as 'strong-reasoning' | 'fast-writer' | 'deep-writer',
     temperature,
     lastEdited: formatDateLike(frontmatter.last_edited),
     lastEditor: frontmatter.last_editor ? String(frontmatter.last_editor) : '',

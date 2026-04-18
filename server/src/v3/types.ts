@@ -263,7 +263,7 @@ export interface PipelineResult {
 // Prompt loader
 // -----------------------------------------------------------------------------
 
-export type Capability = 'strong-reasoning' | 'fast-writer';
+export type Capability = 'strong-reasoning' | 'fast-writer' | 'deep-writer';
 
 export interface LoadedPrompt {
   stage: string;
