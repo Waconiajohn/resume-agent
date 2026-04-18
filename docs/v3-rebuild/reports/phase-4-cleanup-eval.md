@@ -184,4 +184,17 @@ Deep-writer delivered the steady error-volume reduction (32 → 20, −38%) but 
 
 ---
 
+## Intervention 4 — SKIPPED (no OPENAI_API_KEY in environment)
+
+Intervention 4 called for building an OpenAI provider in the factory, installing the `openai` package, and running a 5-fixture comparison on GPT-5 (fixtures 05, 17, 19, 01, 09).
+
+Before starting any work: checked for `OPENAI_API_KEY` in `.env` and process environment. **Not present.** Per the task spec's stop condition: *"OpenAI API key auth fails or GPT-5 endpoint is unreachable. (Skip Intervention 4, proceed to Final reporting without GPT-5 data.)"* — skipping Intervention 4 cleanly. No OpenAI infrastructure was built because the comparison cannot run without the key and building the provider without validating it serves no purpose.
+
+**What this means for the diagnostic question**: we do not have data to distinguish "the remaining gap is DeepSeek-specific" from "the remaining gap is task-inherent." The final report will recommend adding `OPENAI_API_KEY` and rerunning the 5-fixture comparison as a followup if John wants that signal.
+
+Proceeding directly to Final reporting.
+
+---
+
+
 
