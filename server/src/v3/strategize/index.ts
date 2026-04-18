@@ -1,17 +1,19 @@
 // Stage 3 — Strategize.
-// One Opus call takes a StructuredResume + JobDescription and returns a
+// One LLM call takes a StructuredResume + JobDescription and returns a
 // Strategy document. Stage 4 executes the strategy; the strategy itself
 // is strategic judgment centralized in a single LLM call.
 //
 // Implements: docs/v3-rebuild/01-Architecture-Vision.md §Stage 3,
 //             docs/v3-rebuild/kickoffs/phase-4-kickoff.md.
 //
-// Contract matches classify's: stream + accumulate + parse + zod validate +
-// loud throw. No silent repair. Classify's output is trusted — strategize
-// does NOT re-parse resume data; it just references it.
+// Phase 3.5: provider resolution goes through the factory. No direct
+// provider imports. See docs/v3-rebuild/04-Decision-Log.md 2026-04-18.
+//
+// Contract: stream + accumulate + parse + zod validate + loud throw.
 
-import { AnthropicProvider, type StreamEvent } from '../../lib/llm-provider.js';
+import type { StreamEvent } from '../../lib/llm-provider.js';
 import { loadPrompt } from '../prompts/loader.js';
+import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
 import { StrategySchema } from './schema.js';
 import type { JobDescription, Strategy, StructuredResume } from '../types.js';
@@ -42,6 +44,8 @@ export interface StrategizeTelemetry {
   promptName: string;
   promptVersion: string;
   model: string;
+  capability: string;
+  backend: string;
   inputTokens: number;
   outputTokens: number;
   durationMs: number;
@@ -74,16 +78,19 @@ export async function strategizeWithTelemetry(
     .replaceAll('{{jd_text}}', jd.text)
     .replaceAll('{{resume_json}}', JSON.stringify(resume, null, 2));
 
-  const provider = new AnthropicProvider();
+  const { provider, model, backend } = getProvider(prompt.capability);
   const start = Date.now();
 
   logger.info(
     {
       promptName,
       promptVersion: prompt.version,
-      model: prompt.model,
+      capability: prompt.capability,
+      model,
+      backend,
       resumePositions: resume.positions.length,
       resumeCrossRoleHighlights: resume.crossRoleHighlights.length,
+      resumeCustomSections: resume.customSections.length,
       jdChars: jd.text.length,
     },
     'strategize start',
@@ -92,10 +99,11 @@ export async function strategizeWithTelemetry(
   let fullText = '';
   let usage = { input_tokens: 0, output_tokens: 0 };
   for await (const event of provider.stream({
-    model: prompt.model,
+    model,
     system: prompt.systemMessage,
     messages: [{ role: 'user', content: userMessage }],
     max_tokens: MAX_OUTPUT_TOKENS,
+    temperature: prompt.temperature,
     signal: options.signal,
   })) {
     const e = event as StreamEvent;
@@ -107,18 +115,21 @@ export async function strategizeWithTelemetry(
 
   if (!fullText.trim()) {
     throw new StrategizeError(
-      `Strategize returned empty response from ${prompt.model} (prompt ${promptName} v${prompt.version}).`,
+      `Strategize returned empty response from ${model} via ${backend} (prompt ${promptName} v${prompt.version}).`,
       { promptName, rawResponse: fullText },
     );
   }
 
-  const parsed = parseJsonOrThrow(fullText, promptName);
-  const validated = validateOrThrow(parsed, promptName, fullText);
+  const cleaned = stripMarkdownJsonFence(fullText.trim());
+  const parsed = parseJsonOrThrow(cleaned, promptName);
+  const validated = validateOrThrow(parsed, promptName, cleaned);
 
   logger.info(
     {
       promptName,
       promptVersion: prompt.version,
+      model,
+      backend,
       inputTokens: usage.input_tokens,
       outputTokens: usage.output_tokens,
       durationMs,
@@ -135,7 +146,9 @@ export async function strategizeWithTelemetry(
     telemetry: {
       promptName,
       promptVersion: prompt.version,
-      model: prompt.model,
+      model,
+      capability: prompt.capability,
+      backend,
       inputTokens: usage.input_tokens,
       outputTokens: usage.output_tokens,
       durationMs,
@@ -143,14 +156,23 @@ export async function strategizeWithTelemetry(
   };
 }
 
+function stripMarkdownJsonFence(input: string): string {
+  const s = input.trim();
+  const fenceStart = /^```(?:json|JSON)?\s*\n/;
+  const fenceEnd = /\n```\s*$/;
+  if (fenceStart.test(s) && fenceEnd.test(s)) {
+    return s.replace(fenceStart, '').replace(fenceEnd, '').trim();
+  }
+  return s;
+}
+
 function parseJsonOrThrow(raw: string, promptName: string): unknown {
-  const trimmed = raw.trim();
   try {
-    return JSON.parse(trimmed);
+    return JSON.parse(raw);
   } catch (err) {
     throw new StrategizeError(
       `Strategize response is not valid JSON (prompt ${promptName}): ${err instanceof Error ? err.message : String(err)}`,
-      { promptName, rawResponse: trimmed.slice(0, 500) },
+      { promptName, rawResponse: raw.slice(0, 500) },
     );
   }
 }

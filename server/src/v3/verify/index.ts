@@ -1,13 +1,16 @@
 // Stage 5 — Verify.
-// One Opus call reviews the WrittenResume against the StructuredResume and
+// One LLM call reviews the WrittenResume against the StructuredResume and
 // Strategy and returns a pass/fail with issues[]. Verify reports; it does
 // not repair. Silent patching is forbidden (OPERATING-MANUAL.md).
 //
 // Implements: docs/v3-rebuild/01-Architecture-Vision.md §Stage 5,
 //             docs/v3-rebuild/kickoffs/phase-4-kickoff.md.
+//
+// Phase 3.5: provider resolution via factory. No direct provider imports.
 
-import { AnthropicProvider, type StreamEvent } from '../../lib/llm-provider.js';
+import type { StreamEvent } from '../../lib/llm-provider.js';
 import { loadPrompt } from '../prompts/loader.js';
+import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
 import { VerifyResultSchema } from './schema.js';
 import type {
@@ -43,6 +46,8 @@ export interface VerifyTelemetry {
   promptName: string;
   promptVersion: string;
   model: string;
+  capability: string;
+  backend: string;
   inputTokens: number;
   outputTokens: number;
   durationMs: number;
@@ -78,15 +83,19 @@ export async function verifyWithTelemetry(
     .replaceAll('{{resume_json}}', JSON.stringify(source, null, 2))
     .replaceAll('{{written_json}}', JSON.stringify(written, null, 2));
 
-  const provider = new AnthropicProvider();
+  const { provider, model, backend } = getProvider(prompt.capability);
   const start = Date.now();
 
   logger.info(
     {
       promptName,
       promptVersion: prompt.version,
+      capability: prompt.capability,
+      model,
+      backend,
       sourcePositions: source.positions.length,
       writtenPositions: written.positions.length,
+      writtenCustomSections: written.customSections.length,
     },
     'verify start',
   );
@@ -94,10 +103,11 @@ export async function verifyWithTelemetry(
   let fullText = '';
   let usage = { input_tokens: 0, output_tokens: 0 };
   for await (const event of provider.stream({
-    model: prompt.model,
+    model,
     system: prompt.systemMessage,
     messages: [{ role: 'user', content: userMessage }],
     max_tokens: MAX_OUTPUT_TOKENS,
+    temperature: prompt.temperature,
     signal: options.signal,
   })) {
     const e = event as StreamEvent;
@@ -114,9 +124,11 @@ export async function verifyWithTelemetry(
     );
   }
 
+  const cleaned = stripMarkdownJsonFence(fullText.trim());
+
   let parsedRaw: unknown;
   try {
-    parsedRaw = JSON.parse(fullText.trim());
+    parsedRaw = JSON.parse(cleaned);
   } catch (err) {
     throw new VerifyError(
       `Verify response is not valid JSON (prompt ${promptName}): ${err instanceof Error ? err.message : String(err)}`,
@@ -143,6 +155,8 @@ export async function verifyWithTelemetry(
     {
       promptName,
       promptVersion: prompt.version,
+      model,
+      backend,
       passed: validated.passed,
       errors: validated.issues.filter((i) => i.severity === 'error').length,
       warnings: validated.issues.filter((i) => i.severity === 'warning').length,
@@ -158,10 +172,22 @@ export async function verifyWithTelemetry(
     telemetry: {
       promptName,
       promptVersion: prompt.version,
-      model: prompt.model,
+      model,
+      capability: prompt.capability,
+      backend,
       inputTokens: usage.input_tokens,
       outputTokens: usage.output_tokens,
       durationMs,
     },
   };
+}
+
+function stripMarkdownJsonFence(input: string): string {
+  const s = input.trim();
+  const fenceStart = /^```(?:json|JSON)?\s*\n/;
+  const fenceEnd = /\n```\s*$/;
+  if (fenceStart.test(s) && fenceEnd.test(s)) {
+    return s.replace(fenceStart, '').replace(fenceEnd, '').trim();
+  }
+  return s;
 }

@@ -1,29 +1,33 @@
 // Stage 4 — Write.
-// Orchestrates four parallel Sonnet calls: summary, selected accomplishments,
-// core competencies, and one call per position. Each prompt receives the
-// FULL Strategy and FULL StructuredResume (Phase 4 direction) plus its
-// per-section focus. Results are composed into a WrittenResume.
+// Orchestrates parallel section-writer calls: summary, selected
+// accomplishments, core competencies, one call per position, and one
+// call per custom section (when classify identified any). Each prompt
+// receives the FULL Strategy and FULL StructuredResume plus its
+// per-section focus. Results compose into a WrittenResume.
 //
 // Implements: docs/v3-rebuild/01-Architecture-Vision.md §Stage 4,
 //             docs/v3-rebuild/kickoffs/phase-4-kickoff.md.
 //
-// Contract: no silent fallback, no retries on validation failure, no
-// guardrail post-processing. If any section writer fails, the whole Stage 4
-// throws. If a prompt produces bad output, fix the prompt.
+// Phase 3.5: provider resolution via factory; bullets carry per-source
+// metadata; custom sections become a first-class output.
 
-import { AnthropicProvider, type StreamEvent } from '../../lib/llm-provider.js';
+import type { StreamEvent } from '../../lib/llm-provider.js';
 import { loadPrompt } from '../prompts/loader.js';
+import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
 import {
   WrittenSummarySchema,
   WrittenAccomplishmentsSchema,
   WrittenCompetenciesSchema,
   WrittenPositionSchema,
+  WrittenCustomSectionSchema,
 } from './schema.js';
 import type {
+  CustomSection,
   Position,
   Strategy,
   StructuredResume,
+  WrittenCustomSection,
   WrittenPosition,
   WrittenResume,
 } from '../types.js';
@@ -58,6 +62,7 @@ export interface WriteTelemetry {
     accomplishments: SectionTelemetry;
     competencies: SectionTelemetry;
     positions: SectionTelemetry[];
+    customSections: SectionTelemetry[];
   };
   totalInputTokens: number;
   totalOutputTokens: number;
@@ -68,6 +73,8 @@ export interface SectionTelemetry {
   promptName: string;
   promptVersion: string;
   model: string;
+  capability: string;
+  backend: string;
   inputTokens: number;
   outputTokens: number;
   durationMs: number;
@@ -99,6 +106,7 @@ export async function writeWithTelemetry(
     {
       variant,
       positions: resume.positions.length,
+      customSections: resume.customSections.length,
       positionEmphasis: strategy.positionEmphasis.length,
       emphasizedAccomplishments: strategy.emphasizedAccomplishments.length,
       positioningFrame: strategy.positioningFrame,
@@ -109,34 +117,53 @@ export async function writeWithTelemetry(
   const strategyJson = JSON.stringify(strategy, null, 2);
   const resumeJson = JSON.stringify(resume, null, 2);
 
-  // Fire all section writers in parallel. A single failure rejects Promise.all.
-  // Per-section errors are caught at section level to distinguish which
-  // section failed; Promise.all propagates the first thrown error to the caller.
-  const [
-    summaryRes,
-    accomplishmentsRes,
-    competenciesRes,
-    ...positionResults
-  ] = await Promise.all([
-    runSummary(resume, strategy, variant, strategyJson, resumeJson, options.signal),
-    runAccomplishments(resume, strategy, variant, strategyJson, resumeJson, options.signal),
-    runCompetencies(resume, strategy, variant, strategyJson, resumeJson, options.signal),
-    ...resume.positions.map((position, idx) =>
-      runPosition(position, idx, resume, strategy, variant, strategyJson, resumeJson, options.signal),
-    ),
+  const positionRunners = resume.positions.map((position, idx) =>
+    runPosition(position, idx, variant, strategyJson, resumeJson, options.signal),
+  );
+  const customSectionRunners = resume.customSections.map((section, idx) =>
+    runCustomSection(section, idx, variant, strategyJson, options.signal),
+  );
+
+  // Fire in parallel. Promise.all rejects on first failure.
+  const results = await Promise.all([
+    runSummary(variant, strategyJson, resumeJson, options.signal),
+    runAccomplishments(variant, strategyJson, resumeJson, options.signal),
+    runCompetencies(variant, strategyJson, resumeJson, options.signal),
+    ...positionRunners,
+    ...customSectionRunners,
   ]);
+
+  const summaryRes = results[0] as Awaited<ReturnType<typeof runSummary>>;
+  const accomplishmentsRes = results[1] as Awaited<ReturnType<typeof runAccomplishments>>;
+  const competenciesRes = results[2] as Awaited<ReturnType<typeof runCompetencies>>;
+  const positionResults = results.slice(3, 3 + positionRunners.length) as Awaited<
+    ReturnType<typeof runPosition>
+  >[];
+  const customSectionResults = results.slice(3 + positionRunners.length) as Awaited<
+    ReturnType<typeof runCustomSection>
+  >[];
 
   const written: WrittenResume = {
     summary: summaryRes.summary,
     selectedAccomplishments: accomplishmentsRes.selectedAccomplishments,
     coreCompetencies: competenciesRes.coreCompetencies,
     positions: positionResults.map((r) => r.position),
-    // Phase 3.5 placeholder — the custom-sections parallel writer is wired
-    // up in Deliverable 6 of the port (see write-custom-section.v1.md and
-    // the Phase 4 prompt port commit). For now, we emit an empty list; the
-    // field is required by WrittenResume's schema.
-    customSections: [],
+    customSections: customSectionResults.map((r) => r.section),
   };
+
+  const totalInputTokens =
+    summaryRes.telemetry.inputTokens +
+    accomplishmentsRes.telemetry.inputTokens +
+    competenciesRes.telemetry.inputTokens +
+    positionResults.reduce((s, r) => s + r.telemetry.inputTokens, 0) +
+    customSectionResults.reduce((s, r) => s + r.telemetry.inputTokens, 0);
+
+  const totalOutputTokens =
+    summaryRes.telemetry.outputTokens +
+    accomplishmentsRes.telemetry.outputTokens +
+    competenciesRes.telemetry.outputTokens +
+    positionResults.reduce((s, r) => s + r.telemetry.outputTokens, 0) +
+    customSectionResults.reduce((s, r) => s + r.telemetry.outputTokens, 0);
 
   const telemetry: WriteTelemetry = {
     variant,
@@ -145,24 +172,17 @@ export async function writeWithTelemetry(
       accomplishments: accomplishmentsRes.telemetry,
       competencies: competenciesRes.telemetry,
       positions: positionResults.map((r) => r.telemetry),
+      customSections: customSectionResults.map((r) => r.telemetry),
     },
-    totalInputTokens:
-      summaryRes.telemetry.inputTokens +
-      accomplishmentsRes.telemetry.inputTokens +
-      competenciesRes.telemetry.inputTokens +
-      positionResults.reduce((s, r) => s + r.telemetry.inputTokens, 0),
-    totalOutputTokens:
-      summaryRes.telemetry.outputTokens +
-      accomplishmentsRes.telemetry.outputTokens +
-      competenciesRes.telemetry.outputTokens +
-      positionResults.reduce((s, r) => s + r.telemetry.outputTokens, 0),
+    totalInputTokens,
+    totalOutputTokens,
     durationMs: Date.now() - start,
   };
 
   logger.info(
     {
       variant,
-      sections: 3 + positionResults.length,
+      sections: 3 + positionResults.length + customSectionResults.length,
       inputTokens: telemetry.totalInputTokens,
       outputTokens: telemetry.totalOutputTokens,
       durationMs: telemetry.durationMs,
@@ -178,8 +198,6 @@ export async function writeWithTelemetry(
 // -----------------------------------------------------------------------------
 
 async function runSummary(
-  resume: StructuredResume,
-  strategy: Strategy,
   variant: string,
   strategyJson: string,
   resumeJson: string,
@@ -196,8 +214,6 @@ async function runSummary(
 }
 
 async function runAccomplishments(
-  resume: StructuredResume,
-  strategy: Strategy,
   variant: string,
   strategyJson: string,
   resumeJson: string,
@@ -217,8 +233,6 @@ async function runAccomplishments(
 }
 
 async function runCompetencies(
-  resume: StructuredResume,
-  strategy: Strategy,
   variant: string,
   strategyJson: string,
   resumeJson: string,
@@ -237,8 +251,6 @@ async function runCompetencies(
 async function runPosition(
   position: Position,
   positionIndex: number,
-  resume: StructuredResume,
-  strategy: Strategy,
   variant: string,
   strategyJson: string,
   resumeJson: string,
@@ -258,6 +270,27 @@ async function runPosition(
     signal,
   );
   return { position: out.parsed, telemetry: out.telemetry };
+}
+
+async function runCustomSection(
+  section: CustomSection,
+  sectionIndex: number,
+  variant: string,
+  strategyJson: string,
+  signal?: AbortSignal,
+): Promise<{ section: WrittenCustomSection; telemetry: SectionTelemetry }> {
+  const sectionJson = JSON.stringify(section, null, 2);
+  const out = await runSection<WrittenCustomSection>(
+    `customSection[${sectionIndex}] ${section.title}`,
+    `write-custom-section.${variant}`,
+    {
+      strategy_json: strategyJson,
+      section_json: sectionJson,
+    },
+    WrittenCustomSectionSchema.safeParse.bind(WrittenCustomSectionSchema),
+    signal,
+  );
+  return { section: out.parsed, telemetry: out.telemetry };
 }
 
 // -----------------------------------------------------------------------------
@@ -281,18 +314,19 @@ async function runSection<T>(
     userMessage = userMessage.replaceAll(`{{${k}}}`, v);
   }
 
-  const provider = new AnthropicProvider();
+  const { provider, model, backend } = getProvider(prompt.capability);
   const start = Date.now();
 
-  logger.info({ section, promptName, promptVersion: prompt.version }, 'section start');
+  logger.info({ section, promptName, promptVersion: prompt.version, model, backend }, 'section start');
 
   let fullText = '';
   let usage = { input_tokens: 0, output_tokens: 0 };
   for await (const event of provider.stream({
-    model: prompt.model,
+    model,
     system: prompt.systemMessage,
     messages: [{ role: 'user', content: userMessage }],
     max_tokens: MAX_OUTPUT_TOKENS,
+    temperature: prompt.temperature,
     signal,
   })) {
     const e = event as StreamEvent;
@@ -310,13 +344,6 @@ async function runSection<T>(
     });
   }
 
-  // Sonnet 4.6 sometimes wraps JSON in markdown fences (```json ... ```) even
-  // when the prompt says JSON only. Strip fences as a mechanical preprocessing
-  // step — they are syntactic wrapping, not semantic content. Classify uses
-  // Opus 4.7 which consistently honors "JSON only, no fences"; write uses
-  // Sonnet 4.6 which is less strict. See OPERATING-MANUAL.md: this is in
-  // the "mechanical string operations are fine" category, not "silent repair
-  // of bad content."
   const cleaned = stripMarkdownJsonFence(fullText.trim());
 
   let parsedRaw: unknown;
@@ -356,6 +383,8 @@ async function runSection<T>(
       section,
       promptName,
       promptVersion: prompt.version,
+      model,
+      backend,
       inputTokens: usage.input_tokens,
       outputTokens: usage.output_tokens,
       durationMs,
@@ -368,7 +397,9 @@ async function runSection<T>(
     telemetry: {
       promptName,
       promptVersion: prompt.version,
-      model: prompt.model,
+      model,
+      capability: prompt.capability,
+      backend,
       inputTokens: usage.input_tokens,
       outputTokens: usage.output_tokens,
       durationMs,
@@ -380,7 +411,6 @@ async function runSection<T>(
 // present. Idempotent; safe to call on already-bare JSON.
 function stripMarkdownJsonFence(input: string): string {
   const s = input.trim();
-  // ```json\n...\n```  or  ```\n...\n```
   const fenceStart = /^```(?:json|JSON)?\s*\n/;
   const fenceEnd = /\n```\s*$/;
   if (fenceStart.test(s) && fenceEnd.test(s)) {
