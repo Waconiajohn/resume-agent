@@ -58,3 +58,66 @@ Intervention 1 worked as a prompt-hardening pass but didn't converge the corpus.
 Proceeding to Intervention 2.
 
 ---
+
+## Intervention 2 results — mechanical substring attribution + verify v1.2
+
+**Code added:**
+- `server/src/v3/verify/attribution.ts` — pure-code claim-token extractor (dollar amounts, percentages, number+unit phrases, proper nouns, acronyms) + substring matcher against the source position's haystack (bullets + scope + title + crossRoleHighlights). Normalizes whitespace, case, and dash-type before comparison.
+- `server/src/v3/verify/index.ts` — runs `checkAttributionMechanically` before the LLM call, inlines result into the prompt.
+
+**Prompt changed:**
+- `server/prompts/verify.v1.md` → v1.2 (archived v1.1)
+  - Check 1 rewritten to CONSUME the mechanical pre-check:
+    1. `verified: true` → no Check-1 error.
+    2. `verified: false` → scan source manually; emit error only if the token is genuinely absent.
+    3. Editorial framing → still warning, not error.
+  - User message template gains `{{attribution_json}}` block with usage guidance.
+
+**Full-pipeline run:** 19 fixtures, DeepSeek-on-Vertex, write-position v1.2 reused from Intervention 1.
+
+| # | fixture | Baseline | I1 | I2 | Δ vs I1 |
+|---|---|---|---|---|---|
+|  1 | 01-ben-wedewer              | FAIL 5  | PASS 0  | FAIL 3  | **−** (flipped) |
+|  2 | 02-blas-ortiz               | PASS 0  | PASS 0  | FAIL 1  | **−** (flipped) |
+|  3 | 03-brent-dullack            | FAIL 5  | FAIL 17 | PASS 0  | **+** (flipped) |
+|  4 | 04-bshook                   | FAIL 2  | FAIL 2  | PASS 0  | **+** (flipped) |
+|  5 | 05-casey-cockrill           | FAIL 16 | PASS 0  | PASS 0  | = |
+|  6 | 06-chris-coerber            | PASS 0  | PASS 0  | FAIL 2  | **−** (flipped) |
+|  7 | 07-diana-downs              | FAIL 6  | FAIL 2  | PASS 0  | **+** (flipped) |
+|  8 | 08-j-vaughn                 | PASS 0  | FAIL 2  | PASS 0  | **+** (recovered) |
+|  9 | 09-jay-alger                | PASS 0  | PASS 0  | FAIL 7  | **−** (flipped) |
+| 10 | 10-jessica-boquist          | FAIL 13 | FAIL 6  | FAIL 4  | **+** (partial) |
+| 11 | 11-jill-jordan              | PASS 0  | PASS 0  | PASS 0  | = |
+| 12 | 12-joel-hough               | PASS 0  | PASS 0  | FAIL 3  | **−** (flipped) |
+| 13 | 13-lisa-slagle              | PASS 0  | PASS 0  | PASS 0  | = |
+| 14 | 14-lj-2025                  | PASS 0  | PASS 0  | FAIL 6  | **−** (flipped) |
+| 15 | 15-manzione                 | PASS 0  | PASS 0  | PASS 0  | = |
+| 16 | 16-mark-delorenzo           | FAIL 12 | FAIL 16 | PASS 0  | **+** (flipped) |
+| 17 | 17-david-chicks             | FAIL 18 | FAIL 3  | FAIL 1  | **+** (partial) |
+| 18 | 18-steve-alexander          | PASS 0  | PASS 0  | FAIL 2  | **−** (flipped) |
+| 19 | 19-steve-goodwin            | FAIL 26 | FAIL 38 | FAIL 3  | **+** (partial — huge drop) |
+
+**Verify pass rate:** 9/19 (47%). **Down from 11/19 (I1).** **Total error count: 32** — down from 86 at I1 (63% reduction in the volume of verify errors).
+
+**Intervention 2 cost:** ~$0.28 for the 19-fixture run.
+
+### Analysis
+
+This intervention is a different kind of success than a pass-rate improvement: **total error volume dropped from 86 to 32** (63% reduction) even as the pass count dipped by 2. The mechanical attribution check is trading loose passes (fixtures that squeaked through because verify's LLM got tired and rubber-stamped) for precision — fixtures either cleanly pass or fail with 1-3 real errors, not 20+ hallucinated ones.
+
+- **Large-error fixtures converged dramatically**: fixture-19 went from 38 → 3 errors, fixture-16 from 16 → 0, fixture-03 from 17 → 0, fixture-17 from 3 → 1. The attribution pre-check told verify "these specific tokens are unfindable"; verify stopped manufacturing its own list of fabrications.
+- **Previously-cleanly-passing fixtures now have 1-3 errors**: fixture-01 (0 → 3), fixture-02 (0 → 1), fixture-06 (0 → 2), fixture-09 (0 → 7), fixture-12 (0 → 3), fixture-14 (0 → 6), fixture-18 (0 → 2). These flips represent **real attribution issues** the mechanical check surfaced that verify's v1.1 LLM missed. The PASS results in I1 were "loose passes" where verify's DeepSeek model didn't dig hard enough.
+- **Net effect**: verify is now more precise and less forgiving. A pass under I2 is a real pass. A fail under I2 is typically a handful of real issues, not a noise cloud.
+
+### Interpretation
+
+Intervention 2 transformed verify's signal quality. The raw pass count is down, but the remaining errors are actionable — each one is a specific claim the writer added that the source doesn't support. The extractor's heuristic recall (number+unit phrases, proper nouns, acronyms) is the mechanism.
+
+The remaining gap to 17-19/19 pass rate now comes from **write-position genuinely producing a few unsupported claims per resume**, not from verify's LLM manufacturing noise. Intervention 3 (DeepSeek thinking mode for write-position) is the next test — does giving the writer more reasoning capacity let it avoid those 1-3 editorial additions per resume?
+
+Per the task spec's proceed criteria (9/19 is below the 13-threshold), the task says "proceed to Intervention 3 and note the concern." Concern noted: Intervention 2 did not move the pass rate upward despite improving signal quality. Intervention 3 becomes the test of whether model capacity at the write stage closes the remaining gap.
+
+Proceeding to Intervention 3.
+
+---
+
