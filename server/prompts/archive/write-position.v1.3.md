@@ -1,27 +1,24 @@
 ---
 stage: write-position
-version: "1.4"
+version: "1.3"
 capability: deep-writer
 temperature: 0.1
 last_edited: 2026-04-18
 last_editor: claude
 notes: |
-  v1.4 (Phase 4.7):
-    - Added Rule 1c "ONE-TO-MANY RULE": each rewritten bullet MUST
-      cite exactly one source bullet. Do not split a single source
-      bullet into multiple rewritten bullets, even if the source
-      contains two distinct accomplishments. Pick the stronger one;
-      drop the other.
-    - Motivation: Phase 4.6 Step A fixture-14 position[4] had 4 errors
-      from write-position splitting one source bullet ("Deliver EBRs...
-      develop ROI analyses...") into two separate rewritten bullets,
-      both citing the same source. Verify correctly flagged the
-      duplicate-within-role. Ref: docs/v3-rebuild/reports/
-      phase-4.6-step-a-eval.md.
-  v1.3 (Phase 4 cleanup — Intervention 3): capability: deep-writer.
+  v1.3 (Phase 4 cleanup — Intervention 3):
+    - capability: fast-writer → deep-writer. Enables DeepSeek V3.2
+      thinking mode on Vertex via chat_template_kwargs.thinking.
+    - Body is identical to v1.2; only the capability changes. The
+      hypothesis: giving the writer explicit thinking tokens to reason
+      through source-attribution BEFORE emitting JSON will reduce
+      editorial additions. Tested empirically in Phase 4 Intervention 3;
+      see docs/v3-rebuild/reports/phase-4-cleanup-eval.md for results.
+    - reasoning_content is discarded by the provider layer; only
+      content reaches this prompt's downstream consumers.
   v1.2 (Phase 4 cleanup — Intervention 1): temp 0.1, style anchor,
-    Rule 0 forbidden phrases, Rule 10 self-check.
-  v1.1 (Phase 3.5 port).
+    Rule 0 forbidden phrases, Rule 10 self-check. fast-writer capability.
+  v1.1 (Phase 3.5 port to DeepSeek-on-Vertex).
   v1.0: Initial version.
 ---
 
@@ -109,24 +106,6 @@ The source position's bullet count is the upper bound on useful output. Do not i
 If the position is not listed in positionEmphasis, default to `"secondary"` treatment.
 
 <!-- Why: Phase 3.5 repeatedly showed DeepSeek padding 3-source-bullet positions into 6-bullet output to hit the primary-weight target. Verify correctly flagged the padded bullets as unsupported. Explicit permission to produce fewer bullets than the range minimum removes the incentive to pad. 2026-04-18. -->
-
-### Rule 1c — ONE-TO-MANY RULE: never split one source bullet into multiple rewritten bullets.
-
-Each rewritten bullet MUST cite exactly ONE source bullet in its `source` field. Even if a source bullet contains two distinct accomplishments (e.g. "Delivered EBRs to C-level sponsors; developed ROI analyses highlighting sales growth"), you emit at most ONE rewritten bullet from it — pick the stronger accomplishment for the target JD and drop the other.
-
-Do NOT emit two rewritten bullets that both cite the same source. Do NOT split a source bullet's two sentences into two rewritten bullets. Do NOT merge-then-split (take bullet[2] + bullet[3] and produce two rewritten bullets both claiming `bullets[2] + bullets[3]`).
-
-  ✓ Correct: source bullet[2] says "Led $40M transformation AND grew team from 12 to 85" → emit ONE rewritten bullet choosing either the transformation or the team growth, whichever better matches the JD. Drop the other.
-
-  ✓ Correct: source has 5 bullets → output has 0-5 rewritten bullets, each citing exactly one source bullet (or fewer if some sources aren't worth keeping).
-
-  ✗ Wrong: source bullet[2] "Deliver quarterly Executive Business Reviews ... develop ROI analyses highlighting sales growth" → emit two rewritten bullets, one for "Delivered EBRs..." (cites `bullets[2]`) and one for "Developed ROI analyses..." (also cites `bullets[2]`). That's splitting; verify will flag duplicate-within-role AND the bullets[2] attribution collision.
-
-  ✗ Wrong: take source bullet[3] "grew team from 12 to 85 across 3 continents" → emit one bullet "Grew team from 12 to 85" (cites `bullets[3]`) AND another bullet "Built presence across 3 continents" (also cites `bullets[3]`). Same splitting pattern.
-
-Merging two distinct source bullets into one rewritten bullet is still allowed when Rule 2 applies (same accomplishment at different levels of detail). Splitting one source into two is NEVER allowed.
-
-<!-- Why: Phase 4.6 Step A fixture-14 position[4] had 4 errors — write-position took source bullet[2] "Deliver quarterly Executive Business Reviews to C-level sponsors; develop ROI analyses highlighting sales growth and labor cost reductions" and emitted two rewritten bullets (one for EBRs, one for ROI analyses), both citing bullets[2]. Verify correctly flagged the split as both unsupported (each half omits content from its own source) AND duplicate-within-role. A strict one-to-many rule eliminates the class. Ref: docs/v3-rebuild/reports/phase-4.6-step-a-eval.md. 2026-04-18. -->
 
 ### Rule 2 — Pull content from the source position's bullets.
 
