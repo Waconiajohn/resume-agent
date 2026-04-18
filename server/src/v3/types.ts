@@ -23,15 +23,15 @@ export interface ExtractResult {
 
 export interface ContactInfo {
   fullName: string;
-  email?: string;
-  phone?: string;
-  location?: string;
-  linkedin?: string;
-  website?: string;
+  email?: string | null;
+  phone?: string | null;
+  location?: string | null;
+  linkedin?: string | null;
+  website?: string | null;
 }
 
 export interface DateRange {
-  start: string;        // ISO-like or free-form ("2018", "2018-03", "2018-Present")
+  start: string | null; // null when start date is unknown
   end: string | null;   // null means "present"
   raw: string;          // as printed in the source
 }
@@ -48,7 +48,7 @@ export interface Bullet {
   // the basis for the rewrite. Format is a free-form locator such as
   // "positions[0].bullets[3]" or a short slice of the source bullet's text;
   // the field is consumed by Verify to check claim attribution, not parsed.
-  source?: string;
+  source?: string | null;
   // evidence_found indicates whether the bullet's factual claims (metrics,
   // scope, named systems, outcomes) trace to source material. Classify
   // sets true for verbatim bullets; Write sets true when the rewrite's
@@ -60,10 +60,10 @@ export interface Bullet {
 export interface Position {
   title: string;
   company: string;
-  parentCompany?: string;   // when this position sits under a parent-company umbrella
-  location?: string;
+  parentCompany?: string | null;   // when this position sits under a parent-company umbrella
+  location?: string | null;
   dates: DateRange;
-  scope?: string;           // one-line scope statement (headcount, budget, geography)
+  scope?: string | null;           // one-line scope statement (headcount, budget, geography)
   bullets: Bullet[];
   confidence: number;
 }
@@ -71,22 +71,22 @@ export interface Position {
 export interface EducationEntry {
   degree: string;
   institution: string;
-  location?: string;
-  graduationYear?: string;
-  notes?: string;
+  location?: string | null;
+  graduationYear?: string | null;
+  notes?: string | null;
   confidence: number;
 }
 
 export interface Certification {
   name: string;
-  issuer?: string;
-  year?: string;
+  issuer?: string | null;
+  year?: string | null;
   confidence: number;
 }
 
 export interface CareerGapNote {
   description: string;
-  dates?: DateRange;
+  dates?: DateRange | null;
   confidence: number;
 }
 
@@ -109,7 +109,7 @@ export interface StructuredResume {
 
 export interface CustomSectionEntry {
   text: string;
-  source?: string;
+  source?: string | null;
   confidence: number;
 }
 
@@ -186,7 +186,7 @@ export interface WrittenPosition {
   title: string;                       // may be rewritten to match emphasis
   company: string;
   dates: DateRange;
-  scope?: string;
+  scope?: string | null;
   bullets: Bullet[];                   // expanded bullet shape with is_new/source/evidence_found
 }
 
@@ -194,7 +194,7 @@ export interface WrittenCustomSectionEntry {
   text: string;
   // source reference to the corresponding StructuredResume.customSections
   // entry if the entry is based on a sourced item; omit for net-new.
-  source?: string;
+  source?: string | null;
   is_new: boolean;
   evidence_found: boolean;
   confidence: number;

@@ -20,7 +20,7 @@ import { z } from 'zod';
 const confidence = z.number().min(0).max(1);
 
 const dateRange = z.object({
-  start: z.string(),
+  start: z.string().nullable(),
   end: z.string().nullable(),
   raw: z.string(),
 });
@@ -32,18 +32,18 @@ const dateRange = z.object({
 const bullet = z.object({
   text: z.string(),
   is_new: z.boolean(),
-  source: z.string().optional(),
+  source: z.string().nullable().optional(),
   evidence_found: z.boolean(),
   confidence,
 });
 
 const contactInfo = z.object({
   fullName: z.string(),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  location: z.string().optional(),
-  linkedin: z.string().optional(),
-  website: z.string().optional(),
+  email: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
+  linkedin: z.string().nullable().optional(),
+  website: z.string().nullable().optional(),
 });
 
 // ─── Sections ───────────────────────────────────────────────────────────
@@ -51,10 +51,10 @@ const contactInfo = z.object({
 const position = z.object({
   title: z.string(),
   company: z.string(),
-  parentCompany: z.string().optional(),
-  location: z.string().optional(),
+  parentCompany: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
   dates: dateRange,
-  scope: z.string().optional(),
+  scope: z.string().nullable().optional(),
   bullets: z.array(bullet),
   confidence,
 });
@@ -62,22 +62,22 @@ const position = z.object({
 const educationEntry = z.object({
   degree: z.string(),
   institution: z.string(),
-  location: z.string().optional(),
-  graduationYear: z.string().optional(),
-  notes: z.string().optional(),
+  location: z.string().nullable().optional(),
+  graduationYear: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
   confidence,
 });
 
 const certification = z.object({
   name: z.string(),
-  issuer: z.string().optional(),
-  year: z.string().optional(),
+  issuer: z.string().nullable().optional(),
+  year: z.string().nullable().optional(),
   confidence,
 });
 
 const careerGapNote = z.object({
   description: z.string(),
-  dates: dateRange.optional(),
+  dates: dateRange.nullable().optional(),
   confidence,
 });
 
@@ -89,7 +89,7 @@ const crossRoleHighlight = z.object({
 
 const customSectionEntry = z.object({
   text: z.string(),
-  source: z.string().optional(),
+  source: z.string().nullable().optional(),
   confidence,
 });
 

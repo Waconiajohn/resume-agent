@@ -10,7 +10,7 @@
 import { z } from 'zod';
 
 const dateRange = z.object({
-  start: z.string(),
+  start: z.string().nullable(),
   end: z.string().nullable(),
   raw: z.string(),
 });
@@ -23,14 +23,14 @@ const confidence = z.number().min(0).max(1);
 const writtenBullet = z.object({
   text: z.string(),
   is_new: z.boolean(),
-  source: z.string().optional(),
+  source: z.string().nullable().optional(),
   evidence_found: z.boolean(),
   confidence,
 });
 
 const writtenCustomSectionEntry = z.object({
   text: z.string(),
-  source: z.string().optional(),
+  source: z.string().nullable().optional(),
   is_new: z.boolean(),
   evidence_found: z.boolean(),
   confidence,
@@ -58,7 +58,7 @@ export const WrittenPositionSchema = z.object({
   title: z.string(),
   company: z.string(),
   dates: dateRange,
-  scope: z.string().optional(),
+  scope: z.string().nullable().optional(),
   bullets: z.array(writtenBullet),
 });
 

@@ -17,14 +17,18 @@
 //   --dry-run                  list fixtures; do not call LLM
 //   -h, --help                 usage
 //
-// Cost model per fixture (approximate):
-//   Strategize (Opus):   ~$0.40
-//   Write 4 sections (Sonnet 4.6, parallel): ~$0.50
-//   Verify (Opus):       ~$0.40
-//   Total per fixture:   ~$1.30   (~$25 for full 19)
+// Cost model per fixture on DeepSeek-on-Vertex (Phase 3.5 default):
+//   Classify:     ~$0.003
+//   Strategize:   ~$0.002
+//   Write (6 sections, parallel): ~$0.008
+//   Verify:       ~$0.003
+//   Total per fixture:   ~$0.015-$0.020   (~$0.30 for full 19)
 //
 // With --skip-classify the fixture's classify.json is reused; without it,
-// classify runs fresh (adds ~$0.50/fixture).
+// classify runs fresh.
+// Opus/Sonnet pricing kept in PRICING table for the dev-override scenario
+// (RESUME_V3_PROVIDER=anthropic); the script reads telemetry.model to select
+// the right pricing row.
 
 import {
   readdirSync,
@@ -59,15 +63,22 @@ const PILOT_SUBSET = new Set([
   'fixture-18-steve-alexander-resume-25',      // career gap triggers objection handling
 ]);
 
-// Pricing (as of 2026-04).
+// Pricing ($ per million tokens). Vertex-hosted DeepSeek is the default
+// production model and the Phase 3.5 rate target.
 const PRICING = {
+  'deepseek-ai/deepseek-v3.2-maas': { input: 0.14, output: 0.28 },
+  'deepseek-ai/DeepSeek-V3.2': { input: 0.14, output: 0.28 },
+  'deepseek-chat': { input: 0.14, output: 0.28 },
   'claude-opus-4-7': { input: 15.0, output: 75.0 },
   'claude-sonnet-4-6': { input: 3.0, output: 15.0 },
 };
 
 function costOf(model, inTokens, outTokens) {
   const p = PRICING[model];
-  if (!p) return 0;
+  if (!p) {
+    // Fall back to DeepSeek rates — safer default than zero.
+    return (inTokens / 1_000_000) * 0.14 + (outTokens / 1_000_000) * 0.28;
+  }
   return (inTokens / 1_000_000) * p.input + (outTokens / 1_000_000) * p.output;
 }
 
@@ -209,7 +220,11 @@ async function runFixture(fixture, jd, opts) {
   stageTelemetry.write = w.telemetry;
   writeFileSync(join(snapshotDir, 'written.json'), JSON.stringify(w.written, null, 2) + '\n');
   writeFileSync(join(snapshotDir, 'write.telemetry.json'), JSON.stringify(w.telemetry, null, 2) + '\n');
-  const wCost = costOf('claude-sonnet-4-6', w.telemetry.totalInputTokens, w.telemetry.totalOutputTokens);
+  // Write telemetry carries per-section model info; the summary telemetry
+  // uses the same model as the rest (all 'fast-writer' capability), so
+  // pick any section's model for the cost calc.
+  const writeModel = w.telemetry.sections.summary.model;
+  const wCost = costOf(writeModel, w.telemetry.totalInputTokens, w.telemetry.totalOutputTokens);
   fixtureCost += wCost;
   process.stdout.write(
     `   write:      ${w.telemetry.durationMs}ms  in=${w.telemetry.totalInputTokens}tok out=${w.telemetry.totalOutputTokens}tok $${wCost.toFixed(4)}  sections=${3 + w.telemetry.sections.positions.length}\n`,
