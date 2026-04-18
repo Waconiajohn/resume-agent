@@ -9,13 +9,26 @@
 // Phase 3.5: provider resolution goes through the factory. No direct
 // provider imports. See docs/v3-rebuild/04-Decision-Log.md 2026-04-18.
 //
-// Contract: stream + accumulate + parse + zod validate + loud throw.
+// Phase 4.6: mechanical attribution check runs AFTER the LLM call.
+// If any emphasizedAccomplishments.summary contains claim tokens not
+// found in source, strategize retries ONCE with the offending phrases
+// fed back as structured retry context. This prevents DeepSeek
+// strategize from embellishing summaries that OpenAI write-position
+// would faithfully inherit as fabrications (Phase 4.5 regression).
+// Retry is explicit and visible; second-attempt failure surfaces loudly.
+//
+// Contract: stream + accumulate + parse + zod validate + attribution
+// check + optional retry + loud throw.
 
 import type { StreamEvent } from '../../lib/llm-provider.js';
 import { loadPrompt } from '../prompts/loader.js';
 import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
 import { StrategySchema } from './schema.js';
+import {
+  checkStrategizeAttribution,
+  type StrategizeAttributionResult,
+} from '../verify/attribution.js';
 import type { JobDescription, Strategy, StructuredResume } from '../types.js';
 
 const logger = createV3Logger('strategize');
@@ -24,6 +37,11 @@ const MAX_OUTPUT_TOKENS = 16_000;
 export interface StrategizeOptions {
   variant?: string;
   signal?: AbortSignal;
+  /**
+   * Disable the Phase 4.6 attribution-retry loop. Default: false (retry on).
+   * Primarily for tests that mock the LLM and don't want a second call.
+   */
+  disableAttributionRetry?: boolean;
 }
 
 export class StrategizeError extends Error {
@@ -33,6 +51,7 @@ export class StrategizeError extends Error {
       promptName?: string;
       rawResponse?: string;
       validationIssues?: unknown;
+      attribution?: StrategizeAttributionResult;
     },
   ) {
     super(message);
@@ -49,6 +68,10 @@ export interface StrategizeTelemetry {
   inputTokens: number;
   outputTokens: number;
   durationMs: number;
+  /** Phase 4.6: whether the attribution retry fired (true means second call was made). */
+  attributionRetryFired: boolean;
+  /** Phase 4.6: attribution pre-check result on the final accepted strategy. */
+  attribution: StrategizeAttributionResult;
 }
 
 export interface StrategizeResult {
@@ -96,33 +119,79 @@ export async function strategizeWithTelemetry(
     'strategize start',
   );
 
-  let fullText = '';
-  let usage = { input_tokens: 0, output_tokens: 0 };
-  for await (const event of provider.stream({
+  // First attempt.
+  let firstCall = await runLLM({
+    provider,
     model,
     system: prompt.systemMessage,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: MAX_OUTPUT_TOKENS,
+    userMessage,
     temperature: prompt.temperature,
     signal: options.signal,
-  })) {
-    const e = event as StreamEvent;
-    if (e.type === 'text') fullText += e.text;
-    else if (e.type === 'done') usage = e.usage;
+  });
+
+  let totalInputTokens = firstCall.usage.input_tokens;
+  let totalOutputTokens = firstCall.usage.output_tokens;
+
+  let parsed = parseAndValidate(firstCall.text, promptName);
+  let attribution = checkStrategizeAttribution(parsed, resume);
+  let attributionRetryFired = false;
+
+  // Phase 4.6 — if the mechanical attribution check flags unsourced tokens,
+  // retry once with the offending phrases fed back as structured context.
+  if (!options.disableAttributionRetry && attribution.summary.unverifiedCount > 0) {
+    const unverifiedSummaries = attribution.summaries.filter((s) => !s.verified);
+    logger.info(
+      {
+        promptName,
+        unverifiedCount: attribution.summary.unverifiedCount,
+        totalMissingTokens: attribution.summary.totalMissingTokens,
+        firstSummaryMissing: unverifiedSummaries[0]?.missingTokens.slice(0, 5),
+      },
+      'strategize attribution retry triggered',
+    );
+    attributionRetryFired = true;
+
+    const retryAddendum = buildAttributionRetryAddendum(unverifiedSummaries);
+    const retryCall = await runLLM({
+      provider,
+      model,
+      system: `${prompt.systemMessage}\n\n---\n\n${retryAddendum}`,
+      userMessage,
+      temperature: prompt.temperature,
+      signal: options.signal,
+    });
+    totalInputTokens += retryCall.usage.input_tokens;
+    totalOutputTokens += retryCall.usage.output_tokens;
+
+    parsed = parseAndValidate(retryCall.text, promptName);
+    attribution = checkStrategizeAttribution(parsed, resume);
+
+    if (attribution.summary.unverifiedCount > 0) {
+      // Second attempt also failed attribution — surface loudly with detail.
+      const failingSummaries = attribution.summaries.filter((s) => !s.verified);
+      const summary = failingSummaries
+        .map(
+          (s) =>
+            `  [${s.summaryIndex}] pos=${s.positionIndex} text="${s.text.slice(0, 120)}" missing=[${s.missingTokens.slice(0, 6).join('; ')}]`,
+        )
+        .join('\n');
+      throw new StrategizeError(
+        `Strategize attribution check failed on retry from ${model} via ${backend} (prompt ${promptName} v${prompt.version}). ` +
+          `${attribution.summary.unverifiedCount} summaries contain claim tokens not found in the source resume:\n${summary}\n` +
+          `Fix: tighten the strategize prompt (server/prompts/strategize.v${prompt.version}.md) ` +
+          `to prevent the model from emitting phrases not present in source. Do NOT add a silent repair step here.`,
+        {
+          promptName,
+          rawResponse: retryCall.text.slice(0, 500),
+          attribution,
+        },
+      );
+    }
+
+    firstCall = retryCall; // keep last-known-good text for logging
   }
 
   const durationMs = Date.now() - start;
-
-  if (!fullText.trim()) {
-    throw new StrategizeError(
-      `Strategize returned empty response from ${model} via ${backend} (prompt ${promptName} v${prompt.version}).`,
-      { promptName, rawResponse: fullText },
-    );
-  }
-
-  const cleaned = stripMarkdownJsonFence(fullText.trim());
-  const parsed = parseJsonOrThrow(cleaned, promptName);
-  const validated = validateOrThrow(parsed, promptName, cleaned);
 
   logger.info(
     {
@@ -130,30 +199,110 @@ export async function strategizeWithTelemetry(
       promptVersion: prompt.version,
       model,
       backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
       durationMs,
-      positioningFrame: validated.positioningFrame,
-      accomplishments: validated.emphasizedAccomplishments.length,
-      objections: validated.objections.length,
-      positionEmphasis: validated.positionEmphasis.length,
+      positioningFrame: parsed.positioningFrame,
+      accomplishments: parsed.emphasizedAccomplishments.length,
+      objections: parsed.objections.length,
+      positionEmphasis: parsed.positionEmphasis.length,
+      attributionRetryFired,
+      attributionVerifiedCount: attribution.summary.verifiedCount,
+      attributionUnverifiedCount: attribution.summary.unverifiedCount,
     },
     'strategize complete',
   );
 
   return {
-    strategy: validated,
+    strategy: parsed,
     telemetry: {
       promptName,
       promptVersion: prompt.version,
       model,
       capability: prompt.capability,
       backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
       durationMs,
+      attributionRetryFired,
+      attribution,
     },
   };
+}
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+interface LLMCallInput {
+  provider: ReturnType<typeof getProvider>['provider'];
+  model: string;
+  system: string;
+  userMessage: string;
+  temperature: number;
+  signal?: AbortSignal;
+}
+
+interface LLMCallOutput {
+  text: string;
+  usage: { input_tokens: number; output_tokens: number };
+}
+
+async function runLLM(input: LLMCallInput): Promise<LLMCallOutput> {
+  let fullText = '';
+  let usage = { input_tokens: 0, output_tokens: 0 };
+  for await (const event of input.provider.stream({
+    model: input.model,
+    system: input.system,
+    messages: [{ role: 'user', content: input.userMessage }],
+    max_tokens: MAX_OUTPUT_TOKENS,
+    temperature: input.temperature,
+    signal: input.signal,
+  })) {
+    const e = event as StreamEvent;
+    if (e.type === 'text') fullText += e.text;
+    else if (e.type === 'done') usage = e.usage;
+  }
+  if (!fullText.trim()) {
+    throw new StrategizeError(
+      `Strategize returned empty response from ${input.model}.`,
+    );
+  }
+  return { text: fullText, usage };
+}
+
+function parseAndValidate(rawText: string, promptName: string): Strategy {
+  const cleaned = stripMarkdownJsonFence(rawText.trim());
+  const parsed = parseJsonOrThrow(cleaned, promptName);
+  return validateOrThrow(parsed, promptName, cleaned);
+}
+
+/**
+ * Build the system-prompt addendum for the attribution retry. Lists each
+ * unverified summary's missing tokens so the model can rewrite specifically.
+ */
+function buildAttributionRetryAddendum(
+  unverifiedSummaries: StrategizeAttributionResult['summaries'],
+): string {
+  const lines: string[] = [
+    'RETRY: Your previous response contained phrases in `emphasizedAccomplishments[].summary` that do NOT appear in the candidate\'s source resume. Rewrite the flagged summaries using ONLY phrases present in the source bullets. Keep the same `positionIndex` and `rationale`; change only `summary`.',
+    '',
+    'Flagged summaries:',
+  ];
+  for (const s of unverifiedSummaries) {
+    lines.push(
+      `  [${s.summaryIndex}] positionIndex=${s.positionIndex}`,
+    );
+    lines.push(`    current summary: "${s.text}"`);
+    lines.push(
+      `    phrases not in source (rewrite or remove these): ${s.missingTokens.map((t) => `"${t}"`).join(', ')}`,
+    );
+  }
+  lines.push('');
+  lines.push(
+    'Return the full Strategy JSON as before. Only the flagged summaries need to change; the others should be preserved verbatim.',
+  );
+  return lines.join('\n');
 }
 
 function stripMarkdownJsonFence(input: string): string {
