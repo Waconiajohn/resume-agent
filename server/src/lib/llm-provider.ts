@@ -234,6 +234,7 @@ export class AnthropicProvider implements LLMProvider {
       messages: params.messages as Anthropic.MessageParam[],
       tools: params.tools as Anthropic.Tool[],
       ...(params.tool_choice && { tool_choice: params.tool_choice as Anthropic.ToolChoice }),
+      ...(params.temperature != null && { temperature: params.temperature }),
     });
 
     let text = '';
@@ -276,6 +277,9 @@ export class AnthropicProvider implements LLMProvider {
     };
     if (params.tool_choice) {
       streamParams.tool_choice = params.tool_choice as Anthropic.ToolChoice;
+    }
+    if (params.temperature != null) {
+      streamParams.temperature = params.temperature;
     }
 
     const s = anthropic.messages.stream(streamParams);
