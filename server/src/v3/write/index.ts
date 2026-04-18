@@ -131,6 +131,11 @@ export async function writeWithTelemetry(
     selectedAccomplishments: accomplishmentsRes.selectedAccomplishments,
     coreCompetencies: competenciesRes.coreCompetencies,
     positions: positionResults.map((r) => r.position),
+    // Phase 3.5 placeholder — the custom-sections parallel writer is wired
+    // up in Deliverable 6 of the port (see write-custom-section.v1.md and
+    // the Phase 4 prompt port commit). For now, we emit an empty list; the
+    // field is required by WrittenResume's schema.
+    customSections: [],
   };
 
   const telemetry: WriteTelemetry = {

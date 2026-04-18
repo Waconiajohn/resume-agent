@@ -21,6 +21,7 @@ function baseResume(): StructuredResume {
     skills: [],
     careerGaps: [],
     crossRoleHighlights: [],
+    customSections: [],
     pronoun: null,
     flags: [],
     overallConfidence: 1,

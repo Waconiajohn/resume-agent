@@ -38,6 +38,22 @@ export interface DateRange {
 
 export interface Bullet {
   text: string;
+  // is_new distinguishes bullets written by the LLM (rewritten or net-new)
+  // from bullets sourced verbatim from the original resume. Classify emits
+  // is_new: false for every source bullet; Write emits is_new: true for
+  // every rewritten bullet.
+  is_new: boolean;
+  // source is a reference to the original bullet the rewritten bullet is
+  // based on. Populated by Write when is_new=true and a source bullet was
+  // the basis for the rewrite. Format is a free-form locator such as
+  // "positions[0].bullets[3]" or a short slice of the source bullet's text;
+  // the field is consumed by Verify to check claim attribution, not parsed.
+  source?: string;
+  // evidence_found indicates whether the bullet's factual claims (metrics,
+  // scope, named systems, outcomes) trace to source material. Classify
+  // sets true for verbatim bullets; Write sets true when the rewrite's
+  // claims are present in the source bullet(s) it rewrote from.
+  evidence_found: boolean;
   confidence: number;
 }
 
@@ -85,9 +101,27 @@ export interface StructuredResume {
   skills: string[];
   careerGaps: CareerGapNote[];
   crossRoleHighlights: CrossRoleHighlight[];  // span-multiple-roles accomplishments (see Rule 13)
+  customSections: CustomSection[];     // non-standard executive-resume sections (see Rule 15)
   pronoun: PronounGuess;               // null = active voice downstream
   flags: AmbiguityFlag[];              // low-confidence items surfaced for review
   overallConfidence: number;
+}
+
+export interface CustomSectionEntry {
+  text: string;
+  source?: string;
+  confidence: number;
+}
+
+export interface CustomSection {
+  // Non-standard resume sections that classify identifies in the source —
+  // Board Service, Speaking Engagements, Patents, Publications, Awards,
+  // Volunteer Leadership, etc. v3 supports these as first-class capability
+  // (see docs/v3-rebuild/04-Decision-Log.md 2026-04-18 entry on custom
+  // sections). Write stage has a generic writer that handles them.
+  title: string;                       // e.g. "Board Service", "Speaking Engagements"
+  entries: CustomSectionEntry[];
+  confidence: number;
 }
 
 export interface CrossRoleHighlight {
@@ -153,7 +187,22 @@ export interface WrittenPosition {
   company: string;
   dates: DateRange;
   scope?: string;
-  bullets: string[];
+  bullets: Bullet[];                   // expanded bullet shape with is_new/source/evidence_found
+}
+
+export interface WrittenCustomSectionEntry {
+  text: string;
+  // source reference to the corresponding StructuredResume.customSections
+  // entry if the entry is based on a sourced item; omit for net-new.
+  source?: string;
+  is_new: boolean;
+  evidence_found: boolean;
+  confidence: number;
+}
+
+export interface WrittenCustomSection {
+  title: string;
+  entries: WrittenCustomSectionEntry[];
 }
 
 export interface WrittenResume {
@@ -161,6 +210,7 @@ export interface WrittenResume {
   selectedAccomplishments: string[];
   coreCompetencies: string[];
   positions: WrittenPosition[];
+  customSections: WrittenCustomSection[];
 }
 
 // -----------------------------------------------------------------------------

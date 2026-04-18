@@ -8,6 +8,10 @@
 //
 // Implements: docs/v3-rebuild/kickoffs/phase-3-kickoff.md §2.5
 //             (zod validation, throw on failure, no silent repair).
+//
+// Phase 3.5 expansion: Bullet gains is_new/source/evidence_found; new
+// CustomSection type added (see docs/v3-rebuild/04-Decision-Log.md
+// 2026-04-18 entries on per-bullet metadata and custom sections).
 
 import { z } from 'zod';
 
@@ -21,8 +25,15 @@ const dateRange = z.object({
   raw: z.string(),
 });
 
+// v3 Phase 3.5 — every bullet carries per-source attribution metadata. The
+// Bullet schema is consumed by both classify output (source bullets with
+// is_new=false) and write output (rewritten bullets with is_new=true and
+// a source reference). See docs/v3-rebuild/04-Decision-Log.md.
 const bullet = z.object({
   text: z.string(),
+  is_new: z.boolean(),
+  source: z.string().optional(),
+  evidence_found: z.boolean(),
   confidence,
 });
 
@@ -76,6 +87,18 @@ const crossRoleHighlight = z.object({
   confidence,
 });
 
+const customSectionEntry = z.object({
+  text: z.string(),
+  source: z.string().optional(),
+  confidence,
+});
+
+const customSection = z.object({
+  title: z.string(),
+  entries: z.array(customSectionEntry),
+  confidence,
+});
+
 const pronounGuess = z.union([
   z.literal('she/her'),
   z.literal('he/him'),
@@ -100,6 +123,7 @@ export const StructuredResumeSchema = z.object({
   skills: z.array(z.string()),
   careerGaps: z.array(careerGapNote),
   crossRoleHighlights: z.array(crossRoleHighlight),
+  customSections: z.array(customSection),
   pronoun: pronounGuess,
   flags: z.array(ambiguityFlag),
   overallConfidence: confidence,
