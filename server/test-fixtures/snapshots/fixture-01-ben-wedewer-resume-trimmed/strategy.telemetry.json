@@ -1,0 +1,8 @@
+{
+  "promptName": "strategize.v1",
+  "promptVersion": "1.0",
+  "model": "claude-opus-4-7",
+  "inputTokens": 8798,
+  "outputTokens": 1993,
+  "durationMs": 34124
+}

@@ -1,0 +1,82 @@
+{
+  "variant": "v1",
+  "sections": {
+    "summary": {
+      "promptName": "write-summary.v1",
+      "promptVersion": "1.0",
+      "model": "claude-sonnet-4-6",
+      "inputTokens": 4885,
+      "outputTokens": 174,
+      "durationMs": 5575
+    },
+    "accomplishments": {
+      "promptName": "write-accomplishments.v1",
+      "promptVersion": "1.0",
+      "model": "claude-sonnet-4-6",
+      "inputTokens": 5377,
+      "outputTokens": 231,
+      "durationMs": 4508
+    },
+    "competencies": {
+      "promptName": "write-competencies.v1",
+      "promptVersion": "1.0",
+      "model": "claude-sonnet-4-6",
+      "inputTokens": 5002,
+      "outputTokens": 145,
+      "durationMs": 3316
+    },
+    "positions": [
+      {
+        "promptName": "write-position.v1",
+        "promptVersion": "1.0",
+        "model": "claude-sonnet-4-6",
+        "inputTokens": 6069,
+        "outputTokens": 254,
+        "durationMs": 3649
+      },
+      {
+        "promptName": "write-position.v1",
+        "promptVersion": "1.0",
+        "model": "claude-sonnet-4-6",
+        "inputTokens": 6047,
+        "outputTokens": 399,
+        "durationMs": 9500
+      },
+      {
+        "promptName": "write-position.v1",
+        "promptVersion": "1.0",
+        "model": "claude-sonnet-4-6",
+        "inputTokens": 5906,
+        "outputTokens": 234,
+        "durationMs": 4796
+      },
+      {
+        "promptName": "write-position.v1",
+        "promptVersion": "1.0",
+        "model": "claude-sonnet-4-6",
+        "inputTokens": 5826,
+        "outputTokens": 151,
+        "durationMs": 2204
+      },
+      {
+        "promptName": "write-position.v1",
+        "promptVersion": "1.0",
+        "model": "claude-sonnet-4-6",
+        "inputTokens": 5781,
+        "outputTokens": 119,
+        "durationMs": 2182
+      },
+      {
+        "promptName": "write-position.v1",
+        "promptVersion": "1.0",
+        "model": "claude-sonnet-4-6",
+        "inputTokens": 5793,
+        "outputTokens": 108,
+        "durationMs": 2393
+      }
+    ]
+  },
+  "totalInputTokens": 50686,
+  "totalOutputTokens": 1815,
+  "durationMs": 9516
+}

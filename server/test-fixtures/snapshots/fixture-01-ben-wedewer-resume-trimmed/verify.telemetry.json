@@ -1,0 +1,8 @@
+{
+  "promptName": "verify.v1",
+  "promptVersion": "1.0",
+  "model": "claude-opus-4-7",
+  "inputTokens": 10438,
+  "outputTokens": 132,
+  "durationMs": 3661
+}

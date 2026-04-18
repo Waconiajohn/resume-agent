@@ -1,0 +1,120 @@
+{
+  "summary": "Engineering leader with 20+ years driving measurable commercial outcomes — including $26M in automation ROI at Travelport — now pivoting into wholesale account management, where cross-functional partnership, relationship depth, and a bias for quantified results translate directly. Orchestrated delivery alignment across 15 Agile Release Trains, coordinating engineering, product, and operations stakeholders toward shared business goals. Built and scaled global teams up to 85 staff, managing relationships across geographies and every level of leadership. Cuts regression cycles from 2+ weeks to 3 days and lifts platform availability from 97.8% to 99.9% — a pattern of taking a target metric and driving it materially upward that maps squarely to quota-carrying performance discipline.",
+  "selectedAccomplishments": [
+    "Delivered $26M in automation ROI at Travelport by standardizing GitHub Actions CI/CD pipelines and integrated automated test suites, translating engineering execution into measurable commercial outcomes.",
+    "Orchestrated cross-functional alignment across 15 Agile Release Trains at Travelport, unifying engineering, product, and operations teams around shared delivery goals at enterprise scale.",
+    "Built and scaled global engineering and QA teams to 85 staff, managing relationships and driving outcomes across geographies and every level of leadership.",
+    "Redesigned end-to-end QA strategy across people, process, and tooling at Flexential, cutting regression cycles from 2+ weeks to 3 days and enabling predictable monthly releases.",
+    "Drove production system availability from 97.8% to 99.9% on a global platform processing ~4B messages daily by maturing automation, performance testing, and quality standards."
+  ],
+  "coreCompetencies": [
+    "Commercial Value Delivery",
+    "Cross-Functional Partnership",
+    "Multi-Stakeholder Relationship Management",
+    "Global Team Building & Scaling",
+    "Strategic Planning & Execution",
+    "KPI Development & Performance Metrics",
+    "Agile Program Orchestration",
+    "Process Standardization & Governance",
+    "Outcome-Oriented Leadership",
+    "Account & Partner Alignment",
+    "Operational Efficiency & Cycle Reduction",
+    "Business Administration Foundations"
+  ],
+  "positions": [
+    {
+      "positionIndex": 0,
+      "title": "Manager, Quality Assurance",
+      "company": "Flexential",
+      "dates": {
+        "start": "2024",
+        "end": "2026",
+        "raw": "2024 – 2026"
+      },
+      "scope": "QA function modernization across API, web, and mobile platforms",
+      "bullets": [
+        "Redesigned end-to-end QA strategy across people, process, and tooling, cutting regression cycles from 2+ weeks to 3 days and enabling predictable monthly releases.",
+        "Partnered with Engineering leadership to implement an enterprise Definition of Done, embedding shared quality standards across the full SDLC and aligning cross-functional teams toward consistent release outcomes.",
+        "Introduced performance engineering as a discipline; led JMeter benchmarking during a major database migration, surfacing 30–60 second workflow degradations before they reached production.",
+        "Established baseline performance and quality metrics to support architectural decision-making and provide ongoing release health visibility to leadership."
+      ]
+    },
+    {
+      "positionIndex": 1,
+      "title": "Director of Software Engineering",
+      "company": "Travelport",
+      "dates": {
+        "start": "2020",
+        "end": "2023",
+        "raw": "2020 – 2023"
+      },
+      "scope": "Enterprise DevOps and automation strategy across 15 Agile Release Trains",
+      "bullets": [
+        "Delivered $26M in measurable business value by standardizing GitHub Actions CI/CD pipelines, integrating automated API/UI test suites, and scaling infrastructure automation across the enterprise portfolio — translating engineering execution directly into commercial outcomes.",
+        "Orchestrated cross-functional alignment across 15 Agile Release Trains, partnering with engineering, product, and operations stakeholders to drive shared delivery goals and consistent execution at scale.",
+        "Led enterprise DevOps and automation strategy spanning a 15-train program, improving system reliability, delivery predictability, and cloud-native readiness across a large-scale technology organization.",
+        "Migrated microservices platforms to AWS, reducing VM footprint by 40% and improving platform resilience during peak demand — demonstrating sustained focus on measurable operational improvement.",
+        "Defined and tracked DevOps performance metrics — deployment frequency, change failure rate, lead time for change — to surface engineering throughput data for leadership decision-making and executive transparency.",
+        "Strengthened platform stability by partnering with SRE and DevOps teams on observability, quality gates, and automated validation, building a culture of shared accountability across organizational boundaries.",
+        "Drove cloud-native modernization through improved monitoring, logging, and reliability practices, enabling measurable throughput gains without proportional headcount increases."
+      ]
+    },
+    {
+      "positionIndex": 2,
+      "title": "Director of Quality Engineering",
+      "company": "Travelport",
+      "dates": {
+        "start": "2017",
+        "end": "2020",
+        "raw": "2017 – 2020"
+      },
+      "scope": "Global platform processing ~4B messages daily",
+      "bullets": [
+        "Drove production system availability from 97.8% to 99.9% across a global platform processing approximately 4 billion messages daily, by maturing automation, performance testing, and quality standards.",
+        "Created KPIs and quality metrics covering system health, test coverage, and automation effectiveness, translating engineering data into actionable operational intelligence.",
+        "Directed root cause analysis and production issue triage, accelerating remediation cycles and establishing preventative controls to reduce recurrence.",
+        "Aligned quality engineering strategy with broader business objectives and technology modernization initiatives, ensuring engineering outcomes mapped directly to commercial and platform goals."
+      ]
+    },
+    {
+      "positionIndex": 3,
+      "title": "Senior Manager, Quality Assurance",
+      "company": "Rocket Software",
+      "dates": {
+        "start": "2015",
+        "end": "2017",
+        "raw": "2015 – 2017"
+      },
+      "bullets": [
+        "Scaled test automation by more than 700% and cut QA cycles by 60% by building global automation teams and implementing CI/CD pipelines.",
+        "Improved pre-release defect resolution by 500% through automation adoption, tooling modernization, and engineering process improvements."
+      ]
+    },
+    {
+      "positionIndex": 4,
+      "title": "Manager, Quality Assurance",
+      "company": "Rocket Software",
+      "dates": {
+        "start": "2013",
+        "end": "2015",
+        "raw": "2013 – 2015"
+      },
+      "bullets": [
+        "Led QA for a high-volume database product line, increasing release frequency by 40% through CI/CD adoption and source control modernization."
+      ]
+    },
+    {
+      "positionIndex": 5,
+      "title": "Software Development Engineer in Test",
+      "company": "IBM",
+      "dates": {
+        "start": "2004",
+        "end": "2013",
+        "raw": "2004 - 2013"
+      },
+      "bullets": [
+        "Built automated test frameworks for web and backend systems, reducing manual test time by 25 hours per release."
+      ]
+    }
+  ]
+}

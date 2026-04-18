@@ -1,0 +1,78 @@
+{
+  "positioningFrame": "career pivot to sales",
+  "targetDisciplinePhrase": "Account Manager, Wholesale Sport Specialty",
+  "emphasizedAccomplishments": [
+    {
+      "positionIndex": 1,
+      "summary": "Delivered $26M in measurable commercial value through a standardized automation program at Travelport.",
+      "rationale": "JD demands 'proven track record in commercial achievements'; the $26M ROI is the single hardest commercial number in the candidate's record and reframes engineering work as business outcomes."
+    },
+    {
+      "positionIndex": 1,
+      "summary": "Owned cross-functional partnership across 15 Agile Release Trains, aligning engineering, product, and operations toward shared delivery goals.",
+      "rationale": "JD emphasizes cross-functional partnership with Product, Merchandising, Marketing, Finance, and Planning; candidate's Release Train work demonstrates exactly this kind of multi-stakeholder orchestration at scale."
+    },
+    {
+      "positionIndex": null,
+      "summary": "Built and scaled global teams up to 85 staff, managing relationships across geographies and leadership levels.",
+      "rationale": "JD requires developing and managing account relationships 'at all levels'; scaling an 85-person org requires the same upward, peer, and downward relationship management muscle."
+    },
+    {
+      "positionIndex": 0,
+      "summary": "Redesigned a strategy across people, process, and tooling, delivering measurable results (regression cycles cut from 2+ weeks to 3 days).",
+      "rationale": "JD wants a self-starter who 'interprets data and develops a plan of action'; this accomplishment shows strategic planning plus execution discipline with quantified outcomes — the translatable sales-planning skill."
+    },
+    {
+      "positionIndex": 2,
+      "summary": "Drove measurable performance improvements (97.8% to 99.9% availability) at a platform operating at massive daily scale.",
+      "rationale": "JD highlights driving sell-through and sales growth in high-profile accounts (Finish Line/JD Sports, Hibbett); candidate's pattern of taking a metric and driving it up materially at scale translates to quota-carrying performance discipline."
+    }
+  ],
+  "objections": [
+    {
+      "objection": "Candidate has zero direct sales, wholesale, account management, or sporting goods/consumer goods experience — the JD requires 4+ years of proven industry sales experience.",
+      "rebuttal": "No source material rebuts this directly; lean on the $26M commercial delivery, cross-functional orchestration across 15 Release Trains, and 85-person org-building as transferable evidence, but flag in notes that this is a genuine pivot the cover letter must carry."
+    },
+    {
+      "objection": "Entire 20+ year career is in enterprise software QA/DevOps — why would a hiring manager believe this person has 'sincere and contagious passion for building the Under Armour brand' or 'genuine interest in sneaker/boutique culture'?",
+      "rebuttal": "Resume itself cannot rebut passion claims; targetDisciplinePhrase and summary must explicitly reframe the candidate as pivoting into sport specialty sales, and the cover letter (outside Stage 4's scope) must carry the brand-affinity story."
+    },
+    {
+      "objection": "Candidate's most recent title is Manager, Quality Assurance — is this a step down from prior Director roles, and is the person a flight risk back to tech?",
+      "rebuttal": "Foreground the Director-level scope at Travelport (15 Release Trains, $26M, 85 staff) as primary weight; position the Flexential role as continued execution depth rather than a step down."
+    }
+  ],
+  "positionEmphasis": [
+    {
+      "positionIndex": 0,
+      "weight": "secondary",
+      "rationale": "Most recent role provides current-tense strategic planning and cross-functional execution evidence, but its QA-specific content is least translatable to wholesale account management."
+    },
+    {
+      "positionIndex": 1,
+      "weight": "primary",
+      "rationale": "Carries the $26M commercial number and the cross-functional orchestration story — the two strongest bridges from this candidate's record to the JD's requirements."
+    },
+    {
+      "positionIndex": 2,
+      "weight": "secondary",
+      "rationale": "Director title and measurable business-impact metric (availability lift) reinforce seniority and outcome-orientation; supports but does not lead the story."
+    },
+    {
+      "positionIndex": 3,
+      "weight": "brief",
+      "rationale": "Pre-Director role with limited translatable content; preserve title and dates for continuity, minimal bullets."
+    },
+    {
+      "positionIndex": 4,
+      "weight": "brief",
+      "rationale": "Adjacent earlier role at same company; collapse to minimal treatment to avoid diluting the primary story."
+    },
+    {
+      "positionIndex": 5,
+      "weight": "brief",
+      "rationale": "Nine-year IBM tenure is foundational but off-story for a sales pivot; title and dates only, one bullet maximum."
+    }
+  ],
+  "notes": "This is a fundamental career pivot — 20+ years in enterprise QA/DevOps leadership applying to a wholesale sport specialty account management role with zero direct sales experience. The resume alone cannot fully rebut the 'no sales experience' and 'no brand affinity' objections; a cover letter is doing heavy lifting outside Stage 4's scope. Stage 4 should write the summary to explicitly name the pivot rather than pretend the candidate is a sales veteran, and should aggressively translate engineering metrics into commercial/relationship language ($26M ROI, cross-functional partnership, scaling teams). Do not fabricate sales or consumer-goods experience."
+}

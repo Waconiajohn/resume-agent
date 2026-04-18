@@ -1,13 +1,15 @@
 // v3 pipeline orchestrator.
 // Wires the five stages (extract → classify → strategize → write → verify)
-// into a single run. Structured logging at every stage boundary.
+// into a single sequential run. Parallelization inside a stage (e.g. write's
+// per-section fan-out) is the stage's own concern; the orchestrator only
+// sequences stage boundaries and logs them.
 //
-// Implements: docs/v3-rebuild/01-Architecture-Vision.md (the five stages) and
-//             docs/v3-rebuild/kickoffs/phase-1-kickoff.md §4.
+// Implements: docs/v3-rebuild/01-Architecture-Vision.md (the five stages),
+//             docs/v3-rebuild/kickoffs/phase-1-kickoff.md §4 (skeleton),
+//             docs/v3-rebuild/kickoffs/phase-4-kickoff.md (all stages real).
 //
-// Stages currently throw NotImplementedError. The pipeline surfaces the
-// failure from the first unimplemented stage — no silent fallback.
-// See OPERATING-MANUAL.md "No silent fallbacks".
+// Any stage failure propagates verbatim. No silent fallback (OPERATING-
+// MANUAL.md).
 
 import { extract } from './extract/index.js';
 import { classify } from './classify/index.js';
