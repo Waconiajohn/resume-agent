@@ -43,17 +43,52 @@ Your output shape is:
 
 ## Hard rules
 
-### Rule 1 — Determine bullet count from Strategy.positionEmphasis.
+### Rule 1 — Determine bullet count from Strategy.positionEmphasis AND source availability.
 
 Look up this position in `strategy.positionEmphasis` by `positionIndex`. Its `weight`:
 
-- `"primary"` → **6 to 8 bullets**. The role where the candidate's story gets the most airtime.
-- `"secondary"` → **3 to 5 bullets**. Supporting depth.
+- `"primary"` → **up to 6-8 bullets**. The role where the candidate's story gets the most airtime.
+- `"secondary"` → **up to 3-5 bullets**. Supporting depth.
 - `"brief"` → **0 to 2 bullets**. Dates and title visible, content minimal. Use 0 bullets for very old or unrelated roles; 1-2 when at least one note of continuity matters.
 
-If the position is not listed in positionEmphasis (shouldn't happen, but defense in depth), default to `"secondary"` (3-5 bullets).
+**CEILING, NOT QUOTA.** These are upper bounds. The actual bullet count must respect source availability:
 
-<!-- Why: v2 produced uniformly 5-6 bullets per role regardless of relevance, burying the primary role's story under irrelevant early-career detail. The Strategy already allocated emphasis; the writer obeys. 2026-04-18. -->
+- If the source position has 3 bullets and weight is primary (up to 6-8), emit **3 bullets** (or 3-4 if merging legitimately combines content). Do NOT synthesize 5 more bullets to "fill the quota".
+- If the source position has 8 bullets and weight is brief, emit **0-2 bullets** chosen from the most JD-relevant ones.
+- Prefer fewer, stronger bullets over more, weaker ones.
+
+A synthesized bullet with no direct source support (Rule 2) is worse than emitting fewer bullets. An honest 3-bullet primary-weight role outperforms a padded 7-bullet role with 4 fabricated claims.
+
+If the position is not listed in positionEmphasis (shouldn't happen, but defense in depth), default to `"secondary"`.
+
+<!-- Why: v2 produced uniformly 5-6 bullets per role regardless of relevance. v3 v1.0 swung the other way — DeepSeek's write-position would pad to the weight's upper bound by synthesizing bullets the source didn't support, triggering verify errors. The right calibration is: weight is a ceiling governed by source availability, not a quota. Phase 3.5 iteration, 2026-04-18. -->
+
+### Rule 1b — Do NOT synthesize net-new bullets beyond source material.
+
+If you cannot trace a rewritten bullet's factual claim to a source bullet (via `source: "bullets[N]"` or `source: "bullets[N] + bullets[M]"`), DO NOT emit it. A synthesized bullet that combines two source bullets into one claim is acceptable ONLY if all the specific claims (metrics, named systems, scope details) are present in the source bullets being combined.
+
+Forbidden synthesis patterns:
+- Adding industry-framing claims the source doesn't state ("solution-based selling", "consultative sales culture", "high-performance team culture")
+- Adding scope claims the source doesn't state ("full P&L responsibility", "go-to-market plan ownership", "primary technical liaison")
+- Adding strategic claims from the positioningFrame without source grounding
+- Adding market/growth framing the source doesn't name ("driving channel growth", "expanding brand reach", "market penetration", "regional market leadership", "building a foundation for X")
+- Adding editorial tails the source doesn't state ("translating complex technical requirements into actionable sales strategies", "establishing the brand's reputation for innovation")
+
+**Litmus test**: Could you, given only the source bullet(s) cited, defend every noun phrase in the rewrite with a specific highlight in the source? If the source bullet says "Managed a regional sales team, achieving 30% YoY growth" and the rewrite says "drove revenue expansion across enterprise and education sectors" — the "enterprise and education sectors" is NOT in the source. That's a forbidden synthesis.
+
+**When in doubt, cut the editorial tail and emit the straighter claim.**
+
+  ✓ source: "Managed a regional sales team, achieving 30% YoY growth."  →  "Managed a regional sales team to achieve 30% YoY growth." (same claim, same scope)
+  ✗ source: "Managed a regional sales team, achieving 30% YoY growth."  →  "Managed a regional sales team, driving 30% YoY growth and expanding market penetration across enterprise and education sectors." (added sectors, added scope)
+
+  ✓ source: "Led Northern California office through years of revenue expansion and project success."  →  "Led Northern California office through years of revenue expansion and project success, maintaining consistent team performance."
+  ✗ source: "Led Northern California office through years of revenue expansion and project success."  →  "Led Northern California office through years of revenue expansion and project success, building a foundation for regional market leadership." (added "market leadership" claim)
+
+  ✓ source: "Led AV systems design...across West Coast."  →  "Led AV systems design and proposal development across West Coast commercial, hospitality, and public-sector clients."
+  ✗ source: "Led AV systems design..." + "Collaborated with engineering..."  →  "Partnered with sales and technical teams to develop go-to-market plans" (source mentions no sales, no go-to-market)
+  ✗ source: "Supported account growth initiatives."  →  "Built a consultative sales culture focused on solution-based selling" (source says nothing about culture or selling philosophy)
+
+<!-- Why: Phase 3.5 pilot caught DeepSeek's write-position synthesizing 3 extra bullets on fixture-18 position[0] because the primary weight said "6-8 bullets" and source only had 3. Verify correctly flagged unsupported claims. The root cause is the writer treating weight as a quota instead of a ceiling. This rule is the explicit guard. 2026-04-18. -->
 
 ### Rule 2 — Pull content from the source position's bullets.
 

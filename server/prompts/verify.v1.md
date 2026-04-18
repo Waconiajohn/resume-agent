@@ -45,18 +45,28 @@ Run every check. Do NOT stop at first issue.
 
 ### Check 1 — Claims trace to source via bullet metadata.
 
-Phase 3.5 schema: every bullet in `WrittenResume.positions[].bullets` carries `is_new`, `source`, and `evidence_found`. Use these for attribution checks:
+Phase 3.5 schema: every bullet in `WrittenResume.positions[].bullets` carries `is_new`, `source`, and `evidence_found`. Use these for attribution checks.
 
-1. **Every `is_new: true` bullet with `evidence_found: true` must have a plausible `source` reference**, and you must be able to find the claimed source material in the StructuredResume. If `source: "positions[0].bullets[1]"`, locate that bullet and verify the rewrite's factual claims (metric, scope, named system) are present there or in that position's `scope` / `dates`.
-2. **If a bullet is `is_new: true` with `evidence_found: false`**, the writer explicitly signaled partial evidence. Check the factual claims and emit a `"warning"` if any specific metric cannot be sourced (the writer already flagged the issue, so warn rather than error).
-3. **If a bullet has `is_new: true` and omits `source` (net-new synthesis)**, every factual claim (metric, scope, named system) in the text MUST still trace to the source position's bullets, scope, or crossRoleHighlights. If you find a claim that cannot be sourced, emit an `"error"` with `section` naming the bullet.
-4. **Legacy safety net**: for any numeric claim anywhere in the WrittenResume (summary, selectedAccomplishments, custom sections, competencies), trace to the StructuredResume. An unsourceable number is an `"error"`.
+**About the `source` field**: it is a FREE-FORM STRING locator, not a strict format. Any of these are valid:
+- `"positions[0].bullets[1]"`, `"bullets[3]"`, `"bullet 2"` (dotted-path or loose path)
+- `"bullets[0] + bullets[2]"`, `"bullets[1] + scope"` (merges of two or more source items)
+- `"bullets[3] ($26M metric)"` (path with annotation)
+- Any free-form string that tells you which source bullet(s) the rewrite is based on
 
-  ✓ bullet text: "Delivered $26M ROI"; source: "positions[0].bullets[1]"; source text contains "$26M". → OK
-  ✗ bullet text: "Delivered $40M ROI"; source: "positions[0].bullets[1]"; source text says "$26M". → error (fabricated metric)
-  ✗ bullet text: "Scaled team to 120"; is_new: true; no source; source position's bullets mention 85. → error (unsupported scope)
+**Do NOT emit an error just because `source` is not a dotted path.** The format is a hint to you, the verifier — interpret it liberally, locate the referenced source bullet(s) in the StructuredResume, and do the real attribution check against the source TEXT.
 
-<!-- Why: v2 fabricated metrics. Phase 3.5 added per-bullet metadata so verify can do precise attribution checks. Without the source reference, verify was reduced to fuzzy string matching; with it, the check is explicit. docs/v3-rebuild/04-Decision-Log.md 2026-04-18. -->
+Checks:
+
+1. **Every `is_new: true` bullet MUST have its claims traceable to source.** Use the `source` hint to find the relevant bullet(s) in the StructuredResume. Compare the rewrite's factual claims (metrics, named systems, scope, specific outcomes) against the source text. If a specific claim in the rewrite is NOT present in any source bullet, scope, or crossRoleHighlight, emit an `"error"`.
+2. **Specifically NOT errors**: (a) the rewrite changing tense, voice, or ordering; (b) the rewrite combining two source bullets; (c) adding generic framing verbs ("led", "drove", "managed") even if the source used a different verb; (d) minor paraphrase; (e) adding a qualifier from the position's scope field or from another source bullet in the same position.
+3. **Legacy safety net**: for any numeric claim anywhere in the WrittenResume (summary, selectedAccomplishments, custom sections, competencies), trace to the StructuredResume. An unsourceable number is an `"error"`.
+
+  ✓ bullet text: "Delivered $26M ROI"; source: "bullets[1]"; source text says "$26M in automation ROI". → OK
+  ✓ bullet text: "Led strategy across 15 Agile Release Trains, driving cost reduction"; source: "bullets[0] + scope"; bullets[0] says "Led strategy across 15 Agile Release Trains" and scope says "cost-governed platform". → OK (combining source + scope is valid)
+  ✗ bullet text: "Delivered $40M ROI"; source: "bullets[1]"; source text says "$26M". → error (fabricated metric)
+  ✗ bullet text: "Built consultative sales culture focused on solution selling"; source: "bullets[0] + bullets[2]"; neither source bullet mentions culture or selling philosophy. → error (unsourced claim added during synthesis)
+
+<!-- Why: v2 fabricated metrics. Phase 3.5 added per-bullet metadata so verify can do precise attribution checks. The verify prompt must not emit errors for the source-reference FORMAT; it must only error on the CONTENT mismatch. Phase 3.5 pilot iteration caught DeepSeek-verify generating "not a valid source reference" errors for legitimate `"bullets[X] + bullets[Y]"` strings — that's a false positive. 2026-04-18. -->
 
 ### Check 1b — evidence_found consistency.
 
@@ -74,13 +84,15 @@ If `resume.pronoun` is `"he/him"`, `"she/her"`, or `"they/them"`, pronouns may a
 
 ### Check 3 — Dates are consistent.
 
-- No position has an `end` date earlier than its `start` date.
+- No position has an `end` date earlier than its `start` date (when both are non-null).
 - No position's date range extends into the future unless the source explicitly said "Present"/"Current" (ended null).
-- If two positions at the same employer have overlapping dates, the source `resume.positions` must also have them overlapping (verify against parentCompany + dates). If the overlap is not in the source, emit an `"error"`.
 
-Within the same source: the WrittenResume's `positions[i].dates` must equal `resume.positions[i].dates` for the same `positionIndex`. No rewriting of dates during Stage 4. Any date mismatch is an `"error"`.
+**Date string comparison**: the WrittenResume's `positions[i].dates.raw` should equal `resume.positions[i].dates.raw` for the same `positionIndex`. Compare as strings AFTER trimming whitespace and normalizing en-dash (`–`, U+2013) vs hyphen-minus (`-`, U+002D) vs em-dash (`—`, U+2014) — these are NOT substantive differences.
 
-<!-- Why: v2 occasionally reformatted dates during rewriting, breaking alignment with source. 2026-04-18. -->
+- If the strings are character-for-character identical, or differ only in dash type / whitespace, there is NO issue — do NOT emit an error.
+- If one string says "2020 – 2023" and the other says "2020 – Present", that is a real change — emit an `"error"`.
+
+<!-- Why: v1.0 verify emitted false positives when the dates were identical. Phase 3.5 iteration: verify must compare after trivial whitespace/dash-type normalization. 2026-04-18. -->
 
 ### Check 4 — No duplicate or near-duplicate bullets within a role.
 
@@ -125,9 +137,17 @@ If the StructuredResume has `[REDACTED NAME]`, `[REDACTED EMAIL]`, `[REDACTED PH
 
 ### Check 9 — Every position in resume is present in WrittenResume.
 
-For each `positionIndex` in `strategy.positionEmphasis`, the WrittenResume's `positions[]` must have a matching entry (by positionIndex or by `title` + `company`). A missing position is an `"error"`. An extra position in WrittenResume (positionIndex not in strategy.positionEmphasis) is also an `"error"`.
+Build two sets:
+- `sourceIndices` = all `positionIndex` values that appear in `strategy.positionEmphasis`
+- `writtenIndices` = all `positionIndex` values that appear in `WrittenResume.positions[]`
 
-<!-- Why: Structural completeness. Stage 4's positional writer runs once per source position; missing outputs indicate a Stage 4 failure that needs debugging. 2026-04-18. -->
+For each index in `sourceIndices` NOT in `writtenIndices`: emit an `"error"` ("position N missing from WrittenResume").
+
+For each index in `writtenIndices` NOT in `sourceIndices`: emit an `"error"` ("position N fabricated — not listed in strategy.positionEmphasis").
+
+Count the actual indices. Do NOT report missing/extra unless you have specifically checked both lists and found a genuine mismatch. If both lists contain the same indices (same set), emit NO issue for Check 9.
+
+<!-- Why: v1.0 verify emitted false positives claiming "position 5 not in strategy.positionEmphasis" when in fact positionEmphasis contained indices 0,1,2,3,4,5. Phase 3.5 iteration forces the model to explicitly construct and compare the two sets. 2026-04-18. -->
 
 ### Check 10 — Custom sections match source.
 
