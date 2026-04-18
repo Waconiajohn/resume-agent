@@ -34,6 +34,7 @@ import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 import { classifyWithTelemetry } from '../src/v3/classify/index.ts';
+import { diffClassifySnapshots } from '../src/v3/test-fixtures/classify-diff.ts';
 
 // ─── Paths ─────────────────────────────────────────────────────────────
 
@@ -231,39 +232,73 @@ async function main() {
     totalInput += inputTokens;
     totalOutput += outputTokens;
 
-    // Persist the snapshot.
+    // Semantic diff against the prior snapshot (if any). Opus 4.7 is
+    // non-deterministic, so byte-for-byte diffs are noisy. diffClassifySnapshots
+    // distinguishes real structural/semantic changes from accepted wording
+    // variance. See src/v3/test-fixtures/classify-diff.ts for thresholds.
+    const snapshotDir = join(SNAPSHOTS_DIR, fixture.slug);
+    const snapshotPath = join(snapshotDir, 'classify.json');
+    let diff = null;
+    if (existsSync(snapshotPath)) {
+      try {
+        const prior = JSON.parse(readFileSync(snapshotPath, 'utf8'));
+        diff = diffClassifySnapshots(prior, resume);
+      } catch (err) {
+        console.log(`   ⚠ prior snapshot unreadable (${err instanceof Error ? err.message : err}); treating as new`);
+      }
+    }
+
+    // Persist the new snapshot (unless --no-write).
     if (opts.write) {
-      const snapshotDir = join(SNAPSHOTS_DIR, fixture.slug);
       mkdirSync(snapshotDir, { recursive: true });
-      writeFileSync(
-        join(snapshotDir, 'classify.json'),
-        JSON.stringify(resume, null, 2) + '\n',
-      );
+      writeFileSync(snapshotPath, JSON.stringify(resume, null, 2) + '\n');
       writeFileSync(
         join(snapshotDir, 'classify.telemetry.json'),
         JSON.stringify(telemetry, null, 2) + '\n',
       );
     }
 
+    // Per-fixture summary line, with semantic-diff status.
+    const structural = `positions=${resume.positions.length} edu=${resume.education.length} certs=${resume.certifications.length} gaps=${resume.careerGaps.length} xrl=${resume.crossRoleHighlights.length} flags=${resume.flags.length} conf=${resume.overallConfidence.toFixed(2)} pronoun=${resume.pronoun ?? 'null'}`;
+    const diffTag = diff
+      ? diff.overall === 'ok'
+        ? '[no diff]'
+        : diff.overall === 'noise'
+          ? '[diff: noise]'
+          : '[DIFF: REAL]'
+      : '[no prior]';
     console.log(
-      `   ✓ ${ms}ms  in=${inputTokens}tok out=${outputTokens}tok $${runCost.toFixed(4)}` +
-        ` | positions=${resume.positions.length} edu=${resume.education.length} certs=${resume.certifications.length} gaps=${resume.careerGaps.length} flags=${resume.flags.length} conf=${resume.overallConfidence.toFixed(2)} pronoun=${resume.pronoun ?? 'null'}`,
+      `   ✓ ${ms}ms  in=${inputTokens}tok out=${outputTokens}tok $${runCost.toFixed(4)} ${diffTag}` +
+        ` | ${structural}`,
     );
 
-    results.push({ fixture, telemetry, resume, ms });
+    if (diff && diff.overall === 'real') {
+      for (const f of diff.findings.filter((x) => x.severity === 'real')) {
+        console.log(`      [REAL] ${f.field}: ${f.reason}`);
+      }
+    }
+
+    results.push({ fixture, telemetry, resume, diff, ms });
   }
 
   // ─── Totals ───────────────────────────────────────────────────────────
 
   const totalCost = cost(totalInput, totalOutput);
+  const realDiffs = results.filter((r) => r.diff && r.diff.overall === 'real').length;
+  const noiseDiffs = results.filter((r) => r.diff && r.diff.overall === 'noise').length;
+  const firstRun = results.filter((r) => !r.diff).length;
   console.log('');
   console.log('# Totals');
   console.log(`# input_tokens: ${totalInput}`);
   console.log(`# output_tokens: ${totalOutput}`);
   console.log(`# estimated_cost: $${totalCost.toFixed(4)}`);
   console.log(`# ok: ${results.length - totalFailed}  failed: ${totalFailed}`);
+  console.log(`# diff status: real=${realDiffs}  noise=${noiseDiffs}  first-run=${firstRun}`);
 
   if (totalFailed > 0) process.exit(1);
+  // A real semantic diff is a fixture-suite failure — the snapshot drifted
+  // beyond the accepted non-determinism envelope and needs human review.
+  if (realDiffs > 0) process.exit(3);
 }
 
 main().catch((err) => {
