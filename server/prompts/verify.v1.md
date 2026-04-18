@@ -1,11 +1,20 @@
 ---
 stage: verify
-version: "1.2"
+version: "1.2.1"
 capability: strong-reasoning
 temperature: 0.1
 last_edited: 2026-04-18
 last_editor: claude
 notes: |
+  v1.2.1 (Phase 4.11 — Check 9 honors write-position Rule 7):
+    - Check 9 now explicitly permits zero bullets for positions whose
+      weight in strategy.positionEmphasis is "brief". write-position
+      Rule 7 says: "For brief-weight positions with nothing JD-relevant
+      to emit, return bullets: []. Do NOT pad with generic statements."
+      Verify previously treated any zero-bullet position as structurally
+      incomplete, creating a false-positive error on fixture-10 in
+      Phase 4.10. Weight "medium" or "heavy" with zero bullets remains
+      an error (a genuine writer failure).
   v1.2 (Phase 4 cleanup — Intervention 2):
     - Verify now receives a MECHANICAL ATTRIBUTION PRE-CHECK alongside
       the other inputs. For each is_new:true bullet, a deterministic
@@ -189,7 +198,21 @@ For each index in `writtenIndices` NOT in `sourceIndices`: emit an `"error"` ("p
 
 Count the actual indices. Do NOT report missing/extra unless you have specifically checked both lists and found a genuine mismatch. If both lists contain the same indices (same set), emit NO issue for Check 9.
 
+**Zero-bullet positions — honor write-position Rule 7.** A position appearing in `WrittenResume.positions[]` with `"bullets": []` is NOT automatically an error. Look up that position's `weight` in `strategy.positionEmphasis`:
+
+- If the weight is `"brief"`, **zero bullets is expected and correct** — write-position Rule 7 explicitly permits this ("For brief-weight positions with nothing JD-relevant to emit, return bullets: []. Do NOT pad with generic statements."). Emit NO issue for this case. Title and dates are sufficient for old/unrelated roles.
+- If the weight is `"medium"` or `"heavy"`, zero bullets IS a genuine writer failure — emit an `"error"` ("position N has weight 'medium'/'heavy' but zero bullets — writer should have produced content").
+
+### Examples for Check 9 zero-bullet handling:
+
+  ✓ Correct: Position at index 1 (GoMeta | 2010-2011) has weight `"brief"` in `strategy.positionEmphasis`, zero bullets in WrittenResume → NO issue.
+  ✓ Correct: Position at index 0 (CEO | 2022-Present) has weight `"heavy"`, 4 bullets in WrittenResume → NO Check-9 issue.
+  ✗ Wrong: Position at index 0 has weight `"heavy"`, zero bullets in WrittenResume → emit error (writer failed to produce required content).
+  ✗ Wrong: Position at index 2 is in `strategy.positionEmphasis` but entirely absent from `WrittenResume.positions[]` → emit error (missing position).
+
 <!-- Why: v1.0 verify emitted false positives claiming "position 5 not in strategy.positionEmphasis" when in fact positionEmphasis contained indices 0,1,2,3,4,5. Phase 3.5 iteration forces the model to explicitly construct and compare the two sets. 2026-04-18. -->
+
+<!-- Why: write-position Rule 7 explicitly permits 0 bullets for brief-weight positions (old/unrelated roles where title and dates suffice). Verify previously treated all zero-bullet positions as errors, creating false-positive noise on resumes that correctly omit bullets from brief positions. Phase 4.10 fixture-10 documented the coordination gap. 2026-04-18 (v1.2.1). -->
 
 ### Check 10 — Custom sections match source.
 
