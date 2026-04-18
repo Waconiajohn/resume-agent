@@ -1,26 +1,25 @@
 ---
 stage: verify
-version: "1.3"
+version: "1.2"
 capability: strong-reasoning
 temperature: 0.1
 last_edited: 2026-04-18
 last_editor: claude
 notes: |
-  v1.3 (Phase 4.7 — close the self-contradiction gap):
-    - Phase 4.6 Step A revealed the v1.2 LLM writing reasoning like
-      "claim is present, so no fabrication" and STILL emitting that
-      as error-severity. Reasoning right, output wrong.
-    - Fix: Check 1 now demands a structured decision per flagged token:
-      Step 1 locate (quote source or say "not found"); Step 2 classify
-      (verified/warning/error); Step 3 emit severity following strict
-      rules — if source located, MUST be verified-or-warning, never error.
-    - New "SELF-CONSISTENCY RULE (HARD)" at the end of Check 1 banning
-      the self-contradiction pattern by lexical check.
-    - Attribution pre-check now uses word-bag matching for frame phrases
-      (Phase 4.7 extractor update); this is noted so the verifier knows
-      that pre-check results are more reliable but can still have
-      heuristic misses.
-  v1.2 (Phase 4 cleanup — Intervention 2): attribution pre-check consumed.
+  v1.2 (Phase 4 cleanup — Intervention 2):
+    - Verify now receives a MECHANICAL ATTRIBUTION PRE-CHECK alongside
+      the other inputs. For each is_new:true bullet, a deterministic
+      code path (server/src/v3/verify/attribution.ts) extracts claim
+      tokens (dollar figures, percentages, number+unit phrases, proper
+      nouns, acronyms) and substring-matches them against the source
+      position's haystack. The results are inlined as JSON.
+    - Check 1 rewritten to CONSUME the pre-check: if the pre-check
+      says all tokens are verified, you do NOT need to second-guess
+      (no Check 1 error). If the pre-check flags a missing token, you
+      scan the source AGAIN (because the mechanical check is imperfect)
+      before emitting an error.
+    - This replaces DeepSeek-verify's from-scratch attribution attempt
+      that produced false positives in Phase 3.5.
   v1.1 (Phase 3.5 port to DeepSeek-on-Vertex).
   v1.0: Initial Phase 4 version. Stage 5 — last-line quality gate.
 ---
@@ -51,9 +50,9 @@ Your output shape is:
 
 Run every check. Do NOT stop at first issue.
 
-### Check 1 — Consume the mechanical attribution pre-check with a structured decision per flagged token.
+### Check 1 — Consume the mechanical attribution pre-check; emit Check-1 errors only for real fabrications.
 
-**A deterministic substring + word-bag attribution pre-check has already run against every `is_new: true` bullet**. You receive the results as `{{attribution_json}}` in the user message. For each bullet:
+**A deterministic substring-attribution pre-check has already run against every `is_new: true` bullet**. You receive the results as `{{attribution_json}}` in the user message. For each bullet it contains:
 
 ```
 {
@@ -66,47 +65,29 @@ Run every check. Do NOT stop at first issue.
 }
 ```
 
-Note: As of Phase 4.7 the pre-check is more reliable for frame phrases ("by promoting product performance" matches source "by promoting the performance of products" via word-bag) but can still have heuristic misses — particularly when source uses an acronym the rewrite expands, or when the rewrite references `crossRoleHighlights` content the position-scoped extractor missed.
+**How to use it** (follow this in order):
 
-### Structured decision contract (follow this for EVERY flagged bullet):
+1. **If `verified: true`, emit no Check-1 error for that bullet.** Every claim token the mechanical check extracted was found in the source position's haystack (bullets + scope + title + crossRoleHighlights). Verify does not second-guess a verified-mechanically bullet; move on.
 
-For each bullet where `verified === false`, EACH `missingTokens` entry gets a three-step decision:
+2. **If `verified: false`, examine the `missingTokens` list and read the source bullets for that position.** The mechanical check is deterministic but imperfect — it may have missed:
+   - Tokens that were paraphrased (e.g., rewrite says "year-over-year growth"; source says "YoY growth" — mechanical check's substring compare may miss the gap).
+   - Tokens whose normalization differs (acronym vs expansion, hyphen vs en-dash).
+   - Tokens that appear in a different position's bullets where the writer legitimately drew from `crossRoleHighlights`.
+   - Heuristic extraction noise (e.g., "Led Strategy" captured as a proper noun when it's really the verb "Led" + noun).
 
-**Step 1 — Locate.** Scan the candidate resume for the token's content (look in the source position's bullets, scope, title, `crossRoleHighlights`, and `customSections`). Record the result as one of:
-- **FOUND** — quote the specific source sentence or phrase where the token (or its word-bag equivalent) appears.
-- **NOT_FOUND** — state plainly that the token cannot be located in source.
+   For each flagged token: **scan ALL source bullets in the position, the position's scope, and the resume's crossRoleHighlights** for a semantic match. If you find the claim (even if the mechanical check missed it), DO NOT emit an error — the bullet is verified in practice.
 
-**Step 2 — Classify.** Based on Step 1, the token's severity MUST be one of:
-- `verified` — Step 1 was FOUND. The claim traces to source. No issue emitted.
-- `warning` — Step 1 was FOUND but the mapping is loose (e.g., source is in a different position and you're not sure the writer legitimately drew on it). Emit a `"warning"`-severity issue.
-- `error` — Step 1 was NOT_FOUND. This is a genuine fabrication. Emit an `"error"`-severity issue.
+3. **Only emit a Check-1 error when a specific claim in the rewrite is NOT findable anywhere in the relevant source material** after you've done step 2. A SPECIFIC CLAIM is:
+   - A metric or number not in source.
+   - A named system, product, or customer not in source.
+   - A scope claim (staff count, budget, geography, sector, cadence) not in source.
+   - An outcome the source doesn't state.
 
-**Step 3 — Emit (if at all).** Only emit an issue if Step 2 is `warning` or `error`. For `verified` tokens, emit nothing.
+4. **Editorial framing without specific claims is a WARNING, not an error.** Phrases like "driving operational excellence", "building a culture of X", "establishing reputation for innovation" are stylistic; emit as `"warning"`. The writer should suppress them (Rule 0 in write-position) but they're not factual fabrications.
 
-### SELF-CONSISTENCY RULE (HARD)
+5. **Legacy safety net**: for any numeric claim in `summary`, `selectedAccomplishments`, `coreCompetencies`, or `customSections`, trace to the StructuredResume. An unsourceable number is an `"error"`.
 
-**If your reasoning for a flagged token includes any of these phrases:**
-
-- "claim is present"
-- "source contains"
-- "verified in source"
-- "found in bullet"
-- "paraphrases source"
-- "source states"
-- "source bullet contains"
-- "is in the source"
-- "source has this"
-- "the phrase appears"
-
-**...you MUST mark that issue as `verified` (no issue emitted) or at most `warning`, NEVER `error`.** Emitting an error-severity issue while simultaneously stating the claim is sourced is a prompt-compliance violation. If you locate the claim, you cannot also call it a fabrication.
-
-<!-- Why: Phase 4.6 Step A revealed the v1.2 prompt's LLM writing analyses like "Mechanical check flagged 'X' as missing, but source bullet contains 'X' — the claim is present, so no fabrication" and then emitting that analysis as an ERROR. Reasoning correct, output severity wrong. The structured decision contract above forbids the self-contradiction; the self-consistency rule names the specific phrases that make the contradiction explicit and bans them from error-severity output. See docs/v3-rebuild/reports/phase-4.6-step-a-eval.md. 2026-04-18. -->
-
-### Legacy check: scalar numeric claims in non-bullet fields.
-
-For any numeric claim in `summary`, `selectedAccomplishments`, `coreCompetencies`, or `customSections`, trace to the StructuredResume. An unsourceable number is an `"error"`. (These fields don't appear in the attribution pre-check; you check them directly.)
-
-### What is NOT a Check-1 error (always skip):
+### What IS NOT a Check-1 error (do not emit errors for these):
 
 - (a) The rewrite changing tense, voice, or word order.
 - (b) The rewrite combining two source bullets cited in `source`.
@@ -117,35 +98,6 @@ For any numeric claim in `summary`, `selectedAccomplishments`, `coreCompetencies
 - (g) Substituting a synonym for a source phrase ("achieving 30% YoY growth" → "driving 30% YoY growth"). Not an error.
 - (h) Tightening or loosening clause order.
 - (i) Matching a claim across source bullets: if a phrase in the rewrite appears in ANY bullet of the same position, or in the position's scope, that's sourced.
-
-### Editorial framing without specific claims: always WARNING.
-
-Phrases like "driving operational excellence", "building a culture of X", "establishing reputation for innovation" — if you see these in the rewrite but not in source, emit `"warning"`, never `"error"`. The writer should suppress them (write-position Rule 0) but they're not factual fabrications.
-
-### Worked examples (with the structured decision contract):
-
-**Example 1 — verified (typical pre-check false positive):**
-- Bullet: "Secured 20+ multi-year contracts totaling $200M by promoting product performance."
-- Pre-check: `verified: false, missingTokens: ["by promoting product performance"]`
-- Step 1 — Locate: FOUND. Source bullet says "by promoting the performance and reliability of products" — word-bag contains "promoting", "product", "performance".
-- Step 2 — Classify: `verified` (Step 1 found it).
-- Step 3 — Emit: nothing.
-- ✓ Correct outcome. ✗ Wrong outcome would be "claim is present ... ERROR" (self-contradiction).
-
-**Example 2 — error (genuine fabrication):**
-- Bullet: "Delivered $40M in savings by implementing AI-driven pricing."
-- Pre-check: `verified: false, missingTokens: ["$40M", "AI-driven pricing"]`
-- Step 1 — Locate `$40M`: NOT_FOUND. Source only mentions $26M.
-- Step 2 — Classify: `error`.
-- Step 3 — Emit error: "Claim '$40M' not in source; source bullet states $26M".
-- ✓ Correct outcome.
-
-**Example 3 — warning (editorial framing without claim):**
-- Bullet: "Led delivery team by fostering a culture of operational excellence."
-- Pre-check: `verified: false, missingTokens: ["by fostering a culture of"]`
-- Step 1 — Locate: NOT_FOUND as a coherent claim. ("operational excellence" is editorial, not a specific claim.)
-- Step 2 — Classify: `warning` (editorial framing, not factual fabrication).
-- Step 3 — Emit warning.
 
 ### Examples:
 
