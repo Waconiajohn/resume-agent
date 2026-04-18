@@ -34,6 +34,34 @@ import type {
 // Public API — written-bullet attribution (Phase 4 I2)
 // -----------------------------------------------------------------------------
 
+/**
+ * Token kinds produced by the claim-token extractor. Each kind has a
+ * different matching contract:
+ *
+ *   - `precise`  — substring match against the normalized source haystack.
+ *                  Used for dollar amounts, percentages, number+unit tuples,
+ *                  quoted strings, proper-noun phrases, acronyms. These are
+ *                  atomic claim units where exact match matters ("$40M" vs
+ *                  "$45M" is a real difference).
+ *
+ *   - `frame`    — word-bag match: the token's content words (excluding
+ *                  stopwords) must ALL appear in the source haystack,
+ *                  order-independent. Used for "by/through [verb]-ing X"
+ *                  constructs where the rewrite may reorder or drop
+ *                  function words without semantic change. Phase 4.7
+ *                  addition — substring-matching frame phrases produced
+ *                  false positives (e.g. "by promoting product performance"
+ *                  not matching source "by promoting the performance of
+ *                  products"); word-bag matching accepts that legitimate
+ *                  paraphrase.
+ */
+export type ClaimTokenKind = 'precise' | 'frame';
+
+export interface ClaimToken {
+  kind: ClaimTokenKind;
+  text: string;
+}
+
 export interface BulletAttributionCheck {
   /** Path in the WrittenResume — e.g. "positions[0].bullets[2]". */
   path: string;
@@ -82,7 +110,7 @@ export function checkAttributionMechanically(
           text: b.text,
           sourceHint: b.source ?? null,
           verified: false,
-          missingTokens: extractClaimTokens(b.text),
+          missingTokens: extractClaimTokensTyped(b.text).map((t) => t.text),
           foundTokens: [],
         });
       }
@@ -91,15 +119,15 @@ export function checkAttributionMechanically(
     for (let i = 0; i < wp.bullets.length; i++) {
       const b = wp.bullets[i];
       if (!b.is_new) continue;
-      const tokens = extractClaimTokens(b.text);
+      const tokens = extractClaimTokensTyped(b.text);
       const haystack = buildPositionHaystack(sourcePos, source);
       const missing: string[] = [];
       const found: string[] = [];
       for (const tok of tokens) {
-        if (haystackContains(haystack, tok)) {
-          found.push(tok);
+        if (haystackContainsToken(haystack, tok)) {
+          found.push(tok.text);
         } else {
-          missing.push(tok);
+          missing.push(tok.text);
         }
       }
       bullets.push({
@@ -179,14 +207,14 @@ export function checkStrategizeAttribution(
 
   for (let i = 0; i < strategy.emphasizedAccomplishments.length; i++) {
     const e = strategy.emphasizedAccomplishments[i];
-    const tokens = extractClaimTokens(e.summary);
+    const tokens = extractClaimTokensTyped(e.summary);
     const missing: string[] = [];
     const found: string[] = [];
     for (const tok of tokens) {
-      if (haystackContains(haystack, tok)) {
-        found.push(tok);
+      if (haystackContainsToken(haystack, tok)) {
+        found.push(tok.text);
       } else {
-        missing.push(tok);
+        missing.push(tok.text);
       }
     }
     summaries.push({
@@ -216,66 +244,54 @@ export function checkStrategizeAttribution(
 // -----------------------------------------------------------------------------
 
 /**
- * Extract the concrete claim tokens from any bullet-like text.
+ * Extract typed claim tokens from any bullet-like text. Public API for
+ * callers that want the kind distinction (substring vs word-bag matching).
  *
- * Extractors (in order, deduplicated at the end):
- *   1. **Dollar amounts** — `$26M`, `$1.2B`, `$40 million`, `$40M`
- *   2. **Percentages** — `40%`, `22 percent`
- *   3. **Number + unit tuples** — `15 Agile Release Trains`, `85 staff`, `~4B messages`, `3 continents`
- *   4. **Quoted strings** — anything in straight or curly quotes
- *   5. **Proper-noun phrases** — 2+ consecutive capitalized words (`GitHub Actions`, `AWS EC2`, `Collins Aerospace`)
- *   6. **ALL-CAPS tokens of 2+ chars** — `SCARs`, `CI/CD`, `FDA`, `SOX`
- *   7. **"by/through [verb]-ing" framing phrases** (Phase 4.6) — `by developing pricing strategies`,
- *      `through leveraging X`. These are the signature of embellished summaries; treat them as
- *      claim tokens so the attribution check surfaces them if source doesn't contain the phrase.
+ * Kinds:
+ *   - `precise`: dollar amounts, percentages, number+unit tuples, quoted
+ *     strings, proper-noun phrases, acronyms. Matched by substring in source.
+ *   - `frame`:   "by/through [verb]-ing X" constructs. Matched by word-bag
+ *     (content words must all appear in source, order-independent).
  *
- * Mechanical, not semantic. We are not trying to understand text; we are
- * extracting the atoms that MUST be present in the source if the rewrite
- * (or summary) is faithful.
+ * The distinction exists because frame phrases in a rewrite are often
+ * paraphrases of a matching source phrase with different function words
+ * ("by promoting product performance" vs source "by promoting the performance
+ * of products"). Substring matching fails; word-bag matching accepts these
+ * as faithful.
  */
-export function extractClaimTokens(text: string): string[] {
-  const out = new Set<string>();
+export function extractClaimTokensTyped(text: string): ClaimToken[] {
+  const precise = new Set<string>();
+  const frame = new Set<string>();
 
   // 1. Dollar amounts
   const dollarRe = /\$[\d.,]+\s*(?:[KMBkmb]|million|billion|thousand)?/g;
-  for (const m of text.matchAll(dollarRe)) out.add(m[0].trim());
+  for (const m of text.matchAll(dollarRe)) precise.add(m[0].trim());
 
   // 2. Percentages
   const pctRe = /\d+(?:\.\d+)?\s*%/g;
-  for (const m of text.matchAll(pctRe)) out.add(m[0].trim());
+  for (const m of text.matchAll(pctRe)) precise.add(m[0].trim());
   const pctWordRe = /\d+(?:\.\d+)?\s*percent\b/gi;
-  for (const m of text.matchAll(pctWordRe)) out.add(m[0].trim());
+  for (const m of text.matchAll(pctWordRe)) precise.add(m[0].trim());
 
-  // 3. Number + unit tuples
-  //    The extractor is deliberately conservative: it captures the number
-  //    plus 1 immediate noun (e.g. "85 staff", "$26M ROI", "15 ART"),
-  //    NOT a multi-word trailing phrase. The trailing-phrase version was
-  //    too greedy and flagged legitimate paraphrases: "$15M in savings"
-  //    from summary didn't substring-match "$15M in savings across career"
-  //    from source even though the specific $15M claim was present.
-  //    For attribution, the number + 1 adjacent word is the minimum unit
-  //    that distinguishes real claims. Longer phrase matching is covered
-  //    by the proper-noun extractor (#5).
+  // 3. Number + unit tuples (number + one immediate noun)
   const numUnitRe = /(?:~|>|<)?\d+(?:[.,]\d+)?[KMB]?\s+[A-Za-z][A-Za-z\-/]*/g;
   for (const m of text.matchAll(numUnitRe)) {
     const cleaned = m[0].trim();
     if (/^\d+\s+(?:year|month|week|day|hour)s?\b/i.test(cleaned)) continue;
-    // Skip generic combos that carry no specific claim signal. Words like
-    // "in", "to", "of", "and", "the" appear after numbers in most prose.
     if (/^\d+[KMB]?\s+(?:in|to|of|and|the|at|on|for|with|by|a|an)$/i.test(cleaned)) continue;
-    out.add(cleaned);
+    precise.add(cleaned);
   }
 
   // 4. Quoted strings
   const quoteRe = /["""']([^"""']{3,})["""']/g;
-  for (const m of text.matchAll(quoteRe)) out.add(m[1].trim());
+  for (const m of text.matchAll(quoteRe)) precise.add(m[1].trim());
 
-  // 5. Proper-noun phrases
+  // 5. Proper-noun phrases (2+ consecutive capitalized words)
   const properRe = /\b([A-Z][a-zA-Z]+(?:\s+(?:[A-Z][a-zA-Z]+|of|the|and|&)\s+)*(?:\s+[A-Z][a-zA-Z]+)+)\b/g;
   for (const m of text.matchAll(properRe)) {
     const p = m[1].trim();
     if (p.length < 6) continue;
-    out.add(p);
+    precise.add(p);
   }
 
   // 6. ALL-CAPS or CapsMix acronyms
@@ -283,26 +299,101 @@ export function extractClaimTokens(text: string): string[] {
   for (const m of text.matchAll(acroRe)) {
     const a = m[1];
     if (a.length < 2) continue;
-    out.add(a);
+    precise.add(a);
   }
 
-  // 7. "by/through [verb]-ing X" framing phrases (Phase 4.6).
-  //    This catches DeepSeek strategize's embellishment pattern where it
-  //    adds "by developing pricing strategies" / "through leveraging" / etc.
-  //    that the source doesn't contain verbatim. If the phrase appears in
-  //    source verbatim it passes; if not, it's flagged.
-  //    Regex: "by" or "through" + verb-ing + 1-3 following words.
+  // 7. "by/through [verb]-ing X" framing phrases — FRAME kind (word-bag match).
+  //    Phase 4.6: these were added to catch DeepSeek strategize embellishments.
+  //    Phase 4.7: matched via word-bag rather than substring, because source
+  //    phrases can reorder function words ("by promoting the performance of
+  //    products" vs "by promoting product performance"). Substring match
+  //    failed; word-bag match accepts faithful paraphrases while still
+  //    catching genuine fabrications (different content words).
   const framingRe = /\b(?:by|through)\s+[a-z]+ing\s+[a-z][a-z\s-]{2,40}/gi;
   for (const m of text.matchAll(framingRe)) {
     const phrase = m[0].trim();
-    // Skip very short matches that are likely to be present in any prose
     if (phrase.length < 15) continue;
-    // Trim at punctuation so "by developing X, reducing Y" captures only "by developing X"
     const cut = phrase.split(/[,.;]/)[0].trim();
-    if (cut.length >= 15) out.add(cut);
+    if (cut.length >= 15) frame.add(cut);
   }
 
-  return Array.from(out);
+  const out: ClaimToken[] = [];
+  for (const t of precise) out.push({ kind: 'precise', text: t });
+  for (const t of frame) out.push({ kind: 'frame', text: t });
+  return out;
+}
+
+/**
+ * Back-compat wrapper: returns just the token text strings (any kind).
+ * Existing callers that don't care about kind distinction can keep using
+ * this. Internal callers use the typed variant and dispatch matching by kind.
+ */
+export function extractClaimTokens(text: string): string[] {
+  return extractClaimTokensTyped(text).map((t) => t.text);
+}
+
+// -----------------------------------------------------------------------------
+// Word-bag matching for frame-phrase tokens
+// -----------------------------------------------------------------------------
+
+/**
+ * Stopwords dropped during word-bag matching. Function words that commonly
+ * appear in "by X-ing Y" constructs without carrying the claim's content.
+ * We keep this list short; if in doubt, prefer to include the word in the
+ * bag so that different content words ("reliability" vs "performance") are
+ * still distinguishable.
+ */
+const FRAME_STOPWORDS = new Set<string>([
+  'by', 'through', 'the', 'a', 'an', 'of', 'and', 'to', 'for', 'with',
+  'in', 'on', 'at', 'across', 'via', 'into', 'from', 'up', 'over', 'around',
+]);
+
+function frameContentWords(phrase: string): string[] {
+  return normalize(phrase)
+    .split(/\s+/)
+    .filter((w) => w.length > 0)
+    .filter((w) => !FRAME_STOPWORDS.has(w));
+}
+
+/**
+ * Word-bag match for a frame phrase against the source haystack.
+ * Returns true iff every content word in `phrase` appears somewhere in
+ * `haystack` (normalized, order-independent).
+ *
+ * Example:
+ *   haystack  = "by promoting the performance of products"
+ *   phrase    = "by promoting product performance"
+ *   content   = ["promoting", "product", "performance"]  (stopwords dropped)
+ *   haystack contains each → true
+ *
+ * Example of a real fabrication correctly rejected:
+ *   haystack  = "promoting product reliability"
+ *   phrase    = "by developing pricing strategies"
+ *   content   = ["developing", "pricing", "strategies"]
+ *   haystack missing "developing", "pricing", "strategies" → false
+ */
+function haystackContainsFramePhrase(haystack: string, phrase: string): boolean {
+  const words = frameContentWords(phrase);
+  if (words.length === 0) return true;
+  for (const w of words) {
+    // Substring match (not word-boundary) so "product" matches "products"
+    // and "performance" matches "performances". This accepts simple
+    // singular/plural and suffix variants without a full stemmer. The
+    // haystack is normalized (lowercase, whitespace-collapsed, dashes
+    // unified) at construction time.
+    if (!haystack.includes(w)) return false;
+  }
+  return true;
+}
+
+/**
+ * Kind-aware check — substring for precise tokens, word-bag for frame tokens.
+ */
+function haystackContainsToken(haystack: string, token: ClaimToken): boolean {
+  if (token.kind === 'frame') {
+    return haystackContainsFramePhrase(haystack, token.text);
+  }
+  return haystackContains(haystack, token.text);
 }
 
 // -----------------------------------------------------------------------------

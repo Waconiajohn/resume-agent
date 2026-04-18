@@ -177,3 +177,81 @@ describe('extractClaimTokens — Phase 4.6 additions', () => {
     expect(Array.isArray(tokens)).toBe(true);
   });
 });
+
+// -----------------------------------------------------------------------------
+// Phase 4.7 — word-bag matching for frame-phrase tokens
+// -----------------------------------------------------------------------------
+
+describe('checkStrategizeAttribution — Phase 4.7 word-bag matching for frame phrases', () => {
+  it('accepts a frame phrase whose content words appear in source with reordered function words', () => {
+    const src = resume([
+      // Source has the same content words but different function words / order.
+      { title: 'VP', company: 'Acme', bullets: ['Grew revenue $200M by promoting the performance of products and reliability.'] },
+    ]);
+    const strat = strategy([
+      // Summary re-packs the same content words; substring would have failed, word-bag should pass.
+      { positionIndex: 0, summary: 'Grew revenue $200M by promoting product performance.' },
+    ]);
+    const result = checkStrategizeAttribution(strat, src);
+    expect(result.summaries[0].verified).toBe(true);
+    expect(result.summaries[0].missingTokens).toEqual([]);
+  });
+
+  it('flags a frame phrase when content words ARE missing from source', () => {
+    const src = resume([
+      { title: 'VP', company: 'Acme', bullets: ['Promoted product reliability to major accounts.'] },
+    ]);
+    const strat = strategy([
+      { positionIndex: 0, summary: 'Grew pipeline by developing pricing strategies with enterprise sellers.' },
+    ]);
+    const result = checkStrategizeAttribution(strat, src);
+    expect(result.summaries[0].verified).toBe(false);
+    // The frame phrase should be in missing tokens because content words
+    // "developing", "pricing", "strategies" aren't all in source.
+    const missing = result.summaries[0].missingTokens.join(' | ').toLowerCase();
+    expect(missing).toContain('by developing');
+  });
+
+  it('accepts the fixture-09 near-miss case (Phase 4.6 false positive)', () => {
+    // From phase-4.6-step-a-eval.md:
+    // rewrite: "by promoting product performance"
+    // source:  "by promoting the performance and reliability of products"
+    // Content words of rewrite: promoting, product, performance. Source has all three.
+    const src = resume([
+      {
+        title: 'BD Manager',
+        company: 'Collins',
+        bullets: [
+          'Secured 20+ multi-year contracts with a combined value of $200M with higher margins by promoting the performance and reliability of products.',
+        ],
+      },
+    ]);
+    const strat = strategy([
+      { positionIndex: 0, summary: 'Secured 20+ contracts totaling $200M by promoting product performance.' },
+    ]);
+    const result = checkStrategizeAttribution(strat, src);
+    // Under word-bag matching the frame phrase passes; "$200M" passes;
+    // "20+ contracts" passes as number+unit.
+    expect(result.summaries[0].verified).toBe(true);
+  });
+
+  it('still catches genuine fabrication with precise tokens (substring)', () => {
+    // $250M is a precise token (dollar amount); substring match should fail.
+    const src = resume([{ title: 'VP', company: 'Acme', bullets: ['Grew revenue to $200M.'] }]);
+    const strat = strategy([{ positionIndex: 0, summary: 'Grew revenue to $250M.' }]);
+    const result = checkStrategizeAttribution(strat, src);
+    expect(result.summaries[0].verified).toBe(false);
+    expect(result.summaries[0].missingTokens).toContain('$250M');
+  });
+
+  it('does not use word-bag for precise proper-noun tokens', () => {
+    // Proper noun "GitHub Actions" must match as substring, not word-bag.
+    // If someone wrote "Actions GitHub" the word-bag would accept it, but
+    // the substring match correctly rejects (since reorder changes meaning).
+    const src = resume([{ title: 'Dir', company: 'Acme', bullets: ['Built GitHub Actions CI/CD.'] }]);
+    const stratPass = strategy([{ positionIndex: 0, summary: 'Built GitHub Actions CI/CD.' }]);
+    expect(checkStrategizeAttribution(stratPass, src).summaries[0].verified).toBe(true);
+    const stratFail = strategy([{ positionIndex: 0, summary: 'Built Actions GitHub CI/CD.' }]);
+    expect(checkStrategizeAttribution(stratFail, src).summaries[0].verified).toBe(false);
+  });
+});
