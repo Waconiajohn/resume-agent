@@ -1,21 +1,11 @@
 ---
 stage: classify
-version: "1.2"
+version: "1.1"
 model: claude-opus-4-7
 temperature: 0.2
 last_edited: 2026-04-18
 last_editor: claude
 notes: |
-  v1.2: Added Rule 13 (cross-role highlights) — classifier now preserves
-  top-level summary-level accomplishments that span multiple roles in a
-  new crossRoleHighlights array rather than dropping them (fixture-01
-  "85 staff" was lost in v1.1). Added Rule 14 (stacked-title bullet
-  attribution): when bullets could belong to more than one stacked role
-  at the same employer, attribute to the senior/most-recent role with
-  confidence ≤0.7 and DO NOT duplicate across roles (v1.1 had fixture-07
-  duplicating bullets and fixture-09 attributing to senior — codifying
-  senior-attribution as the canonical approach). Schema gained
-  crossRoleHighlights array.
   v1.1: Tightened Rule 1 to require EXPLICIT narrative for career gaps —
   v1.0 was inferring gaps from chronological jumps between listed
   positions (fixture-07, fixture-18) and treating personal-project
@@ -222,34 +212,6 @@ Do NOT include:
 
 <!-- Why: Fixture-06 (Chris Coerber) has a bulleted list of single-word soft-skill adjectives (Decision-Making, Teamwork, Organization, etc.) directly under his Technical Skills sentence. v2 would have conflated them into one blob. April 17, 2026. -->
 
-### Rule 13 — Cross-role highlights go in `crossRoleHighlights`, not dropped.
-
-Some resumes contain a top-level accomplishment block — a "Technology Leadership Impact", "Career Highlights", "Signature Accomplishments", or similar section near the top — whose bullets describe achievements that span multiple positions, or that summarize the candidate's career at a high level without being attributable to a single role.
-
-Emit each such bullet as a `crossRoleHighlights` entry:
-- `text`: the accomplishment statement itself, cleaned the same way per-role bullets are cleaned (Rule 11).
-- `sourceContext`: a brief quote or paraphrase of the section heading where it appeared (e.g., `"Technology Leadership Impact (top of resume)"` or `"Career Highlights section"`).
-- `confidence`: calibrated per Rule 8.
-
-Do NOT force-attribute cross-role content to a single specific position. If you can tell the accomplishment clearly belongs to one role (e.g., "Led the 2023 SAP migration at ACME" in a block above ACME's entry), put it in that position's bullets instead. Only use `crossRoleHighlights` when the bullet genuinely spans roles or the attribution is unclear.
-
-If a top-level bullet REPEATS content already present in a per-role bullet below (e.g., "Delivered $26M in operational savings" appears both at the top and inside a specific role's bullet list), emit it ONLY under the per-role position. Do not duplicate into `crossRoleHighlights`.
-
-<!-- Why: v1.1 classify dropped Ben Wedewer's "Built and scaled global engineering and QA teams up to 85 staff" highlight because it wasn't attributable to a single role and didn't appear in any per-role bullet. That's real information the resume's writer chose to include; dropping it regresses output quality. Adding this structured field preserves cross-role highlights so Stage 3 (Strategize) can select from them when choosing emphasized accomplishments. Phase 3 review decision, 2026-04-18. -->
-
-### Rule 14 — Stacked-title bullet attribution goes to the most senior role.
-
-When a single employer is listed with **two or more stacked titles** (a common pattern: one company header, then several role lines in sequence, then one shared bullet list underneath), and the bullet list cannot be unambiguously tied to a specific role, attribute all shared bullets to the **most senior / most recent** role — not to the oldest, not duplicated across roles.
-
-Guidelines:
-- Set each attributed bullet's `confidence` to `≤ 0.7` to reflect the attribution ambiguity.
-- Leave the non-receiving roles' `bullets` arrays empty (`[]`). Do not duplicate.
-- Add a `medium`-severity `flag` at `positions[N].bullets` naming the ambiguity so downstream reviewers know these bullets were attributed by rule, not by source clarity.
-
-The senior role is typically the topmost entry in the stack (resumes list reverse-chronologically). If the stacked-title layout is ambiguous about order, use the role with the latest end date.
-
-<!-- Why: v1.1 fixture-07 (Diana Downs) and fixture-09 (Jay Alger) both had stacked-title patterns but the classifier made inconsistent choices: fixture-07 duplicated the shared bullets across both consulting engagements (Protiviti and Maestro), while fixture-09 attributed all 5 Greatbatch Medical bullets to the senior-most Technical Sales Manager role and left the other two roles with empty bullets. Both outputs were "honest" (flagged ambiguity, lowered confidence), but downstream stages benefit from one canonical choice. Codifying senior-attribution aligns with the fixture-09 behavior, which read more naturally and avoided content duplication. Phase 3 review decision, 2026-04-18. -->
-
 ## Output schema
 
 Return a JSON object with exactly these fields (types are TypeScript-style):
@@ -293,11 +255,6 @@ Return a JSON object with exactly these fields (types are TypeScript-style):
   "careerGaps": [{
     "description": string,
     "dates"?: { "start": string, "end": string | null, "raw": string },
-    "confidence": number
-  }],
-  "crossRoleHighlights": [{
-    "text": string,                         // the accomplishment statement (Rule 13)
-    "sourceContext": string,                // brief quote or paraphrase of where in the source
     "confidence": number
   }],
   "pronoun": "she/her" | "he/him" | "they/them" | null,    // per Rule 6
@@ -354,7 +311,7 @@ MIT, Cambridge, MA — BS Computer Science, 2009
   "education": [
     { "degree": "BS Computer Science", "institution": "MIT", "location": "Cambridge, MA", "graduationYear": "2009", "confidence": 1.0 }
   ],
-  "certifications": [], "skills": [], "careerGaps": [], "crossRoleHighlights": [],
+  "certifications": [], "skills": [], "careerGaps": [],
   "pronoun": "she/her",
   "flags": [],
   "overallConfidence": 1.0
@@ -446,122 +403,6 @@ Vice President, Revenue Cycle
 ```
 
 The caregiving paragraph is a single `careerGaps` entry, NOT a position titled "Took time off 2022 – 2024 to care for an aging parent" with that sentence as the company.
-
-### Good example — cross-role highlight preservation (Rule 13)
-
-**Input (excerpt):**
-```
-Ben Smith
-Denver, CO | ben@example.com
-
-# DIRECTOR OF QUALITY ENGINEERING
-
-Technology leader with 20+ years driving enterprise modernization.
-
-__TECHNOLOGY LEADERSHIP IMPACT__
-
-• Led enterprise DevOps transformation initiatives supporting platforms processing billions of transactions annually
-• Built and scaled global engineering and QA teams up to 85 staff
-• Delivered $26M in operational savings through CI/CD and toolchain consolidation
-• Drove cloud adoption enabling scalable microservices platforms in AWS
-
-__EXPERIENCE__
-
-TRAVELPORT | Centennial, CO | 2017 – 2023
-Director of Software Engineering  (2020 – 2023)
-- Led enterprise DevOps and automation strategy across 15 Agile Release Trains.
-- Delivered $26M in automation ROI through standardized GitHub Actions CI/CD pipelines.
-- Migrated microservices platforms to AWS, reducing VM footprint by 40%.
-```
-
-**Expected output (relevant slice):**
-```json
-"crossRoleHighlights": [
-  {
-    "text": "Built and scaled global engineering and QA teams up to 85 staff.",
-    "sourceContext": "Technology Leadership Impact section at top of resume, above Experience.",
-    "confidence": 0.9
-  }
-],
-"positions": [
-  {
-    "title": "Director of Software Engineering",
-    "company": "Travelport",
-    "parentCompany": "Travelport",
-    "dates": { "start": "2020", "end": "2023", "raw": "2020 – 2023" },
-    "bullets": [
-      { "text": "Led enterprise DevOps and automation strategy across 15 Agile Release Trains.", "confidence": 1.0 },
-      { "text": "Delivered $26M in automation ROI through standardized GitHub Actions CI/CD pipelines.", "confidence": 1.0 },
-      { "text": "Migrated microservices platforms to AWS, reducing VM footprint by 40%.", "confidence": 1.0 }
-    ],
-    "confidence": 1.0
-  }
-]
-```
-
-Of the four "TECHNOLOGY LEADERSHIP IMPACT" bullets in the input:
-- "Led enterprise DevOps transformation..." → NOT a crossRoleHighlight; the Travelport role bullet "Led enterprise DevOps and automation strategy across 15 Agile Release Trains" conveys the same claim in per-role form.
-- "Delivered $26M in operational savings..." → NOT a crossRoleHighlight; repeated as the Travelport "$26M in automation ROI" bullet.
-- "Drove cloud adoption enabling scalable microservices platforms in AWS" → NOT a crossRoleHighlight; repeated as the Travelport AWS migration bullet.
-- "Built and scaled global engineering and QA teams up to 85 staff" → YES, this is a crossRoleHighlight. The "85 staff" claim isn't attributable to one role and isn't restated in any per-role bullet.
-
-### Good example — stacked-title bullet attribution (Rule 14)
-
-**Input (excerpt):**
-```
-GREATBATCH MEDICAL  2004 – 2013
-
-Technical Sales Manager (2012 – 2013)
-Senior Project Manager (2006 – 2012)
-Inside Sales Engineer (2004 – 2005)
-
-- Managed the design, development, validation, and delivery of medical device products for customers in the United States, Europe, and Japan.
-- Drove a cross-functional team investigating and resolving a quality issue with a medical device that increased business by 20%.
-- Championed and negotiated 3-5 year supply agreements with 3 strategic global accounts representing $150M in annual sales.
-```
-
-**Expected output (relevant slice):**
-```json
-"positions": [
-  {
-    "title": "Technical Sales Manager",
-    "company": "Greatbatch Medical",
-    "parentCompany": "Greatbatch Medical",
-    "dates": { "start": "2012", "end": "2013", "raw": "2012 – 2013" },
-    "bullets": [
-      { "text": "Managed the design, development, validation, and delivery of medical device products for customers in the United States, Europe, and Japan.", "confidence": 0.7 },
-      { "text": "Drove a cross-functional team investigating and resolving a quality issue with a medical device that increased business by 20%.", "confidence": 0.7 },
-      { "text": "Championed and negotiated 3-5 year supply agreements with 3 strategic global accounts representing $150M in annual sales.", "confidence": 0.7 }
-    ],
-    "confidence": 0.7
-  },
-  {
-    "title": "Senior Project Manager",
-    "company": "Greatbatch Medical",
-    "parentCompany": "Greatbatch Medical",
-    "dates": { "start": "2006", "end": "2012", "raw": "2006 – 2012" },
-    "bullets": [],
-    "confidence": 0.9
-  },
-  {
-    "title": "Inside Sales Engineer",
-    "company": "Greatbatch Medical",
-    "parentCompany": "Greatbatch Medical",
-    "dates": { "start": "2004", "end": "2005", "raw": "2004 – 2005" },
-    "bullets": [],
-    "confidence": 0.9
-  }
-],
-"flags": [
-  {
-    "field": "positions[0].bullets",
-    "reason": "Three Greatbatch Medical bullets share a single list beneath three stacked titles; attributed to the senior-most role (Technical Sales Manager) per Rule 14, not duplicated across stacked roles.",
-    "severity": "medium"
-  }
-]
-```
-
-All three shared bullets go to the senior-most role (`Technical Sales Manager`, the most recent) with `confidence: 0.7`. The other two stacked roles get empty `bullets` arrays. A single flag explains the attribution. No duplication.
 
 ## Anti-pattern to avoid
 

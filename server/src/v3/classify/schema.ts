@@ -70,6 +70,12 @@ const careerGapNote = z.object({
   confidence,
 });
 
+const crossRoleHighlight = z.object({
+  text: z.string(),
+  sourceContext: z.string(),
+  confidence,
+});
+
 const pronounGuess = z.union([
   z.literal('she/her'),
   z.literal('he/him'),
@@ -93,6 +99,7 @@ export const StructuredResumeSchema = z.object({
   certifications: z.array(certification),
   skills: z.array(z.string()),
   careerGaps: z.array(careerGapNote),
+  crossRoleHighlights: z.array(crossRoleHighlight),
   pronoun: pronounGuess,
   flags: z.array(ambiguityFlag),
   overallConfidence: confidence,

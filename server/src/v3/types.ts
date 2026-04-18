@@ -84,9 +84,21 @@ export interface StructuredResume {
   certifications: Certification[];
   skills: string[];
   careerGaps: CareerGapNote[];
+  crossRoleHighlights: CrossRoleHighlight[];  // span-multiple-roles accomplishments (see Rule 13)
   pronoun: PronounGuess;               // null = active voice downstream
   flags: AmbiguityFlag[];              // low-confidence items surfaced for review
   overallConfidence: number;
+}
+
+export interface CrossRoleHighlight {
+  // Accomplishments or summary statements that span multiple positions or
+  // cannot be attributed to a single role. Classify v1.2+ preserves these
+  // instead of dropping them (see classify.v1.md Rule 13). Stage 3
+  // (Strategize) reads from this array when selecting emphasized
+  // accomplishments; it does not re-derive them from raw resume text.
+  text: string;
+  sourceContext: string;               // brief quote or paraphrase of where it appeared in source
+  confidence: number;
 }
 
 export interface AmbiguityFlag {

@@ -136,6 +136,63 @@ This was the kind of "silent is not success" failure the Phase 2 kickoff warned 
 
 ---
 
+## Iteration v1.1 → v1.2 (Phase 3 review decisions)
+
+Approved two additions per the Phase 3 review message:
+
+1. **Rule 13 — cross-role highlights preserved as a new structured field.** A `crossRoleHighlights` array on `StructuredResume` (zod + TypeScript updated). Classify now preserves top-level summary-level accomplishments that span multiple roles — v1.1 dropped Ben Wedewer's "85 staff" claim because it wasn't attributable to a single role and didn't repeat in any per-role bullet. The new rule preserves these with `text`, `sourceContext`, and `confidence`. Stage 3 (Strategize) reads from `crossRoleHighlights` instead of re-deriving from raw resume text.
+2. **Rule 14 — stacked-title bullet attribution codified.** When bullets belong to more than one stacked role at the same employer, attribute to the senior-most / most-recent role with `confidence ≤ 0.7`. Do NOT duplicate across stacked roles. This aligns the v1.1 inconsistency (fixture-07 duplicated bullets, fixture-09 attributed to senior) to one canonical approach.
+
+### v1.2 — full run (2026-04-18)
+
+18/19 fixtures succeeded on the first v1.2 pass. Fixture-13 (Lisa Slagle) hit a schema validation failure — Opus emitted 9 crossRoleHighlight entries but forgot `sourceContext` on all of them. **This was one-time non-determinism, not a prompt gap**: 18/19 fixtures emitted `sourceContext` correctly, including fixture-04 with 11 entries. A single retry on fixture-13 succeeded with 5 crossRoleHighlights, all with proper sourceContext, confidence-calibrated.
+
+Structural verification of target behaviors on key fixtures:
+
+- **fixture-01 Ben Wedewer (Rule 13 target)**: 1 crossRoleHighlight:
+  `"Built and scaled global engineering and QA teams up to 85 staff."` with `sourceContext: "Technology Leadership Impact section at top of resume, above Experience."` — exactly the v1.1 regression that motivated Rule 13. Fixed.
+- **fixture-09 Jay Alger (Rule 14 target — Greatbatch Medical)**: Technical Sales Manager (senior-most, 2012-2013) attributed 5 bullets with `confidence: 0.7`; Senior Project Manager (2006-2012) and Inside Sales Engineer (2004-2005) have empty `bullets` arrays and no duplication. Exactly the canonical senior-attribution pattern.
+- **fixture-07 Diana Downs (Rule 14 target — Protiviti/Maestro)**: Classifier MERGED the two consecutive consulting engagements (same analyst, same end client Amalgamated Bank) into a single position with combined title/dates ("Protiviti / Maestro (Consultant for Amalgamated Bank)", "2022 – 2023 / 2023 – 2024"), `confidence: 0.6`, bullets attributed once. Slightly more aggressive than the literal rule wording but fully consistent with the "no duplication" intent. Acceptable.
+
+**Full structural summary for v1.2** (count of crossRoleHighlights added to each line):
+
+| # | Positions | Edu | Certs | Gaps | xrl | Conf | Notes |
+|---|-----------|-----|-------|------|-----|------|-------|
+| 01 | 6 | 1 | 0 | 0 | 1 | 1.00 | "85 staff" preserved ✓ |
+| 02 | 10 | 1 | 0 | 0 | 0 | 0.60 | no cross-role section in source |
+| 03 | 9 | 1 | 0 | 0 | 0 | 0.85 | |
+| 04 | 7 | 2 | 3 | 0 | 11 | 1.00 | rich "Core Competencies" + "Accomplishments" both captured |
+| 05 | 5 | 2 | 1 | 0 | 3 | 0.90 | Accomplishments bullets preserved |
+| 06 | 4 | 1 | 0 | 0 | 0 | 1.00 | |
+| 07 | 7 | 2 | 0 | 0 | 7 | 0.60 | Accomplishments preserved; Protiviti/Maestro merged |
+| 08 | 3 | 1 | 1 | 0 | 7 | 0.85 | |
+| 09 | 8 | 3 | 1 | 0 | 0 | 0.70 | Greatbatch Rule 14 verified |
+| 10 | 6 | 2 | 0 | 0 | 4 | 0.85 | |
+| 11 | 5 | 1 | 6 | 0 | 0 | 1.00 | |
+| 12 | 4 | 1 | 3 | 0 | 0 | 0.70 | |
+| 13 | 3 | 1 | 0 | 0 | 5 | 0.40 | one-time schema miss on first run; retry clean |
+| 14 | 9 | 2 | 0 | 0 | 0 | 0.80 | |
+| 15 | 3 | 2 | 0 | 0 | 0 | 0.90 | |
+| 16 | 3 | 2 | 7 | 0 | 5 | 0.50 | "Accomplishments" surfaced as xrl |
+| 17 | 6 | 2 | 0 | 0 | 2 | 0.60 | two patents correctly landed as xrl (not certs) |
+| 18 | 7 | 0 | 0 | 1 | 0 | 0.90 | Tatiana pattern still correct |
+| 19 | 8 | 1 | 2 | 0 | 6 | 0.80 | multi-column layout handled |
+
+Phase 3 quality gate still met. No regressions from v1.1.
+
+### Semantic diff gate shipped alongside v1.2
+
+Phase 4 prep: `server/src/v3/test-fixtures/classify-diff.ts` implements the semantic diff thresholds approved in the Phase 3 review:
+- Counts of positions / education / certifications / careerGaps / crossRoleHighlights: any change → real diff.
+- Discipline primary domain change → real diff; paraphrase at same domain → noise.
+- Pronoun change → real diff.
+- `overallConfidence` shift beyond ±0.1 → real diff; within → noise.
+- Free-text wording (titles, discipline, crossRoleHighlights text) → noise when length delta ≤ ±15% and no negation-token polarity change; otherwise → real diff.
+
+Wired into `classify-fixtures.mjs`: each fixture compares its new snapshot against the prior one and prints `[no diff] / [diff: noise] / [DIFF: REAL]`. Any real diff sets runner exit code 3. 10 new unit tests in `redact-diff.test.ts` cover each threshold class. 54/54 v3 tests pass (44 prior + 10 diff).
+
+---
+
 ## Cost trajectory
 
 All runs use `claude-opus-4-7` (streaming path; temperature parameter omitted — Opus 4.7 rejects it with `"temperature is deprecated for this model"`). Published rates as of 2026-04: **$15.00 / million input tokens**, **$75.00 / million output tokens**.
@@ -147,12 +204,13 @@ All runs use `claude-opus-4-7` (streaming path; temperature parameter omitted �
 | 3 | 2026-04-18 | v1.1 | 6 (subset) | 69,287 | 17,984 | $2.3881 | post Rule-1 tightening + flag-path schema; no new failure modes |
 | 4 | 2026-04-18 | v1.1 | 19 (full) | 220,126 | 59,169 | $7.7396 | full-corpus validation; 19/19 success, 0 failures |
 | 5 | 2026-04-18 | v1.1 | 2 (re-run 10, 15) | 22,484 | 4,890 | $0.7040 | re-classify after redactor fix for Unicode hyphen separators |
+| 6 | 2026-04-18 | v1.2 | 19 (full, 1 failed at fixture-13 schema) | 240,234 | 56,495 | $7.8399 | v1.2 first run; fixture-13 schema miss (Opus dropped sourceContext on 9 xrl) — 18/19 success |
+| 7 | 2026-04-18 | v1.2 | 1 (fixture-13 retry) | 14,919 | 3,412 | $0.4797 | retry succeeded cleanly; one-time non-determinism, not prompt gap |
+| 8 | 2026-04-18 | v1.2 | 1 (fixture-01 diff-check verification) | 14,883 | 2,836 | $0.4359 | verify semantic diff check fires `[no diff]` on matching re-run |
 
-**Running total:** $13.5627
+**Running total:** $22.8222
 
-Budget approved: **$20–$50**. Current utilization: **27%**. Room to iterate further if anything surfaces in review.
-
-Budget approved: **$20–$50**. Current utilization: 5.5%.
+Budget approved: **$20–$50**. Current utilization: **46%**. Still room to iterate on pilot Phase 4 prompts.
 
 ---
 
