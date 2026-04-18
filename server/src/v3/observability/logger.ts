@@ -13,6 +13,7 @@ export type V3Stage =
   | 'write'
   | 'verify'
   | 'prompts'
+  | 'providers'
   | 'fixtures';
 
 export function createV3Logger(stage: V3Stage, extra?: Record<string, unknown>) {

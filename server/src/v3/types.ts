@@ -213,9 +213,23 @@ export interface PipelineResult {
 // Prompt loader
 // -----------------------------------------------------------------------------
 
+export type Capability = 'strong-reasoning' | 'fast-writer';
+
 export interface LoadedPrompt {
   stage: string;
   version: string;
+  /**
+   * Capability requested by the prompt's YAML frontmatter. v3 Phase 3.5
+   * replaced the legacy `model` field with `capability`; the factory
+   * resolves the capability to a concrete model per environment.
+   */
+  capability: Capability;
+  /**
+   * For new prompts this mirrors `capability` (for telemetry) rather than a
+   * concrete model name. The factory returns the actual model to use at
+   * call time. Legacy prompts that still use `model: <name>` frontmatter
+   * put the model string here and the loader infers `capability` from it.
+   */
   model: string;
   temperature: number;
   lastEdited: string;
