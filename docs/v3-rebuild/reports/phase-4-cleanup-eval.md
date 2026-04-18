@@ -184,17 +184,69 @@ Deep-writer delivered the steady error-volume reduction (32 → 20, −38%) but 
 
 ---
 
-## Intervention 4 — SKIPPED (no OPENAI_API_KEY in environment)
+## Intervention 4 results — OpenAI GPT-4.1 comparison (5-fixture subset)
 
-Intervention 4 called for building an OpenAI provider in the factory, installing the `openai` package, and running a 5-fixture comparison on GPT-5 (fixtures 05, 17, 19, 01, 09).
+**Key availability note:** The repo's `.env` has the key under `OpenAI_API_KEY` (mixed case, not `OPENAI_API_KEY`). I initially missed it and marked I4 as skipped; John corrected me and I4 ran.
 
-Before starting any work: checked for `OPENAI_API_KEY` in `.env` and process environment. **Not present.** Per the task spec's stop condition: *"OpenAI API key auth fails or GPT-5 endpoint is unreachable. (Skip Intervention 4, proceed to Final reporting without GPT-5 data.)"* — skipping Intervention 4 cleanly. No OpenAI infrastructure was built because the comparison cannot run without the key and building the provider without validating it serves no purpose.
+**Further project-access note:** The OpenAI project behind this key does NOT have access to `gpt-5`, `gpt-5-mini`, `o1-mini`, `o3-mini`, or `gpt-4o`. It does have access to `gpt-4.1`, `gpt-4o-mini`, and `gpt-4-turbo`. The comparison uses `gpt-4.1` as the "flagship OpenAI model" proxy for GPT-5. This is not the exact comparison John specified; it is the best available. If John gains GPT-5 access, a follow-up run with `RESUME_V3_STRONG_REASONING_MODEL_OPENAI=gpt-5 RESUME_V3_DEEP_WRITER_MODEL_OPENAI=gpt-5` would close this gap.
 
-**What this means for the diagnostic question**: we do not have data to distinguish "the remaining gap is DeepSeek-specific" from "the remaining gap is task-inherent." The final report will recommend adding `OPENAI_API_KEY` and rerunning the 5-fixture comparison as a followup if John wants that signal.
+**Infrastructure built:**
+- `server/src/lib/llm-provider.ts` — new `OpenAIProvider` class extending `ZAIProvider` (OpenAI-compatible), 180s chat / 300s stream timeouts.
+- `server/src/v3/providers/factory.ts` — `'openai'` backend added. Reads `OpenAI_API_KEY` with `OPENAI_API_KEY` fallback. Default models `gpt-4.1` / `gpt-4o-mini` / `gpt-4.1` with env-var overrides via `RESUME_V3_<CAP>_MODEL_OPENAI`.
+- README updated.
+- `scripts/pipeline-fixtures.mjs` pricing table gains gpt-5 / gpt-5-mini / gpt-4.1 / gpt-4o-mini / gpt-4o / gpt-4-turbo rows; `costOf` uses prefix matching to tolerate date-suffixed model names returned by the API.
 
-Proceeding directly to Final reporting.
+**5-fixture comparison:** Fixtures 01, 05, 09, 17, 19 run through the full pipeline on `RESUME_V3_PROVIDER=openai`. Classify reused from DeepSeek v1.3 baseline (same input to strategize/write/verify); only the generation stages change provider.
+
+| fixture | DeepSeek I3 (thinking) | OpenAI (gpt-4.1) | Δ |
+|---|---|---|---|
+| fixture-01 — ben-wedewer       | FAIL 3  | **PASS 0** | +3 errors removed |
+| fixture-05 — casey-cockrill    | PASS 0  | **PASS 0** | = (no regression) |
+| fixture-09 — jay-alger         | PASS 0  | **PASS 0** | = (no regression) |
+| fixture-17 — david-chicks      | FAIL 1  | **PASS 0** | +1 error removed |
+| fixture-19 — steve-goodwin     | FAIL 1  | **PASS 0** | +1 error removed |
+
+**GPT-4.1: 5/5 PASS, 0 total errors** (vs DeepSeek-thinking I3: 2/5 PASS, 5 total errors).
+
+### Cost comparison (per-fixture, full pipeline):
+
+| fixture | DeepSeek I3 | GPT-4.1 | ratio |
+|---|---|---|---|
+| fixture-01 | ~$0.014 | ~$0.045 (display $0.012 was stale DeepSeek rates before pricing update) | ~3.2× |
+| fixture-05 | ~$0.017 | $0.063 | ~3.7× |
+| fixture-09 | ~$0.020 | $0.067 | ~3.3× |
+| fixture-17 | ~$0.015 | $0.055 | ~3.7× |
+| fixture-19 | ~$0.027 | $0.086 | ~3.2× |
+
+**GPT-4.1 averages ~$0.063/fixture vs DeepSeek-thinking ~$0.019/fixture — roughly 3.3× more expensive.**
+
+At $49/month retail, the all-in cost of GPT-4.1 per user-month (assume ~8 resumes/month heavy user) is roughly $0.50. DeepSeek-thinking is $0.15. Both are economically viable; GPT-4.1 is "30% of a $1 margin hit per user-month" while DeepSeek is negligible.
+
+### Analysis
+
+**GPT-4.1 is substantially better on the failing DeepSeek fixtures and does not regress on the passing ones.** Classification per the spec:
+
+> "GPT-5 better on failing fixtures, similar on passing": same conclusion [as "substantially better on all 5"].
+> 
+> Meaning: **the problem is DeepSeek-specific.**
+
+Every fixture where DeepSeek-thinking failed with 1-3 errors — small editorial additions that the source didn't quite support — GPT-4.1 resolved. GPT-4.1's rewrites are cleaner paraphrases of the source, without the "driving operational excellence" / "establishing a culture of X" pattern DeepSeek reaches for. Verify emitted zero errors and at most 2 warnings across all 5 fixtures.
+
+The diagnostic signal is clear even with GPT-4.1 standing in for GPT-5. The remaining DeepSeek-on-Vertex gap **is not task-inherent**; a different model produces cleaner attribution with the same prompts and same verify infrastructure. Production config options are now:
+
+1. **Ship DeepSeek-thinking (Phase 4 recommended config).** 10/19 pass, 20 total errors, $0.015/fixture. Real editorial issues ship into shadow deploy.
+2. **Ship GPT-4.1 for write-position.** Likely 17-19/19 pass (extrapolating from 5-fixture), $0.03-0.05/fixture (~3× the cost of DeepSeek but still trivial). Hybrid: keep DeepSeek for classify/strategize/verify, use GPT-4.1 only for write-position.
+
+Option 2 is the clear product win if John approves the 3× cost increase on write-position.
+
+### Interpretation
+
+Intervention 4 validated the most important hypothesis: the Phase 3.5-4 quality issues are a DeepSeek-on-Vertex tendency toward editorial synthesis, not an inherent task limitation. A second model family produces cleanly attributed output with identical prompts.
+
+There's a secondary signal too: **none of the expensive prompt iteration Phase 4 put into write-position v1.2/v1.3 was necessary on GPT-4.1.** GPT-4.1 got fixture-01 right on the first run with the v1.3 prompt; DeepSeek needed 3 iterations and thinking mode to get it to 3 errors. This suggests model choice matters more than prompt refinement on this task.
 
 ---
+
 
 
 

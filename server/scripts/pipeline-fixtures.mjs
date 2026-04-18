@@ -71,12 +71,26 @@ const PRICING = {
   'deepseek-chat': { input: 0.14, output: 0.28 },
   'claude-opus-4-7': { input: 15.0, output: 75.0 },
   'claude-sonnet-4-6': { input: 3.0, output: 15.0 },
+  // OpenAI (Phase 4 Intervention 4 comparison backend)
+  'gpt-5': { input: 5.0, output: 15.0 },
+  'gpt-5-mini': { input: 0.50, output: 1.50 },
+  'gpt-4.1': { input: 2.0, output: 8.0 },
+  'gpt-4o': { input: 2.50, output: 10.0 },
+  'gpt-4o-mini': { input: 0.15, output: 0.60 },
+  'gpt-4-turbo': { input: 10.0, output: 30.0 },
 };
 
 function costOf(model, inTokens, outTokens) {
-  const p = PRICING[model];
+  let p = PRICING[model];
   if (!p) {
-    // Fall back to DeepSeek rates — safer default than zero.
+    // OpenAI often returns model with date suffix (e.g. gpt-4.1-2025-04-14).
+    // Fall back to prefix match.
+    for (const key of Object.keys(PRICING)) {
+      if (model.startsWith(key)) { p = PRICING[key]; break; }
+    }
+  }
+  if (!p) {
+    // Last resort: DeepSeek rates — safer default than zero.
     return (inTokens / 1_000_000) * 0.14 + (outTokens / 1_000_000) * 0.28;
   }
   return (inTokens / 1_000_000) * p.input + (outTokens / 1_000_000) * p.output;
