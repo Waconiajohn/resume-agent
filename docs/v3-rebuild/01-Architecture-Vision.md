@@ -130,6 +130,56 @@ This is not optional. It is the difference between shipping and not shipping.
 
 Every stage logs inputs, outputs, and timing. Silent fallbacks are forbidden. If an LLM call fails, the user sees a clear error and the team gets alerted. There is one dashboard that shows: last 100 pipeline runs, success rate per stage, average latency per stage, error patterns.
 
+## Shared prompt scaffolding
+
+v2 splices shared rule blocks (`${SOURCE_DISCIPLINE}`, `${JSON_RULES}`, and others) into every prompt from a central location in `knowledge/resume-rules.ts`. One edit propagates across all prompts that reference the shared block. Nothing gets copy-pasted between prompts. This is genuine engineering value and v3 preserves it.
+
+v3 implements this via the prompt loader. Shared rule blocks live in `server/prompts/_shared/` as `.md` fragments. Stage prompts reference them via a templating syntax (e.g., `{{shared:json-rules}}`). The loader resolves references at load time, producing the full expanded prompt that gets sent to the LLM.
+
+When a rule applies to multiple stages — JSON output format, pronoun policy, common writing constraints, the shared discipline-derivation guidance — it lives in `_shared/`. When a rule is genuinely stage-specific, it stays in the stage prompt. Each shared fragment has its own `<!-- Why: -->` comment explaining the rule's purpose.
+
+Example layout:
+```
+server/prompts/
+├── _shared/
+│   ├── json-rules.md           # defensive JSON output enforcement, retry protocol
+│   ├── pronoun-policy.md       # active-voice defaults, candidate-name-based pronoun handling
+│   ├── discipline-framing.md   # how to describe a candidate's professional discipline
+│   └── README.md
+├── classify.v1.md              # references {{shared:json-rules}}, {{shared:discipline-framing}}
+├── strategize.v1.md            # references {{shared:json-rules}}
+├── write-summary.v1.md         # references {{shared:pronoun-policy}}, {{shared:json-rules}}
+├── ...
+```
+
+Shared fragments are versioned alongside stage prompts. Changing a shared fragment potentially affects many stages; the fixture suite catches regressions across all fixtures for all stages that reference the changed fragment.
+
+## Prompt patterns ported from v2
+
+v2's prompts are production-tested against Vertex-hosted DeepSeek. The patterns below appear consistently across v2 prompts and are proven to produce reliable output on that model. v3 prompts adopt them where applicable.
+
+**Role-playing openers.** v2 prompts begin "You are a [senior/world-class/forensic] X..." rather than "Your task is Y." Role framing produces measurably more reliable output on DeepSeek than abstract task description. Every v3 prompt starts with a role-framed opener.
+
+**✓/✗ contrasts over abstract rules.** v2 teaches via concrete example pairs — `✓ Correct: "Led $40M transformation program across three business units"` next to `✗ Wrong: "Was responsible for various transformation activities"`. This pattern outperforms prose rules in practice, especially on DeepSeek. v3 prompts use this pattern for every constraint that can be usefully exemplified.
+
+**Defensive JSON extraction.** Every v2 prompt that produces JSON sets `response_format: { type: 'json_object' }` on the API call where supported. On JSON parse failure, v2 does one targeted retry with the parser error fed back as system-message context. v3 adopts this pattern at the provider layer so every stage benefits without duplicating logic. The retry is not a silent fallback — it is visible in logs and fails loudly if the second attempt also produces malformed JSON.
+
+**Mechanical fence stripping.** Both DeepSeek and Sonnet occasionally wrap JSON output in ``` code fences despite explicit instructions not to. v2's provider strips fences mechanically before `JSON.parse`. v3 inherits this at the provider layer. This is a mechanical operation (regex-based string manipulation on a known unambiguous pattern), not a semantic correction — it belongs in code per the core principle.
+
+**Per-bullet metadata through the pipeline.** v2 carries `is_new`, `source`, `evidence_found`, and `confidence` on every bullet from parsing through writing through verification. v3's schema matches this. See Decision Log entry 2026-04-18 on schema expansion.
+
+**Custom sections as first-class capability.** v2's `CUSTOM_SECTIONS` writer handles Board Service, Speaking Engagements, Patents, and similar executive resume sections. v3 implements the same capability via a generic custom-section writer invoked when classify identifies a custom section in the source material.
+
+## What this enables at the prompt layer
+
+With shared scaffolding and v2 patterns in place, three things become meaningfully easier:
+
+1. **Prompt quality improvements propagate.** A change to `_shared/json-rules.md` benefits every stage that emits JSON. A change to `_shared/pronoun-policy.md` benefits every stage that writes candidate-referencing prose. No more editing the same rule in five places.
+
+2. **Model changes are localized.** If a future model change (e.g., a new DeepSeek version, or flipping dev to a different provider) requires updated prompt patterns, the updates happen in shared fragments and propagate to stage prompts automatically.
+
+3. **A/B testing is cheap.** Creating a `classify.v2-test.md` that swaps out one shared fragment for a new version lets us test prompt changes across all dependent stages with a single variant flag. The fixture runner's `--prompt-variant` flag handles this today.
+
 ## What this enables
 
 Once this architecture is in place, four things become much easier:
