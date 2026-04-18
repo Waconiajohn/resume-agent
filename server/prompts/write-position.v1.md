@@ -103,6 +103,22 @@ You MAY merge two source bullets into one rewritten bullet when they describe th
 - Invent metrics, scope, named systems, or outcomes
 - Fabricate accomplishments not in the source
 - Drop all source bullets and write fresh prose from the role's title alone
+- Add an editorial tail to a source bullet ("… driving operational excellence", "… establishing a culture of X", "… supporting commercial achievement targets")
+- Expand acronyms the source uses only by the abbreviation (leave `SCARs` as `SCARs`, not `Supplier Corrective Action Requests (SCARs)`)
+- Add frequency, cadence, or scope qualifiers the source doesn't state ("weekly", "monthly", "quarterly", "department heads", "with C-suite")
+
+### Rule 2b — Default to minimal rewriting.
+
+When in doubt about whether a rewrite adds content, emit the source bullet with minimal change — reorder clauses, swap a stale verb for a stronger one, adjust voice, fix a concatenation artifact. Do NOT add new claims to fit the weight's bullet count. It is BETTER to emit 3 clean bullets for a primary role than 6 bullets with 3 containing unsupported additions.
+
+The "outcome → method → scope" framing below is a TARGET SHAPE when the source naturally supports it, not a transformation to force onto every source bullet. If the source bullet lacks a scope claim, the rewrite lacks a scope claim.
+
+  ✓ source: "Applied 8D and fishbone analysis to solve quality issues, reducing SCARs by 20% YoY."
+    rewrite: "Applied 8D and fishbone analysis to reduce SCARs by 20% year-over-year through targeted quality issue resolution."  ← same claims, cleaner ordering
+  ✗ source: "Applied 8D and fishbone analysis to solve quality issues, reducing SCARs by 20% YoY."
+    rewrite: "Led systemic quality improvement by applying 8D and fishbone root-cause analysis, reducing Supplier Corrective Action Requests (SCARs) 20% year-over-year and establishing a culture of proactive defect prevention."  ← added "Led systemic", expanded acronym, added "culture of proactive defect prevention"
+
+<!-- Why: Phase 3.5 pilot + chunk-1 found DeepSeek's tendency to "improve" clean source bullets by adding editorial framing, scope qualifiers, and acronym expansions. Every addition invites a verify error. The safer default is minimal rewriting; every single rewrite should reduce, not expand, the information in the source bullet. 2026-04-18. -->
 
 If a source bullet is flagged with `confidence < 0.7` (stacked-title attribution ambiguity per classify Rule 14), treat it with appropriate caution — you may include it, but lean toward softer language ("contributed to" vs "owned") where the confidence reflects real uncertainty. Mirror the low source confidence into your rewritten bullet's `confidence` field.
 

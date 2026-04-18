@@ -58,8 +58,30 @@ Phase 3.5 schema: every bullet in `WrittenResume.positions[].bullets` carries `i
 Checks:
 
 1. **Every `is_new: true` bullet MUST have its claims traceable to source.** Use the `source` hint to find the relevant bullet(s) in the StructuredResume. Compare the rewrite's factual claims (metrics, named systems, scope, specific outcomes) against the source text. If a specific claim in the rewrite is NOT present in any source bullet, scope, or crossRoleHighlight, emit an `"error"`.
-2. **Specifically NOT errors**: (a) the rewrite changing tense, voice, or ordering; (b) the rewrite combining two source bullets; (c) adding generic framing verbs ("led", "drove", "managed") even if the source used a different verb; (d) minor paraphrase; (e) adding a qualifier from the position's scope field or from another source bullet in the same position.
-3. **Legacy safety net**: for any numeric claim anywhere in the WrittenResume (summary, selectedAccomplishments, custom sections, competencies), trace to the StructuredResume. An unsourceable number is an `"error"`.
+2. **Specifically NOT errors** (downgrade or skip):
+   - (a) The rewrite changing tense, voice, or word order.
+   - (b) The rewrite combining two source bullets cited in `source`.
+   - (c) Adding generic framing verbs ("led", "drove", "managed") where the source used a different verb.
+   - (d) Minor paraphrase that preserves the source's specific claims.
+   - (e) Adding a qualifier from the position's scope field or from another source bullet in the same position.
+   - (f) **Expanding an acronym that the source used** (e.g. source: "SCARs"; rewrite: "Supplier Corrective Action Requests (SCARs)"). Not an error.
+   - (g) **Substituting a synonym for a source phrase** (e.g. source: "achieving 30% YoY growth"; rewrite: "driving 30% YoY growth"). Not an error.
+   - (h) **Tightening or loosening clause order** — not an error.
+   - (i) **Matching a claim across source bullets** — if a phrase in the rewrite appears in ANY bullet of the same position, or in the position's scope field, that's sourced.
+3. **Only emit a Check-1 error when a SPECIFIC CLAIM in the rewrite is NOT anywhere in the relevant source material**. A SPECIFIC CLAIM is:
+   - A metric or number not in source.
+   - A named system, product, or customer not in source.
+   - A scope claim (staff count, budget, geography, sector, cadence) not in source.
+   - An outcome the source doesn't state.
+4. **Editorial framing is a WARNING, not an error**. If the rewrite adds phrases like "driving operational excellence", "building a culture of X", "establishing X reputation" that are NOT in the source — emit a `"warning"` with severity noted, not an `"error"`. These are stylistic additions, not factual fabrications. (Write prompt Rule 1b asks the writer to avoid them, but verify treats them as warnings to avoid drowning real fabrications in style nitpicks.)
+5. **Legacy safety net**: for any numeric claim anywhere in the WrittenResume (summary, selectedAccomplishments, custom sections, competencies), trace to the StructuredResume. An unsourceable number is an `"error"`.
+
+**Before emitting any Check-1 error, do this two-step check**:
+  1. Read the rewrite bullet text.
+  2. Scan ALL source bullets IN THE SAME POSITION, plus the position's scope, plus crossRoleHighlights. Even if the rewrite's `source: "bullets[0]"` names a specific bullet, the real sourcing may be across multiple bullets.
+  3. Only if the specific claim is NOT findable anywhere in that scope should you emit an error.
+
+A false-positive error is worse than a missing real error: false positives force the writer to retrain on phantom issues. Calibrate toward precision.
 
   ✓ bullet text: "Delivered $26M ROI"; source: "bullets[1]"; source text says "$26M in automation ROI". → OK
   ✓ bullet text: "Led strategy across 15 Agile Release Trains, driving cost reduction"; source: "bullets[0] + scope"; bullets[0] says "Led strategy across 15 Agile Release Trains" and scope says "cost-governed platform". → OK (combining source + scope is valid)
