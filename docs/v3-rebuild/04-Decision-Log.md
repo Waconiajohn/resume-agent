@@ -123,6 +123,102 @@ Each entry follows this structure:
 
 ---
 
+## 2026-04-18 — Production routes through Vertex-hosted DeepSeek, not Anthropic models
+
+**Decision:** All v3 LLM stages route through a provider factory that respects environment configuration. Production default is Vertex-hosted DeepSeek. Development environments can override to Anthropic models for comparison runs, but stages never import a specific provider class directly.
+
+**Context:** Phases 1-4 of the v3 rebuild were executed assuming stages would call Anthropic models (Opus for classify/strategize/verify, Sonnet for write-*). On 2026-04-18, during Phase 4 pilot validation, John clarified that CareerIQ production has run on Vertex-hosted DeepSeek since well before the v3 rebuild started. This is not a casual technical preference — it is the economic foundation of the product.
+
+CareerIQ retails at $49/month. At scale (multiple resumes per user per month), Opus-priced inference destroys the margin. Vertex-hosted DeepSeek delivers roughly 1/20th the cost of Opus and approximately 207 tok/s (10-12x faster than DeepSeek direct). v2 encoded months of prompt engineering specifically tuned for DeepSeek-on-Vertex behavior.
+
+The initial v3 planning documents (docs 00-05) mentioned "the Vertex/DeepSeek/Groq failover" as existing infrastructure worth preserving but did not make Vertex-DeepSeek the explicit production target. This decision closes that gap.
+
+**Options considered:**
+
+- **Option A: Hardcode Vertex-DeepSeek in v3 stages.** Pros: simple, matches v2. Cons: loses the ability to run Opus in dev for comparison / debugging; makes model changes require code changes.
+
+- **Option B: Capability-based routing through a provider factory.** Stages declare what kind of model they need (`strong-reasoning`, `fast-writer`); factory maps capability to configured model per environment. Pros: dev can run Opus, production runs DeepSeek, switching is an env var. Cons: slightly more infrastructure.
+
+- **Option C: Continue the current hardcoded-AnthropicProvider pattern.** Requires a separate "production port" project later. Cons: wastes the Phase 3 and Phase 4 work, delays production-realism validation to the end where problems are expensive.
+
+**Decision made:** Option B. The infrastructure cost is small (one factory file, env-var-driven), and the architectural benefit is large: all five stages swap production models with one config change. Dev can run Opus for prompt debugging; production runs DeepSeek; everything else stays identical.
+
+**Consequences:**
+- `server/src/v3/providers/factory.ts` becomes a required component
+- All five stage implementations (classify, strategize, write-*, verify) refactor their provider imports to use the factory
+- Prompt YAML frontmatter changes from `model: claude-opus-4-7` to `capability: strong-reasoning`
+- v2's `VertexProvider`, `getVertexAccessToken` (service account JWT), and `RateLimitFailoverProvider` are all keeper components; v3 reuses them via the factory
+- Phase 4 work committed on `v3-phase4-opus-prototype` tag needs provider refactor before shipping
+- Classify (Phase 3) has the same hardcoded-AnthropicProvider issue and needs the same refactor
+- All five stages need fixture re-validation on DeepSeek-on-Vertex before Phase 5 shadow deployment
+
+---
+
+## 2026-04-18 — StructuredResume and WrittenResume carry per-bullet metadata (is_new, source, evidence_found, confidence)
+
+**Decision:** Every bullet in v3's resume data structures carries metadata matching v2's shape: `is_new` (LLM-written vs. sourced), `source` (reference to original bullet if applicable), `evidence_found` (whether claim traces to source material), `confidence` (0.0-1.0). This metadata flows through all stages and is used by verify to check claim attribution.
+
+**Context:** The v2 prompt and Vertex integration inventory (commit f80630f0) surfaced that v2 tracks rich per-bullet metadata through its pipeline, but v3's `StructuredResume` schema only carries `confidence` on source bullets and drops the rest. Claude Code flagged this as "verify loses attribution data it could use."
+
+The inventory is correct. Verify's job is to check that claims trace to source material. Without `is_new` and `source` references, verify cannot distinguish "LLM invented this metric" from "LLM rewrote a sourced bullet." Dropping the metadata means verify is a weaker quality gate than it should be, and weaker than v2's equivalent.
+
+The original v3 schema was my oversight — I modeled the bullet type narrowly without accounting for what verify would need to do with it. The inventory caught it.
+
+**Options considered:**
+
+- **Option A: Keep the narrow v3 schema; have verify infer attribution from content similarity.** Pros: smaller schema. Cons: similarity-based attribution is fuzzy; verify becomes a weaker check; we'd be asking verify to do LLM-based work to reconstruct information we threw away.
+
+- **Option B: Match v2's schema exactly.** Pros: verify can do its job; maintains parity with what v2 already does well; simplifies the port of verify logic. Cons: larger schema, slight overhead in classify and write to populate metadata correctly.
+
+**Decision made:** Option B. Verify is one of the two load-bearing quality gates in v3 (classify being the other). Weakening verify to simplify the schema is the wrong tradeoff. The metadata is cheap to carry.
+
+**Consequences:**
+- `Bullet` type in `server/src/v3/types.ts` expands to include `is_new`, `source`, `evidence_found`, `confidence`
+- Zod schema in `server/src/v3/classify/schema.ts` updates to match
+- Classify prompt is updated to populate metadata during parsing (source bullets get `is_new: false`, original confidence carried through)
+- Write prompts are updated to emit metadata for rewritten bullets (`is_new: true`, `source` reference to the bullet it's rewriting, fresh confidence based on how much evidence is in the source)
+- Verify prompt is updated to use the metadata for attribution checks (every `is_new: true` bullet's claim must trace to source content via the `source` reference)
+- Phase 4 work on `v3-phase4-opus-prototype` needs schema updates before porting to DeepSeek-on-Vertex
+
+---
+
+## 2026-04-18 — Reversing the "v3 bans executive soft skills in competencies" decision; adding custom sections capability
+
+**Decision:** v3's competencies section allows executive soft skills with framing requirements ported from v2. v3 supports custom resume sections (Board Service, Speaking Engagements, Patents, Publications, etc.) via a generic section writer. Both of these reverse earlier v3 design decisions.
+
+**Context:** The v2 prompt inventory (commit f80630f0) surfaced two real divergences from v2 where v3 was shipping worse output by design:
+
+1. **Competencies soft skills.** v2's COMPETENCIES prompt allowed executive soft skills with narrative framing; v3's `write-competencies.v1.md` banned them outright. My reasoning when I wrote the v3 rule was "no fluff, no generic terms." In practice, senior executive resumes legitimately include competencies like "strategic vision," "organizational transformation," "board engagement." ATS systems look for these terms. Banning them made v3 worse than v2 on the target executive market.
+
+2. **Custom sections.** v2 supported arbitrary custom sections via its `CUSTOM_SECTIONS` writer; v3 assumed a fixed section set (summary, accomplishments, competencies, experience, education). Senior executives routinely have Board Service, Speaking Engagements, Patents, or Publications sections. v3 as designed would have shipped without this capability — a regression from v2.
+
+Both decisions were mine. Both were wrong. The inventory caught them before they shipped.
+
+**Options considered for competencies soft skills:**
+
+- **Option A: Keep the v3 ban.** Defend the "no fluff" instinct. Cons: ships worse ATS output than v2; mismatches what executive resumes actually need.
+- **Option B: Port v2's framing rules.** v2 allows soft skills when they are concrete, role-appropriate, and non-generic. Reject "team player" and "results-driven"; accept "enterprise program leadership" and "organizational transformation." Pros: matches what v2 already does well; matches market reality. Cons: requires porting the framing rules correctly.
+
+**Decision made for competencies:** Option B. Port v2's framing rules to `write-competencies` in v3. The prompt enforces framing quality (concrete, role-appropriate, non-generic) rather than banning soft skills wholesale.
+
+**Options considered for custom sections:**
+
+- **Option A: Keep v3's fixed section set.** Add custom sections in a future phase. Cons: ships a regression from v2; target market needs custom sections.
+- **Option B: Add custom sections to v3 Phase 4.** Classify identifies custom-section candidates from source material; write has a generic section writer that handles them. Cons: scope increase for Phase 4.
+- **Option C: Add custom sections as a Phase 5 or post-launch feature.** Cons: means beta / early users see a v3 that's worse than v2 at the feature level.
+
+**Decision made for custom sections:** Option B. Add to Phase 4 scope. The cost is one additional prompt file (`write-custom-section.v1.md`) and a small classify prompt update to emit custom-section candidates. Not adding it means v3 ships a known regression against the target market.
+
+**Consequences:**
+- `write-competencies.v1.md` is rewritten to allow soft skills with framing rules ported from v2
+- `write-custom-section.v1.md` is added to Phase 4 scope
+- Classify schema expands to include `customSections: Array<{ title: string, entries: Array<...> }>` or equivalent
+- `StructuredResume` and `WrittenResume` types expand to carry custom sections
+- Phase 4 work on `v3-phase4-opus-prototype` needs both updates before porting to DeepSeek-on-Vertex
+- Decision-log honesty note: these decisions were initially overcorrections based on the "no fluff" instinct. The correct calibration is "no generic fluff, yes specific executive competencies and genuine custom-section content." Documenting this explicitly so future engineers don't re-introduce the same overcorrection.
+
+---
+
 ## [Template for future entries]
 
 ## [YYYY-MM-DD] — [Title]
