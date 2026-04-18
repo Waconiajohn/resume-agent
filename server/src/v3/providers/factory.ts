@@ -38,7 +38,7 @@ import { createV3Logger } from '../observability/logger.js';
 
 const log = createV3Logger('providers');
 
-export type Capability = 'strong-reasoning' | 'fast-writer';
+export type Capability = 'strong-reasoning' | 'fast-writer' | 'deep-writer';
 
 export interface ResolvedProvider {
   provider: LLMProvider;
@@ -48,12 +48,20 @@ export interface ResolvedProvider {
   capability: Capability;
   /** Configured backend name: 'vertex' | 'anthropic'. */
   backend: string;
+  /**
+   * Extra params the stage should spread into its provider.stream/chat call.
+   * Currently used by deep-writer to request DeepSeek thinking mode.
+   */
+  extraParams?: { thinking?: boolean };
 }
 
 const DEFAULT_BACKEND = 'vertex';
 const DEFAULT_VERTEX_MODEL = 'deepseek-ai/deepseek-v3.2-maas';
 const DEFAULT_OPUS_MODEL = 'claude-opus-4-7';
 const DEFAULT_SONNET_MODEL = 'claude-sonnet-4-6';
+
+/** Capabilities that enable DeepSeek thinking mode when on the Vertex backend. */
+const THINKING_CAPABILITIES: Capability[] = ['deep-writer'];
 
 // -----------------------------------------------------------------------------
 // Lazy instantiation — providers are built on first getProvider() call and
@@ -140,28 +148,40 @@ function buildVertexResolved(capability: Capability): ResolvedProvider {
   const wrapped = fallback ? new FailoverProvider(primary, fallback) : primary;
   const defensive = new DefensiveJsonProvider(wrapped);
 
-  const modelKey =
-    capability === 'strong-reasoning'
-      ? 'RESUME_V3_STRONG_REASONING_MODEL'
-      : 'RESUME_V3_FAST_WRITER_MODEL';
+  const modelKey = capabilityToModelEnv(capability);
   const model = process.env[modelKey] ?? DEFAULT_VERTEX_MODEL;
+  const extraParams = THINKING_CAPABILITIES.includes(capability) ? { thinking: true } : undefined;
 
-  return { provider: defensive, model, capability, backend: 'vertex' };
+  return { provider: defensive, model, capability, backend: 'vertex', extraParams };
 }
 
 function buildAnthropicResolved(capability: Capability): ResolvedProvider {
   const anthropic = new AnthropicProvider();
   const defensive = new DefensiveJsonProvider(anthropic);
 
+  // Dev-only Anthropic defaults: deep-writer maps to Opus as the closest
+  // analog to DeepSeek-thinking for debug runs.
   const defaultModel =
-    capability === 'strong-reasoning' ? DEFAULT_OPUS_MODEL : DEFAULT_SONNET_MODEL;
-  const modelKey =
     capability === 'strong-reasoning'
-      ? 'RESUME_V3_STRONG_REASONING_MODEL'
-      : 'RESUME_V3_FAST_WRITER_MODEL';
+      ? DEFAULT_OPUS_MODEL
+      : capability === 'deep-writer'
+        ? DEFAULT_OPUS_MODEL
+        : DEFAULT_SONNET_MODEL;
+  const modelKey = capabilityToModelEnv(capability);
   const model = process.env[modelKey] ?? defaultModel;
 
   return { provider: defensive, model, capability, backend: 'anthropic' };
+}
+
+function capabilityToModelEnv(capability: Capability): string {
+  switch (capability) {
+    case 'strong-reasoning':
+      return 'RESUME_V3_STRONG_REASONING_MODEL';
+    case 'fast-writer':
+      return 'RESUME_V3_FAST_WRITER_MODEL';
+    case 'deep-writer':
+      return 'RESUME_V3_DEEP_WRITER_MODEL';
+  }
 }
 
 // -----------------------------------------------------------------------------

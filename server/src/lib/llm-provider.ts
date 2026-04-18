@@ -17,6 +17,13 @@ export interface ChatParams {
   temperature?: number;
   signal?: AbortSignal;
   session_id?: string;
+  /**
+   * DeepSeek V3.2 thinking mode (via `chat_template_kwargs: { thinking: true }`).
+   * Only valid on DeepSeek-on-Vertex, DeepSeek-direct, and DeepInfra. The
+   * response's `reasoning_content` is logged at debug level and discarded;
+   * only `content` is returned downstream. See provider README for details.
+   */
+  thinking?: boolean;
 }
 
 /** Anthropic-style message with content blocks */
@@ -515,8 +522,16 @@ export class ZAIProvider implements LLMProvider {
             outputTokens = chunk.usage.completion_tokens ?? outputTokens;
           }
 
-          const delta = chunk.choices?.[0]?.delta;
+          const delta = chunk.choices?.[0]?.delta as
+            | (NonNullable<OpenAIStreamChunk['choices']>[number]['delta'] & { reasoning_content?: string })
+            | undefined;
           if (!delta) continue;
+
+          // DeepSeek thinking-mode: reasoning_content streams alongside
+          // content. Discard it from the downstream text stream; only
+          // content is the answer. (We don't log each chunk — would flood.)
+          // When thinking is disabled or the provider doesn't support it,
+          // this field is simply absent.
 
           // Text content
           if (delta.content) {
@@ -618,6 +633,14 @@ export class ZAIProvider implements LLMProvider {
 
     if (params.response_format) {
       body.response_format = params.response_format;
+    }
+
+    // DeepSeek V3.2 thinking mode (Vertex / DeepSeek-direct / DeepInfra).
+    // The OpenAI-compatible endpoint passes extra model kwargs under
+    // `chat_template_kwargs`. When enabled, the response has both
+    // `reasoning_content` (the thinking tokens) and `content` (the answer).
+    if (params.thinking) {
+      body.chat_template_kwargs = { thinking: true };
     }
 
     return body;
@@ -851,6 +874,17 @@ export class ZAIProvider implements LLMProvider {
   private parseResponse(data: OpenAIChatResponse): ChatResponse {
     const choice = data.choices?.[0];
     const message = choice?.message;
+
+    // DeepSeek thinking mode emits `reasoning_content` alongside `content`.
+    // Log reasoning at debug for traceability; do NOT include it in the text
+    // returned downstream — only `content` is the answer the stage consumes.
+    const reasoning = (message as unknown as { reasoning_content?: string })?.reasoning_content;
+    if (reasoning) {
+      logger.debug(
+        { provider: this.name, reasoningLength: reasoning.length },
+        'thinking-mode reasoning_content received (discarded from content)',
+      );
+    }
 
     const rawContent = message?.content;
     const text = typeof rawContent === 'string'
@@ -1331,6 +1365,8 @@ interface OpenAIChatResponse {
     message: {
       content?: string;
       tool_calls?: OpenAIToolCall[];
+      /** DeepSeek thinking-mode reasoning tokens (ignored downstream). */
+      reasoning_content?: string;
     };
     finish_reason?: string;
   }>;

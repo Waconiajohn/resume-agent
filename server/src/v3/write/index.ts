@@ -314,10 +314,26 @@ async function runSection<T>(
     userMessage = userMessage.replaceAll(`{{${k}}}`, v);
   }
 
-  const { provider, model, backend } = getProvider(prompt.capability);
+  const { provider, model, backend, extraParams } = getProvider(prompt.capability);
   const start = Date.now();
 
-  logger.info({ section, promptName, promptVersion: prompt.version, model, backend }, 'section start');
+  logger.info(
+    {
+      section,
+      promptName,
+      promptVersion: prompt.version,
+      model,
+      backend,
+      thinking: extraParams?.thinking === true,
+    },
+    'section start',
+  );
+
+  // Thinking mode (deep-writer on Vertex/DeepSeek) generates a substantial
+  // reasoning_content stream before the actual content. Give the writer
+  // extra headroom when thinking is on so the actual answer has room after
+  // the reasoning tokens consume their share.
+  const maxTokens = extraParams?.thinking === true ? MAX_OUTPUT_TOKENS * 2 : MAX_OUTPUT_TOKENS;
 
   let fullText = '';
   let usage = { input_tokens: 0, output_tokens: 0 };
@@ -325,8 +341,9 @@ async function runSection<T>(
     model,
     system: prompt.systemMessage,
     messages: [{ role: 'user', content: userMessage }],
-    max_tokens: MAX_OUTPUT_TOKENS,
+    max_tokens: maxTokens,
     temperature: prompt.temperature,
+    ...(extraParams?.thinking === true && { thinking: true }),
     signal,
   })) {
     const e = event as StreamEvent;

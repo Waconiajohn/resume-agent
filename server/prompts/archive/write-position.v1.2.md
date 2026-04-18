@@ -1,24 +1,26 @@
 ---
 stage: write-position
-version: "1.3"
-capability: deep-writer
+version: "1.2"
+capability: fast-writer
 temperature: 0.1
 last_edited: 2026-04-18
 last_editor: claude
 notes: |
-  v1.3 (Phase 4 cleanup — Intervention 3):
-    - capability: fast-writer → deep-writer. Enables DeepSeek V3.2
-      thinking mode on Vertex via chat_template_kwargs.thinking.
-    - Body is identical to v1.2; only the capability changes. The
-      hypothesis: giving the writer explicit thinking tokens to reason
-      through source-attribution BEFORE emitting JSON will reduce
-      editorial additions. Tested empirically in Phase 4 Intervention 3;
-      see docs/v3-rebuild/reports/phase-4-cleanup-eval.md for results.
-    - reasoning_content is discarded by the provider layer; only
-      content reaches this prompt's downstream consumers.
-  v1.2 (Phase 4 cleanup — Intervention 1): temp 0.1, style anchor,
-    Rule 0 forbidden phrases, Rule 10 self-check. fast-writer capability.
-  v1.1 (Phase 3.5 port to DeepSeek-on-Vertex).
+  v1.2 (Phase 4 cleanup — Intervention 1):
+    - Temperature dropped from 0.4 → 0.1 to reduce DeepSeek non-determinism
+      and editorial-framing tendency.
+    - Added style-anchor paragraph at the top to stabilize voice across
+      bullets.
+    - Added explicit forbidden-phrases list (Rule 0) with ✗ examples.
+    - Strengthened ceiling rule with explicit ✓/✗ and new text: "If
+      source material supports fewer bullets than the range minimum,
+      produce fewer. Fewer faithful bullets beat more padded ones."
+    - Added self-check rule at the end: reread each bullet and verify
+      every noun phrase / metric / named system traces to source.
+    - Fixed the example to 5 bullets (one per source bullet), no
+      synthesis beyond source.
+  v1.1 (Phase 3.5 port to DeepSeek-on-Vertex). Capability: fast-writer,
+  shared refs, bullet metadata emission, temp 0.4.
   v1.0: Initial version.
 ---
 
