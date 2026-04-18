@@ -14,13 +14,13 @@
 //   --dry-run                  list fixtures that would run; do not call LLM
 //   -h, --help                 print usage
 //
-// Cost model (claude-opus-4-7 as of 2026-04, published rates):
-//   Input:  $15.00 / million tokens
-//   Output: $75.00 / million tokens
+// Cost model — defaults route to DeepSeek-on-Vertex ($0.14/$0.28 per M),
+// the v3 production backend per Phase 3.5. Override with env vars for
+// comparison runs:
+//   RESUME_V3_PRICE_INPUT_PER_M=15.0  RESUME_V3_PRICE_OUTPUT_PER_M=75.0  (Opus)
 //
 // The total dollar estimate printed at end is a running total for the process —
-// not a persistent counter. See docs/v3-rebuild/reports/phase-3-eval.md for the
-// cost trajectory across iterations.
+// not a persistent counter.
 
 import {
   readdirSync,
@@ -58,8 +58,9 @@ const DIVERSE_SUBSET = new Set([
 
 // ─── Pricing ───────────────────────────────────────────────────────────
 
-const PRICE_INPUT_PER_M = 15.0;   // $ per million input tokens
-const PRICE_OUTPUT_PER_M = 75.0;  // $ per million output tokens
+// DeepSeek V3.2 on Vertex — v3 production default. Use env vars to override.
+const PRICE_INPUT_PER_M = parseFloat(process.env.RESUME_V3_PRICE_INPUT_PER_M ?? '0.14');
+const PRICE_OUTPUT_PER_M = parseFloat(process.env.RESUME_V3_PRICE_OUTPUT_PER_M ?? '0.28');
 
 function cost(inputTokens, outputTokens) {
   return (inputTokens / 1_000_000) * PRICE_INPUT_PER_M +

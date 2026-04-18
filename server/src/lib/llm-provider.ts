@@ -973,7 +973,25 @@ export class VertexProvider extends ZAIProvider {
    * gcloud access token before each call (tokens expire every ~60 min).
    */
   async chat(params: ChatParams): Promise<ChatResponse> {
-    // Refresh access token if expired
+    const prepared = await this.prepareVertexParams(params);
+    return super.chat(prepared);
+  }
+
+  /**
+   * Same Vertex-specific setup as chat() for streaming callers (v3 Stage 2
+   * classify uses streaming because its 32K max_tokens exceeds non-streaming
+   * timeouts). Without this override, stream() inherits ZAIProvider's stream
+   * which does not refresh the access token or merge the system message;
+   * Vertex then 401s because the placeholder token from construction time
+   * is sent.
+   */
+  async *stream(params: ChatParams): AsyncIterable<StreamEvent> {
+    const prepared = await this.prepareVertexParams(params);
+    yield* super.stream(prepared);
+  }
+
+  /** Common prep: refresh token, merge system prompt into the first user message. */
+  private async prepareVertexParams(params: ChatParams): Promise<ChatParams> {
     if (Date.now() > this.tokenExpiry) {
       try {
         const token = await getVertexAccessToken();
@@ -984,7 +1002,6 @@ export class VertexProvider extends ZAIProvider {
       }
     }
 
-    // Merge system prompt into first user message for Vertex compatibility
     const firstUserMsg = params.messages[0];
     const firstUserContent = typeof firstUserMsg?.content === 'string' ? firstUserMsg.content : '';
     const mergedFirstMessage: ChatMessage = {
@@ -992,11 +1009,11 @@ export class VertexProvider extends ZAIProvider {
       content: `${params.system}\n\n---\n\n${firstUserContent}`,
     };
 
-    return super.chat({
+    return {
       ...params,
-      system: '',  // Empty system — content merged into user message
+      system: '',
       messages: [mergedFirstMessage, ...params.messages.slice(1)],
-    });
+    };
   }
 }
 
