@@ -28,7 +28,10 @@ const PATTERNS = [
   {
     kind: 'phone_us',
     // Matches (xxx) xxx-xxxx, xxx-xxx-xxxx, xxx.xxx.xxxx, +1-xxx-xxx-xxxx.
-    rx: /(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)\d{3}[-.\s]?\d{4}\b/g,
+    // Separator class includes ASCII hyphen/period/whitespace PLUS Unicode
+    // hyphen/dash variants (U+2010..2014, U+2212). Word processors substitute
+    // these in phone numbers; fixtures 10 and 15 in our corpus do this.
+    rx: /(?:\+?1[-.\s\u2010-\u2014\u2212]?)?(?:\(?\d{3}\)?[-.\s\u2010-\u2014\u2212]?)\d{3}[-.\s\u2010-\u2014\u2212]?\d{4}\b/g,
   },
   {
     kind: 'street_address',

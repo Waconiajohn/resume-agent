@@ -1,6 +1,6 @@
 # Phase 2 — PII Scan Report
 
-**Generated:** 2026-04-17
+**Generated:** 2026-04-18
 **Fixtures scanned:** 19
 
 ## Scope & safety

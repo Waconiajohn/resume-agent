@@ -65,10 +65,12 @@ const EMAIL_RX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 
 // Matches US phone formats seen in the corpus:
 // (xxx) xxx-xxxx, xxx-xxx-xxxx, xxx.xxx.xxxx, +1 xxx.xxx.xxxx, xxx xxx-xxxx.
-// Requires an area-code-looking group, so 4-digit-only numbers inside bullets
-// (e.g., budget figures like "1234") don't false-match.
+// Separator characters include ASCII hyphen, period, whitespace, AND Unicode
+// hyphen/dash variants (U+2010..2014, U+2212) that word processors emit —
+// fixture-10 and fixture-15 use U+2011 non-breaking hyphens. Requires an
+// area-code group, so 4-digit-only numbers inside bullets don't false-match.
 const PHONE_RX =
-  /(?:\+?1[-.\s]?)?(?:\(\d{3}\)\s?|\d{3}[-.\s])\d{3}[-.\s]\d{4}\b/g;
+  /(?:\+?1[-.\s\u2010-\u2014\u2212]?)?(?:\(\d{3}\)\s?|\d{3}[-.\s\u2010-\u2014\u2212])\d{3}[-.\s\u2010-\u2014\u2212]\d{4}\b/g;
 
 const LINKEDIN_RX = /\[?(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9._%+/-]+\]?(?:\([^)]*\))?/gi;
 

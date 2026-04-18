@@ -39,6 +39,22 @@ describe('redactFixture', () => {
       const { redacted } = redactFixture(input, { candidateName: 'Alex Rivers' });
       expect(redacted).not.toMatch(/\[REDACTED PHONE\]/);
     });
+
+    it('handles Unicode hyphen separators (U+2011, U+2013)', () => {
+      // Word processors substitute non-breaking hyphens in phone numbers.
+      // fixture-10 and fixture-15 in our corpus use U+2011 literally.
+      const input = [
+        '919\u2011819\u20110376',
+        '(678) 882\u20116432',
+        '415\u2013555\u20131234',
+      ].join('\n');
+      const { redacted, redactions } = redactFixture(input, {
+        candidateName: 'Test Person',
+      });
+      expect(redacted.match(/\[REDACTED PHONE\]/g)).toHaveLength(3);
+      const phoneCount = redactions.find((r) => r.kind === 'phone')?.count ?? 0;
+      expect(phoneCount).toBe(3);
+    });
   });
 
   describe('LinkedIn', () => {
