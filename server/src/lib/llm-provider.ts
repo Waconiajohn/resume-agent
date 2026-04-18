@@ -589,12 +589,23 @@ export class ZAIProvider implements LLMProvider {
 
   private buildRequestBody(params: ChatParams, stream: boolean): Record<string, unknown> {
     const messages = this.translateMessages(params.system, params.messages);
+
+    // GPT-5 family and o-series reasoning models require `max_completion_tokens`
+    // instead of the legacy `max_tokens`, and reject custom `temperature` (only
+    // the default is supported). Sniff the model name to pick the right fields.
+    // Phase 4.8 addition for the GPT-5 measurement experiment.
+    const isReasoningFamily = /^(gpt-5(\.|-|$)|o\d)/i.test(params.model);
+
     const body: Record<string, unknown> = {
       model: params.model,
-      max_tokens: params.max_tokens,
       messages,
       stream,
-      ...(params.temperature != null && { temperature: params.temperature }),
+      ...(isReasoningFamily
+        ? { max_completion_tokens: params.max_tokens }
+        : {
+            max_tokens: params.max_tokens,
+            ...(params.temperature != null && { temperature: params.temperature }),
+          }),
     };
 
     if (stream) {

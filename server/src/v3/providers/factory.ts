@@ -73,12 +73,15 @@ const DEFAULT_VERTEX_MODEL = 'deepseek-ai/deepseek-v3.2-maas';
 const DEFAULT_OPUS_MODEL = 'claude-opus-4-7';
 const DEFAULT_SONNET_MODEL = 'claude-sonnet-4-6';
 
-// OpenAI defaults. The OpenAI project tested against (Phase 4 Intervention 4)
-// does not have gpt-5 / o-series access; gpt-4.1 is used as the flagship.
-// Override via env vars (RESUME_V3_*_MODEL_OPENAI) if the project gains gpt-5.
-const DEFAULT_OPENAI_STRONG_MODEL = 'gpt-4.1';
-const DEFAULT_OPENAI_FAST_MODEL = 'gpt-4.1-mini';
-const DEFAULT_OPENAI_DEEP_MODEL = 'gpt-4.1';
+// OpenAI defaults (Phase 4.8 update). Project gained GPT-5 family access
+// on 2026-04-18. gpt-5.4-mini is the newest reasoning-capable smaller model
+// (2026-03) — best fit for resume rewriting's attribution discipline at
+// a reasonable price point. gpt-4.1 kept as the non-reasoning baseline
+// control. gpt-4.1-mini is denied on this project as of the access probe;
+// fall back to gpt-4.1 for fast-writer when routing through OpenAI.
+const DEFAULT_OPENAI_STRONG_MODEL = 'gpt-5.4-mini';
+const DEFAULT_OPENAI_FAST_MODEL = 'gpt-5.4-mini';
+const DEFAULT_OPENAI_DEEP_MODEL = 'gpt-5.4-mini';
 
 // Phase 4.5 hybrid production defaults per capability.
 const DEFAULT_CAPABILITY_BACKEND: Record<Capability, Backend> = {
