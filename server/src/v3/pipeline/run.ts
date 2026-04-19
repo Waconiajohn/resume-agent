@@ -15,6 +15,7 @@ import { writeWithTelemetry } from '../write/index.js';
 import { verifyWithTelemetry } from '../verify/index.js';
 import { costOf } from '../shadow/costs.js';
 import { createV3Logger } from '../observability/logger.js';
+import { createMasterFromClassify, fetchDefaultMaster } from '../master/load.js';
 import type { V3SSEEmitter, V3StageCosts, V3StageTimings } from './types.js';
 
 const log = createV3Logger('pipeline');
@@ -120,6 +121,34 @@ export async function runV3Pipeline(
     });
   } catch (err) {
     return emitError('classify', err);
+  }
+
+  // ─── Auto-init master resume (first-run vault seed) ───────────────────
+  // Fire-and-forget so it never blocks the pipeline on Supabase. If the
+  // user has no master yet, we initialize one from classify output. If
+  // they already have one, this is a no-op. The frontend doesn't surface
+  // the auto-init state — it's silent vault accumulation.
+  if (input.userId) {
+    void (async () => {
+      try {
+        const existing = await fetchDefaultMaster(input.userId!);
+        if (existing) return;
+        await createMasterFromClassify({
+          userId: input.userId!,
+          resume: structured,
+          sessionId: input.sessionId,
+        });
+      } catch (err) {
+        log.warn(
+          {
+            sessionId: input.sessionId,
+            userId: input.userId,
+            err: err instanceof Error ? err.message : String(err),
+          },
+          'master auto-init skipped (non-blocking)',
+        );
+      }
+    })();
   }
 
   // ─── Stage 3a — benchmark ─────────────────────────────────────────────

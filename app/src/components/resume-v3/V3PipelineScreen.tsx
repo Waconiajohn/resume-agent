@@ -20,11 +20,13 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { AlertTriangle, RefreshCw, Pencil, Undo2 } from 'lucide-react';
 import { useV3Pipeline, type StartV3PipelineInput } from '@/hooks/useV3Pipeline';
+import { useV3Master } from '@/hooks/useV3Master';
 import { V3StageProgress } from './V3StageProgress';
 import { V3IntakeForm } from './V3IntakeForm';
 import { V3StrategyPanel } from './V3StrategyPanel';
 import { V3ResumeView } from './V3ResumeView';
 import { V3VerifyPanel } from './V3VerifyPanel';
+import { V3PromotePanel } from './V3PromotePanel';
 
 interface V3PipelineScreenProps {
   accessToken: string | null;
@@ -33,7 +35,13 @@ interface V3PipelineScreenProps {
 
 export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineScreenProps) {
   const pipeline = useV3Pipeline(accessToken);
+  const master = useV3Master(accessToken);
   const [editedWritten, setEditedWritten] = useState<typeof pipeline.written | null>(null);
+  const [sessionId] = useState<string>(() =>
+    // Generate a session id for the life of the screen mount. Used as
+    // source_session_id for promote-to-master evidence items.
+    crypto.randomUUID(),
+  );
 
   const showIntake = !pipeline.isRunning && !pipeline.isComplete && !pipeline.error;
   const showResults = pipeline.isRunning || pipeline.isComplete || Boolean(pipeline.error);
@@ -138,6 +146,7 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
             onSubmit={handleStart}
             initialResumeText={initialResumeText}
             disabled={pipeline.isRunning}
+            master={master.summary}
           />
         )}
 
@@ -147,6 +156,18 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
             <Pencil className="h-3 w-3" />
             Click any bullet or the summary to edit. Press Enter to save, Esc to cancel.
           </div>
+        )}
+
+        {/* Promote panel — shown after pipeline completes so the user can
+            add newly-written content to their knowledge base */}
+        {pipeline.isComplete && !pipeline.error && pipeline.written && (
+          <V3PromotePanel
+            accessToken={accessToken}
+            sessionId={sessionId}
+            written={editedWritten ?? pipeline.written}
+            master={master.summary}
+            onSaved={() => master.refresh()}
+          />
         )}
 
         {/* Results layout */}

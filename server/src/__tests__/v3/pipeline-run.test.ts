@@ -11,6 +11,19 @@ import type { V3PipelineSSEEvent } from '../../v3/pipeline/types.js';
 
 // Mock the stage functions before importing the orchestrator so the mocks
 // are in place when run.ts resolves them.
+// Supabase admin client is transitively imported by pipeline/run.ts via the
+// master-resume module. The real client throws at module load if
+// SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY aren't set; we don't hit it in
+// these tests because we only exercise the happy-path LLM orchestration.
+vi.mock('../../lib/supabase.js', () => ({
+  supabaseAdmin: {
+    from: () => ({
+      select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ limit: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }) }) }) }),
+    }),
+    rpc: () => Promise.resolve({ data: null, error: null }),
+  },
+}));
+
 vi.mock('../../v3/extract/index.js', () => ({
   extract: vi.fn(),
 }));

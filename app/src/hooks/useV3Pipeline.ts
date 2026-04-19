@@ -254,10 +254,24 @@ const initialState: V3PipelineState = {
 };
 
 export interface StartV3PipelineInput {
-  resumeText: string;
+  /** Omit when useMaster is true; server will load the user's default master. */
+  resumeText?: string;
+  /** When true, the server loads resume_text from the user's default master. */
+  useMaster?: boolean;
   jobDescription: string;
   jdTitle?: string;
   jdCompany?: string;
+}
+
+export interface V3MasterSummary {
+  id: string;
+  version: number;
+  is_default: boolean;
+  updated_at: string;
+  hasExperience: boolean;
+  hasEvidence: boolean;
+  positionCount: number;
+  evidenceCount: number;
 }
 
 export function useV3Pipeline(accessToken: string | null) {
@@ -341,7 +355,9 @@ export function useV3Pipeline(accessToken: string | null) {
             Accept: 'text/event-stream',
           },
           body: JSON.stringify({
-            resume_text: input.resumeText,
+            ...(input.useMaster
+              ? { use_master: true }
+              : { resume_text: input.resumeText }),
             job_description: input.jobDescription,
             jd_title: input.jdTitle,
             jd_company: input.jdCompany,
