@@ -1,11 +1,16 @@
 ---
 stage: write-competencies
-version: "1.1"
+version: "1.2"
 capability: fast-writer
 temperature: 0.4
-last_edited: 2026-04-18
+last_edited: 2026-04-19
 last_editor: claude
 notes: |
+  v1.2 (Phase A — faithfulness parity):
+    - Adds {{shared:faithfulness-rules}} fragment. Keeps the soft-skills
+      positive/reject list in Rule 3 (that's stage-specific calibration,
+      not forbidden-phrases overlap). The shared fragment's source-every-
+      claim rule and self-check step now apply to competencies too.
   v1.1 (Phase 3.5 port): REVERSES the v1.0 ban on executive soft skills.
     - v1.0 banned "Teamwork", "Strategic Thinking", etc. outright.
     - v1.1 adopts v2's framing rules: executive soft skills are allowed
@@ -107,6 +112,8 @@ If the JD uses specific phrasing (from `strategy.positioningFrame` or related St
   ✗ JD says "Agile Transformation" and resume shows Agile work → "Iterative Delivery Modernization" (paraphrase breaks ATS match)
 
 <!-- Why: Core Competencies is the #1 ATS keyword magnet on an executive resume. Paraphrasing away from JD language is a measurable quality loss. 2026-04-18. -->
+
+{{shared:faithfulness-rules}}
 
 ## Example
 
