@@ -15,7 +15,8 @@
  *      │  └─ Verify panel (right)
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { AlertTriangle, RefreshCw, Pencil, Undo2 } from 'lucide-react';
@@ -36,12 +37,20 @@ interface V3PipelineScreenProps {
 export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineScreenProps) {
   const pipeline = useV3Pipeline(accessToken);
   const master = useV3Master(accessToken);
+  const location = useLocation();
   const [editedWritten, setEditedWritten] = useState<typeof pipeline.written | null>(null);
   const [sessionId] = useState<string>(() =>
     // Generate a session id for the life of the screen mount. Used as
     // source_session_id for promote-to-master evidence items.
     crypto.randomUUID(),
   );
+
+  // Networking Intelligence hand-off: /resume-builder/session?jdUrl=<url>
+  // prefills the JD URL field so V3IntakeForm auto-fetches on mount.
+  const initialJobUrl = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('jdUrl')?.trim() ?? undefined;
+  }, [location.search]);
 
   const showIntake = !pipeline.isRunning && !pipeline.isComplete && !pipeline.error;
   const showResults = pipeline.isRunning || pipeline.isComplete || Boolean(pipeline.error);
@@ -147,6 +156,8 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
             initialResumeText={initialResumeText}
             disabled={pipeline.isRunning}
             master={master.summary}
+            accessToken={accessToken}
+            initialJobUrl={initialJobUrl}
           />
         )}
 

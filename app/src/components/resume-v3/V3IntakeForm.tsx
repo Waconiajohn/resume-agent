@@ -6,14 +6,15 @@
  * v3 is a straight shot.
  */
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { GlassInput } from '@/components/GlassInput';
-import { BookMarked, Pencil } from 'lucide-react';
+import { BookMarked, Link as LinkIcon, Loader2, Pencil } from 'lucide-react';
 import { FileDropZone } from './FileDropZone';
 import { extractResumeTextFromUpload } from '@/lib/resume-upload';
 import { extractJobDescriptionTextFromUpload } from '@/lib/job-description-upload';
+import { API_BASE } from '@/lib/api';
 import type { V3MasterSummary } from '@/hooks/useV3Pipeline';
 
 interface V3IntakeFormProps {
@@ -33,6 +34,17 @@ interface V3IntakeFormProps {
    * can click "paste a different one" to override.
    */
   master?: V3MasterSummary | null;
+  /**
+   * Auth token — needed for the JD URL fetch endpoint
+   * (POST /api/discovery/fetch-jd) which is rate-limited per user.
+   */
+  accessToken?: string | null;
+  /**
+   * Optional: initial JD URL to auto-fetch on mount. Used by the
+   * Networking Intelligence "this job → tailor resume" handoff; NI
+   * navigates to /resume-builder/session?jdUrl=<encoded-url>.
+   */
+  initialJobUrl?: string;
 }
 
 function formatRelativeDate(iso: string): string {
@@ -52,7 +64,14 @@ function formatRelativeDate(iso: string): string {
   }
 }
 
-export function V3IntakeForm({ onSubmit, initialResumeText, disabled, master }: V3IntakeFormProps) {
+export function V3IntakeForm({
+  onSubmit,
+  initialResumeText,
+  disabled,
+  master,
+  accessToken,
+  initialJobUrl,
+}: V3IntakeFormProps) {
   const [resumeText, setResumeText] = useState(initialResumeText ?? '');
   const [jobDescription, setJobDescription] = useState('');
   const [jdTitle, setJdTitle] = useState('');
@@ -60,6 +79,55 @@ export function V3IntakeForm({ onSubmit, initialResumeText, disabled, master }: 
   // When the user has a master, they can toggle between using it (empty
   // resumeText + master-sourced run) or overriding (paste a different one).
   const [overridingMaster, setOverridingMaster] = useState(false);
+
+  // JD URL fetch state
+  const [jdUrl, setJdUrl] = useState(initialJobUrl ?? '');
+  const [jdUrlLoading, setJdUrlLoading] = useState(false);
+  const [jdUrlError, setJdUrlError] = useState<string | null>(null);
+  const [jdUrlLoadedFrom, setJdUrlLoadedFrom] = useState<string | null>(null);
+
+  const fetchJdFromUrl = useCallback(async (url: string) => {
+    if (!accessToken) {
+      setJdUrlError('Not authenticated');
+      return;
+    }
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    setJdUrlLoading(true);
+    setJdUrlError(null);
+    try {
+      const res = await fetch(`${API_BASE}/discovery/fetch-jd`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: trimmed }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? `Fetch failed (${res.status})`);
+      }
+      const data = (await res.json()) as { text: string; title?: string };
+      setJobDescription(data.text);
+      setJdUrlLoadedFrom(trimmed);
+      if (data.title && !jdTitle.trim()) {
+        setJdTitle(data.title);
+      }
+    } catch (err) {
+      setJdUrlError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setJdUrlLoading(false);
+    }
+  }, [accessToken, jdTitle]);
+
+  // Auto-fetch when the form mounts with an initial JD URL (NI hand-off).
+  useEffect(() => {
+    if (initialJobUrl && initialJobUrl.trim() && accessToken) {
+      void fetchJdFromUrl(initialJobUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialJobUrl, accessToken]);
 
   const usingMaster = Boolean(master && !overridingMaster);
   // Validation: resume must be pasted OR master must be in use.
@@ -131,19 +199,78 @@ export function V3IntakeForm({ onSubmit, initialResumeText, disabled, master }: 
           </div>
         )}
 
-        <div>
-          <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] mb-2">
+        <div className="space-y-3">
+          <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
             Job description
           </label>
+
+          {/* URL fetch row */}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-muted)]">
+              <LinkIcon className="h-3.5 w-3.5 text-[var(--bullet-confirm)]" />
+              Fetch from job posting URL
+            </label>
+            <div className="flex gap-2">
+              <GlassInput
+                type="url"
+                value={jdUrl}
+                onChange={(e) => {
+                  setJdUrl(e.target.value);
+                  if (jdUrlError) setJdUrlError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void fetchJdFromUrl(jdUrl);
+                  }
+                }}
+                placeholder="https://example.com/jobs/…"
+                disabled={disabled || jdUrlLoading}
+                className="flex-1"
+              />
+              <GlassButton
+                variant="secondary"
+                size="md"
+                disabled={disabled || jdUrlLoading || !jdUrl.trim() || !accessToken}
+                onClick={() => void fetchJdFromUrl(jdUrl)}
+              >
+                {jdUrlLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 motion-safe:animate-spin mr-1.5" />
+                    Fetching…
+                  </>
+                ) : (
+                  'Fetch'
+                )}
+              </GlassButton>
+            </div>
+            {jdUrlError && (
+              <p className="text-[11px] text-[var(--badge-red-text)]" role="alert">
+                {jdUrlError}
+              </p>
+            )}
+            {jdUrlLoadedFrom && !jdUrlError && (
+              <p className="text-[11px] text-[var(--text-soft)]">
+                Loaded {jobDescription.length.toLocaleString()} characters from{' '}
+                <span className="text-[var(--bullet-confirm)]">{new URL(jdUrlLoadedFrom).hostname}</span>.
+                Review and edit below if needed.
+              </p>
+            )}
+          </div>
+
           <FileDropZone
             label="job description"
             accept=".txt,.docx,.pdf,.html,.htm"
             extract={extractJobDescriptionTextFromUpload}
             value={jobDescription}
-            onChange={setJobDescription}
+            onChange={(next) => {
+              setJobDescription(next);
+              if (jdUrlLoadedFrom) setJdUrlLoadedFrom(null);
+            }}
             disabled={disabled}
             pastePlaceholder="Paste the target job description…"
             pasteRows={8}
+            defaultPasteOpen={Boolean(jobDescription)}
           />
         </div>
 
