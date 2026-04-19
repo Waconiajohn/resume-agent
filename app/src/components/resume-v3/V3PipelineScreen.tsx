@@ -182,6 +182,7 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
               <V3ResumeView
                 structured={pipeline.structured}
                 written={effectiveWritten}
+                pristineWritten={pipeline.written}
                 verify={pipeline.verify}
                 editable={pipeline.isComplete}
                 onEdit={(updated) => setEditedWritten(updated)}
@@ -203,6 +204,7 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
             accessToken={accessToken}
             sessionId={sessionId}
             written={editedWritten ?? pipeline.written}
+            structured={pipeline.structured}
             master={master.summary}
             onSaved={() => master.refresh()}
           />

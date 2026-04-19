@@ -29,12 +29,19 @@ import {
 import { API_BASE } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { EditableText } from './EditableText';
-import type { V3WrittenResume, V3MasterSummary } from '@/hooks/useV3Pipeline';
+import type { V3WrittenResume, V3MasterSummary, V3StructuredResume } from '@/hooks/useV3Pipeline';
 
 interface Props {
   accessToken: string | null;
   sessionId: string;
   written: V3WrittenResume | null;
+  /**
+   * The classified source resume. Used to filter reverted bullets out of
+   * the promotable-item list — a bullet whose text now matches the source
+   * bullet it was rewritten from isn't "new" anymore, it's back to the
+   * master, and offering it for promotion would pollute the vault.
+   */
+  structured?: V3StructuredResume | null;
   master: V3MasterSummary | null;
   /** Called after a successful save so the parent can refresh the master summary. */
   onSaved?: () => void | Promise<void>;
@@ -55,7 +62,7 @@ function confidenceBucket(c: number): 'high' | 'medium' | 'low' {
   return 'low';
 }
 
-export function V3PromotePanel({ accessToken, sessionId, written, master, onSaved }: Props) {
+export function V3PromotePanel({ accessToken, sessionId, written, structured, master, onSaved }: Props) {
   // ─── Build the promotable-item list ────────────────────────────────
   const items = useMemo<PromoteItem[]>(() => {
     if (!written) return [];
@@ -69,6 +76,14 @@ export function V3PromotePanel({ accessToken, sessionId, written, master, onSave
       }
       p.bullets.forEach((b, bIdx) => {
         if (!b.is_new) return;
+        // Skip bullets that have been reverted to their source text — those
+        // are already in the master resume (or will be, once we promote the
+        // originating run), and offering them as "new accomplishments"
+        // would duplicate or pollute the vault.
+        const srcText = resolveSingleSourceBulletText(b.source, structured);
+        if (srcText !== null && normalizePromoteText(b.text) === normalizePromoteText(srcText)) {
+          return;
+        }
         out.push({
           key: `bullet-${posIdx}-${bIdx}`,
           kind: 'bullet',
@@ -79,7 +94,7 @@ export function V3PromotePanel({ accessToken, sessionId, written, master, onSave
       });
     });
     return out;
-  }, [written]);
+  }, [written, structured]);
 
   // Default selection — summary/scopes on, high-confidence bullets on.
   const defaultSelection = useMemo<Record<string, boolean>>(() => {
@@ -430,6 +445,34 @@ function PromoteRow({
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Resolve a bullet's source ref back to the original source text, but only
+ * when the rewrite derives from exactly one source bullet. Multi-source
+ * bullets (consolidations) return null — reverting a consolidation is
+ * ambiguous and outside the scope of the "revert to source" feature.
+ */
+function resolveSingleSourceBulletText(
+  sourceRef: string | null | undefined,
+  structured: V3StructuredResume | null | undefined,
+): string | null {
+  if (!sourceRef || !structured) return null;
+  const re = /positions\[(\d+)\]\.bullets\[(\d+)\]/g;
+  const matches = [...sourceRef.matchAll(re)];
+  if (matches.length !== 1) return null;
+  const m = matches[0]!;
+  const posIdx = Number(m[1]);
+  const bulletIdx = Number(m[2]);
+  const pos = structured.positions[posIdx];
+  if (!pos) return null;
+  const b = pos.bullets[bulletIdx];
+  if (!b) return null;
+  return b.text;
+}
+
+function normalizePromoteText(s: string): string {
+  return s.trim().replace(/\s+/g, ' ');
+}
 
 function buildSummaryLine({
   hasSummary,

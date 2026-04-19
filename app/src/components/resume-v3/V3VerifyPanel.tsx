@@ -111,7 +111,9 @@ export function V3VerifyPanel({ verify, isRunning }: Props) {
         </h2>
       </div>
 
-      {/* Status line — tone matches the outcome */}
+      {/* Status line — neutral, descriptive. Avoids "Passed" (creates a
+          misleading sense of completion when warnings remain) in favor of
+          "N review note(s)" — the user decides what, if anything, to act on. */}
       <div className="mt-3 flex items-center gap-2">
         {anyErrors ? (
           <>
@@ -122,41 +124,34 @@ export function V3VerifyPanel({ verify, isRunning }: Props) {
           </>
         ) : totalShown > 0 ? (
           <>
-            <CheckCircle2 className="h-5 w-5 text-[var(--bullet-confirm)]" />
+            <AlertCircle className="h-5 w-5 text-[var(--badge-amber-text)]" />
             <span className="text-sm font-semibold text-[var(--text-strong)]">
-              Passed
+              {totalShown} review {totalShown === 1 ? 'note' : 'notes'}
             </span>
           </>
         ) : (
           <>
             <CheckCircle2 className="h-5 w-5 text-[var(--bullet-confirm)]" />
             <span className="text-sm font-semibold text-[var(--text-strong)]">
-              Looks good
+              No review notes
             </span>
           </>
         )}
       </div>
 
-      {/* Count line */}
-      {totalShown > 0 && (
+      {/* Count line — only surface the error breakdown; warnings are
+          already named in the status line above. */}
+      {errorCount > 0 && (
         <div className="mt-1.5 flex gap-3 text-[11px]">
-          {errorCount > 0 && (
-            <div className="flex items-center gap-1 text-[var(--badge-red-text)]">
-              <AlertTriangle className="h-3 w-3" />
-              {errorCount} {errorCount === 1 ? 'issue' : 'issues'}
-            </div>
-          )}
-          {warningCount > 0 && (
-            <div className="flex items-center gap-1 text-[var(--badge-amber-text)]">
-              <AlertCircle className="h-3 w-3" />
-              {warningCount} {warningCount === 1 ? 'suggestion' : 'suggestions'}
-            </div>
-          )}
+          <div className="flex items-center gap-1 text-[var(--badge-red-text)]">
+            <AlertTriangle className="h-3 w-3" />
+            {errorCount} {errorCount === 1 ? 'issue' : 'issues'}
+          </div>
         </div>
       )}
       {totalShown === 0 && (
         <p className="mt-1.5 text-[11px] text-[var(--text-soft)]">
-          No concerns flagged. Safe to export.
+          Nothing flagged. Safe to export.
         </p>
       )}
 

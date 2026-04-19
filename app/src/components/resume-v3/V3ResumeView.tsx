@@ -15,7 +15,7 @@
 
 import { useCallback, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
-import { Link2, FileText, AlertTriangle } from 'lucide-react';
+import { Link2, FileText, AlertTriangle, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditableText } from './EditableText';
 import type {
@@ -29,6 +29,13 @@ import type {
 interface Props {
   structured: V3StructuredResume | null;
   written: V3WrittenResume | null;
+  /**
+   * The pristine pipeline output (pipeline.written). When provided, bullets
+   * that diverge from this get a coral edit-dot in the gutter. Also used
+   * by V3PipelineScreen to detect whether a bullet has been reverted to
+   * source (current text === source text) vs. edited to something new.
+   */
+  pristineWritten?: V3WrittenResume | null;
   verify: V3VerifyResult | null;
   editable?: boolean;
   onEdit?: (updated: V3WrittenResume | null) => void;
@@ -87,6 +94,32 @@ function resolveSourceBullet(
   return texts.length > 0 ? texts.join('\n---\n') : null;
 }
 
+/**
+ * Resolve the source bullet text for a SINGLE-source rewrite.
+ * Returns null if the bullet's source ref cites more than one source
+ * (multi-source rewrites aren't reliably revertable to one canonical
+ * source text — they'd need a user to pick which source to collapse to).
+ * Write-position v1.4+ produces single-source rewrites per Rule 1c, so
+ * nearly every bullet qualifies.
+ */
+function resolveSingleSourceBullet(
+  sourceRef: string | null | undefined,
+  structured: V3StructuredResume | null,
+): string | null {
+  if (!sourceRef || !structured) return null;
+  const re = /positions\[(\d+)\]\.bullets\[(\d+)\]/g;
+  const matches = [...sourceRef.matchAll(re)];
+  if (matches.length !== 1) return null; // multi-source or unresolvable
+  const m = matches[0]!;
+  const posIdx = Number(m[1]);
+  const bulletIdx = Number(m[2]);
+  const pos = structured.positions[posIdx];
+  if (!pos) return null;
+  const b = pos.bullets[bulletIdx];
+  if (!b) return null;
+  return b.text;
+}
+
 function confidenceClass(confidence: number): string {
   if (confidence >= 0.7) return '';
   if (confidence >= 0.4) return 'border-l-2 border-[var(--badge-amber-text)] pl-3';
@@ -114,18 +147,27 @@ function AttributionBadge({
   structured,
   verify,
   path,
+  onRevert,
+  isReverted,
 }: {
   bullet: V3Bullet;
   structured: V3StructuredResume | null;
   verify: V3VerifyResult | null;
   path: string;
+  /** Called when the user clicks the revert icon. Caller applies the text change. */
+  onRevert?: (sourceText: string) => void;
+  /** True when the bullet's current text already matches its source (hide revert). */
+  isReverted?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const issues = issuesForPath(verify, path);
   const errorCount = issues.filter((i) => i.severity === 'error').length;
 
-  const hasSource = bullet.is_new && bullet.source && resolveSourceBullet(bullet.source, structured);
   const sourceText = bullet.source ? resolveSourceBullet(bullet.source, structured) : null;
+  const singleSourceText = resolveSingleSourceBullet(bullet.source, structured);
+  const hasSource = bullet.is_new && sourceText !== null;
+  // Revert is only available for single-source rewrites that aren't already reverted.
+  const canRevert = bullet.is_new && !isReverted && singleSourceText !== null && onRevert !== undefined;
 
   if (!bullet.is_new && errorCount === 0) {
     // Verbatim bullet with no verify concerns — no chrome needed
@@ -154,6 +196,20 @@ function AttributionBadge({
         >
           <Link2 className="h-3 w-3" />
           source
+        </button>
+      )}
+      {canRevert && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (singleSourceText !== null) onRevert!(singleSourceText);
+          }}
+          className="inline-flex items-center gap-0.5 text-[10px] text-[var(--text-soft)] hover:text-[var(--bullet-confirm)] hover:bg-[var(--bullet-confirm-bg)] rounded px-1 py-0.5 transition-colors"
+          title="Use the original bullet instead of the rewrite"
+          aria-label="Revert to original bullet text"
+        >
+          <RotateCcw className="h-3 w-3" />
         </button>
       )}
       {open && (sourceText || issues.length > 0) && (
@@ -201,6 +257,7 @@ function BulletLine({
   path,
   editable,
   onTextChange,
+  pristineText,
 }: {
   bullet: V3Bullet;
   structured: V3StructuredResume | null;
@@ -208,9 +265,29 @@ function BulletLine({
   path: string;
   editable: boolean;
   onTextChange?: (next: string) => void;
+  /** The pipeline's original text for this bullet. When the current text
+   * diverges, an edit-dot shows in the gutter. */
+  pristineText?: string;
 }) {
+  // Has the bullet diverged from what the pipeline produced?
+  const hasDiverged =
+    typeof pristineText === 'string' && normalize(bullet.text) !== normalize(pristineText);
+  // Has the bullet been reverted to its source text (for hiding the revert icon)?
+  const source = resolveSingleSourceBullet(bullet.source, structured);
+  const isReverted = source !== null && normalize(bullet.text) === normalize(source);
+
   return (
     <li className={cn('relative pl-1 leading-relaxed text-[14px] text-[var(--text-strong)]', confidenceClass(bullet.confidence))}>
+      {/* Per-bullet edit-dot — shown when the current text differs from the
+          pipeline's original output. Positioned in the left gutter (negative
+          inset) so it doesn't disturb text flow. */}
+      {hasDiverged && (
+        <span
+          className="absolute -left-2 top-[7px] h-1.5 w-1.5 rounded-full bg-[var(--bullet-confirm)]"
+          aria-label="edited"
+          title={isReverted ? 'Reverted to original' : 'Edited'}
+        />
+      )}
       <span className="mr-1.5 text-[var(--text-soft)]">•</span>
       <EditableText
         value={bullet.text}
@@ -218,13 +295,26 @@ function BulletLine({
         multiline
         disabled={!editable || !onTextChange}
       />
-      <AttributionBadge bullet={bullet} structured={structured} verify={verify} path={path} />
+      <AttributionBadge
+        bullet={bullet}
+        structured={structured}
+        verify={verify}
+        path={path}
+        onRevert={editable && onTextChange ? onTextChange : undefined}
+        isReverted={isReverted}
+      />
     </li>
   );
 }
 
+/** Normalize for equality check — trim + collapse inner whitespace. */
+function normalize(s: string): string {
+  return s.trim().replace(/\s+/g, ' ');
+}
+
 function PositionBlock({
   position,
+  pristinePosition,
   structured,
   verify,
   posIdx,
@@ -232,6 +322,8 @@ function PositionBlock({
   onBulletChange,
 }: {
   position: V3WrittenPosition;
+  /** Pristine pipeline output for this position, used to detect per-bullet edits. */
+  pristinePosition?: V3WrittenPosition;
   structured: V3StructuredResume | null;
   verify: V3VerifyResult | null;
   posIdx: number;
@@ -267,6 +359,7 @@ function PositionBlock({
               path={`positions[${posIdx}].bullets[${i}]`}
               editable={editable}
               onTextChange={onBulletChange ? (next) => onBulletChange(i, next) : undefined}
+              pristineText={pristinePosition?.bullets[i]?.text}
             />
           ))}
         </ul>
@@ -277,7 +370,7 @@ function PositionBlock({
 
 // ─── Main view ──────────────────────────────────────────────────────────────
 
-export function V3ResumeView({ structured, written, verify, editable = false, onEdit }: Props) {
+export function V3ResumeView({ structured, written, pristineWritten, verify, editable = false, onEdit }: Props) {
   const emitEdit = useCallback(
     (next: V3WrittenResume) => onEdit?.(next),
     [onEdit],
@@ -399,6 +492,7 @@ export function V3ResumeView({ structured, written, verify, editable = false, on
             <PositionBlock
               key={p.positionIndex}
               position={p}
+              pristinePosition={pristineWritten?.positions[i]}
               structured={structured}
               verify={verify}
               posIdx={i}
