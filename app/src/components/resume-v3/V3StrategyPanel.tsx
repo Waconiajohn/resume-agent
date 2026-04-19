@@ -12,7 +12,7 @@
  * stage_complete events arrive.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import {
   Target, AlertCircle, Sparkles, Layers,
@@ -24,6 +24,14 @@ import type { V3Strategy, V3BenchmarkProfile, V3BenchmarkGap } from '@/hooks/use
 interface Props {
   benchmark: V3BenchmarkProfile | null;
   strategy: V3Strategy | null;
+  /**
+   * When the user clicks a bullet's source chip in the resume view, this
+   * index is set to that bullet's position. Any emphasized-accomplishment
+   * cards with a matching `positionIndex` flash briefly. `flashTick`
+   * re-triggers the animation even when positionIndex hasn't changed.
+   */
+  flashPositionIndex?: number | null;
+  flashTick?: number;
 }
 
 function weightBadgeClass(weight: 'primary' | 'secondary' | 'brief'): string {
@@ -190,7 +198,33 @@ function BenchmarkCard({ benchmark }: { benchmark: V3BenchmarkProfile | null }) 
   );
 }
 
-function StrategyCard({ strategy }: { strategy: V3Strategy | null }) {
+function StrategyCard({
+  strategy,
+  flashPositionIndex,
+  flashTick,
+}: {
+  strategy: V3Strategy | null;
+  flashPositionIndex?: number | null;
+  flashTick?: number;
+}) {
+  const emphasisRefs = useRef<Map<number, HTMLLIElement>>(new Map());
+
+  useEffect(() => {
+    if (flashPositionIndex === null || flashPositionIndex === undefined) return;
+    // Flash every emphasized accomplishment that targets this position.
+    strategy?.emphasizedAccomplishments.forEach((a, i) => {
+      if (a.positionIndex !== flashPositionIndex) return;
+      const el = emphasisRefs.current.get(i);
+      if (!el) return;
+      el.classList.remove('v3-strategy-flash');
+      // Force reflow so re-adding the class re-runs the animation.
+      void el.offsetWidth;
+      el.classList.add('v3-strategy-flash');
+    });
+    // flashTick is intentionally in the deps: bumping it re-triggers the flash
+    // even when positionIndex is unchanged.
+  }, [flashPositionIndex, flashTick, strategy]);
+
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2">
@@ -235,6 +269,10 @@ function StrategyCard({ strategy }: { strategy: V3Strategy | null }) {
                 {strategy.emphasizedAccomplishments.map((a, i) => (
                   <li
                     key={i}
+                    ref={(el) => {
+                      if (el) emphasisRefs.current.set(i, el);
+                      else emphasisRefs.current.delete(i);
+                    }}
                     className="text-[12px] text-[var(--text-muted)] leading-snug border-l-2 border-[var(--bullet-confirm-border)] pl-2"
                   >
                     <span className="text-[var(--text-strong)]">{a.summary}</span>
@@ -309,11 +347,15 @@ function StrategyCard({ strategy }: { strategy: V3Strategy | null }) {
   );
 }
 
-export function V3StrategyPanel({ benchmark, strategy }: Props) {
+export function V3StrategyPanel({ benchmark, strategy, flashPositionIndex, flashTick }: Props) {
   return (
     <div className="space-y-4">
       <BenchmarkCard benchmark={benchmark} />
-      <StrategyCard strategy={strategy} />
+      <StrategyCard
+        strategy={strategy}
+        flashPositionIndex={flashPositionIndex}
+        flashTick={flashTick}
+      />
     </div>
   );
 }

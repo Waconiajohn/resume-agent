@@ -1,47 +1,82 @@
 /**
  * V3VerifyPanel — right-column "Review" summary of the verify stage.
  *
- * What the user sees:
- *   - A header "Review" (the word "Verify" is developer vocabulary; users
- *     understand "Review" as "things to look over before you hit send").
- *   - Status line: "Looks good" when nothing surfaced, or
- *     "Passed with N suggestion(s)" when there are items.
- *   - A list of items, each with:
- *       * Small uppercase tag label (e.g. "SUMMARY", "KEY ACCOMPLISHMENTS",
- *         "ROLE AT UNDER ARMOUR")
- *       * Plain-English message
- *       * Optional italic suggestion
+ * Role in the three-panel model: this is the SECOND OPINION panel, a peer
+ * view of the resume that surfaces verify's disagreements. It's a
+ * disagreement surface, not a fix queue — every row has three actions:
  *
- * Data source:
- *   - Prefer verify.translated[] (produced by the server-side
- *     translate step; filters noise via shouldShow=false, rewrites prose
- *     into user-facing language).
- *   - Fall back to verify.issues[] with a mechanical path->label
- *     translation when .translated is absent (translator failed or
- *     hasn't run yet). Noise does not get filtered in the fallback
- *     path, but the panel still reads correctly.
+ *   - Address ▸ — scroll the middle panel to the target, flash it. The
+ *     user edits in the resume itself.
+ *   - Apply ▸  — one-click accept a pre-written patch (additive-only,
+ *     phase-3 feature; button is rendered only when suggestedPatches
+ *     exist so phase 2 ships as a shell).
+ *   - Dismiss ▸ — "I did this on purpose." The row collapses to a
+ *     dismissed-strip at the bottom of the list, and the inline
+ *     triangle in the middle panel dims but stays visible.
+ *
+ * The panel also participates in bi-directional scroll-sync: clicking an
+ * inline triangle in V3ResumeView scrolls the corresponding row into
+ * view here and flashes it.
+ *
+ * Staleness: when the user has edited a bullet that an issue targets,
+ * that row renders at reduced opacity with an "edited — re-verify?"
+ * label. Phase 2 shows awareness only; actual re-verify lands in phase 4.
  */
 
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
-import { CheckCircle2, AlertTriangle, AlertCircle, Shield } from 'lucide-react';
+import { GlassButton } from '@/components/GlassButton';
+import {
+  CheckCircle2, AlertTriangle, AlertCircle, Shield,
+  ArrowRight, X, ChevronDown, ChevronRight as ChevronRightIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { V3VerifyResult, V3VerifyIssue, V3TranslatedIssue } from '@/hooks/useV3Pipeline';
+import type {
+  V3VerifyResult, V3VerifyIssue, V3TranslatedIssue,
+  V3WrittenResume,
+} from '@/hooks/useV3Pipeline';
+
+interface FocusCue {
+  key: string;
+  section: string;
+  at: number;
+}
 
 interface Props {
   verify: V3VerifyResult | null;
   isRunning: boolean;
+  /** The edited resume (if the user has diverged from the pipeline output). */
+  editedWritten: V3WrittenResume | null;
+  /** The pipeline's original output — used to detect which issues are stale. */
+  pristineWritten: V3WrittenResume | null;
+  /** Cross-panel scroll cue; when its `.at` bumps with `key` in this panel, the row scrolls+flashes. */
+  focusCue: FocusCue | null;
+  /** Dismissed issue keys (session-only). */
+  dismissedIssueKeys: Set<string>;
+  /** Address click — scroll middle panel to the target. */
+  onAddress: (key: string, section: string) => void;
+  /** Dismiss click — mark issue as deliberately ignored. */
+  onDismiss: (key: string) => void;
+  /** Restore a previously dismissed issue. */
+  onUndismiss: (key: string) => void;
 }
 
 interface DisplayItem {
+  /** Stable, session-scoped key: `${section}#${rawIndex}`. */
+  key: string;
+  /** Raw verify section path — the scroll target in the middle panel. */
+  section: string;
   severity: 'error' | 'warning';
   label: string;
   message: string;
   suggestion?: string;
+  /** Future: phase-3 will populate this from the translator. */
+  suggestedPatches?: Array<{ target: string; text: string }>;
 }
 
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
 function fallbackLabel(section: string): string {
-  // Last-resort label when translator didn't run. Matches the translator's
-  // mapping for the common cases so the UX is consistent on both paths.
   if (section === 'summary') return 'Summary';
   if (section === 'coreCompetencies') return 'Core competencies';
   if (section.startsWith('selectedAccomplishments')) return 'Key accomplishments';
@@ -53,27 +88,97 @@ function fallbackLabel(section: string): string {
   return section;
 }
 
+/**
+ * Pair translated items with their raw counterparts (1:1 by index, enforced
+ * by the server translator). Yields display items that carry both the user-
+ * facing prose and the raw section path needed for scroll-sync.
+ */
 function buildDisplayItems(verify: V3VerifyResult): DisplayItem[] {
   const translated: V3TranslatedIssue[] | undefined = verify.translated;
-  if (translated && translated.length > 0) {
-    return translated
-      .filter((t) => t.shouldShow)
-      .map((t) => ({
+  if (translated && translated.length === verify.issues.length) {
+    const items: DisplayItem[] = [];
+    translated.forEach((t, i) => {
+      if (!t.shouldShow) return;
+      const raw = verify.issues[i];
+      if (!raw) return;
+      items.push({
+        key: `${raw.section}#${i}`,
+        section: raw.section,
         severity: t.severity,
         label: t.label,
         message: t.message,
         suggestion: t.suggestion,
-      }));
+      });
+    });
+    return items;
   }
   // Fallback: raw issues with mechanical labels.
-  return verify.issues.map((i: V3VerifyIssue) => ({
+  return verify.issues.map((i: V3VerifyIssue, idx) => ({
+    key: `${i.section}#${idx}`,
+    section: i.section,
     severity: i.severity,
     label: fallbackLabel(i.section),
     message: i.message,
   }));
 }
 
-export function V3VerifyPanel({ verify, isRunning }: Props) {
+/**
+ * Resolve a verify `section` path to the current/pristine text at that path.
+ * Used for staleness detection: if the edited text differs from pristine at
+ * the issue's target, the verify call was against stale input — dim the row.
+ */
+function readSectionText(w: V3WrittenResume | null, section: string): string | null {
+  if (!w) return null;
+  if (section === 'summary') return w.summary;
+  const accIdx = section.match(/^selectedAccomplishments\[(\d+)\]$/);
+  if (accIdx) {
+    const i = Number(accIdx[1]);
+    return w.selectedAccomplishments[i] ?? null;
+  }
+  const bullet = section.match(/^positions\[(\d+)\]\.bullets\[(\d+)\]$/);
+  if (bullet) {
+    const pi = Number(bullet[1]);
+    const bi = Number(bullet[2]);
+    return w.positions[pi]?.bullets[bi]?.text ?? null;
+  }
+  // Coarser paths (e.g. positions[N], coreCompetencies) don't have a single
+  // canonical text surface; treat as "not stale" by returning null.
+  return null;
+}
+
+function normalize(s: string): string {
+  return s.trim().replace(/\s+/g, ' ');
+}
+
+function isSectionStale(
+  section: string,
+  edited: V3WrittenResume | null,
+  pristine: V3WrittenResume | null,
+): boolean {
+  if (!edited || !pristine) return false;
+  const e = readSectionText(edited, section);
+  const p = readSectionText(pristine, section);
+  if (e === null || p === null) return false;
+  return normalize(e) !== normalize(p);
+}
+
+// ─── Main panel ────────────────────────────────────────────────────────────
+
+export function V3VerifyPanel({
+  verify,
+  isRunning,
+  editedWritten,
+  pristineWritten,
+  focusCue,
+  dismissedIssueKeys,
+  onAddress,
+  onDismiss,
+  onUndismiss,
+}: Props) {
+  const [reverifyToast, setReverifyToast] = useState<string | null>(null);
+  // Hooks must run unconditionally; compute items before the early return.
+  const items = useMemo(() => (verify ? buildDisplayItems(verify) : []), [verify]);
+
   if (!verify) {
     return (
       <GlassCard className="p-5">
@@ -96,11 +201,16 @@ export function V3VerifyPanel({ verify, isRunning }: Props) {
     );
   }
 
-  const items = buildDisplayItems(verify);
-  const errorCount = items.filter((i) => i.severity === 'error').length;
-  const warningCount = items.filter((i) => i.severity === 'warning').length;
-  const totalShown = items.length;
+  const activeItems = items.filter((i) => !dismissedIssueKeys.has(i.key));
+  const dismissedItems = items.filter((i) => dismissedIssueKeys.has(i.key));
+  const errorCount = activeItems.filter((i) => i.severity === 'error').length;
+  const totalShown = activeItems.length;
   const anyErrors = errorCount > 0;
+
+  const handleReverifyToast = () => {
+    setReverifyToast('Re-verify coming in the next phase. For now, verify reflects the original run.');
+    setTimeout(() => setReverifyToast(null), 4000);
+  };
 
   return (
     <GlassCard className="p-5">
@@ -111,9 +221,7 @@ export function V3VerifyPanel({ verify, isRunning }: Props) {
         </h2>
       </div>
 
-      {/* Status line — neutral, descriptive. Avoids "Passed" (creates a
-          misleading sense of completion when warnings remain) in favor of
-          "N review note(s)" — the user decides what, if anything, to act on. */}
+      {/* Status line */}
       <div className="mt-3 flex items-center gap-2">
         {anyErrors ? (
           <>
@@ -139,8 +247,6 @@ export function V3VerifyPanel({ verify, isRunning }: Props) {
         )}
       </div>
 
-      {/* Count line — only surface the error breakdown; warnings are
-          already named in the status line above. */}
       {errorCount > 0 && (
         <div className="mt-1.5 flex gap-3 text-[11px]">
           <div className="flex items-center gap-1 text-[var(--badge-red-text)]">
@@ -149,37 +255,214 @@ export function V3VerifyPanel({ verify, isRunning }: Props) {
           </div>
         </div>
       )}
-      {totalShown === 0 && (
+      {totalShown === 0 && dismissedItems.length === 0 && (
         <p className="mt-1.5 text-[11px] text-[var(--text-soft)]">
           Nothing flagged. Safe to export.
         </p>
       )}
 
-      {/* Items */}
-      {items.length > 0 && (
-        <div className="mt-4 space-y-3 max-h-[480px] overflow-y-auto">
-          {items.map((item, i) => (
-            <div key={i} className="text-[12px] leading-snug">
-              <div
-                className={cn(
-                  'text-[10px] font-semibold uppercase tracking-[0.08em] mb-1',
-                  item.severity === 'error'
-                    ? 'text-[var(--badge-red-text)]'
-                    : 'text-[var(--text-soft)]',
-                )}
-              >
-                {item.label}
-              </div>
-              <div className="text-[var(--text-strong)]">{item.message}</div>
-              {item.suggestion && (
-                <div className="mt-1 text-[var(--text-muted)] italic">
-                  {item.suggestion}
-                </div>
-              )}
-            </div>
+      {/* Reverify toast (phase-2 stub — actual re-verify is phase 4) */}
+      {reverifyToast && (
+        <div
+          role="status"
+          className="mt-3 text-[11px] text-[var(--text-muted)] bg-[var(--surface-2)] border border-[var(--line-soft)] rounded px-2 py-1.5"
+        >
+          {reverifyToast}
+        </div>
+      )}
+
+      {/* Active items */}
+      {activeItems.length > 0 && (
+        <div className="mt-4 space-y-2 max-h-[540px] overflow-y-auto pr-1">
+          {activeItems.map((item) => (
+            <IssueRow
+              key={item.key}
+              item={item}
+              stale={isSectionStale(item.section, editedWritten, pristineWritten)}
+              focusCue={focusCue}
+              onAddress={() => onAddress(item.key, item.section)}
+              onDismiss={() => onDismiss(item.key)}
+              onReverifyToast={handleReverifyToast}
+            />
           ))}
         </div>
       )}
+
+      {/* Dismissed strip — compact list at the bottom, always expandable */}
+      {dismissedItems.length > 0 && (
+        <DismissedStrip
+          items={dismissedItems}
+          onUndismiss={onUndismiss}
+        />
+      )}
     </GlassCard>
+  );
+}
+
+// ─── Row components ────────────────────────────────────────────────────────
+
+function IssueRow({
+  item,
+  stale,
+  focusCue,
+  onAddress,
+  onDismiss,
+  onReverifyToast,
+}: {
+  item: DisplayItem;
+  stale: boolean;
+  focusCue: FocusCue | null;
+  onAddress: () => void;
+  onDismiss: () => void;
+  onReverifyToast: () => void;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const hasPatches = (item.suggestedPatches?.length ?? 0) > 0;
+
+  // Scroll+flash when the focus cue hits this row.
+  useEffect(() => {
+    if (!focusCue || focusCue.key !== item.key) return;
+    const el = ref.current;
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.remove('v3-address-flash');
+    // Force reflow so the re-added class triggers animation from scratch.
+    void el.offsetWidth;
+    el.classList.add('v3-address-flash');
+  }, [focusCue, item.key]);
+
+  // Keyboard: Enter = Address, Alt+Enter = Dismiss.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (e.altKey) onDismiss();
+    else onAddress();
+  };
+
+  return (
+    <div
+      ref={ref}
+      tabIndex={0}
+      role="group"
+      aria-label={`${item.label} — ${item.message}`}
+      onKeyDown={handleKeyDown}
+      className={cn(
+        'rounded-md p-2.5 border outline-none transition-opacity',
+        'focus:ring-2 focus:ring-[var(--bullet-confirm)] focus:ring-opacity-40',
+        item.severity === 'error'
+          ? 'border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)]/30'
+          : 'border-[var(--line-soft)] bg-[var(--surface-1)]/60',
+        stale && 'opacity-60',
+      )}
+    >
+      <div
+        className={cn(
+          'text-[10px] font-semibold uppercase tracking-[0.08em] mb-1',
+          item.severity === 'error'
+            ? 'text-[var(--badge-red-text)]'
+            : 'text-[var(--text-soft)]',
+        )}
+      >
+        {item.label}
+      </div>
+      <div className="text-[12px] leading-snug text-[var(--text-strong)]">
+        {item.message}
+      </div>
+      {item.suggestion && (
+        <div className="mt-1 text-[11px] text-[var(--text-muted)] italic leading-snug">
+          {item.suggestion}
+        </div>
+      )}
+
+      {stale && (
+        <button
+          type="button"
+          onClick={onReverifyToast}
+          className="mt-2 inline-flex items-center gap-1 text-[10px] text-[var(--badge-amber-text)] hover:underline"
+          title="This section was edited after the review ran"
+        >
+          <AlertCircle className="h-3 w-3" />
+          Edited — re-verify?
+        </button>
+      )}
+
+      {/* Action row */}
+      <div className="mt-2 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={onAddress}
+          className="inline-flex items-center gap-0.5 text-[11px] text-[var(--bullet-confirm)] hover:bg-[var(--bullet-confirm-bg)] rounded px-1.5 py-1 transition-colors font-medium"
+          title="Jump to this spot in the resume"
+        >
+          Address
+          <ArrowRight className="h-3 w-3" />
+        </button>
+        {hasPatches && (
+          <button
+            type="button"
+            disabled
+            className="inline-flex items-center gap-0.5 text-[11px] text-[var(--text-soft)] rounded px-1.5 py-1 cursor-not-allowed opacity-60"
+            title="Apply a suggested fix — coming in the next phase"
+          >
+            Apply
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="inline-flex items-center gap-0.5 text-[11px] text-[var(--text-soft)] hover:text-[var(--text-muted)] rounded px-1.5 py-1 transition-colors ml-auto"
+          title="I did this on purpose — hide this note"
+        >
+          Dismiss
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DismissedStrip({
+  items,
+  onUndismiss,
+}: {
+  items: DisplayItem[];
+  onUndismiss: (key: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-4 pt-3 border-t border-[var(--line-soft)]">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)] hover:text-[var(--text-muted)]"
+      >
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRightIcon className="h-3 w-3" />}
+        Dismissed ({items.length})
+      </button>
+      {open && (
+        <ul className="mt-2 space-y-1.5">
+          {items.map((item) => (
+            <li
+              key={item.key}
+              className="flex items-center gap-2 text-[11px] text-[var(--text-soft)]"
+            >
+              <span className="flex-1 truncate" title={item.message}>
+                <span className="text-[var(--text-muted)] font-medium">{item.label}</span>
+                {' — '}
+                <span className="italic">{item.message}</span>
+              </span>
+              <GlassButton
+                variant="ghost"
+                size="sm"
+                onClick={() => onUndismiss(item.key)}
+                className="text-[10px]"
+              >
+                Restore
+              </GlassButton>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

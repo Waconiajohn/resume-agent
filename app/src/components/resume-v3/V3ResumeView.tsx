@@ -13,7 +13,7 @@
  * B5 adds inline editing. For B3, display + attribution only.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { Link2, FileText, AlertTriangle, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,12 @@ import type {
   V3Bullet,
   V3VerifyResult,
 } from '@/hooks/useV3Pipeline';
+
+interface FocusCue {
+  key: string;
+  section: string;
+  at: number;
+}
 
 interface Props {
   structured: V3StructuredResume | null;
@@ -39,6 +45,24 @@ interface Props {
   verify: V3VerifyResult | null;
   editable?: boolean;
   onEdit?: (updated: V3WrittenResume | null) => void;
+  /**
+   * Cross-panel scroll cue. When its `.section` matches a section in this
+   * view, scroll+flash that section. Bumping `.at` re-triggers the flash
+   * even when the section key hasn't changed.
+   */
+  focusCue?: FocusCue | null;
+  /** Issues the user has dismissed. Their inline triangles dim to 30% but stay present. */
+  dismissedIssueKeys?: Set<string>;
+  /**
+   * Emitted when the user clicks an inline alert triangle on a bullet. The
+   * screen uses this to scroll the Review panel to the matching row.
+   */
+  onTriangleClick?: (key: string, section: string) => void;
+  /**
+   * Emitted when the user clicks a bullet's source chip. The screen flashes
+   * the Strategy panel's emphasized-accomplishment card for this position.
+   */
+  onSourceChipClick?: (positionIndex: number) => void;
 }
 
 // Immutable updater helpers for editing.
@@ -126,10 +150,25 @@ function confidenceClass(confidence: number): string {
   return 'border-l-2 border-[var(--badge-red-text)] pl-3';
 }
 
-/** Look up verify issues that cite this bullet's path. */
-function issuesForPath(verify: V3VerifyResult | null, pathPrefix: string): V3VerifyResult['issues'] {
+/** Look up verify issues (with their raw index) that cite this bullet's path. */
+interface IndexedIssue {
+  issue: V3VerifyResult['issues'][number];
+  /** Raw index in verify.issues — used to build stable keys matching the Review panel. */
+  index: number;
+}
+function issuesForPath(verify: V3VerifyResult | null, pathPrefix: string): IndexedIssue[] {
   if (!verify) return [];
-  return verify.issues.filter((i) => i.section === pathPrefix || i.section.startsWith(pathPrefix + '.'));
+  const out: IndexedIssue[] = [];
+  verify.issues.forEach((issue, index) => {
+    if (issue.section === pathPrefix || issue.section.startsWith(pathPrefix + '.')) {
+      out.push({ issue, index });
+    }
+  });
+  return out;
+}
+
+function issueKey(section: string, index: number): string {
+  return `${section}#${index}`;
 }
 
 // ─── Small building blocks ──────────────────────────────────────────────────
@@ -147,50 +186,81 @@ function AttributionBadge({
   structured,
   verify,
   path,
+  positionIndex,
   onRevert,
   isReverted,
+  dismissedIssueKeys,
+  onTriangleClick,
+  onSourceChipClick,
 }: {
   bullet: V3Bullet;
   structured: V3StructuredResume | null;
   verify: V3VerifyResult | null;
   path: string;
+  /** Position index this bullet lives in — used for the cross-panel strategy trace. */
+  positionIndex: number;
   /** Called when the user clicks the revert icon. Caller applies the text change. */
   onRevert?: (sourceText: string) => void;
   /** True when the bullet's current text already matches its source (hide revert). */
   isReverted?: boolean;
+  dismissedIssueKeys?: Set<string>;
+  onTriangleClick?: (key: string, section: string) => void;
+  onSourceChipClick?: (positionIndex: number) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const issues = issuesForPath(verify, path);
-  const errorCount = issues.filter((i) => i.severity === 'error').length;
+  const indexedIssues = issuesForPath(verify, path);
+  const errorIssues = indexedIssues.filter(({ issue }) => issue.severity === 'error');
+  // First non-dismissed error drives the triangle's scroll target.
+  const primaryError =
+    errorIssues.find(({ issue, index }) =>
+      !dismissedIssueKeys?.has(issueKey(issue.section, index))
+    ) ?? errorIssues[0];
+  // The inline triangle dims when every error in this section is dismissed.
+  const allDismissed =
+    errorIssues.length > 0 &&
+    errorIssues.every(({ issue, index }) => dismissedIssueKeys?.has(issueKey(issue.section, index)));
 
   const sourceText = bullet.source ? resolveSourceBullet(bullet.source, structured) : null;
   const singleSourceText = resolveSingleSourceBullet(bullet.source, structured);
   const hasSource = bullet.is_new && sourceText !== null;
-  // Revert is only available for single-source rewrites that aren't already reverted.
   const canRevert = bullet.is_new && !isReverted && singleSourceText !== null && onRevert !== undefined;
 
-  if (!bullet.is_new && errorCount === 0) {
-    // Verbatim bullet with no verify concerns — no chrome needed
+  if (!bullet.is_new && errorIssues.length === 0) {
     return null;
   }
 
   return (
     <div className="inline-flex items-center gap-1.5 ml-2 align-baseline">
-      {errorCount > 0 && (
+      {errorIssues.length > 0 && (
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="inline-flex items-center gap-0.5 text-[10px] text-[var(--badge-red-text)] hover:bg-[var(--badge-red-bg)] rounded px-1 py-0.5"
-          title={issues[0]?.message}
+          onClick={() => {
+            if (primaryError && onTriangleClick) {
+              onTriangleClick(
+                issueKey(primaryError.issue.section, primaryError.index),
+                primaryError.issue.section,
+              );
+            } else {
+              setOpen((o) => !o);
+            }
+          }}
+          className={cn(
+            'inline-flex items-center gap-0.5 text-[10px] text-[var(--badge-red-text)] hover:bg-[var(--badge-red-bg)] rounded px-1 py-0.5 transition-opacity',
+            allDismissed && 'opacity-30',
+          )}
+          title={allDismissed ? 'Dismissed' : primaryError?.issue.message}
         >
           <AlertTriangle className="h-3 w-3" />
-          {errorCount}
+          {errorIssues.length}
         </button>
       )}
       {bullet.is_new && hasSource && (
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            setOpen((o) => !o);
+            onSourceChipClick?.(positionIndex);
+          }}
           className="inline-flex items-center gap-0.5 text-[10px] text-[var(--text-soft)] hover:text-[var(--bullet-confirm)] hover:bg-[var(--bullet-confirm-bg)] rounded px-1 py-0.5 transition-colors"
           title={`Rewritten from ${bullet.source}`}
         >
@@ -212,37 +282,15 @@ function AttributionBadge({
           <RotateCcw className="h-3 w-3" />
         </button>
       )}
-      {open && (sourceText || issues.length > 0) && (
+      {open && sourceText && (
         <div className="absolute z-20 mt-6 max-w-md right-0 text-left">
           <GlassCard className="p-3 text-[12px] space-y-2 shadow-lg">
-            {sourceText && (
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-[var(--text-soft)] mb-1">
-                  Source {bullet.source && <span className="font-mono normal-case">({bullet.source})</span>}
-                </div>
-                <div className="text-[var(--text-muted)] whitespace-pre-wrap">{sourceText}</div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-[var(--text-soft)] mb-1">
+                Source {bullet.source && <span className="font-mono normal-case">({bullet.source})</span>}
               </div>
-            )}
-            {issues.length > 0 && (
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-[var(--badge-red-text)] mb-1">
-                  Verify issues
-                </div>
-                <ul className="space-y-1">
-                  {issues.map((i, k) => (
-                    <li
-                      key={k}
-                      className={cn(
-                        'text-[11px]',
-                        i.severity === 'error' ? 'text-[var(--badge-red-text)]' : 'text-[var(--badge-amber-text)]',
-                      )}
-                    >
-                      {i.message}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+              <div className="text-[var(--text-muted)] whitespace-pre-wrap">{sourceText}</div>
+            </div>
           </GlassCard>
         </div>
       )}
@@ -255,32 +303,42 @@ function BulletLine({
   structured,
   verify,
   path,
+  positionIndex,
   editable,
   onTextChange,
   pristineText,
+  registerSectionRef,
+  dismissedIssueKeys,
+  onTriangleClick,
+  onSourceChipClick,
 }: {
   bullet: V3Bullet;
   structured: V3StructuredResume | null;
   verify: V3VerifyResult | null;
   path: string;
+  positionIndex: number;
   editable: boolean;
   onTextChange?: (next: string) => void;
   /** The pipeline's original text for this bullet. When the current text
    * diverges, an edit-dot shows in the gutter. */
   pristineText?: string;
+  /** Register this bullet's DOM element under its section path, so the
+   * parent view can scroll to it when the Review panel asks. */
+  registerSectionRef?: (section: string, el: HTMLElement | null) => void;
+  dismissedIssueKeys?: Set<string>;
+  onTriangleClick?: (key: string, section: string) => void;
+  onSourceChipClick?: (positionIndex: number) => void;
 }) {
-  // Has the bullet diverged from what the pipeline produced?
   const hasDiverged =
     typeof pristineText === 'string' && normalize(bullet.text) !== normalize(pristineText);
-  // Has the bullet been reverted to its source text (for hiding the revert icon)?
   const source = resolveSingleSourceBullet(bullet.source, structured);
   const isReverted = source !== null && normalize(bullet.text) === normalize(source);
 
   return (
-    <li className={cn('relative pl-1 leading-relaxed text-[14px] text-[var(--text-strong)]', confidenceClass(bullet.confidence))}>
-      {/* Per-bullet edit-dot — shown when the current text differs from the
-          pipeline's original output. Positioned in the left gutter (negative
-          inset) so it doesn't disturb text flow. */}
+    <li
+      ref={(el) => registerSectionRef?.(path, el)}
+      className={cn('relative pl-1 leading-relaxed text-[14px] text-[var(--text-strong)]', confidenceClass(bullet.confidence))}
+    >
       {hasDiverged && (
         <span
           className="absolute -left-2 top-[7px] h-1.5 w-1.5 rounded-full bg-[var(--bullet-confirm)]"
@@ -300,8 +358,12 @@ function BulletLine({
         structured={structured}
         verify={verify}
         path={path}
+        positionIndex={positionIndex}
         onRevert={editable && onTextChange ? onTextChange : undefined}
         isReverted={isReverted}
+        dismissedIssueKeys={dismissedIssueKeys}
+        onTriangleClick={onTriangleClick}
+        onSourceChipClick={onSourceChipClick}
       />
     </li>
   );
@@ -320,18 +382,28 @@ function PositionBlock({
   posIdx,
   editable,
   onBulletChange,
+  registerSectionRef,
+  dismissedIssueKeys,
+  onTriangleClick,
+  onSourceChipClick,
 }: {
   position: V3WrittenPosition;
-  /** Pristine pipeline output for this position, used to detect per-bullet edits. */
   pristinePosition?: V3WrittenPosition;
   structured: V3StructuredResume | null;
   verify: V3VerifyResult | null;
   posIdx: number;
   editable: boolean;
   onBulletChange?: (bulletIdx: number, next: string) => void;
+  registerSectionRef?: (section: string, el: HTMLElement | null) => void;
+  dismissedIssueKeys?: Set<string>;
+  onTriangleClick?: (key: string, section: string) => void;
+  onSourceChipClick?: (positionIndex: number) => void;
 }) {
   return (
-    <div className="mb-6">
+    <div
+      ref={(el) => registerSectionRef?.(`positions[${posIdx}]`, el)}
+      className="mb-6"
+    >
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <div className="text-[15px] font-semibold text-[var(--text-strong)]">
@@ -357,9 +429,14 @@ function PositionBlock({
               structured={structured}
               verify={verify}
               path={`positions[${posIdx}].bullets[${i}]`}
+              positionIndex={posIdx}
               editable={editable}
               onTextChange={onBulletChange ? (next) => onBulletChange(i, next) : undefined}
               pristineText={pristinePosition?.bullets[i]?.text}
+              registerSectionRef={registerSectionRef}
+              dismissedIssueKeys={dismissedIssueKeys}
+              onTriangleClick={onTriangleClick}
+              onSourceChipClick={onSourceChipClick}
             />
           ))}
         </ul>
@@ -370,11 +447,47 @@ function PositionBlock({
 
 // ─── Main view ──────────────────────────────────────────────────────────────
 
-export function V3ResumeView({ structured, written, pristineWritten, verify, editable = false, onEdit }: Props) {
+export function V3ResumeView({
+  structured,
+  written,
+  pristineWritten,
+  verify,
+  editable = false,
+  onEdit,
+  focusCue,
+  dismissedIssueKeys,
+  onTriangleClick,
+  onSourceChipClick,
+}: Props) {
   const emitEdit = useCallback(
     (next: V3WrittenResume) => onEdit?.(next),
     [onEdit],
   );
+
+  // Map of section path → DOM element. Populated by the bullet/summary
+  // components via the `registerSectionRef` callback. The scroll+flash
+  // effect below looks up the target here whenever `focusCue` changes.
+  const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const registerSectionRef = useCallback((section: string, el: HTMLElement | null) => {
+    if (el) sectionRefs.current.set(section, el);
+    else sectionRefs.current.delete(section);
+  }, []);
+
+  // Scroll-sync: when focusCue fires, scroll the target section into view
+  // and flash it. Falls back progressively — if `positions[2].bullets[5]`
+  // isn't registered, try `positions[2]`; if that's missing, bail silently.
+  useEffect(() => {
+    if (!focusCue) return;
+    const el =
+      sectionRefs.current.get(focusCue.section) ??
+      sectionRefs.current.get(focusCue.section.replace(/\.bullets\[\d+\]$/, ''));
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.remove('v3-address-flash');
+    // Force a reflow so re-adding the class re-runs the animation.
+    void el.offsetWidth;
+    el.classList.add('v3-address-flash');
+  }, [focusCue]);
 
   if (!written) {
     return (
@@ -396,7 +509,7 @@ export function V3ResumeView({ structured, written, pristineWritten, verify, edi
   }
 
   const summaryIssues = issuesForPath(verify, 'summary');
-  const summaryHasError = summaryIssues.some((i) => i.severity === 'error');
+  const summaryHasError = summaryIssues.some(({ issue }) => issue.severity === 'error');
 
   return (
     <GlassCard className="p-8">
@@ -417,7 +530,10 @@ export function V3ResumeView({ structured, written, pristineWritten, verify, edi
 
       {/* Summary */}
       <SectionHeading>Summary</SectionHeading>
-      <div className="relative">
+      <div
+        ref={(el) => registerSectionRef('summary', el)}
+        className="relative"
+      >
         <div
           className={cn(
             'text-[14px] leading-relaxed text-[var(--text-strong)]',
@@ -434,12 +550,23 @@ export function V3ResumeView({ structured, written, pristineWritten, verify, edi
         </div>
         {summaryIssues.length > 0 && (
           <div className="mt-2 text-[11px] text-[var(--badge-red-text)] space-y-0.5">
-            {summaryIssues.map((i, k) => (
-              <div key={k} className="flex items-start gap-1">
-                <AlertTriangle className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                <span>{i.message}</span>
-              </div>
-            ))}
+            {summaryIssues.map(({ issue, index }) => {
+              const isDismissed = dismissedIssueKeys?.has(issueKey(issue.section, index)) ?? false;
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => onTriangleClick?.(issueKey(issue.section, index), issue.section)}
+                  className={cn(
+                    'flex items-start gap-1 text-left w-full hover:underline',
+                    isDismissed && 'opacity-40',
+                  )}
+                >
+                  <AlertTriangle className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                  <span>{issue.message}</span>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -465,10 +592,14 @@ export function V3ResumeView({ structured, written, pristineWritten, verify, edi
       {written.selectedAccomplishments.length > 0 && (
         <>
           <SectionHeading>Selected Accomplishments</SectionHeading>
-          <ul className="space-y-1.5">
+          <ul
+            ref={(el) => registerSectionRef('selectedAccomplishments', el)}
+            className="space-y-1.5"
+          >
             {written.selectedAccomplishments.map((a, i) => (
               <li
                 key={i}
+                ref={(el) => registerSectionRef(`selectedAccomplishments[${i}]`, el)}
                 className="relative pl-1 leading-relaxed text-[14px] text-[var(--text-strong)]"
               >
                 <span className="mr-1.5 text-[var(--text-soft)]">•</span>
@@ -502,6 +633,10 @@ export function V3ResumeView({ structured, written, pristineWritten, verify, edi
                   ? (bulletIdx, next) => emitEdit(updateBullet(written, i, bulletIdx, next))
                   : undefined
               }
+              registerSectionRef={registerSectionRef}
+              dismissedIssueKeys={dismissedIssueKeys}
+              onTriangleClick={onTriangleClick}
+              onSourceChipClick={onSourceChipClick}
             />
           ))}
         </>

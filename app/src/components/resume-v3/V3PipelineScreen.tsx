@@ -15,7 +15,7 @@
  *      │  └─ Verify panel (right)
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -34,11 +34,31 @@ interface V3PipelineScreenProps {
   initialResumeText?: string;
 }
 
+/**
+ * Shared cross-panel cue. Bumping `.at` on each interaction re-triggers the
+ * flash animation even when the target key is unchanged (e.g. Address is
+ * clicked twice on the same row).
+ */
+interface FocusCue {
+  key: string;
+  section: string;
+  at: number;
+}
+
 export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineScreenProps) {
   const pipeline = useV3Pipeline(accessToken);
   const master = useV3Master(accessToken);
   const location = useLocation();
   const [editedWritten, setEditedWritten] = useState<typeof pipeline.written | null>(null);
+
+  // Three-panel cross-scroll state (Phase 2). Lives here so both the Resume
+  // view (middle) and the Review panel (right) can react to the same events.
+  const [focusCue, setFocusCue] = useState<FocusCue | null>(null);
+  const [dismissedIssueKeys, setDismissedIssueKeys] = useState<Set<string>>(new Set());
+  // Strategy card flash target — when the user clicks a bullet's source chip,
+  // the strategy panel flashes any emphasized-accomplishment cards tied to
+  // that bullet's position (cross-panel trace #2 from the phase 2 spec).
+  const [strategyFlash, setStrategyFlash] = useState<{ positionIndex: number; at: number } | null>(null);
 
   // sessionId comes from the backend's pipeline_complete event and is the
   // real coach_sessions.id for this run. Promote UI uses it so evidence
@@ -58,13 +78,45 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
 
   const handleStart = (input: StartV3PipelineInput) => {
     setEditedWritten(null);
+    setFocusCue(null);
+    setDismissedIssueKeys(new Set());
+    setStrategyFlash(null);
     void pipeline.start(input);
   };
 
   const handleReset = () => {
     pipeline.reset();
     setEditedWritten(null);
+    setFocusCue(null);
+    setDismissedIssueKeys(new Set());
+    setStrategyFlash(null);
   };
+
+  const handleFocusIssue = useCallback((key: string, section: string) => {
+    setFocusCue({ key, section, at: Date.now() });
+  }, []);
+
+  const handleDismissIssue = useCallback((key: string) => {
+    setDismissedIssueKeys((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
+
+  const handleUndismissIssue = useCallback((key: string) => {
+    setDismissedIssueKeys((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const handleSourceChipClick = useCallback((positionIndex: number) => {
+    setStrategyFlash({ positionIndex, at: Date.now() });
+  }, []);
 
   return (
     <div className="h-[calc(100vh-3.5rem)] overflow-y-auto bg-[var(--bg-0)]">
@@ -174,7 +226,12 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
           <div className="grid lg:grid-cols-[320px_1fr_300px] gap-6">
             {/* Left: benchmark + strategy */}
             <div className="space-y-4">
-              <V3StrategyPanel benchmark={pipeline.benchmark} strategy={pipeline.strategy} />
+              <V3StrategyPanel
+                benchmark={pipeline.benchmark}
+                strategy={pipeline.strategy}
+                flashPositionIndex={strategyFlash?.positionIndex ?? null}
+                flashTick={strategyFlash?.at ?? 0}
+              />
             </div>
 
             {/* Center: resume */}
@@ -186,12 +243,26 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
                 verify={pipeline.verify}
                 editable={pipeline.isComplete}
                 onEdit={(updated) => setEditedWritten(updated)}
+                focusCue={focusCue}
+                dismissedIssueKeys={dismissedIssueKeys}
+                onTriangleClick={handleFocusIssue}
+                onSourceChipClick={handleSourceChipClick}
               />
             </div>
 
             {/* Right: verify */}
             <div className="space-y-4">
-              <V3VerifyPanel verify={pipeline.verify} isRunning={pipeline.isRunning} />
+              <V3VerifyPanel
+                verify={pipeline.verify}
+                isRunning={pipeline.isRunning}
+                editedWritten={editedWritten}
+                pristineWritten={pipeline.written}
+                focusCue={focusCue}
+                dismissedIssueKeys={dismissedIssueKeys}
+                onAddress={handleFocusIssue}
+                onDismiss={handleDismissIssue}
+                onUndismiss={handleUndismissIssue}
+              />
             </div>
           </div>
         )}
