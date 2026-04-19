@@ -19,8 +19,9 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
-import { randomUUID } from 'node:crypto';
+import { startUsageTracking, stopUsageTracking, setUsageTrackingContext } from '../lib/llm-provider.js';
 import { runV3Pipeline } from '../v3/pipeline/run.js';
 import type { V3PipelineSSEEvent } from '../v3/pipeline/types.js';
 import { fetchDefaultMaster, fetchMasterSummary } from '../v3/master/load.js';
@@ -132,7 +133,6 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
   }
 
   const { resume_text: providedResumeText, use_master, job_description, jd_title, jd_company } = parsed.data;
-  const sessionId = randomUUID();
 
   // Resolve resume_text: prefer what the caller pasted; else load from the
   // user's default master. The schema refinement above guarantees at least
@@ -153,11 +153,43 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
     return c.json({ error: 'Invalid input: resume_text or use_master required' }, 400);
   }
 
+  // Create the accounting session row. coach_sessions is the source of truth
+  // for admin Stats + user_usage billing aggregation; we need a row per run
+  // so v3 shows up there. Deliberately minimal — no tailored_sections payload,
+  // no SSE subscribe dance; just a lightweight audit trail.
+  const { data: session, error: sessionError } = await supabaseAdmin
+    .from('coach_sessions')
+    .insert({
+      user_id: userId,
+      product_type: 'resume_v3',
+      pipeline_status: 'running',
+      pipeline_stage: 'extract',
+      llm_provider: 'openai', // hybrid config; v3 strong-reasoning + deep-writer are OpenAI
+      llm_model: 'gpt-5.4-mini',
+    })
+    .select('id')
+    .single();
+
+  if (sessionError || !session) {
+    logger.error({ userId, error: sessionError?.message }, 'Failed to create v3 pipeline session row');
+    return c.json({ error: 'Failed to create session' }, 500);
+  }
+  const sessionId = session.id;
+  const pipelineStartedAt = Date.now();
+
   logger.info({ sessionId, userId, resumeChars: resumeText.length, jdChars: job_description.length, source: use_master ? 'master' : 'paste' }, 'v3 pipeline start');
 
   // AbortController tied to the SSE stream — if the client disconnects,
   // we cancel in-flight LLM calls rather than burning them.
   const abortController = new AbortController();
+
+  // Wire the in-memory usage accumulator. startUsageTracking sets up a
+  // periodic flush to user_usage (60s interval + a final flush on stop).
+  // setUsageTrackingContext scopes AsyncLocalStorage so every LLM call
+  // made inside this async context attributes its tokens to sessionId
+  // without needing to thread session_id through every stage signature.
+  startUsageTracking(sessionId, userId);
+  setUsageTrackingContext(sessionId);
 
   return streamSSE(c, async (stream) => {
     stream.onAbort(() => {
@@ -166,17 +198,18 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
     });
 
     const emit = (event: V3PipelineSSEEvent): void => {
-      // streamSSE.writeSSE serializes as `event: <type>\ndata: <json>\n\n`.
-      // We set event to the union discriminator so clients can addEventListener
-      // by type if they want, but most will parse data in a single handler.
       void stream.writeSSE({
         event: event.type,
         data: JSON.stringify(event),
       });
     };
 
+    let finalStatus: 'complete' | 'error' = 'complete';
+    let finalCostUsd: number | null = null;
+    let finalErrorMessage: string | null = null;
+
     try {
-      await runV3Pipeline({
+      const result = await runV3Pipeline({
         sessionId,
         userId,
         resumeText,
@@ -188,22 +221,49 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
         emit,
         signal: abortController.signal,
       });
+      if (!result.success) {
+        finalStatus = 'error';
+        finalErrorMessage = result.errorMessage ?? 'Unknown v3 pipeline error';
+      }
+      finalCostUsd = result.costs.total;
     } catch (err) {
-      // runV3Pipeline itself never throws (reports errors via pipeline_error
-      // events) — this catch exists to guard against unexpected bugs.
+      finalStatus = 'error';
+      finalErrorMessage = err instanceof Error ? err.message : String(err);
       logger.error(
-        { sessionId, err: err instanceof Error ? err.message : String(err) },
+        { sessionId, err: finalErrorMessage },
         'v3 pipeline unexpected throw',
       );
       emit({
         type: 'pipeline_error',
         stage: 'extract',
-        message: err instanceof Error ? err.message : String(err),
+        message: finalErrorMessage,
         timestamp: new Date().toISOString(),
       });
-    }
+    } finally {
+      stopUsageTracking(sessionId);
 
-    // Signal end-of-stream so the client's stream reader completes cleanly.
-    await stream.close();
+      // Persist the run outcome to the coach_sessions row so admin stats
+      // + per-user billing aggregates see this run. Best-effort; never
+      // blocks the stream close.
+      const durationMs = Date.now() - pipelineStartedAt;
+      try {
+        await supabaseAdmin
+          .from('coach_sessions')
+          .update({
+            pipeline_status: finalStatus,
+            pipeline_stage: finalStatus === 'complete' ? 'complete' : 'error',
+            error_message: finalErrorMessage,
+            estimated_cost_usd: finalCostUsd,
+          })
+          .eq('id', sessionId);
+      } catch (err) {
+        logger.warn(
+          { sessionId, err: err instanceof Error ? err.message : String(err), durationMs },
+          'v3 pipeline: failed to persist final session row update',
+        );
+      }
+
+      await stream.close();
+    }
   });
 });

@@ -104,6 +104,11 @@ export type V3StageCompleteEvent =
 /** Final payload event — the complete result bundle after verify. */
 export interface V3PipelineCompleteEvent {
   type: 'pipeline_complete';
+  /**
+   * Real coach_sessions.id minted by the /run endpoint. Frontend passes it
+   * as source_session_id on promote + as a future audit-trail referent.
+   */
+  sessionId: string;
   structured: StructuredResume;
   benchmark: BenchmarkProfile;
   strategy: Strategy;

@@ -246,6 +246,7 @@ export async function runV3Pipeline(
 
   input.emit({
     type: 'pipeline_complete',
+    sessionId: input.sessionId,
     structured,
     benchmark: benchmarkProfile,
     strategy,

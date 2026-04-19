@@ -39,11 +39,11 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
   const master = useV3Master(accessToken);
   const location = useLocation();
   const [editedWritten, setEditedWritten] = useState<typeof pipeline.written | null>(null);
-  const [sessionId] = useState<string>(() =>
-    // Generate a session id for the life of the screen mount. Used as
-    // source_session_id for promote-to-master evidence items.
-    crypto.randomUUID(),
-  );
+
+  // sessionId comes from the backend's pipeline_complete event and is the
+  // real coach_sessions.id for this run. Promote UI uses it so evidence
+  // items reference a real audit-trail row.
+  const sessionId = pipeline.sessionId;
 
   // Networking Intelligence hand-off: /resume-builder/session?jdUrl=<url>
   // prefills the JD URL field so V3IntakeForm auto-fetches on mount.
@@ -171,7 +171,7 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
 
         {/* Promote panel — shown after pipeline completes so the user can
             add newly-written content to their knowledge base */}
-        {pipeline.isComplete && !pipeline.error && pipeline.written && (
+        {pipeline.isComplete && !pipeline.error && pipeline.written && sessionId && (
           <V3PromotePanel
             accessToken={accessToken}
             sessionId={sessionId}

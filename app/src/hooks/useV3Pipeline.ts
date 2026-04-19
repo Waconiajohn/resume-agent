@@ -194,6 +194,7 @@ interface V3PipelineSSEEvent {
   output?: unknown;
   timestamp: string;
   // pipeline_complete payload
+  sessionId?: string;
   structured?: V3StructuredResume;
   benchmark?: V3BenchmarkProfile;
   strategy?: V3Strategy;
@@ -208,6 +209,8 @@ interface V3PipelineSSEEvent {
 // ─── Hook state ─────────────────────────────────────────────────────────────
 
 export interface V3PipelineState {
+  /** Backend coach_sessions.id for this run. Populated on pipeline_complete. */
+  sessionId: string | null;
   /** Per-stage status for the progress indicator. */
   stageStatus: Record<V3Stage, V3StageStatus>;
   /** Most recent stage the backend is working on (for the header tag). */
@@ -231,6 +234,7 @@ export interface V3PipelineState {
 }
 
 const initialState: V3PipelineState = {
+  sessionId: null,
   stageStatus: {
     extract: 'pending',
     classify: 'pending',
@@ -309,6 +313,7 @@ export function useV3Pipeline(accessToken: string | null) {
         next.isRunning = false;
         next.isComplete = true;
         next.currentStage = null;
+        if (event.sessionId) next.sessionId = event.sessionId;
         if (event.structured) next.structured = event.structured;
         if (event.benchmark) next.benchmark = event.benchmark;
         if (event.strategy) next.strategy = event.strategy;
