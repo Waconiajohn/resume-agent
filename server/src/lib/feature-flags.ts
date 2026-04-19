@@ -321,16 +321,6 @@ export const FF_EXTENSION = envBool('FF_EXTENSION', false);
  */
 export const FF_VIRTUAL_COACH = envBool('FF_VIRTUAL_COACH', true);
 
-// ─── Resume v2 Pipeline ───────────────────────────────────────────────────────
-
-/**
- * FF_RESUME_V2 — Enable the Resume v2 pipeline routes.
- *
- * Default: true (the v2 pipeline is the current production pipeline).
- * Set FF_RESUME_V2=false to disable /api/pipeline/* for emergency rollback.
- */
-export const FF_RESUME_V2 = envBool('FF_RESUME_V2', true);
-
 // ─── Resume v3 ────────────────────────────────────────────────────────────────
 
 /**

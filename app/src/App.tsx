@@ -17,7 +17,6 @@ import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { CareerProfileProvider } from '@/components/career-iq/CareerProfileContext';
 import { WorkspaceLayout } from '@/components/career-iq/WorkspaceLayout';
 import { JobWorkspaceRoute } from '@/components/career-iq/JobWorkspaceRoute';
-import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
 import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ResumeV2VisualHarness } from '@/components/resume-v2/dev/ResumeV2VisualHarness';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
@@ -676,9 +675,9 @@ export default function App() {
                 )}
               />
               <Route path="/resume-builder" element={<Navigate to={buildResumeWorkspaceRoute()} replace />} />
-              {/* v3 cutover phase C: the resume-builder session route now serves v3.
-                  V2ResumeScreen is still in the tree under /resume-v2-legacy
-                  as a temporary escape hatch until Phase F deletes v2 entirely. */}
+              {/* v3 cutover phase F: resume-builder serves v3.
+                  v2 pipeline source is at tag v2-final-2026-04-19; see
+                  docs/v3-rebuild/v2-archaeology.md for retrieval. */}
               <Route
                 path={RESUME_BUILDER_SESSION_ROUTE}
                 element={(
@@ -697,25 +696,6 @@ export default function App() {
                     <V3PipelineScreen
                       accessToken={accessToken}
                       initialResumeText={intakeInitialResumeText}
-                    />
-                  </WorkspaceLayout>
-                )}
-              />
-              <Route
-                path="/resume-v2-legacy"
-                element={(
-                  <WorkspaceLayout>
-                    <V2ResumeScreen
-                      accessToken={accessToken}
-                      onBack={() => navigate(buildResumeWorkspaceRoute())}
-                      initialResumeText={intakeInitialResumeText}
-                      initialJobUrl={intakeInitialJobUrl}
-                      onLoadMasterResume={async () => {
-                        const resume = await getDefaultResume();
-                        return resume?.raw_text?.trim() || null;
-                      }}
-                      initialSessionId={resumeRouteSessionId ?? undefined}
-                      onSyncToMasterResume={handleSyncV2ResumeToMaster}
                     />
                   </WorkspaceLayout>
                 )}

@@ -6,7 +6,6 @@ import path from 'node:path';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { sessions, getSessionRouteStats } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
-import { resumeV2Pipeline, getV2PipelineRouteStats } from './routes/resume-v2-pipeline.js';
 import { v3Pipeline } from './routes/v3-pipeline.js';
 import { workflow } from './routes/workflow.js';
 import { billing } from './routes/billing.js';
@@ -58,7 +57,7 @@ import { getPipelineMetrics } from './lib/pipeline-metrics.js';
 import logger from './lib/logger.js';
 import { initSentry, captureErrorWithContext, flushSentry } from './lib/sentry.js';
 import { validateRegisteredAgents } from './agents/runtime/agent-registry.js';
-import { FF_RESUME_V2, FF_V3_PRIMARY } from './lib/feature-flags.js';
+import { FF_V3_PRIMARY } from './lib/feature-flags.js';
 import { createRedisBusIfConfigured, type RedisBus } from './agents/runtime/redis-bus.js';
 import { setAgentBus } from './agents/runtime/bus-factory.js';
 import { startHotReload, stopHotReload } from './agents/runtime/hot-reload.js';
@@ -271,7 +270,8 @@ app.get('/metrics', (c) => {
 
   const memUsage = process.memoryUsage();
   const sessionStats = getSessionRouteStats();
-  const pipelineStats = getV2PipelineRouteStats();
+  // v2 pipeline runtime stats removed after Phase F cutover.
+  const pipelineStats = { active_pipelines: 0, total_started: 0, total_completed: 0, total_failed: 0 } as const;
   const rateLimitStats = getRateLimitStats();
   const authCacheStats = getAuthCacheStats();
   const requestStats = getRequestMetrics();
@@ -308,9 +308,8 @@ app.get('/metrics', (c) => {
 
 app.route('/api/sessions', sessions);
 app.route('/api/resumes', resumes);
-if (FF_RESUME_V2) {
-  app.route('/api/pipeline', resumeV2Pipeline);
-}
+// v2 pipeline route removed in Phase F cutover. See docs/v3-rebuild/v2-archaeology.md
+// to retrieve the v2 source if needed.
 if (FF_V3_PRIMARY) {
   app.route('/api/v3-pipeline', v3Pipeline);
 }
