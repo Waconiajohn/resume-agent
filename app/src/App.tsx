@@ -18,6 +18,7 @@ import { CareerProfileProvider } from '@/components/career-iq/CareerProfileConte
 import { WorkspaceLayout } from '@/components/career-iq/WorkspaceLayout';
 import { JobWorkspaceRoute } from '@/components/career-iq/JobWorkspaceRoute';
 import { V2ResumeScreen } from '@/components/resume-v2/V2ResumeScreen';
+import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ResumeV2VisualHarness } from '@/components/resume-v2/dev/ResumeV2VisualHarness';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { ToastProvider } from '@/components/Toast';
@@ -675,6 +676,10 @@ export default function App() {
                 )}
               />
               <Route path="/resume-builder" element={<Navigate to={buildResumeWorkspaceRoute()} replace />} />
+              <Route
+                path="/resume-v3"
+                element={<V3PipelineScreen accessToken={accessToken} />}
+              />
               <Route
                 path={RESUME_BUILDER_SESSION_ROUTE}
                 element={(
