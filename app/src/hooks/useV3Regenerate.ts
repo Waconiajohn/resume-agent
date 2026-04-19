@@ -38,6 +38,7 @@ interface Props {
 export function useV3Regenerate({ accessToken, structured, strategy }: Props) {
   const [pendingBullets, setPendingBullets] = useState<Set<string>>(new Set());
   const [pendingPositions, setPendingPositions] = useState<Set<number>>(new Set());
+  const [summaryPending, setSummaryPending] = useState(false);
   const [reverifying, setReverifying] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
 
@@ -130,6 +131,40 @@ export function useV3Regenerate({ accessToken, structured, strategy }: Props) {
     [accessToken, structured, strategy],
   );
 
+  const regenerateSummary = useCallback(
+    async (guidance?: string): Promise<string | null> => {
+      if (!accessToken || !structured || !strategy) return null;
+      setSummaryPending(true);
+      setLastError(null);
+      try {
+        const res = await fetch(`${API_BASE}/v3-pipeline/regenerate`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            structured,
+            strategy,
+            target: { kind: 'summary', guidance: guidance?.trim() || undefined },
+          }),
+        });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;
+          throw new Error(body?.message ?? body?.error ?? `Regenerate failed (${res.status})`);
+        }
+        const data = (await res.json()) as { summary: string };
+        return data.summary;
+      } catch (err) {
+        setLastError(err instanceof Error ? err.message : String(err));
+        return null;
+      } finally {
+        setSummaryPending(false);
+      }
+    },
+    [accessToken, structured, strategy],
+  );
+
   const reverify = useCallback(
     async (written: V3WrittenResume): Promise<V3VerifyResult | null> => {
       if (!accessToken || !structured || !strategy) return null;
@@ -163,9 +198,11 @@ export function useV3Regenerate({ accessToken, structured, strategy }: Props) {
   return {
     regenerateBullet,
     regeneratePosition,
+    regenerateSummary,
     reverify,
     pendingBullets,
     pendingPositions,
+    summaryPending,
     reverifying,
     lastError,
   };

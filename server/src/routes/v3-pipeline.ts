@@ -29,6 +29,7 @@ import { promoteToMaster } from '../v3/master/promote.js';
 import {
   regenerateBullet,
   regeneratePosition,
+  regenerateSummary,
 } from '../v3/write/regenerate.js';
 import { verifyWithTelemetry } from '../v3/verify/index.js';
 import type {
@@ -146,6 +147,10 @@ const regenerateTargetSchema = z.discriminatedUnion('kind', [
     positionIndex: z.number().int().min(0),
     weightOverride: z.enum(['primary', 'secondary', 'brief']).optional(),
   }),
+  z.object({
+    kind: z.literal('summary'),
+    guidance: z.string().max(300).optional(),
+  }),
 ]);
 // Loose validation on structured/strategy — these originate from our own
 // SSE stream; the downstream helpers fail fast on malformed input.
@@ -183,6 +188,12 @@ v3Pipeline.post(
           { guidance: target.guidance },
         );
         return c.json({ bullet });
+      }
+      if (target.kind === 'summary') {
+        const { summary } = await regenerateSummary(structured, strategy, {
+          guidance: target.guidance,
+        });
+        return c.json({ summary });
       }
       const { position } = await regeneratePosition(
         structured,

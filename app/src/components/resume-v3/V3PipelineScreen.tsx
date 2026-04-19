@@ -250,10 +250,30 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
     [editedWritten, pipeline.written, regen, scheduleReverify],
   );
 
+  const handleRegenerateSummary = useCallback(
+    async (guidance?: string) => {
+      const base = editedWritten ?? pipeline.written;
+      if (!base) return;
+      const newSummary = await regen.regenerateSummary(guidance);
+      if (!newSummary) return;
+      const nextWritten = { ...base, summary: newSummary };
+      setEditedWritten(nextWritten);
+      // Scroll middle column to the new summary + flash it.
+      setFocusCue({
+        key: `regen-summary-${Date.now()}`,
+        section: 'summary',
+        at: Date.now(),
+      });
+      scheduleReverify(nextWritten);
+    },
+    [editedWritten, pipeline.written, regen, scheduleReverify],
+  );
+
   // Apply a translator-provided patch to editedWritten and mark the issue
   // resolved. The apply targets come from the verify-translate.v1 prompt's
   // suggestedPatches — additive only (never rewrite-class), enforced
-  // server-side by the Zod target regex.
+  // server-side by the Zod target regex. After applying, we point focusCue
+  // at the newly inserted content so the middle column scrolls+flashes it.
   const handleApplyPatch = useCallback(
     (issueKey: string, patch: V3SuggestedPatch) => {
       const base = editedWritten ?? pipeline.written;
@@ -267,14 +287,43 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
         s.add(issueKey);
         return s;
       });
+
+      // Derive the section path of the newly-inserted content so the resume
+      // view scrolls to it. For summary → the summary section itself; for
+      // array-append targets → the last index in the post-apply resume.
+      let insertedSection: string | null = null;
+      if (patch.target === 'summary') {
+        insertedSection = 'summary';
+      } else if (patch.target === 'selectedAccomplishments') {
+        const idx = next.selectedAccomplishments.length - 1;
+        if (idx >= 0) insertedSection = `selectedAccomplishments[${idx}]`;
+      } else {
+        const m = patch.target.match(/^positions\[(\d+)\]$/);
+        if (m) {
+          const pi = Number(m[1]);
+          const pos = next.positions[pi];
+          if (pos && pos.bullets.length > 0) {
+            insertedSection = `positions[${pi}].bullets[${pos.bullets.length - 1}]`;
+          }
+        }
+      }
+      if (insertedSection) {
+        setFocusCue({
+          key: `apply-${issueKey}`,
+          section: insertedSection,
+          at: Date.now(),
+        });
+      }
     },
     [editedWritten, pipeline.written],
   );
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] overflow-y-auto bg-[var(--bg-0)]">
-      <div className="mx-auto max-w-7xl px-4 py-8 space-y-6">
-        {/* Header strip */}
+    <div className="h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden bg-[var(--bg-0)]">
+      {/* ─── Fixed top strip ──────────────────────────────────────────
+          Header + stage progress + any error banner stay pinned while the
+          three columns below scroll independently. */}
+      <div className="mx-auto w-full max-w-7xl px-4 pt-6 pb-3 flex-shrink-0 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-[var(--bullet-confirm)]">
@@ -317,13 +366,13 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
 
         {/* Stage progress (visible whenever a run has started) */}
         {showResults && (
-          <GlassCard className="p-6">
+          <GlassCard className="p-4">
             <V3StageProgress
               stageStatus={pipeline.stageStatus}
               currentStage={pipeline.currentStage}
             />
             {pipeline.costs && (
-              <div className="mt-4 flex items-center justify-end gap-4 text-[11px] text-[var(--text-soft)]">
+              <div className="mt-3 flex items-center justify-end gap-4 text-[11px] text-[var(--text-soft)]">
                 {pipeline.timings?.totalMs !== undefined && (
                   <span>
                     {(pipeline.timings.totalMs / 1000).toFixed(1)}s
@@ -354,18 +403,6 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
           </GlassCard>
         )}
 
-        {/* Intake form */}
-        {showIntake && (
-          <V3IntakeForm
-            onSubmit={handleStart}
-            initialResumeText={initialResumeText}
-            disabled={pipeline.isRunning}
-            master={master.summary}
-            accessToken={accessToken}
-            initialJobUrl={initialJobUrl}
-          />
-        )}
-
         {/* Edit hint once pipeline is complete */}
         {pipeline.isComplete && !pipeline.error && !editedWritten && (
           <div className="text-[11px] text-[var(--text-soft)] flex items-center gap-1.5">
@@ -373,12 +410,30 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
             Click any bullet or the summary to edit. Press Enter to save, Esc to cancel.
           </div>
         )}
+      </div>
 
-        {/* Results layout */}
+      {/* ─── Scroll zone ──────────────────────────────────────────────
+          flex-1 + min-h-0 is mandatory so the inner grid's h-full shrinks
+          to fit the remaining viewport. Each of the three columns has its
+          own overflow-y-auto. */}
+      <div className="flex-1 min-h-0 w-full mx-auto max-w-7xl px-4 pb-4">
+        {showIntake && (
+          <div className="h-full overflow-y-auto">
+            <V3IntakeForm
+              onSubmit={handleStart}
+              initialResumeText={initialResumeText}
+              disabled={pipeline.isRunning}
+              master={master.summary}
+              accessToken={accessToken}
+              initialJobUrl={initialJobUrl}
+            />
+          </div>
+        )}
+
         {showResults && (
-          <div className="grid lg:grid-cols-[320px_1fr_300px] gap-6">
+          <div className="grid lg:grid-cols-[320px_1fr_300px] gap-6 h-full">
             {/* Left: benchmark + strategy */}
-            <div className="space-y-4">
+            <div className="overflow-y-auto h-full pr-1 space-y-4">
               <V3StrategyPanel
                 benchmark={pipeline.benchmark}
                 strategy={pipeline.strategy}
@@ -391,8 +446,9 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
               />
             </div>
 
-            {/* Center: resume */}
-            <div>
+            {/* Center: resume + promote (promote sits at the bottom of this
+                column's scroll — wrap-up action for the resume itself). */}
+            <div className="overflow-y-auto h-full pr-1 space-y-6">
               <V3ResumeView
                 structured={pipeline.structured}
                 written={effectiveWritten}
@@ -408,11 +464,25 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
                   pipeline.isComplete ? handleRegenerateBullet : undefined
                 }
                 pendingBulletKeys={regen.pendingBullets}
+                onRegenerateSummary={
+                  pipeline.isComplete ? handleRegenerateSummary : undefined
+                }
+                summaryPending={regen.summaryPending}
               />
+              {pipeline.isComplete && !pipeline.error && pipeline.written && sessionId && (
+                <V3PromotePanel
+                  accessToken={accessToken}
+                  sessionId={sessionId}
+                  written={editedWritten ?? pipeline.written}
+                  structured={pipeline.structured}
+                  master={master.summary}
+                  onSaved={() => master.refresh()}
+                />
+              )}
             </div>
 
             {/* Right: verify */}
-            <div className="space-y-4">
+            <div className="overflow-y-auto h-full pr-1 space-y-4">
               <V3VerifyPanel
                 verify={effectiveVerify}
                 isRunning={pipeline.isRunning}
@@ -429,20 +499,6 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
               />
             </div>
           </div>
-        )}
-
-        {/* Promote panel — wrap-up action, lives BELOW the resume so the
-            primary deliverable (the resume itself) isn't buried under it.
-            Collapsed by default; expands on demand. */}
-        {pipeline.isComplete && !pipeline.error && pipeline.written && sessionId && (
-          <V3PromotePanel
-            accessToken={accessToken}
-            sessionId={sessionId}
-            written={editedWritten ?? pipeline.written}
-            structured={pipeline.structured}
-            master={master.summary}
-            onSaved={() => master.refresh()}
-          />
         )}
       </div>
     </div>

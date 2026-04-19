@@ -19,7 +19,11 @@ import type { StreamEvent } from '../../lib/llm-provider.js';
 import { loadPrompt } from '../prompts/loader.js';
 import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
-import { WrittenPositionSchema, WrittenSingleBulletSchema } from './schema.js';
+import {
+  WrittenPositionSchema,
+  WrittenSingleBulletSchema,
+  WrittenSummarySchema,
+} from './schema.js';
 import type {
   Bullet,
   Position,
@@ -239,6 +243,104 @@ export async function regenerateBullet(
 
   return {
     bullet: result.data.bullet,
+    telemetry: {
+      promptName,
+      promptVersion: prompt.version,
+      model,
+      backend,
+      inputTokens: usage.input_tokens,
+      outputTokens: usage.output_tokens,
+      durationMs,
+    },
+  };
+}
+
+// ─── Summary regenerate ──────────────────────────────────────────────────
+
+export interface RegenerateSummaryOptions {
+  /** Free-form user hint ("shorter", "lead with the outcome"). Optional. */
+  guidance?: string;
+  variant?: string;
+  signal?: AbortSignal;
+}
+
+export async function regenerateSummary(
+  resume: StructuredResume,
+  strategy: Strategy,
+  options: RegenerateSummaryOptions = {},
+): Promise<{ summary: string; telemetry: RegenerateTelemetry }> {
+  const variant = options.variant ?? 'v1';
+  const promptName = `write-summary.${variant}`;
+  const prompt = loadPrompt(promptName);
+
+  // Reuse write-summary.v1 unchanged; append an optional guidance paragraph
+  // after template substitution. Keeping the guidance OUT of the prompt file
+  // preserves the existing template invariants and fixture telemetry.
+  let userMessage = prompt.userMessageTemplate
+    .replaceAll('{{strategy_json}}', JSON.stringify(strategy, null, 2))
+    .replaceAll('{{resume_json}}', JSON.stringify(resume, null, 2));
+
+  const hint = options.guidance?.trim();
+  if (hint) {
+    userMessage += [
+      '',
+      '## User guidance',
+      '',
+      hint,
+      '',
+      'Factor this hint into your rewrite; never invent claims to satisfy it.',
+    ].join('\n');
+  }
+
+  const start = Date.now();
+  const { provider, model, backend, extraParams } = getProvider(prompt.capability);
+  const maxTokens = extraParams?.thinking === true ? MAX_OUTPUT_TOKENS * 2 : MAX_OUTPUT_TOKENS;
+
+  logger.info(
+    { promptName, model, backend, hasGuidance: Boolean(hint) },
+    'regenerateSummary start',
+  );
+
+  let fullText = '';
+  let usage = { input_tokens: 0, output_tokens: 0 };
+  for await (const event of provider.stream({
+    model,
+    system: prompt.systemMessage,
+    messages: [{ role: 'user', content: userMessage }],
+    max_tokens: maxTokens,
+    temperature: prompt.temperature,
+    ...(extraParams?.thinking === true && { thinking: true }),
+    signal: options.signal,
+  })) {
+    const e = event as StreamEvent;
+    if (e.type === 'text') fullText += e.text;
+    else if (e.type === 'done') usage = e.usage;
+  }
+
+  const durationMs = Date.now() - start;
+  const cleaned = stripJsonFence(fullText.trim());
+  let parsedRaw: unknown;
+  try {
+    parsedRaw = JSON.parse(cleaned);
+  } catch (err) {
+    throw new Error(
+      `regenerateSummary: invalid JSON from ${promptName}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  const result = WrittenSummarySchema.safeParse(parsedRaw);
+  if (!result.success) {
+    throw new Error(
+      `regenerateSummary: schema mismatch — ${result.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
+    );
+  }
+
+  logger.info(
+    { promptName, inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, durationMs },
+    'regenerateSummary complete',
+  );
+
+  return {
+    summary: result.data.summary,
     telemetry: {
       promptName,
       promptVersion: prompt.version,

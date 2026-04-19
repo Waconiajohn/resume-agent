@@ -77,6 +77,13 @@ interface Props {
   ) => void | Promise<void>;
   /** Bullet keys (`${posIdx}#${bulletIdx}`) currently being regenerated — spinner. */
   pendingBulletKeys?: Set<string>;
+  /**
+   * Regenerate the executive summary. Same UX as bullet regen: click = no
+   * guidance, Alt-click opens an inline guidance textbox.
+   */
+  onRegenerateSummary?: (guidance?: string) => void | Promise<void>;
+  /** True while the summary is regenerating — spinner + lock. */
+  summaryPending?: boolean;
 }
 
 // Immutable updater helpers for editing.
@@ -575,7 +582,19 @@ export function V3ResumeView({
   onSourceChipClick,
   onRegenerateBullet,
   pendingBulletKeys,
+  onRegenerateSummary,
+  summaryPending,
 }: Props) {
+  // Summary guidance-input toggle (mirrors the pattern in BulletLine).
+  const [summaryGuidanceOpen, setSummaryGuidanceOpen] = useState(false);
+  const [summaryGuidance, setSummaryGuidance] = useState('');
+
+  const submitSummaryRegen = (hint: string | undefined) => {
+    if (!onRegenerateSummary) return;
+    setSummaryGuidanceOpen(false);
+    setSummaryGuidance('');
+    void onRegenerateSummary(hint);
+  };
   const emitEdit = useCallback(
     (next: V3WrittenResume) => onEdit?.(next),
     [onEdit],
@@ -646,10 +665,42 @@ export function V3ResumeView({
       )}
 
       {/* Summary */}
-      <SectionHeading>Summary</SectionHeading>
+      <div className="flex items-baseline justify-between mt-6 mb-2 border-b border-[var(--line-soft)] pb-1.5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+          Summary
+        </h3>
+        {editable && onRegenerateSummary && (
+          <button
+            type="button"
+            onClick={(e) => {
+              if (e.altKey) {
+                setSummaryGuidanceOpen((o) => !o);
+              } else {
+                submitSummaryRegen(undefined);
+              }
+            }}
+            disabled={summaryPending}
+            className={cn(
+              'inline-flex items-center gap-1 text-[10px] rounded px-1.5 py-0.5 transition-colors',
+              summaryPending
+                ? 'text-[var(--text-soft)] cursor-wait'
+                : 'text-[var(--text-soft)] hover:text-[var(--badge-blue-text)] hover:bg-[var(--badge-blue-bg)]',
+            )}
+            title="Regenerate summary (Alt-click for guided)"
+            aria-label="Regenerate summary"
+          >
+            {summaryPending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3 w-3" />
+            )}
+            AI rewrite
+          </button>
+        )}
+      </div>
       <div
         ref={(el) => registerSectionRef('summary', el)}
-        className="relative"
+        className={cn('relative', summaryPending && 'opacity-50')}
       >
         <div
           className={cn(
@@ -661,10 +712,51 @@ export function V3ResumeView({
             value={written.summary}
             onChange={(next) => emitEdit(updateSummary(written, next))}
             multiline
-            disabled={!editable}
+            disabled={!editable || summaryPending}
             placeholder="Summary…"
           />
         </div>
+        {summaryGuidanceOpen && !summaryPending && (
+          <div className="mt-2 flex items-center gap-1">
+            <input
+              type="text"
+              value={summaryGuidance}
+              onChange={(e) => setSummaryGuidance(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  submitSummaryRegen(summaryGuidance);
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setSummaryGuidanceOpen(false);
+                  setSummaryGuidance('');
+                }
+              }}
+              autoFocus
+              maxLength={200}
+              placeholder="shorter, lead with consolidator frame, emphasize public sector…"
+              className="flex-1 text-[12px] px-2 py-1 rounded border border-[var(--line-soft)] bg-[var(--surface-1)] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--badge-blue-text)] focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => submitSummaryRegen(summaryGuidance.trim() || undefined)}
+              className="text-[11px] text-[var(--badge-blue-text)] hover:underline font-medium"
+            >
+              Regenerate
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSummaryGuidanceOpen(false);
+                setSummaryGuidance('');
+              }}
+              className="text-[var(--text-soft)] hover:text-[var(--text-muted)]"
+              aria-label="Cancel"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
         {summaryIssues.length > 0 && (
           <div className="mt-2 text-[11px] text-[var(--badge-red-text)] space-y-0.5">
             {summaryIssues.map(({ issue, index }) => {
