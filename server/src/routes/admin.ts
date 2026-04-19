@@ -719,4 +719,147 @@ admin.post('/users/:id/plan', async (c) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// GET /api/admin/shadow-runs?limit=50&offset=0&status=pending_review&has_error=false
+// Phase 5 Week 0 admin review — paginated list of v3 shadow runs.
+// Columns: id, request_id, created_at, v3 pass/fail, v3 error (if any),
+// comparison_status, cost/timings summary. Full detail available via the
+// per-row endpoint below.
+// ---------------------------------------------------------------------------
+admin.get('/shadow-runs', async (c) => {
+  const limitParam = Number.parseInt(c.req.query('limit') ?? '50', 10);
+  const offsetParam = Number.parseInt(c.req.query('offset') ?? '0', 10);
+  const statusFilter = c.req.query('status');
+  const hasErrorOnly = c.req.query('has_error') === 'true';
+
+  const limit = Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 200 ? limitParam : 50;
+  const offset = Number.isFinite(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
+
+  let query = supabaseAdmin
+    .from('resume_v3_shadow_runs')
+    .select(
+      'id, request_id, candidate_id, created_at, v3_duration_ms, v2_duration_ms, v3_pipeline_error, v3_pipeline_error_stage, v3_verify_result_json, v3_stage_costs_json, comparison_status, reviewed_by, reviewed_at',
+      { count: 'exact' },
+    )
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  const validStatuses = [
+    'pending_review',
+    'reviewed_v3_better',
+    'reviewed_v2_better',
+    'reviewed_equivalent',
+    'reviewed_v3_unacceptable',
+  ] as const;
+  type ValidStatus = typeof validStatuses[number];
+  if (statusFilter && (validStatuses as readonly string[]).includes(statusFilter)) {
+    query = query.eq('comparison_status', statusFilter as ValidStatus);
+  }
+  if (hasErrorOnly) {
+    query = query.not('v3_pipeline_error', 'is', null);
+  }
+
+  const { data, error, count } = await query;
+  if (error) {
+    logger.error({ err: error }, 'admin/shadow-runs: DB query failed');
+    return c.json({ error: 'Failed to fetch shadow runs' }, 500);
+  }
+
+  const rows = (data ?? []).map((r) => {
+    const verify = r.v3_verify_result_json as { passed?: boolean; issues?: Array<{ severity: string }> } | null;
+    const costs = r.v3_stage_costs_json as { total?: number } | null;
+    return {
+      id: r.id,
+      request_id: r.request_id,
+      candidate_id: r.candidate_id,
+      created_at: r.created_at,
+      v3_passed: verify?.passed ?? null,
+      v3_errors: (verify?.issues ?? []).filter((i) => i.severity === 'error').length,
+      v3_warnings: (verify?.issues ?? []).filter((i) => i.severity === 'warning').length,
+      v3_total_cost_usd: costs?.total ?? null,
+      v3_duration_ms: r.v3_duration_ms,
+      v2_duration_ms: r.v2_duration_ms,
+      v3_pipeline_error: r.v3_pipeline_error,
+      v3_pipeline_error_stage: r.v3_pipeline_error_stage,
+      comparison_status: r.comparison_status,
+      reviewed_by: r.reviewed_by,
+      reviewed_at: r.reviewed_at,
+    };
+  });
+
+  return c.json({
+    shadow_runs: rows,
+    total: count ?? 0,
+    limit,
+    offset,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/shadow-runs/:id
+// Full detail for one shadow run: v2 + v3 outputs + verify + stage telemetry.
+// Used by the detail view in the admin review UI.
+// ---------------------------------------------------------------------------
+admin.get('/shadow-runs/:id', async (c) => {
+  const id = c.req.param('id');
+  const { data, error } = await supabaseAdmin
+    .from('resume_v3_shadow_runs')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) {
+    return c.json({ error: 'Shadow run not found' }, 404);
+  }
+  return c.json({ shadow_run: data });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/shadow-runs/:id/review
+// Body: { comparison_status, reviewed_by, review_notes? }
+// Persist the reviewer's comparison decision.
+// ---------------------------------------------------------------------------
+const shadowReviewSchema = z.object({
+  comparison_status: z.enum([
+    'pending_review',
+    'reviewed_v3_better',
+    'reviewed_v2_better',
+    'reviewed_equivalent',
+    'reviewed_v3_unacceptable',
+  ]),
+  reviewed_by: z.string().min(1).max(200),
+  review_notes: z.string().max(4000).optional(),
+});
+
+admin.post('/shadow-runs/:id/review', async (c) => {
+  const id = c.req.param('id');
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  const parsed = shadowReviewSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+  }
+
+  const { error } = await supabaseAdmin
+    .from('resume_v3_shadow_runs')
+    .update({
+      comparison_status: parsed.data.comparison_status,
+      reviewed_by: parsed.data.reviewed_by,
+      reviewed_at: new Date().toISOString(),
+      review_notes: parsed.data.review_notes ?? null,
+    })
+    .eq('id', id);
+
+  if (error) {
+    logger.error({ err: error, id }, 'admin/shadow-runs/:id/review: update failed');
+    return c.json({ error: `Review update failed: ${error.message}` }, 500);
+  }
+
+  return c.json({ success: true, id });
+});
+
 export { admin };

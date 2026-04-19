@@ -14,6 +14,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { API_BASE } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { UsersTab } from './UsersTab';
+import { ShadowRunsTab } from './ShadowRunsTab';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -111,7 +112,7 @@ interface ProductFunnelResponse {
   };
 }
 
-type AdminTab = 'stats' | 'funnel' | 'errors' | 'sessions' | 'users';
+type AdminTab = 'stats' | 'funnel' | 'errors' | 'sessions' | 'users' | 'shadow';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -804,6 +805,7 @@ export function AdminDashboard() {
     { id: 'users', label: 'Users' },
     { id: 'errors', label: 'Errors' },
     { id: 'sessions', label: 'Sessions' },
+    { id: 'shadow', label: 'Shadow' },
   ];
 
   return (
@@ -877,6 +879,7 @@ export function AdminDashboard() {
         {!loading && !fetchError && activeTab === 'users' && <UsersTab adminKey={adminKey} />}
         {!loading && !fetchError && activeTab === 'errors' && renderErrors()}
         {!loading && !fetchError && activeTab === 'sessions' && renderSessions()}
+        {!loading && !fetchError && activeTab === 'shadow' && <ShadowRunsTab adminKey={adminKey} />}
       </div>
     </div>
   );
