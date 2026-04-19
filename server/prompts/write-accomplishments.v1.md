@@ -1,18 +1,11 @@
 ---
 stage: write-accomplishments
-version: "1.2"
+version: "1.1"
 capability: fast-writer
-temperature: 0.25
-last_edited: 2026-04-19
+temperature: 0.4
+last_edited: 2026-04-18
 last_editor: claude
 notes: |
-  v1.2 (Phase A — faithfulness parity):
-    - Adds {{shared:faithfulness-rules}} fragment — forbidden-phrases ban
-      (21 items from write-position's Rule 0), source-every-claim, and
-      self-check step before JSON emit.
-    - Temperature 0.4 → 0.25. Fixes the class of editorial tails that
-      slipped through (e.g. "ensuring fair and compliant outcomes",
-      "high-stakes union relations").
   v1.1 (Phase 3.5 port to DeepSeek-on-Vertex):
     - capability: fast-writer (replaces model: claude-sonnet-4-6)
     - Role-playing opener retained ("you write the greatest-hits section")
@@ -66,8 +59,6 @@ Not every bullet has all three, but every bullet has at least outcome + method. 
 ### Rule 4 — Active voice, action-verb-first.
 
 Start each bullet with a past-tense action verb. The shared pronoun policy below applies — pronouns only when `resume.pronoun` is non-null, active voice always.
-
-{{shared:faithfulness-rules}}
 
 {{shared:pronoun-policy}}
 

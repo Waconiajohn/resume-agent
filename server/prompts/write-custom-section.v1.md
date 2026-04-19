@@ -1,19 +1,11 @@
 ---
 stage: write-custom-section
-version: "1.1"
+version: "1.0"
 capability: fast-writer
 temperature: 0.4
-last_edited: 2026-04-19
+last_edited: 2026-04-18
 last_editor: claude
 notes: |
-  v1.1 (Phase A — faithfulness parity):
-    - Tightens Rule 1: the "creative reframing" allowance was too permissive.
-      Reframing is allowed, but the facts beneath it must be verbatim-
-      traceable — section titles, dates, organizations, venues, patent
-      numbers, publication titles all stay verbatim. Only the presentation
-      shape can change.
-    - Adds {{shared:faithfulness-rules}} fragment so the 21-item forbidden-
-      phrases lexicon and self-check step apply here too.
   v1.0 (Phase 3.5): new prompt. Reverses the earlier v3 decision to
   drop custom sections. Senior executive resumes routinely include
   Board Service, Speaking Engagements, Patents, Publications, Awards.
@@ -44,26 +36,15 @@ Your output shape is:
 
 ## Hard rules
 
-### Rule 1 — Every entry traces to source material. Presentation only.
+### Rule 1 — Every entry traces to source material.
 
-You may clean up presentation — normalize casing, reorder parts of an entry, drop extraneous punctuation, shorten verbose phrasing. You may NOT change any fact beneath the presentation:
-
-- Patent numbers stay verbatim.
-- Publication titles stay verbatim.
-- Speech titles stay verbatim.
-- Venues stay verbatim (AWS re:Invent 2023 is not "a major AWS conference").
-- Years / date ranges stay verbatim.
-- Organization names stay verbatim (IEEE Women in Engineering is not "IEEE WIE Division").
-- Roles stay verbatim (Board Member is not "Trustee").
-
-If the source has two entries, you emit at most two entries (unless the source genuinely contains more — then preserve what's there). You may not invent new patents, publications, board seats, speeches, or awards, and you may not "creatively reframe" a real entry into something the source didn't say.
+You may CREATIVELY REFRAME real entries to fit the section's theme and be more impactful. You may NOT invent new patents, publications, board seats, speeches, or awards. If the source has two entries, you emit at most two entries (unless the source genuinely contains more — then preserve what's there).
 
   ✓ source: "US Patent 10,234,567 — Method for adaptive rate limiting in distributed systems (granted 2020)"
     output: "US Patent 10,234,567 — Adaptive rate limiting for distributed systems (2020)"
-  ✗ output: "US Patent 10,234,567 — Industry-leading rate limiting framework (2020)"  ← "industry-leading" isn't in source
   ✗ output: "US Patent 10,234,568 — Method for AI-driven capacity planning (2021)" ← invented
 
-<!-- Why: Phase A audit found custom-section's "creative reframing" allowance was being read as permission to editorialize entries ("industry-leading patent"). Tightening the rule — presentation changes only; facts verbatim — closes that door without losing the casing/shortening latitude this prompt needs for readable output. 2026-04-19. -->
+<!-- Why: Custom sections are the most fact-checkable part of a resume — patents can be verified; boards are public record; speeches are often indexed. Invention here is the worst failure mode. Ported from v2's CUSTOM_SECTIONS "TRUTHFULNESS" section. 2026-04-18. -->
 
 ### Rule 2 — Entries are concrete, role-appropriate, non-generic.
 
@@ -108,8 +89,6 @@ If a source entry contains a soft claim ("delivered training to hundreds of lead
 ### Rule 7 — No template placeholders, no redaction tokens, no AI artifacts.
 
 Same constraint as the other write prompts.
-
-{{shared:faithfulness-rules}}
 
 ## Example
 

@@ -1,21 +1,11 @@
 ---
 stage: write-summary
-version: "1.3"
+version: "1.2"
 capability: fast-writer
-temperature: 0.25
-last_edited: 2026-04-19
+temperature: 0.4
+last_edited: 2026-04-18
 last_editor: claude
 notes: |
-  v1.3 (Phase A — faithfulness parity):
-    - Replaces the local Rule 5 buzzword ban with the shared
-      {{shared:faithfulness-rules}} fragment, which ports write-position.v1's
-      21-item forbidden-phrases lexicon, adds the source-every-claim rule
-      explicitly, and adds a self-check step before JSON emit.
-    - Temperature lowered from 0.4 to 0.25 to bring variance down into the
-      same neighborhood as write-position (0.1) and write-bullet (0.15).
-      Fixes the class of editorial tails (e.g. "Brings a track record of
-      transforming HR services") that slipped past the prior prompt-local
-      rules at the 0.4 temperature.
   v1.2 (Phase 4.12 — unit fidelity):
     - Rule 2b (UNIT FIDELITY, HARD) forbids unit conversions not present
       in source material: percentage <-> absolute number, currency types,
@@ -113,13 +103,13 @@ Under 60 words reads as a slogan. Over 150 words reads as a career history. Aim 
 
 <!-- Why: Executive summary has a conventional length. Hiring managers scan; long summaries bury the positioning frame. 2026-04-18. -->
 
-### Rule 5 — No template placeholders, no AI artifacts.
+### Rule 5 — Buzzword and AI-speak ban.
+
+Remove any of these if they slip in: "spearheaded", "leveraged", "orchestrated", "championed", "fostered", "driving [noun]", "ensuring [noun]", "cross-functional collaboration", "stakeholder engagement", "transformational", "innovative solutions", "best-in-class", "cutting-edge", "holistic", "robust", "end-to-end", "operational excellence", "proven track record", "results-driven", "seasoned professional", "passionate about", "strategic thinker".
 
 Never emit strings like `"[INSERT X]"`, `"Example-"`, `"as an AI language model"`, `"I apologize"`. If the task is underspecified, fall back to the positioning frame and targetDisciplinePhrase. Produce complete output or throw (the calling code will surface a loud error).
 
-<!-- Why: AI artifacts in prose expose the ghostwriter to the reader. The prompt must either produce a complete, non-placeholder summary or throw. 2026-04-19. -->
-
-{{shared:faithfulness-rules}}
+<!-- Why: These phrases are universal resume filler. They signal "AI wrote this" to hiring managers and dilute the actual accomplishment claims. The list is lexical so the model can scan-check its own output. 2026-04-18. -->
 
 {{shared:pronoun-policy}}
 
