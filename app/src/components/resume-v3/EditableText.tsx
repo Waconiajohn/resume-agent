@@ -100,8 +100,12 @@ export function EditableText({
     );
   }
 
+  // Display mode: block when multiline so long bullets wrap like a paragraph
+  // rather than a single inline run; inline otherwise so single-word edits
+  // like a bullet's trailing phrase don't break surrounding flow.
+  const Tag = multiline ? 'div' : 'span';
   return (
-    <span
+    <Tag
       role={disabled ? undefined : 'button'}
       tabIndex={disabled ? -1 : 0}
       onClick={() => !disabled && setEditing(true)}
@@ -112,12 +116,15 @@ export function EditableText({
         }
       }}
       className={cn(
+        // Explicit text color so the content can't inherit an invisible tone
+        // from a neutral parent (the default GlassCard inheritance chain).
+        'text-[var(--text-strong)]',
         !disabled && 'cursor-text rounded-[4px] hover:bg-[var(--surface-2)]/40 transition-colors',
         !disabled && 'focus:outline-none focus:ring-1 focus:ring-[var(--bullet-confirm)]/40',
         className,
       )}
     >
       {value || (placeholder ? <span className="text-[var(--text-soft)] italic">{placeholder}</span> : '')}
-    </span>
+    </Tag>
   );
 }

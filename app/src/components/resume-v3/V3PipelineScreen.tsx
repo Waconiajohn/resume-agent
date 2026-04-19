@@ -169,18 +169,6 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
           </div>
         )}
 
-        {/* Promote panel — shown after pipeline completes so the user can
-            add newly-written content to their knowledge base */}
-        {pipeline.isComplete && !pipeline.error && pipeline.written && sessionId && (
-          <V3PromotePanel
-            accessToken={accessToken}
-            sessionId={sessionId}
-            written={editedWritten ?? pipeline.written}
-            master={master.summary}
-            onSaved={() => master.refresh()}
-          />
-        )}
-
         {/* Results layout */}
         {showResults && (
           <div className="grid lg:grid-cols-[320px_1fr_300px] gap-6">
@@ -205,6 +193,19 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
               <V3VerifyPanel verify={pipeline.verify} isRunning={pipeline.isRunning} />
             </div>
           </div>
+        )}
+
+        {/* Promote panel — wrap-up action, lives BELOW the resume so the
+            primary deliverable (the resume itself) isn't buried under it.
+            Collapsed by default; expands on demand. */}
+        {pipeline.isComplete && !pipeline.error && pipeline.written && sessionId && (
+          <V3PromotePanel
+            accessToken={accessToken}
+            sessionId={sessionId}
+            written={editedWritten ?? pipeline.written}
+            master={master.summary}
+            onSaved={() => master.refresh()}
+          />
         )}
       </div>
     </div>
