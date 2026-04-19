@@ -331,6 +331,18 @@ export const FF_VIRTUAL_COACH = envBool('FF_VIRTUAL_COACH', true);
  */
 export const FF_RESUME_V2 = envBool('FF_RESUME_V2', true);
 
+// ─── Resume v3 ────────────────────────────────────────────────────────────────
+
+/**
+ * FF_V3_PRIMARY — Mount the v3 resume pipeline at /api/v3-pipeline/*.
+ *
+ * Default: true (v3 is the primary resume pipeline).
+ * Set FF_V3_PRIMARY=false only if rolling back to v2-only operation during
+ * local testing. v2 remains available at /api/pipeline/* until Phase C
+ * cutover deletion.
+ */
+export const FF_V3_PRIMARY = envBool('FF_V3_PRIMARY', true);
+
 // ─── Resume v3 Shadow Deploy ──────────────────────────────────────────────────
 
 /**

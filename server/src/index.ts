@@ -7,6 +7,7 @@ import { requestIdMiddleware } from './middleware/request-id.js';
 import { sessions, getSessionRouteStats } from './routes/sessions.js';
 import { resumes } from './routes/resumes.js';
 import { resumeV2Pipeline, getV2PipelineRouteStats } from './routes/resume-v2-pipeline.js';
+import { v3Pipeline } from './routes/v3-pipeline.js';
 import { workflow } from './routes/workflow.js';
 import { billing } from './routes/billing.js';
 import { admin } from './routes/admin.js';
@@ -57,7 +58,7 @@ import { getPipelineMetrics } from './lib/pipeline-metrics.js';
 import logger from './lib/logger.js';
 import { initSentry, captureErrorWithContext, flushSentry } from './lib/sentry.js';
 import { validateRegisteredAgents } from './agents/runtime/agent-registry.js';
-import { FF_RESUME_V2 } from './lib/feature-flags.js';
+import { FF_RESUME_V2, FF_V3_PRIMARY } from './lib/feature-flags.js';
 import { createRedisBusIfConfigured, type RedisBus } from './agents/runtime/redis-bus.js';
 import { setAgentBus } from './agents/runtime/bus-factory.js';
 import { startHotReload, stopHotReload } from './agents/runtime/hot-reload.js';
@@ -309,6 +310,9 @@ app.route('/api/sessions', sessions);
 app.route('/api/resumes', resumes);
 if (FF_RESUME_V2) {
   app.route('/api/pipeline', resumeV2Pipeline);
+}
+if (FF_V3_PRIMARY) {
+  app.route('/api/v3-pipeline', v3Pipeline);
 }
 app.route('/api/workflow', workflow);
 app.route('/api/billing', billing);
