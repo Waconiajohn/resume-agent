@@ -9,8 +9,11 @@
 import { useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { GlassInput, GlassTextarea } from '@/components/GlassInput';
+import { GlassInput } from '@/components/GlassInput';
 import { BookMarked, Pencil } from 'lucide-react';
+import { FileDropZone } from './FileDropZone';
+import { extractResumeTextFromUpload } from '@/lib/resume-upload';
+import { extractJobDescriptionTextFromUpload } from '@/lib/job-description-upload';
 import type { V3MasterSummary } from '@/hooks/useV3Pipeline';
 
 interface V3IntakeFormProps {
@@ -114,22 +117,17 @@ export function V3IntakeForm({ onSubmit, initialResumeText, disabled, master }: 
                 </button>
               )}
             </div>
-            <GlassTextarea
+            <FileDropZone
+              label="resume"
+              accept=".txt,.docx,.pdf"
+              extract={extractResumeTextFromUpload}
               value={resumeText}
-              onChange={(e) => setResumeText(e.target.value)}
-              placeholder="Paste your resume text here…"
-              rows={14}
+              onChange={setResumeText}
               disabled={disabled}
-              className="font-mono text-[13px] leading-relaxed"
+              pastePlaceholder="Paste your resume text here…"
+              pasteRows={10}
+              defaultPasteOpen={Boolean(initialResumeText)}
             />
-            <div className="text-[11px] text-[var(--text-soft)] mt-1">
-              {resumeText.trim().length.toLocaleString()} characters
-              {resumeText.trim().length > 0 && resumeText.trim().length < 50 && (
-                <span className="text-[var(--badge-red-text)] ml-2">
-                  (at least 50 required)
-                </span>
-              )}
-            </div>
           </div>
         )}
 
@@ -137,21 +135,16 @@ export function V3IntakeForm({ onSubmit, initialResumeText, disabled, master }: 
           <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] mb-2">
             Job description
           </label>
-          <GlassTextarea
+          <FileDropZone
+            label="job description"
+            accept=".txt,.docx,.pdf,.html,.htm"
+            extract={extractJobDescriptionTextFromUpload}
             value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-            placeholder="Paste the target job description…"
-            rows={10}
+            onChange={setJobDescription}
             disabled={disabled}
+            pastePlaceholder="Paste the target job description…"
+            pasteRows={8}
           />
-          <div className="text-[11px] text-[var(--text-soft)] mt-1">
-            {jobDescription.trim().length.toLocaleString()} characters
-            {jobDescription.trim().length > 0 && jobDescription.trim().length < 50 && (
-              <span className="text-[var(--badge-red-text)] ml-2">
-                (at least 50 required)
-              </span>
-            )}
-          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">

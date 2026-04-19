@@ -58,7 +58,7 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-0)]">
+    <div className="h-[calc(100vh-3.5rem)] overflow-y-auto bg-[var(--bg-0)]">
       <div className="mx-auto max-w-7xl px-4 py-8 space-y-6">
         {/* Header strip */}
         <div className="flex items-center justify-between">
