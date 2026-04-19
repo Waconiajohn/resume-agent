@@ -1,18 +1,11 @@
 ---
 stage: verify
-version: "1.2.2"
+version: "1.2.1"
 capability: strong-reasoning
 temperature: 0.1
-last_edited: 2026-04-19
+last_edited: 2026-04-18
 last_editor: claude
 notes: |
-  v1.2.2 (2026-04-19 — pronoun ban absolute):
-    - Check 2 no longer carves out an exception for non-null
-      resume.pronoun. Any personal pronoun in the rewritten resume
-      is an error, regardless of what classify inferred from the
-      source text. US executive-resume convention forbids pronouns
-      categorically, and the shared pronoun-policy fragment already
-      reflects this; verify now enforces it uniformly.
   v1.2.1 (Phase 4.11 — Check 9 honors write-position Rule 7):
     - Check 9 now explicitly permits zero bullets for positions whose
       weight in strategy.positionEmphasis is "brief". write-position
@@ -132,24 +125,13 @@ If a bullet has `evidence_found: false`, check whether the rewrite uses softer l
 
 <!-- Why: The `evidence_found` metadata is only useful if it matches the text. A writer that emits `evidence_found: false` while writing "Delivered $26M" is inconsistent in a way that defeats the attribution check. 2026-04-18. -->
 
-### Check 2 — No personal pronouns, ever.
+### Check 2 — Pronouns match classify's pronoun guess.
 
-The WrittenResume must contain NO personal pronouns referring to the candidate, regardless of what `resume.pronoun` reports. Forbidden tokens (lowercase, capitalized, and possessive forms):
+If `resume.pronoun` is `null`, the WrittenResume must contain NO personal pronouns (he, she, his, her, him, they, them, their — in lowercase, capitalized, and possessive forms). Finding any pronoun in that case is an `"error"`.
 
-- **Third-person**: `he`, `him`, `his`, `she`, `her`, `hers`, `they`, `them`, `their`, `theirs`, `himself`, `herself`, `themselves`
-- **First-person**: `I`, `me`, `my`, `mine`, `myself`, `we`, `us`, `our`, `ours`, `ourselves`
+If `resume.pronoun` is `"he/him"`, `"she/her"`, or `"they/them"`, pronouns may appear but they must be consistent with the declared value. Mixing "he" and "she" in the same resume is an `"error"`.
 
-Any occurrence anywhere in the WrittenResume (`summary`, `selectedAccomplishments`, bullets, custom section entries, etc.) is an `"error"`. This applies even when `resume.pronoun` is set — that field is a classification observation about the source text, not a license to carry pronouns forward into the rewrite.
-
-Note: common-noun homographs that are NOT personal pronouns do not trigger this check:
-- "we" inside a compound noun like "Wework" obviously not a pronoun
-- proper nouns like "I.B.M." or "me-too product"
-- scare-quoted examples where the pronoun is part of quoted material in a title
-Use judgment — the test is whether a human reader would parse the token as a personal pronoun referring to the candidate.
-
-<!-- Why: US executive-resume convention forbids personal pronouns categorically. The earlier "pronouns OK if resume.pronoun is non-null" exception (v1.2.x) produced resumes with leaked "He/his" in the summary when classify inferred he/him from the source — observed in real user runs 2026-04-19. Absolute ban aligns verify with the shared pronoun-policy fragment that write-summary / write-position / write-accomplishments / write-competencies all load. -->
-
-<!-- Why (original): v2's pronoun mismatches (fixture-Rose / fixture-Tatiana) are the canonical bug. 2026-04-18. -->
+<!-- Why: v2's pronoun mismatches (fixture-Rose / fixture-Tatiana) are the canonical bug. 2026-04-18. -->
 
 ### Check 3 — Dates are consistent.
 
@@ -244,7 +226,7 @@ Within each custom section, entries' factual claims trace the same way as positi
 
 - Factual fabrication → `"error"`
 - Structural incompleteness → `"error"`
-- Personal pronoun anywhere in the WrittenResume → `"error"` (always; no exception for non-null resume.pronoun)
+- Pronoun inconsistency → `"error"` (when pronoun is null) or `"error"` (when mixed)
 - Date mismatch with source → `"error"`
 - Duplicate bullet within a role → `"error"`
 - Template/AI-artifact leak → `"error"`
