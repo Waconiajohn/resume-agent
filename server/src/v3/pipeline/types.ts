@@ -12,11 +12,13 @@ import type {
   Strategy,
   WrittenResume,
   VerifyResult,
+  BenchmarkProfile,
 } from '../types.js';
 
 export type V3PipelineStage =
   | 'extract'
   | 'classify'
+  | 'benchmark'
   | 'strategize'
   | 'write'
   | 'verify';
@@ -24,6 +26,7 @@ export type V3PipelineStage =
 /** Per-stage cost accounting; matches ShadowStageCosts schema for reuse. */
 export interface V3StageCosts {
   classify: number;
+  benchmark: number;
   strategize: number;
   write: number;
   verify: number;
@@ -34,6 +37,7 @@ export interface V3StageCosts {
 export interface V3StageTimings {
   extractMs?: number;
   classifyMs?: number;
+  benchmarkMs?: number;
   strategizeMs?: number;
   writeMs?: number;
   verifyMs?: number;
@@ -70,6 +74,13 @@ export type V3StageCompleteEvent =
     }
   | {
       type: 'stage_complete';
+      stage: 'benchmark';
+      durationMs: number;
+      output: BenchmarkProfile;
+      timestamp: string;
+    }
+  | {
+      type: 'stage_complete';
       stage: 'strategize';
       durationMs: number;
       output: Strategy;
@@ -94,6 +105,7 @@ export type V3StageCompleteEvent =
 export interface V3PipelineCompleteEvent {
   type: 'pipeline_complete';
   structured: StructuredResume;
+  benchmark: BenchmarkProfile;
   strategy: Strategy;
   written: WrittenResume;
   verify: VerifyResult;

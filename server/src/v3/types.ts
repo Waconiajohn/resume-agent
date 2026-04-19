@@ -178,6 +178,49 @@ export interface Strategy {
 }
 
 // -----------------------------------------------------------------------------
+// Stage 3b — Benchmark (v3 rebuild post-4.13, Phase D)
+// -----------------------------------------------------------------------------
+// Ideal-candidate reference for a role. Runs between classify and strategize.
+// Gives strategize (and ultimately the user) an anti-calibration against
+// poorly-written JDs: if we optimize purely to the JD text, we optimize to
+// the recruiter's phrasing. The benchmark asks "what does a strong candidate
+// for this ROLE actually look like?" so strategize positions the candidate
+// toward both the JD and the benchmark.
+//
+// GPT-5.4-mini produces this; no external research tool (v2 used Perplexity).
+// The model uses its training knowledge to reason about typical scope,
+// metrics, and deliverables for the role in its industry.
+
+export type BenchmarkStrength = 'strong' | 'partial';
+export type BenchmarkGapSeverity = 'disqualifying' | 'manageable' | 'noise';
+
+export interface BenchmarkDirectMatch {
+  jdRequirement: string;            // specific JD requirement this matches
+  candidateEvidence: string;        // specific candidate evidence that matches it
+  strength: BenchmarkStrength;
+}
+
+export interface BenchmarkGap {
+  gap: string;                      // the specific gap between candidate and benchmark
+  severity: BenchmarkGapSeverity;
+  bridgingStrategy: string;         // how strategize/write should position around it
+}
+
+export interface BenchmarkObjection {
+  objection: string;                // specific fear a hiring manager would have
+  neutralizationStrategy: string;   // how the resume can preempt it
+}
+
+export interface BenchmarkProfile {
+  roleProblemHypothesis: string;    // what business problem is this role really solving?
+  idealProfileSummary: string;      // 2-3 sentences: what a strong candidate looks like
+  directMatches: BenchmarkDirectMatch[];
+  gapAssessment: BenchmarkGap[];
+  positioningFrame: string;         // single narrative frame that makes this candidate closest match
+  hiringManagerObjections: BenchmarkObjection[];
+}
+
+// -----------------------------------------------------------------------------
 // Stage 4 — Write
 // -----------------------------------------------------------------------------
 

@@ -124,12 +124,12 @@ describe('getProvider model resolution', () => {
     expect(resolved.model).toBe('custom-vertex-model');
   });
 
-  it('uses openai default model when backend is openai', () => {
+  it('uses openai default model when backend is openai (gpt-5.4-mini since Phase 4.13)', () => {
     process.env.OpenAI_API_KEY = 'sk-test';
     process.env.RESUME_V3_STRONG_REASONING_BACKEND = 'openai';
     const resolved = getProvider('strong-reasoning');
     expect(resolved.backend).toBe('openai');
-    expect(resolved.model).toBe('gpt-4.1');
+    expect(resolved.model).toBe('gpt-5.4-mini');
   });
 
   it('RESUME_V3_*_MODEL_OPENAI overrides the openai default', () => {
@@ -140,19 +140,19 @@ describe('getProvider model resolution', () => {
     expect(resolved.model).toBe('gpt-5');
   });
 
-  it('fast-writer openai default is gpt-4.1-mini', () => {
+  it('fast-writer openai default is gpt-5.4-mini (Phase 4.13)', () => {
     process.env.OpenAI_API_KEY = 'sk-test';
     process.env.RESUME_V3_FAST_WRITER_BACKEND = 'openai';
     const resolved = getProvider('fast-writer');
-    expect(resolved.model).toBe('gpt-4.1-mini');
+    expect(resolved.model).toBe('gpt-5.4-mini');
   });
 
-  it('deep-writer defaults to openai backend with gpt-4.1 model (hybrid)', () => {
+  it('deep-writer defaults to openai backend with gpt-5.4-mini model (Phase 4.13)', () => {
     process.env.VERTEX_PROJECT = 'test-project';
     process.env.OpenAI_API_KEY = 'sk-test';
     const resolved = getProvider('deep-writer');
     expect(resolved.backend).toBe('openai');
-    expect(resolved.model).toBe('gpt-4.1');
+    expect(resolved.model).toBe('gpt-5.4-mini');
     // Wrapper strips extraParams; no thinking on the primary path.
     expect(resolved.extraParams).toBeUndefined();
   });

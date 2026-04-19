@@ -9,6 +9,7 @@ export type V3Stage =
   | 'pipeline'
   | 'extract'
   | 'classify'
+  | 'benchmark'
   | 'strategize'
   | 'write'
   | 'verify'

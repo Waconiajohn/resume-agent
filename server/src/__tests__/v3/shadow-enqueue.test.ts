@@ -79,7 +79,7 @@ describe('v3 shadow enqueue', () => {
       written: { summary: 'Test summary' } as never,
       verify: { passed: true, issues: [] } as never,
       timings: { classifyMs: 10, strategizeMs: 20, writeMs: 30, verifyMs: 40, totalMs: 100 },
-      costs: { classify: 0.001, strategize: 0.02, write: 0.05, verify: 0.02, total: 0.091 },
+      costs: { classify: 0.001, benchmark: 0.015, strategize: 0.02, write: 0.05, verify: 0.02, total: 0.106 },
     });
 
     const enqueue = await importEnqueueWithFlag(true);
@@ -107,7 +107,7 @@ describe('v3 shadow enqueue', () => {
   it('persists an error row when v3 fails inside a pipeline stage', async () => {
     runShadowMock.mockResolvedValueOnce({
       timings: { classifyMs: 5, totalMs: 5 },
-      costs: { classify: 0.001, strategize: 0, write: 0, verify: 0, total: 0.001 },
+      costs: { classify: 0.001, benchmark: 0, strategize: 0, write: 0, verify: 0, total: 0.001 },
       errorMessage: 'ClassifyError: JSON parse failed',
       errorStage: 'classify',
     });
@@ -137,7 +137,7 @@ describe('v3 shadow enqueue', () => {
                 written: { summary: 'late' } as never,
                 verify: { passed: true, issues: [] } as never,
                 timings: { totalMs: 100 },
-                costs: { classify: 0, strategize: 0, write: 0, verify: 0, total: 0 },
+                costs: { classify: 0, benchmark: 0, strategize: 0, write: 0, verify: 0, total: 0 },
               }),
             100,
           );
@@ -163,7 +163,7 @@ describe('v3 shadow enqueue', () => {
       written: { summary: 's' } as never,
       verify: { passed: true, issues: [] } as never,
       timings: { totalMs: 1 },
-      costs: { classify: 0, strategize: 0, write: 0, verify: 0, total: 0 },
+      costs: { classify: 0, benchmark: 0, strategize: 0, write: 0, verify: 0, total: 0 },
     });
 
     const enqueue = await importEnqueueWithFlag(true);

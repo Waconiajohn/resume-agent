@@ -20,7 +20,36 @@ import { API_BASE } from '@/lib/api';
 // fields. Full type imports would force bundling server types; the shape
 // contract is maintained by SSE tests on the backend.
 
-export type V3Stage = 'extract' | 'classify' | 'strategize' | 'write' | 'verify';
+export type V3Stage = 'extract' | 'classify' | 'benchmark' | 'strategize' | 'write' | 'verify';
+
+export type BenchmarkStrength = 'strong' | 'partial';
+export type BenchmarkGapSeverity = 'disqualifying' | 'manageable' | 'noise';
+
+export interface V3BenchmarkDirectMatch {
+  jdRequirement: string;
+  candidateEvidence: string;
+  strength: BenchmarkStrength;
+}
+
+export interface V3BenchmarkGap {
+  gap: string;
+  severity: BenchmarkGapSeverity;
+  bridgingStrategy: string;
+}
+
+export interface V3BenchmarkObjection {
+  objection: string;
+  neutralizationStrategy: string;
+}
+
+export interface V3BenchmarkProfile {
+  roleProblemHypothesis: string;
+  idealProfileSummary: string;
+  directMatches: V3BenchmarkDirectMatch[];
+  gapAssessment: V3BenchmarkGap[];
+  positioningFrame: string;
+  hiringManagerObjections: V3BenchmarkObjection[];
+}
 
 export interface V3ContactInfo {
   fullName: string;
@@ -137,6 +166,7 @@ export interface V3VerifyResult {
 
 export interface V3StageCosts {
   classify: number;
+  benchmark: number;
   strategize: number;
   write: number;
   verify: number;
@@ -146,6 +176,7 @@ export interface V3StageCosts {
 export interface V3StageTimings {
   extractMs?: number;
   classifyMs?: number;
+  benchmarkMs?: number;
   strategizeMs?: number;
   writeMs?: number;
   verifyMs?: number;
@@ -164,6 +195,7 @@ interface V3PipelineSSEEvent {
   timestamp: string;
   // pipeline_complete payload
   structured?: V3StructuredResume;
+  benchmark?: V3BenchmarkProfile;
   strategy?: V3Strategy;
   written?: V3WrittenResume;
   verify?: V3VerifyResult;
@@ -182,6 +214,7 @@ export interface V3PipelineState {
   currentStage: V3Stage | null;
   /** Populated as stage_complete events arrive. */
   structured: V3StructuredResume | null;
+  benchmark: V3BenchmarkProfile | null;
   strategy: V3Strategy | null;
   written: V3WrittenResume | null;
   verify: V3VerifyResult | null;
@@ -201,12 +234,14 @@ const initialState: V3PipelineState = {
   stageStatus: {
     extract: 'pending',
     classify: 'pending',
+    benchmark: 'pending',
     strategize: 'pending',
     write: 'pending',
     verify: 'pending',
   },
   currentStage: null,
   structured: null,
+  benchmark: null,
   strategy: null,
   written: null,
   verify: null,
@@ -247,6 +282,8 @@ export function useV3Pipeline(accessToken: string | null) {
         // Update the output slot for this stage so the UI can render progressively.
         if (event.stage === 'classify' && event.output) {
           next.structured = event.output as V3StructuredResume;
+        } else if (event.stage === 'benchmark' && event.output) {
+          next.benchmark = event.output as V3BenchmarkProfile;
         } else if (event.stage === 'strategize' && event.output) {
           next.strategy = event.output as V3Strategy;
         } else if (event.stage === 'write' && event.output) {
@@ -259,6 +296,7 @@ export function useV3Pipeline(accessToken: string | null) {
         next.isComplete = true;
         next.currentStage = null;
         if (event.structured) next.structured = event.structured;
+        if (event.benchmark) next.benchmark = event.benchmark;
         if (event.strategy) next.strategy = event.strategy;
         if (event.written) next.written = event.written;
         if (event.verify) next.verify = event.verify;

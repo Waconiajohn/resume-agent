@@ -21,6 +21,7 @@ interface V3StageProgressProps {
 const STAGES: Array<{ id: V3Stage; label: string; description: string }> = [
   { id: 'extract', label: 'Extract', description: 'Reading the resume' },
   { id: 'classify', label: 'Classify', description: 'Structuring content' },
+  { id: 'benchmark', label: 'Benchmark', description: 'Ideal candidate profile' },
   { id: 'strategize', label: 'Strategize', description: 'Designing positioning' },
   { id: 'write', label: 'Write', description: 'Drafting the resume' },
   { id: 'verify', label: 'Verify', description: 'Checking attribution' },

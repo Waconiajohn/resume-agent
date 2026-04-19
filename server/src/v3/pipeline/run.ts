@@ -9,6 +9,7 @@
 
 import { extract } from '../extract/index.js';
 import { classifyWithTelemetry } from '../classify/index.js';
+import { benchmarkWithTelemetry } from '../benchmark/index.js';
 import { strategizeWithTelemetry } from '../strategize/index.js';
 import { writeWithTelemetry } from '../write/index.js';
 import { verifyWithTelemetry } from '../verify/index.js';
@@ -35,7 +36,7 @@ export interface RunV3PipelineResult {
   success: boolean;
   timings: V3StageTimings;
   costs: V3StageCosts;
-  errorStage?: 'extract' | 'classify' | 'strategize' | 'write' | 'verify';
+  errorStage?: 'extract' | 'classify' | 'benchmark' | 'strategize' | 'write' | 'verify';
   errorMessage?: string;
 }
 
@@ -58,6 +59,7 @@ export async function runV3Pipeline(
   const timings: V3StageTimings = { totalMs: 0 };
   const costs: V3StageCosts = {
     classify: 0,
+    benchmark: 0,
     strategize: 0,
     write: 0,
     verify: 0,
@@ -118,6 +120,27 @@ export async function runV3Pipeline(
     });
   } catch (err) {
     return emitError('classify', err);
+  }
+
+  // ─── Stage 3a — benchmark ─────────────────────────────────────────────
+  // Ideal-candidate reference for the role. Runs before strategize so
+  // strategize can anti-calibrate against poorly-written JDs.
+  input.emit({ type: 'stage_start', stage: 'benchmark', timestamp: ts() });
+  let benchmarkProfile;
+  try {
+    const b = await benchmarkWithTelemetry(structured, input.jobDescription, { signal: input.signal });
+    timings.benchmarkMs = b.telemetry.durationMs;
+    costs.benchmark = costOf(b.telemetry.model, b.telemetry.inputTokens, b.telemetry.outputTokens);
+    benchmarkProfile = b.benchmark;
+    input.emit({
+      type: 'stage_complete',
+      stage: 'benchmark',
+      durationMs: timings.benchmarkMs,
+      output: benchmarkProfile,
+      timestamp: ts(),
+    });
+  } catch (err) {
+    return emitError('benchmark', err);
   }
 
   // ─── Stage 3 — strategize ─────────────────────────────────────────────
@@ -189,12 +212,13 @@ export async function runV3Pipeline(
     return emitError('verify', err);
   }
 
-  costs.total = costs.classify + costs.strategize + costs.write + costs.verify;
+  costs.total = costs.classify + costs.benchmark + costs.strategize + costs.write + costs.verify;
   timings.totalMs = Date.now() - started;
 
   input.emit({
     type: 'pipeline_complete',
     structured,
+    benchmark: benchmarkProfile,
     strategy,
     written,
     verify,

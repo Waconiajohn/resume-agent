@@ -152,9 +152,9 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
         {/* Results layout */}
         {showResults && (
           <div className="grid lg:grid-cols-[320px_1fr_300px] gap-6">
-            {/* Left: strategy */}
+            {/* Left: benchmark + strategy */}
             <div className="space-y-4">
-              <V3StrategyPanel strategy={pipeline.strategy} />
+              <V3StrategyPanel benchmark={pipeline.benchmark} strategy={pipeline.strategy} />
             </div>
 
             {/* Center: resume */}

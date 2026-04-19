@@ -8,6 +8,7 @@
 
 import { extract } from '../extract/index.js';
 import { classifyWithTelemetry } from '../classify/index.js';
+import { benchmarkWithTelemetry } from '../benchmark/index.js';
 import { strategizeWithTelemetry } from '../strategize/index.js';
 import { writeWithTelemetry } from '../write/index.js';
 import { verifyWithTelemetry } from '../verify/index.js';
@@ -34,6 +35,7 @@ export interface ShadowInput {
 
 export interface ShadowStageTimings {
   classifyMs?: number;
+  benchmarkMs?: number;
   strategizeMs?: number;
   writeMs?: number;
   verifyMs?: number;
@@ -42,6 +44,7 @@ export interface ShadowStageTimings {
 
 export interface ShadowStageCosts {
   classify: number;
+  benchmark: number;
   strategize: number;
   write: number;       // sum of summary + accomplishments + competencies + positions[] + customSections[]
   verify: number;
@@ -54,7 +57,7 @@ export interface ShadowResult {
   timings: ShadowStageTimings;
   costs: ShadowStageCosts;
   errorMessage?: string;
-  errorStage?: 'extract' | 'classify' | 'strategize' | 'write' | 'verify' | 'unknown';
+  errorStage?: 'extract' | 'classify' | 'benchmark' | 'strategize' | 'write' | 'verify' | 'unknown';
 }
 
 /**
@@ -64,7 +67,7 @@ export interface ShadowResult {
 export async function runShadow(input: ShadowInput): Promise<ShadowResult> {
   const started = Date.now();
   const timings: ShadowStageTimings = { totalMs: 0 };
-  const costs: ShadowStageCosts = { classify: 0, strategize: 0, write: 0, verify: 0, total: 0 };
+  const costs: ShadowStageCosts = { classify: 0, benchmark: 0, strategize: 0, write: 0, verify: 0, total: 0 };
 
   let stage: ShadowResult['errorStage'] = 'unknown';
 
@@ -79,6 +82,16 @@ export async function runShadow(input: ShadowInput): Promise<ShadowResult> {
     const c = await classifyWithTelemetry(extractResult, { signal: input.signal });
     timings.classifyMs = c.telemetry.durationMs;
     costs.classify = costOf(c.telemetry.model, c.telemetry.inputTokens, c.telemetry.outputTokens);
+
+    // Stage 3a — benchmark (strong-reasoning).
+    stage = 'benchmark';
+    const bench = await benchmarkWithTelemetry(
+      c.resume,
+      { title: input.jdTitle, company: input.jdCompany, text: input.jdText },
+      { signal: input.signal },
+    );
+    timings.benchmarkMs = bench.telemetry.durationMs;
+    costs.benchmark = costOf(bench.telemetry.model, bench.telemetry.inputTokens, bench.telemetry.outputTokens);
 
     // Stage 3 — strategize (strong-reasoning; gpt-4.1 in production).
     stage = 'strategize';
@@ -114,7 +127,7 @@ export async function runShadow(input: ShadowInput): Promise<ShadowResult> {
     timings.verifyMs = v.telemetry.durationMs;
     costs.verify = costOf(v.telemetry.model, v.telemetry.inputTokens, v.telemetry.outputTokens);
 
-    costs.total = costs.classify + costs.strategize + costs.write + costs.verify;
+    costs.total = costs.classify + costs.benchmark + costs.strategize + costs.write + costs.verify;
     timings.totalMs = Date.now() - started;
 
     log.info(
@@ -147,7 +160,7 @@ export async function runShadow(input: ShadowInput): Promise<ShadowResult> {
       },
       'shadow run failed (non-blocking)',
     );
-    costs.total = costs.classify + costs.strategize + costs.write + costs.verify;
+    costs.total = costs.classify + costs.benchmark + costs.strategize + costs.write + costs.verify;
     return {
       timings,
       costs,

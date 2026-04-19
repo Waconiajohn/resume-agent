@@ -17,6 +17,9 @@ vi.mock('../../v3/extract/index.js', () => ({
 vi.mock('../../v3/classify/index.js', () => ({
   classifyWithTelemetry: vi.fn(),
 }));
+vi.mock('../../v3/benchmark/index.js', () => ({
+  benchmarkWithTelemetry: vi.fn(),
+}));
 vi.mock('../../v3/strategize/index.js', () => ({
   strategizeWithTelemetry: vi.fn(),
 }));
@@ -29,6 +32,7 @@ vi.mock('../../v3/verify/index.js', () => ({
 
 import { extract } from '../../v3/extract/index.js';
 import { classifyWithTelemetry } from '../../v3/classify/index.js';
+import { benchmarkWithTelemetry } from '../../v3/benchmark/index.js';
 import { strategizeWithTelemetry } from '../../v3/strategize/index.js';
 import { writeWithTelemetry } from '../../v3/write/index.js';
 import { verifyWithTelemetry } from '../../v3/verify/index.js';
@@ -36,6 +40,7 @@ import { runV3Pipeline } from '../../v3/pipeline/run.js';
 
 const extractMock = vi.mocked(extract);
 const classifyMock = vi.mocked(classifyWithTelemetry);
+const benchmarkMock = vi.mocked(benchmarkWithTelemetry);
 const strategizeMock = vi.mocked(strategizeWithTelemetry);
 const writeMock = vi.mocked(writeWithTelemetry);
 const verifyMock = vi.mocked(verifyWithTelemetry);
@@ -51,6 +56,10 @@ function setupHappyPathMocks() {
   classifyMock.mockResolvedValue({
     resume: { contact: { fullName: 'Test' }, positions: [] } as never,
     telemetry: { durationMs: 100, model: 'deepseek-ai/deepseek-v3.2-maas', inputTokens: 1000, outputTokens: 500 } as never,
+  });
+  benchmarkMock.mockResolvedValue({
+    benchmark: { roleProblemHypothesis: 'x', idealProfileSummary: 'y', directMatches: [], gapAssessment: [], positioningFrame: 'z', hiringManagerObjections: [] } as never,
+    telemetry: { durationMs: 150, model: 'gpt-4.1', inputTokens: 1500, outputTokens: 600 } as never,
   });
   strategizeMock.mockResolvedValue({
     strategy: { positioningFrame: 'test frame' } as never,
@@ -84,6 +93,7 @@ describe('runV3Pipeline', () => {
   beforeEach(() => {
     extractMock.mockReset();
     classifyMock.mockReset();
+    benchmarkMock.mockReset();
     strategizeMock.mockReset();
     writeMock.mockReset();
     verifyMock.mockReset();
@@ -110,17 +120,20 @@ describe('runV3Pipeline', () => {
     // Expected sequence:
     // stage_start extract, stage_complete extract,
     // stage_start classify, stage_complete classify,
+    // stage_start benchmark, stage_complete benchmark,
     // stage_start strategize, stage_complete strategize,
     // stage_start write, stage_complete write,
     // stage_start verify, stage_complete verify,
     // pipeline_complete
-    expect(events).toHaveLength(11);
+    expect(events).toHaveLength(13);
     const types = events.map((e) => `${e.type}/${'stage' in e ? e.stage : ''}`);
     expect(types).toEqual([
       'stage_start/extract',
       'stage_complete/extract',
       'stage_start/classify',
       'stage_complete/classify',
+      'stage_start/benchmark',
+      'stage_complete/benchmark',
       'stage_start/strategize',
       'stage_complete/strategize',
       'stage_start/write',
@@ -130,7 +143,7 @@ describe('runV3Pipeline', () => {
       'pipeline_complete/',
     ]);
 
-    const final = events[10];
+    const final = events[12];
     expect(final.type).toBe('pipeline_complete');
     if (final.type === 'pipeline_complete') {
       expect(final.verify.passed).toBe(true);
@@ -184,13 +197,15 @@ describe('runV3Pipeline', () => {
     expect(result.errorStage).toBe('strategize');
     expect(result.errorMessage).toContain('strategize boom');
 
-    // Sequence through classify_complete + strategize_start + pipeline_error
+    // Sequence through classify/benchmark complete + strategize_start + pipeline_error
     const types = events.map((e) => `${e.type}/${'stage' in e ? e.stage : ''}`);
     expect(types).toEqual([
       'stage_start/extract',
       'stage_complete/extract',
       'stage_start/classify',
       'stage_complete/classify',
+      'stage_start/benchmark',
+      'stage_complete/benchmark',
       'stage_start/strategize',
       'pipeline_error/strategize',
     ]);
@@ -244,6 +259,7 @@ describe('runV3Pipeline', () => {
 
     // Each stage that accepts a signal should have received controller.signal.
     expect(classifyMock.mock.calls[0]![1]).toMatchObject({ signal: controller.signal });
+    expect(benchmarkMock.mock.calls[0]![2]).toMatchObject({ signal: controller.signal });
     expect(strategizeMock.mock.calls[0]![2]).toMatchObject({ signal: controller.signal });
     expect(writeMock.mock.calls[0]![2]).toMatchObject({ signal: controller.signal });
     expect(verifyMock.mock.calls[0]![3]).toMatchObject({ signal: controller.signal });
