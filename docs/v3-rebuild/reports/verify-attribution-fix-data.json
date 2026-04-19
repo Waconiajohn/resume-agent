@@ -1,0 +1,105 @@
+{
+  "pre_fix_verify_baseline": "DeepSeek V3.2, pre-fix attribution matcher",
+  "post_fix_verify": "DeepSeek V3.2, post-fix attribution matcher (commit 277c64d2)",
+  "date": "2026-04-19",
+  "fixtures": [
+    {
+      "fixture": "fixture-01-ben-wedewer-resume-trimmed",
+      "pre": {
+        "passed": true,
+        "errors": 0,
+        "warnings": 1,
+        "error_messages": []
+      },
+      "post": {
+        "passed": true,
+        "errors": 0,
+        "warnings": 2,
+        "error_messages": []
+      }
+    },
+    {
+      "fixture": "fixture-04-bshook-resume-dirpm-primary",
+      "pre": {
+        "passed": true,
+        "errors": 0,
+        "warnings": 8,
+        "error_messages": []
+      },
+      "post": {
+        "passed": true,
+        "errors": 0,
+        "warnings": 8,
+        "error_messages": []
+      }
+    },
+    {
+      "fixture": "fixture-10-jessica-boquist-core-resume",
+      "pre": {
+        "passed": false,
+        "errors": 2,
+        "warnings": 3,
+        "error_messages": [
+          "Mechanical attribution flagged 'Elevated AI' as missing, but source bullet 'Elevated the user experience of the AI platform by crafting hundreds of prompts...' contains the claim; no factual fabrication found.",
+          "Personal pronoun 'her' appears in the WrittenResume summary, violating the absolute ban on personal pronouns."
+        ]
+      },
+      "post": {
+        "passed": false,
+        "errors": 3,
+        "warnings": 5,
+        "error_messages": [
+          "The bullet claims '$150MM' revenue boost, but the source bullet states '$150MM' (same value, different abbreviation); mechanical check missed due to abbreviation difference, but the claim is present in source.",
+          "The bullet claims 'by applying the JTBD framework to product-market fit, go-to-market strategy, and a multi-year roadmap based on job-specific customer segments' but the source bullet only mentions using JTBD to determine product-market fit, go-to-market strategies, and a multi-year roadmap; the paraphrase is acceptable and the claim is sourced, so no fabrication.",
+          "The summary contains the personal pronoun 'she' (inferred from 'she/her' in source pronoun field), which is forbidden in the WrittenResume."
+        ]
+      }
+    },
+    {
+      "fixture": "fixture-12-joel-hough-resume",
+      "pre": {
+        "passed": false,
+        "errors": 3,
+        "warnings": 1,
+        "error_messages": [
+          "Fabricated claim: '$1.3 million' and '6,300 tons' not found in source bullets or scope; source says 'nearly $1.3million' and '6300 tons' (no comma).",
+          "Fabricated claim: '$100 million' not found in source bullets or scope; source says '$100million' (no space).",
+          "Personal pronoun 'who' (referring to candidate) appears in summary."
+        ]
+      },
+      "post": {
+        "passed": true,
+        "errors": 0,
+        "warnings": 8,
+        "error_messages": []
+      }
+    },
+    {
+      "fixture": "fixture-17-resume-davidchicks",
+      "pre": {
+        "passed": true,
+        "errors": 0,
+        "warnings": 2,
+        "error_messages": []
+      },
+      "post": {
+        "passed": false,
+        "errors": 1,
+        "warnings": 2,
+        "error_messages": [
+          "Fabricated custom section 'Patents & Innovations' not present in source resume."
+        ]
+      }
+    }
+  ],
+  "aggregate": {
+    "pre": {
+      "errors": 5,
+      "warnings": 15
+    },
+    "post": {
+      "errors": 4,
+      "warnings": 25
+    }
+  }
+}

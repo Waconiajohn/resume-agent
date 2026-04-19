@@ -58,10 +58,13 @@ function resume(opts: {
     careerGaps: [],
     crossRoleHighlights: (opts.crossRoleHighlights ?? []).map((t) => ({
       text: t,
+      sourceContext: 'fixture',
       confidence: 1.0,
     })),
     customSections: [],
     pronoun: null,
+    flags: [],
+    overallConfidence: 1.0,
   };
 }
 
