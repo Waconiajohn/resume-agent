@@ -18,7 +18,7 @@
 import { useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Pencil, Undo2 } from 'lucide-react';
 import { useV3Pipeline, type StartV3PipelineInput } from '@/hooks/useV3Pipeline';
 import { V3StageProgress } from './V3StageProgress';
 import { V3IntakeForm } from './V3IntakeForm';
@@ -62,17 +62,35 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
               Attribution-first resume tailoring
             </p>
           </div>
-          {showResults && (
-            <GlassButton
-              variant="ghost"
-              size="sm"
-              onClick={handleReset}
-              disabled={pipeline.isRunning}
-            >
-              <RefreshCw className="h-4 w-4 mr-1.5" />
-              Start over
-            </GlassButton>
-          )}
+          <div className="flex items-center gap-2">
+            {editedWritten && (
+              <>
+                <div className="inline-flex items-center gap-1.5 text-[11px] text-[var(--bullet-confirm)] px-2 py-1 rounded bg-[var(--bullet-confirm-bg)] border border-[var(--bullet-confirm-border)]">
+                  <Pencil className="h-3 w-3" />
+                  Edited
+                </div>
+                <GlassButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditedWritten(null)}
+                >
+                  <Undo2 className="h-4 w-4 mr-1.5" />
+                  Reset to generated
+                </GlassButton>
+              </>
+            )}
+            {showResults && (
+              <GlassButton
+                variant="ghost"
+                size="sm"
+                onClick={handleReset}
+                disabled={pipeline.isRunning}
+              >
+                <RefreshCw className="h-4 w-4 mr-1.5" />
+                Start over
+              </GlassButton>
+            )}
+          </div>
         </div>
 
         {/* Stage progress (visible whenever a run has started) */}
@@ -121,6 +139,14 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
             initialResumeText={initialResumeText}
             disabled={pipeline.isRunning}
           />
+        )}
+
+        {/* Edit hint once pipeline is complete */}
+        {pipeline.isComplete && !pipeline.error && !editedWritten && (
+          <div className="text-[11px] text-[var(--text-soft)] flex items-center gap-1.5">
+            <Pencil className="h-3 w-3" />
+            Click any bullet or the summary to edit. Press Enter to save, Esc to cancel.
+          </div>
         )}
 
         {/* Results layout */}

@@ -13,10 +13,11 @@
  * B5 adds inline editing. For B3, display + attribution only.
  */
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { Link2, FileText, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EditableText } from './EditableText';
 import type {
   V3StructuredResume,
   V3WrittenResume,
@@ -31,6 +32,32 @@ interface Props {
   verify: V3VerifyResult | null;
   editable?: boolean;
   onEdit?: (updated: V3WrittenResume | null) => void;
+}
+
+// Immutable updater helpers for editing.
+function updateSummary(w: V3WrittenResume, next: string): V3WrittenResume {
+  return { ...w, summary: next };
+}
+function updateAccomplishment(w: V3WrittenResume, idx: number, next: string): V3WrittenResume {
+  const list = w.selectedAccomplishments.slice();
+  list[idx] = next;
+  return { ...w, selectedAccomplishments: list };
+}
+function updateBullet(
+  w: V3WrittenResume,
+  posIdx: number,
+  bulletIdx: number,
+  next: string,
+): V3WrittenResume {
+  const positions = w.positions.slice();
+  const pos = positions[posIdx];
+  if (!pos) return w;
+  const bullets = pos.bullets.slice();
+  const b = bullets[bulletIdx];
+  if (!b) return w;
+  bullets[bulletIdx] = { ...b, text: next };
+  positions[posIdx] = { ...pos, bullets };
+  return { ...w, positions };
 }
 
 function formatDateRange(dr: { start: string | null; end: string | null; raw: string }): string {
@@ -172,16 +199,25 @@ function BulletLine({
   structured,
   verify,
   path,
+  editable,
+  onTextChange,
 }: {
   bullet: V3Bullet;
   structured: V3StructuredResume | null;
   verify: V3VerifyResult | null;
   path: string;
+  editable: boolean;
+  onTextChange?: (next: string) => void;
 }) {
   return (
     <li className={cn('relative pl-1 leading-relaxed text-[14px] text-[var(--text-strong)]', confidenceClass(bullet.confidence))}>
       <span className="mr-1.5 text-[var(--text-soft)]">•</span>
-      <span>{bullet.text}</span>
+      <EditableText
+        value={bullet.text}
+        onChange={(next) => onTextChange?.(next)}
+        multiline
+        disabled={!editable || !onTextChange}
+      />
       <AttributionBadge bullet={bullet} structured={structured} verify={verify} path={path} />
     </li>
   );
@@ -192,11 +228,15 @@ function PositionBlock({
   structured,
   verify,
   posIdx,
+  editable,
+  onBulletChange,
 }: {
   position: V3WrittenPosition;
   structured: V3StructuredResume | null;
   verify: V3VerifyResult | null;
   posIdx: number;
+  editable: boolean;
+  onBulletChange?: (bulletIdx: number, next: string) => void;
 }) {
   return (
     <div className="mb-6">
@@ -225,6 +265,8 @@ function PositionBlock({
               structured={structured}
               verify={verify}
               path={`positions[${posIdx}].bullets[${i}]`}
+              editable={editable}
+              onTextChange={onBulletChange ? (next) => onBulletChange(i, next) : undefined}
             />
           ))}
         </ul>
@@ -235,7 +277,12 @@ function PositionBlock({
 
 // ─── Main view ──────────────────────────────────────────────────────────────
 
-export function V3ResumeView({ structured, written, verify }: Props) {
+export function V3ResumeView({ structured, written, verify, editable = false, onEdit }: Props) {
+  const emitEdit = useCallback(
+    (next: V3WrittenResume) => onEdit?.(next),
+    [onEdit],
+  );
+
   if (!written) {
     return (
       <GlassCard className="p-8">
@@ -278,14 +325,20 @@ export function V3ResumeView({ structured, written, verify }: Props) {
       {/* Summary */}
       <SectionHeading>Summary</SectionHeading>
       <div className="relative">
-        <p
+        <div
           className={cn(
             'text-[14px] leading-relaxed text-[var(--text-strong)]',
             summaryHasError && 'border-l-2 border-[var(--badge-red-text)] pl-3',
           )}
         >
-          {written.summary}
-        </p>
+          <EditableText
+            value={written.summary}
+            onChange={(next) => emitEdit(updateSummary(written, next))}
+            multiline
+            disabled={!editable}
+            placeholder="Summary…"
+          />
+        </div>
         {summaryIssues.length > 0 && (
           <div className="mt-2 text-[11px] text-[var(--badge-red-text)] space-y-0.5">
             {summaryIssues.map((i, k) => (
@@ -326,7 +379,12 @@ export function V3ResumeView({ structured, written, verify }: Props) {
                 className="relative pl-1 leading-relaxed text-[14px] text-[var(--text-strong)]"
               >
                 <span className="mr-1.5 text-[var(--text-soft)]">•</span>
-                {a}
+                <EditableText
+                  value={a}
+                  onChange={(next) => emitEdit(updateAccomplishment(written, i, next))}
+                  multiline
+                  disabled={!editable}
+                />
               </li>
             ))}
           </ul>
@@ -344,6 +402,12 @@ export function V3ResumeView({ structured, written, verify }: Props) {
               structured={structured}
               verify={verify}
               posIdx={i}
+              editable={editable}
+              onBulletChange={
+                editable
+                  ? (bulletIdx, next) => emitEdit(updateBullet(written, i, bulletIdx, next))
+                  : undefined
+              }
             />
           ))}
         </>
