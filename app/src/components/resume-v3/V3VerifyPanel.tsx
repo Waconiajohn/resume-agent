@@ -1,47 +1,76 @@
 /**
- * V3VerifyPanel — side panel summarizing the verify stage.
+ * V3VerifyPanel — right-column "Review" summary of the verify stage.
  *
- * Shows:
- *  - Pass/fail badge at top
- *  - Counts by severity (errors / warnings)
- *  - Grouped list of issues by section ("summary", "positions[2].bullets[4]")
- *  - Each issue text with severity color
+ * What the user sees:
+ *   - A header "Review" (the word "Verify" is developer vocabulary; users
+ *     understand "Review" as "things to look over before you hit send").
+ *   - Status line: "Looks good" when nothing surfaced, or
+ *     "Passed with N suggestion(s)" when there are items.
+ *   - A list of items, each with:
+ *       * Small uppercase tag label (e.g. "SUMMARY", "KEY ACCOMPLISHMENTS",
+ *         "ROLE AT UNDER ARMOUR")
+ *       * Plain-English message
+ *       * Optional italic suggestion
  *
- * v3's verify issues already surface INLINE on bullets in V3ResumeView.
- * This panel is the aggregate summary — glance here to know how many
- * issues there are and jump to them.
- *
- * Loading state: skeleton while stages 1-4 run, "Verifying…" while verify
- * itself runs.
+ * Data source:
+ *   - Prefer verify.translated[] (produced by the server-side
+ *     translate step; filters noise via shouldShow=false, rewrites prose
+ *     into user-facing language).
+ *   - Fall back to verify.issues[] with a mechanical path->label
+ *     translation when .translated is absent (translator failed or
+ *     hasn't run yet). Noise does not get filtered in the fallback
+ *     path, but the panel still reads correctly.
  */
 
 import { GlassCard } from '@/components/GlassCard';
 import { CheckCircle2, AlertTriangle, AlertCircle, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { V3VerifyResult, V3VerifyIssue } from '@/hooks/useV3Pipeline';
+import type { V3VerifyResult, V3VerifyIssue, V3TranslatedIssue } from '@/hooks/useV3Pipeline';
 
 interface Props {
   verify: V3VerifyResult | null;
   isRunning: boolean;
 }
 
-function groupIssuesBySection(issues: V3VerifyIssue[]): Record<string, V3VerifyIssue[]> {
-  const groups: Record<string, V3VerifyIssue[]> = {};
-  for (const i of issues) {
-    const key = i.section || '(unspecified)';
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(i);
-  }
-  return groups;
+interface DisplayItem {
+  severity: 'error' | 'warning';
+  label: string;
+  message: string;
+  suggestion?: string;
 }
 
-/** Collapse long refs like "positions[2].bullets[4]" → "pos 2 · bullet 4" */
-function prettifySection(s: string): string {
-  return s
-    .replace(/positions\[(\d+)\]\.bullets\[(\d+)\]/g, 'pos $1 · bullet $2')
-    .replace(/positions\[(\d+)\]/g, 'pos $1')
-    .replace(/selectedAccomplishments\[(\d+)\]/g, 'accomplishment $1')
-    .replace(/customSections\[(\d+)\]/g, 'custom section $1');
+function fallbackLabel(section: string): string {
+  // Last-resort label when translator didn't run. Matches the translator's
+  // mapping for the common cases so the UX is consistent on both paths.
+  if (section === 'summary') return 'Summary';
+  if (section === 'coreCompetencies') return 'Core competencies';
+  if (section.startsWith('selectedAccomplishments')) return 'Key accomplishments';
+  const bullet = section.match(/^positions\[(\d+)\]\.bullets\[(\d+)\]$/);
+  if (bullet) return `Position ${Number(bullet[1]) + 1} · bullet ${Number(bullet[2]) + 1}`;
+  const pos = section.match(/^positions\[(\d+)\]$/);
+  if (pos) return `Position ${Number(pos[1]) + 1}`;
+  if (section.startsWith('customSections')) return 'Custom section';
+  return section;
+}
+
+function buildDisplayItems(verify: V3VerifyResult): DisplayItem[] {
+  const translated: V3TranslatedIssue[] | undefined = verify.translated;
+  if (translated && translated.length > 0) {
+    return translated
+      .filter((t) => t.shouldShow)
+      .map((t) => ({
+        severity: t.severity,
+        label: t.label,
+        message: t.message,
+        suggestion: t.suggestion,
+      }));
+  }
+  // Fallback: raw issues with mechanical labels.
+  return verify.issues.map((i: V3VerifyIssue) => ({
+    severity: i.severity,
+    label: fallbackLabel(i.section),
+    message: i.message,
+  }));
 }
 
 export function V3VerifyPanel({ verify, isRunning }: Props) {
@@ -51,11 +80,11 @@ export function V3VerifyPanel({ verify, isRunning }: Props) {
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-[var(--text-soft)]" />
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-            Verify
+            Review
           </h2>
         </div>
         <p className="text-sm text-[var(--text-soft)] mt-3">
-          {isRunning ? 'Waiting on verify stage…' : 'Not yet run.'}
+          {isRunning ? 'Waiting on review…' : 'Not yet run.'}
         </p>
         {isRunning && (
           <div className="mt-3 space-y-2">
@@ -67,82 +96,91 @@ export function V3VerifyPanel({ verify, isRunning }: Props) {
     );
   }
 
-  const errors = verify.issues.filter((i) => i.severity === 'error');
-  const warnings = verify.issues.filter((i) => i.severity === 'warning');
-  const groups = groupIssuesBySection(verify.issues);
-  const groupKeys = Object.keys(groups).sort();
+  const items = buildDisplayItems(verify);
+  const errorCount = items.filter((i) => i.severity === 'error').length;
+  const warningCount = items.filter((i) => i.severity === 'warning').length;
+  const totalShown = items.length;
+  const anyErrors = errorCount > 0;
 
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2">
         <Shield className="h-4 w-4 text-[var(--text-soft)]" />
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-          Verify
+          Review
         </h2>
       </div>
 
-      {/* Overall verdict */}
+      {/* Status line — tone matches the outcome */}
       <div className="mt-3 flex items-center gap-2">
-        {verify.passed ? (
+        {anyErrors ? (
+          <>
+            <AlertTriangle className="h-5 w-5 text-[var(--badge-red-text)]" />
+            <span className="text-sm font-semibold text-[var(--text-strong)]">
+              Needs review
+            </span>
+          </>
+        ) : totalShown > 0 ? (
           <>
             <CheckCircle2 className="h-5 w-5 text-[var(--bullet-confirm)]" />
-            <span className="text-sm font-semibold text-[var(--text-strong)]">Passed</span>
+            <span className="text-sm font-semibold text-[var(--text-strong)]">
+              Passed
+            </span>
           </>
         ) : (
           <>
-            <AlertTriangle className="h-5 w-5 text-[var(--badge-red-text)]" />
-            <span className="text-sm font-semibold text-[var(--text-strong)]">Needs review</span>
+            <CheckCircle2 className="h-5 w-5 text-[var(--bullet-confirm)]" />
+            <span className="text-sm font-semibold text-[var(--text-strong)]">
+              Looks good
+            </span>
           </>
         )}
       </div>
 
-      {/* Counts */}
-      <div className="mt-2 flex gap-3 text-[11px]">
-        {errors.length > 0 && (
-          <div className="flex items-center gap-1 text-[var(--badge-red-text)]">
-            <AlertTriangle className="h-3 w-3" />
-            {errors.length} {errors.length === 1 ? 'error' : 'errors'}
-          </div>
-        )}
-        {warnings.length > 0 && (
-          <div className="flex items-center gap-1 text-[var(--badge-amber-text)]">
-            <AlertCircle className="h-3 w-3" />
-            {warnings.length} {warnings.length === 1 ? 'warning' : 'warnings'}
-          </div>
-        )}
-        {verify.issues.length === 0 && (
-          <div className="text-[var(--text-soft)]">All sections clean.</div>
-        )}
-      </div>
+      {/* Count line */}
+      {totalShown > 0 && (
+        <div className="mt-1.5 flex gap-3 text-[11px]">
+          {errorCount > 0 && (
+            <div className="flex items-center gap-1 text-[var(--badge-red-text)]">
+              <AlertTriangle className="h-3 w-3" />
+              {errorCount} {errorCount === 1 ? 'issue' : 'issues'}
+            </div>
+          )}
+          {warningCount > 0 && (
+            <div className="flex items-center gap-1 text-[var(--badge-amber-text)]">
+              <AlertCircle className="h-3 w-3" />
+              {warningCount} {warningCount === 1 ? 'suggestion' : 'suggestions'}
+            </div>
+          )}
+        </div>
+      )}
+      {totalShown === 0 && (
+        <p className="mt-1.5 text-[11px] text-[var(--text-soft)]">
+          No concerns flagged. Safe to export.
+        </p>
+      )}
 
-      {/* Grouped issues */}
-      {groupKeys.length > 0 && (
-        <div className="mt-4 space-y-3">
-          {groupKeys.map((key) => (
-            <div key={key}>
-              <div className="text-[10px] uppercase tracking-wider text-[var(--text-soft)] mb-1 font-mono">
-                {prettifySection(key)}
+      {/* Items */}
+      {items.length > 0 && (
+        <div className="mt-4 space-y-3 max-h-[480px] overflow-y-auto">
+          {items.map((item, i) => (
+            <div key={i} className="text-[12px] leading-snug">
+              <div
+                className={cn(
+                  'text-[10px] font-semibold uppercase tracking-[0.08em] mb-1',
+                  item.severity === 'error'
+                    ? 'text-[var(--badge-red-text)]'
+                    : 'text-[var(--text-soft)]',
+                )}
+              >
+                {item.label}
               </div>
-              <ul className="space-y-1.5">
-                {groups[key].map((issue, i) => (
-                  <li
-                    key={i}
-                    className={cn(
-                      'text-[11px] leading-snug flex items-start gap-1.5',
-                      issue.severity === 'error'
-                        ? 'text-[var(--badge-red-text)]'
-                        : 'text-[var(--badge-amber-text)]',
-                    )}
-                  >
-                    {issue.severity === 'error' ? (
-                      <AlertTriangle className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
-                    )}
-                    <span>{issue.message}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="text-[var(--text-strong)]">{item.message}</div>
+              {item.suggestion && (
+                <div className="mt-1 text-[var(--text-muted)] italic">
+                  {item.suggestion}
+                </div>
+              )}
             </div>
           ))}
         </div>

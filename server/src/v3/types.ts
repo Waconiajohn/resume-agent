@@ -268,9 +268,38 @@ export interface VerifyIssue {
   message: string;
 }
 
+/**
+ * User-facing translation of a VerifyIssue. Produced by the post-verify
+ * translation helper (server/src/v3/verify/translate.ts). The frontend
+ * renders these in the Review panel when present, and falls back to the
+ * raw issue text when absent or the translator failed.
+ *
+ * Key invariants:
+ *  - `label` is a human section name like "Summary", "Key accomplishments",
+ *    "Role at Acme" — never a raw path like "positions[2].bullets[4]".
+ *  - `message` is plain English with no developer vocabulary
+ *    (no "crossRoleHighlights", "WrittenResume", "mechanical attribution").
+ *  - `shouldShow: false` = filter out (e.g. internal-QA false positives
+ *    the system already resolved); the panel drops these entirely.
+ */
+export interface TranslatedIssue {
+  shouldShow: boolean;
+  severity: IssueSeverity;
+  label: string;
+  message: string;
+  suggestion?: string;
+}
+
 export interface VerifyResult {
   passed: boolean;
   issues: VerifyIssue[];
+  /**
+   * Optional plain-English translations of `issues`, 1:1 index aligned
+   * when present. Produced by a post-verify LLM call; absent when the
+   * translator was skipped or errored. Frontend should fall back to
+   * `issues` when this is undefined.
+   */
+  translated?: TranslatedIssue[];
 }
 
 // -----------------------------------------------------------------------------

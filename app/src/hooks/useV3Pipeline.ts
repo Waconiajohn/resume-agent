@@ -159,9 +159,24 @@ export interface V3VerifyIssue {
   message: string;
 }
 
+/**
+ * User-facing translation of a verify issue. Produced server-side by a
+ * cheap post-verify LLM call. When present, the Review panel renders
+ * these instead of the raw `issues` (which stay in plumbing vocabulary).
+ */
+export interface V3TranslatedIssue {
+  shouldShow: boolean;
+  severity: 'error' | 'warning';
+  label: string;
+  message: string;
+  suggestion?: string;
+}
+
 export interface V3VerifyResult {
   passed: boolean;
   issues: V3VerifyIssue[];
+  /** Plain-English translations; optional. Panel falls back to `issues` when absent. */
+  translated?: V3TranslatedIssue[];
 }
 
 export interface V3StageCosts {

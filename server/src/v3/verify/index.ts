@@ -14,6 +14,7 @@ import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
 import { VerifyResultSchema } from './schema.js';
 import { checkAttributionMechanically } from './attribution.js';
+import { translateVerifyIssues, type TranslateTelemetry } from './translate.js';
 import type {
   Strategy,
   StructuredResume,
@@ -52,6 +53,8 @@ export interface VerifyTelemetry {
   inputTokens: number;
   outputTokens: number;
   durationMs: number;
+  /** Post-verify translation telemetry (user-facing message rewrite). */
+  translate?: TranslateTelemetry;
 }
 
 export interface VerifyResultWithTelemetry {
@@ -181,6 +184,18 @@ export async function verifyWithTelemetry(
     'verify complete',
   );
 
+  // Sidecar: translate verify messages into user-facing prose + filter
+  // internal-QA noise. Non-fatal — on any failure, we return raw issues and
+  // the frontend falls back to the raw text treatment.
+  const translateResult = await translateVerifyIssues(
+    validated.issues,
+    source,
+    { signal: options.signal },
+  );
+  if (translateResult.translated) {
+    validated.translated = translateResult.translated;
+  }
+
   return {
     result: validated,
     telemetry: {
@@ -192,6 +207,7 @@ export async function verifyWithTelemetry(
       inputTokens: usage.input_tokens,
       outputTokens: usage.output_tokens,
       durationMs,
+      translate: translateResult.telemetry,
     },
   };
 }

@@ -229,6 +229,14 @@ export async function runV3Pipeline(
     const v = await verifyWithTelemetry(written, structured, strategy, { signal: input.signal });
     timings.verifyMs = v.telemetry.durationMs;
     costs.verify = costOf(v.telemetry.model, v.telemetry.inputTokens, v.telemetry.outputTokens);
+    // Add the post-verify translation call (if it ran) so total cost is honest.
+    if (v.telemetry.translate) {
+      costs.verify += costOf(
+        v.telemetry.translate.model,
+        v.telemetry.translate.inputTokens,
+        v.telemetry.translate.outputTokens,
+      );
+    }
     verify = v.result;
     input.emit({
       type: 'stage_complete',
