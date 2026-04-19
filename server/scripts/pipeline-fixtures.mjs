@@ -73,7 +73,9 @@ const PRICING = {
   'claude-sonnet-4-6': { input: 3.0, output: 15.0 },
   // OpenAI (Phase 4 Intervention 4 comparison backend)
   'gpt-5': { input: 5.0, output: 15.0 },
-  'gpt-5-mini': { input: 0.50, output: 1.50 },
+  // Phase 4.13: prices per John's task spec (current OpenAI list 2026-04).
+  'gpt-5-mini': { input: 0.25, output: 2.00 },
+  'gpt-5.4-mini': { input: 0.75, output: 4.50 },
   'gpt-4.1': { input: 2.0, output: 8.0 },
   'gpt-4o': { input: 2.50, output: 10.0 },
   'gpt-4o-mini': { input: 0.15, output: 0.60 },
