@@ -401,18 +401,40 @@ function haystackContainsToken(haystack: string, token: ClaimToken): boolean {
 // -----------------------------------------------------------------------------
 
 /**
- * Position-scoped haystack: the source position's title + scope + all its
- * bullets + the resume's crossRoleHighlights. Used by
- * checkAttributionMechanically — writers rewrite bullets from their own
- * position's material, plus top-level highlights.
+ * Position-scoped haystack: every source field that a rewritten bullet
+ * might legitimately cite. Listed explicitly so audits can see coverage.
+ *
+ * Included (phase-A-fix expansion):
+ *   - position.title
+ *   - position.company            (added 2026-04-19 — was missing)
+ *   - position.dates.raw           (added 2026-04-19 — was missing)
+ *   - position.location
+ *   - position.scope
+ *   - position.bullets[].text
+ *   - source.discipline            (added 2026-04-19 — resume-level)
+ *   - source.crossRoleHighlights[].text
+ *   - source.customSections[].title + .entries[].text   (added 2026-04-19)
+ *
+ * Deliberately NOT included: source.education, source.certifications,
+ * source.skills. Bullet claims rarely pull from these; adding them risks
+ * false-positive matches on unrelated material (e.g. a skill "SailPoint"
+ * matching a bullet claim about a SailPoint deployment that actually
+ * belongs to a different position).
  */
 function buildPositionHaystack(sourcePos: Position, source: StructuredResume): string {
   const parts: string[] = [];
   parts.push(sourcePos.title ?? '');
-  if (sourcePos.scope) parts.push(sourcePos.scope);
+  parts.push(sourcePos.company ?? '');
+  if (sourcePos.dates?.raw) parts.push(sourcePos.dates.raw);
   if (sourcePos.location) parts.push(sourcePos.location);
+  if (sourcePos.scope) parts.push(sourcePos.scope);
   for (const b of sourcePos.bullets) parts.push(b.text);
+  parts.push(source.discipline ?? '');
   for (const h of source.crossRoleHighlights) parts.push(h.text);
+  for (const cs of source.customSections) {
+    parts.push(cs.title);
+    for (const e of cs.entries) parts.push(e.text);
+  }
   return normalize(parts.join('\n'));
 }
 
@@ -444,17 +466,119 @@ function buildResumeHaystack(source: StructuredResume): string {
 function haystackContains(haystack: string, token: string): boolean {
   const needle = normalize(token);
   if (needle.length === 0) return true;
-  return haystack.includes(needle);
+  if (haystack.includes(needle)) return true;
+  // Fallback for number+unit tokens (e.g. "742 staff"): accept the match
+  // if the number and the unit both appear within a small window of each
+  // other, in either order. This handles source phrasings like
+  // "staff of 742" or "742-person staff" that substring-match can't see.
+  return numberUnitMatchLoose(haystack, needle);
 }
 
 /**
- * Normalize whitespace, case, and dash types so "2020 – 2023" matches
- * "2020-2023" etc.
+ * Regex-escape for user-supplied string going into a RegExp.
+ */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Loose match for a `NUMBER UNIT` shaped token (e.g. "742 staff",
+ * "85 people", "15 trains"). Returns true iff the number and unit both
+ * appear in the haystack within 40 characters of each other, in either
+ * order. Returns false for tokens that don't match the number+unit shape.
+ *
+ * Motivating case: written bullet "742 staff" vs source scope "staff of
+ * 742". Substring match fails (order differs); this fallback accepts
+ * because "staff" is within 40 chars of "742" in the haystack.
+ *
+ * False-positive cost: if the resume mentions "742 stores" somewhere AND
+ * "staff" somewhere else, this would accept "742 staff" as sourced. The
+ * 40-char proximity window keeps that risk bounded — the number and unit
+ * must cooccur in the same clause, not anywhere in the resume.
+ */
+function numberUnitMatchLoose(haystack: string, token: string): boolean {
+  const m = /^((?:~|>|<)?\d+(?:[.,]?\d+)*)\s+([a-z][a-z\-/]{1,40})$/.exec(token);
+  if (!m) return false;
+  const num = m[1];
+  const unit = m[2];
+  const escNum = escapeRegExp(num);
+  const escUnit = escapeRegExp(unit);
+  // "\b" around the number catches edges around punctuation/space; around
+  // the unit we use a letter-boundary pattern that accepts plural forms.
+  const re = new RegExp(
+    `(?:\\b${escNum}\\b[^a-zA-Z0-9]{0,40}${escUnit}|` +
+      `\\b${escUnit}\\b[^0-9]{0,40}\\b${escNum}\\b)`,
+    'i',
+  );
+  return re.test(haystack);
+}
+
+/**
+ * Normalize whitespace, case, dash types, AND numeric formatting.
+ *
+ * The three cosmetic steps (dash unification, whitespace collapse,
+ * lowercase) were here before Phase A. The number canonicalization below
+ * is new (2026-04-19) — it unifies the surface-form variations a resume
+ * writer legitimately introduces into the matcher's single form:
+ *   - commas removed from numbers: "6,300" → "6300"
+ *   - "percent" word normalized to "%": "22 percent" → "22%"
+ *   - space inserted before unit words: "$1.3million" → "$1.3 million"
+ *   - letter-unit abbreviations expanded: "$40m" → "$40 million",
+ *     "$500k" → "$500 thousand", "$2b" → "$2 billion" (case-insensitive
+ *     because lowercase runs first). Only applied when the letter is
+ *     immediately attached to or space-separated from a number, to
+ *     avoid collisions with unrelated words.
+ *
+ * After normalize(), "$1.3 million", "$1.3million", and "$1.3M" all
+ * reduce to "$1.3 million"; "6,300 tons" and "6300 tons" both reduce to
+ * "6300 tons"; "22%" and "22 percent" both reduce to "22%".
  */
 function normalize(s: string): string {
-  return s
+  let out = s
     .replace(/[\u2010-\u2014\u2212\u2013]/g, '-')
     .replace(/\s+/g, ' ')
     .toLowerCase()
     .trim();
+  out = canonicalizeNumbers(out);
+  return out;
+}
+
+/**
+ * Number-format canonicalization. Called by normalize(). Separate so it
+ * can be unit-tested in isolation.
+ *
+ * Order matters:
+ *   1. Remove commas INSIDE numbers (1,000 / 1,000,000 / 6,300).
+ *   2. Normalize the word "percent" to "%".
+ *   3. Insert a space between a number and an attached unit word
+ *      (million/billion/thousand) — "$1.3million" becomes "$1.3 million".
+ *   4. Expand letter-unit abbreviations (m/k/b) adjacent to a number
+ *      into their long forms — "$40m" becomes "$40 million". Only
+ *      applied when touching the number (no word boundary mid-abbrev)
+ *      so unrelated "m" / "k" / "b" words are not altered.
+ *
+ * Idempotent: running twice on the same input produces the same output.
+ */
+export function canonicalizeNumbers(input: string): string {
+  let s = input;
+  // 1. Remove commas from inside multi-digit numbers. Apply repeatedly to
+  //    handle 1,000,000 (three chunks).
+  for (let i = 0; i < 4; i++) {
+    const next = s.replace(/(\d),(\d)/g, '$1$2');
+    if (next === s) break;
+    s = next;
+  }
+  // 2. "percent" word → "%".
+  s = s.replace(/(\d+(?:\.\d+)?)\s*percent\b/g, '$1%');
+  // 3. Insert space between number and attached unit word.
+  s = s.replace(/(\d+(?:\.\d+)?)(million|billion|thousand)\b/g, '$1 $2');
+  // 4. Expand letter abbreviations m/k/b immediately attached to a number.
+  //    Example: "$40m" → "$40 million"; "40m" → "40 million".
+  //    The leading \B pattern would reject mid-word, but \b on the letter's
+  //    right is what we actually want — so require the letter to be followed
+  //    by a word boundary (end of word).
+  s = s.replace(/(\d+(?:\.\d+)?)m\b/g, '$1 million');
+  s = s.replace(/(\d+(?:\.\d+)?)k\b/g, '$1 thousand');
+  s = s.replace(/(\d+(?:\.\d+)?)b\b/g, '$1 billion');
+  return s;
 }
