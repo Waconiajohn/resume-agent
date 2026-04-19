@@ -12,14 +12,15 @@
  * stage_complete events arrive.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import {
   Target, AlertCircle, Sparkles, Layers,
-  ShieldCheck, Microscope, TrendingUp, ChevronDown, ChevronRight,
+  ShieldCheck, Microscope, TrendingUp, ChevronDown, ChevronRight, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { V3Strategy, V3BenchmarkProfile, V3BenchmarkGap } from '@/hooks/useV3Pipeline';
+import type { PositionWeight } from '@/hooks/useV3Regenerate';
 
 interface Props {
   benchmark: V3BenchmarkProfile | null;
@@ -32,6 +33,24 @@ interface Props {
    */
   flashPositionIndex?: number | null;
   flashTick?: number;
+  /**
+   * Regenerate a position with a new weight (Phase 4). When provided, the
+   * per-position weight badges become clickable — cycling primary → secondary
+   * → brief → primary. Pending changes accumulate locally; "Re-run" applies.
+   */
+  onRegeneratePosition?: (
+    positionIndex: number,
+    weight?: PositionWeight,
+  ) => void | Promise<void>;
+  /** Position indices currently regenerating — spinner. */
+  pendingPositions?: Set<number>;
+}
+
+const WEIGHT_CYCLE: PositionWeight[] = ['primary', 'secondary', 'brief'];
+
+function nextWeight(w: PositionWeight): PositionWeight {
+  const idx = WEIGHT_CYCLE.indexOf(w);
+  return WEIGHT_CYCLE[(idx + 1) % WEIGHT_CYCLE.length]!;
 }
 
 function weightBadgeClass(weight: 'primary' | 'secondary' | 'brief'): string {
@@ -202,12 +221,54 @@ function StrategyCard({
   strategy,
   flashPositionIndex,
   flashTick,
+  onRegeneratePosition,
+  pendingPositions,
 }: {
   strategy: V3Strategy | null;
   flashPositionIndex?: number | null;
   flashTick?: number;
+  onRegeneratePosition?: (positionIndex: number, weight?: PositionWeight) => void | Promise<void>;
+  pendingPositions?: Set<number>;
 }) {
   const emphasisRefs = useRef<Map<number, HTMLLIElement>>(new Map());
+  // Pending weight changes not yet applied. Keyed by positionIndex;
+  // cleared when the user clicks "Re-run" or resets an individual row.
+  const [pendingWeights, setPendingWeights] = useState<Map<number, PositionWeight>>(new Map());
+
+  const currentWeights = useMemo(() => {
+    const m = new Map<number, PositionWeight>();
+    strategy?.positionEmphasis.forEach((p) => m.set(p.positionIndex, p.weight));
+    return m;
+  }, [strategy]);
+
+  const hasPendingChanges = pendingWeights.size > 0;
+
+  const handleCycleWeight = (positionIndex: number) => {
+    if (!onRegeneratePosition) return;
+    setPendingWeights((prev) => {
+      const next = new Map(prev);
+      const cur = next.get(positionIndex) ?? currentWeights.get(positionIndex) ?? 'secondary';
+      const cycled = nextWeight(cur);
+      const original = currentWeights.get(positionIndex) ?? 'secondary';
+      if (cycled === original) {
+        next.delete(positionIndex);
+      } else {
+        next.set(positionIndex, cycled);
+      }
+      return next;
+    });
+  };
+
+  const handleApplyChanges = () => {
+    if (!onRegeneratePosition) return;
+    // Fire regenerate for each pending change. Capture keys first since
+    // state mutates as each call kicks off.
+    const entries = [...pendingWeights.entries()];
+    for (const [positionIndex, weight] of entries) {
+      void onRegeneratePosition(positionIndex, weight);
+    }
+    setPendingWeights(new Map());
+  };
 
   useEffect(() => {
     if (flashPositionIndex === null || flashPositionIndex === undefined) return;
@@ -233,6 +294,30 @@ function StrategyCard({
           Strategy
         </h2>
       </div>
+
+      {/* Pending-weight-changes bar — appears only when the user has cycled
+          one or more weights. Clicking "Re-run" fires regenerate per-change. */}
+      {hasPendingChanges && (
+        <div className="mt-3 rounded border border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] p-2 flex items-center gap-2">
+          <span className="text-[11px] text-[var(--text-strong)] flex-1">
+            {pendingWeights.size} position{pendingWeights.size === 1 ? '' : 's'} to re-run
+          </span>
+          <button
+            type="button"
+            onClick={handleApplyChanges}
+            className="text-[11px] font-semibold text-[var(--bullet-confirm)] hover:underline"
+          >
+            Re-run
+          </button>
+          <button
+            type="button"
+            onClick={() => setPendingWeights(new Map())}
+            className="text-[11px] text-[var(--text-soft)] hover:text-[var(--text-muted)]"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {!strategy ? (
         <div className="mt-4"><SkeletonPulse rows={3} /></div>
@@ -317,16 +402,63 @@ function StrategyCard({
               <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
                 <Layers className="h-3 w-3" />
                 Position weight
+                {onRegeneratePosition && (
+                  <span className="ml-auto text-[var(--text-soft)] normal-case tracking-normal italic">
+                    click to cycle
+                  </span>
+                )}
               </div>
               <ul className="space-y-1">
-                {strategy.positionEmphasis.map((p, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2 text-[11px]">
-                    <span className="text-[var(--text-muted)]">Position {p.positionIndex}</span>
-                    <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider', weightBadgeClass(p.weight))}>
-                      {p.weight}
-                    </span>
-                  </li>
-                ))}
+                {strategy.positionEmphasis.map((p, i) => {
+                  const pending = pendingWeights.get(p.positionIndex);
+                  const displayWeight = pending ?? p.weight;
+                  const isPending = pending !== undefined;
+                  const isRegenerating = pendingPositions?.has(p.positionIndex) ?? false;
+                  return (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between gap-2 text-[11px]"
+                    >
+                      <span className="text-[var(--text-muted)]">
+                        Position {p.positionIndex}
+                      </span>
+                      {onRegeneratePosition ? (
+                        <button
+                          type="button"
+                          onClick={() => handleCycleWeight(p.positionIndex)}
+                          disabled={isRegenerating}
+                          className={cn(
+                            'px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider transition-colors inline-flex items-center gap-1',
+                            weightBadgeClass(displayWeight),
+                            isPending && 'ring-1 ring-[var(--bullet-confirm)]',
+                            isRegenerating && 'cursor-wait opacity-60',
+                          )}
+                          title={
+                            isRegenerating
+                              ? 'Regenerating…'
+                              : isPending
+                                ? `Changed from ${p.weight} — click to cycle further`
+                                : 'Click to cycle weight'
+                          }
+                        >
+                          {isRegenerating && (
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          )}
+                          {displayWeight}
+                        </button>
+                      ) : (
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider',
+                            weightBadgeClass(p.weight),
+                          )}
+                        >
+                          {p.weight}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -347,7 +479,14 @@ function StrategyCard({
   );
 }
 
-export function V3StrategyPanel({ benchmark, strategy, flashPositionIndex, flashTick }: Props) {
+export function V3StrategyPanel({
+  benchmark,
+  strategy,
+  flashPositionIndex,
+  flashTick,
+  onRegeneratePosition,
+  pendingPositions,
+}: Props) {
   return (
     <div className="space-y-4">
       <BenchmarkCard benchmark={benchmark} />
@@ -355,6 +494,8 @@ export function V3StrategyPanel({ benchmark, strategy, flashPositionIndex, flash
         strategy={strategy}
         flashPositionIndex={flashPositionIndex}
         flashTick={flashTick}
+        onRegeneratePosition={onRegeneratePosition}
+        pendingPositions={pendingPositions}
       />
     </div>
   );

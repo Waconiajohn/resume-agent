@@ -26,6 +26,16 @@ import { runV3Pipeline } from '../v3/pipeline/run.js';
 import type { V3PipelineSSEEvent } from '../v3/pipeline/types.js';
 import { fetchDefaultMaster, fetchMasterSummary } from '../v3/master/load.js';
 import { promoteToMaster } from '../v3/master/promote.js';
+import {
+  regenerateBullet,
+  regeneratePosition,
+} from '../v3/write/regenerate.js';
+import { verifyWithTelemetry } from '../v3/verify/index.js';
+import type {
+  Strategy,
+  StructuredResume,
+  WrittenResume,
+} from '../v3/types.js';
 
 export const v3Pipeline = new Hono();
 
@@ -119,6 +129,113 @@ v3Pipeline.post('/promote', authMiddleware, rateLimitMiddleware(20, 60_000), asy
     return c.json({ error: 'Promote failed' }, 500);
   }
 });
+
+// ─── POST /api/v3-pipeline/regenerate ────────────────────────────────
+// Per-bullet or per-position rewrite from the three-panel UI. Stateless:
+// the frontend sends the current structured + strategy context because
+// v3 doesn't persist pipeline state — only a minimal coach_sessions row.
+const regenerateTargetSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('bullet'),
+    positionIndex: z.number().int().min(0),
+    bulletIndex: z.number().int().min(0),
+    guidance: z.string().max(300).optional(),
+  }),
+  z.object({
+    kind: z.literal('position'),
+    positionIndex: z.number().int().min(0),
+    weightOverride: z.enum(['primary', 'secondary', 'brief']).optional(),
+  }),
+]);
+// Loose validation on structured/strategy — these originate from our own
+// SSE stream; the downstream helpers fail fast on malformed input.
+const regenerateBodySchema = z.object({
+  structured: z.object({}).passthrough(),
+  strategy: z.object({}).passthrough(),
+  target: regenerateTargetSchema,
+});
+
+v3Pipeline.post(
+  '/regenerate',
+  authMiddleware,
+  rateLimitMiddleware(30, 60_000),
+  async (c) => {
+    const user = c.get('user');
+    const parsedBody = await parseJsonBodyWithLimit(c, 500_000);
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const parsed = regenerateBodySchema.safeParse(parsedBody.data);
+    if (!parsed.success) {
+      return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+    }
+
+    const structured = parsed.data.structured as unknown as StructuredResume;
+    const strategy = parsed.data.strategy as unknown as Strategy;
+    const { target } = parsed.data;
+
+    try {
+      if (target.kind === 'bullet') {
+        const { bullet } = await regenerateBullet(
+          structured,
+          strategy,
+          target.positionIndex,
+          target.bulletIndex,
+          { guidance: target.guidance },
+        );
+        return c.json({ bullet });
+      }
+      const { position } = await regeneratePosition(
+        structured,
+        strategy,
+        target.positionIndex,
+        { weightOverride: target.weightOverride },
+      );
+      return c.json({ position });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error({ userId: user.id, target, err: msg }, 'POST /v3-pipeline/regenerate failed');
+      return c.json({ error: 'Regenerate failed', message: msg }, 500);
+    }
+  },
+);
+
+// ─── POST /api/v3-pipeline/reverify ──────────────────────────────────
+// After a regenerate or user edit, re-run verify against the updated
+// resume so the Review panel's warnings reflect the latest state.
+const reverifyBodySchema = z.object({
+  structured: z.object({}).passthrough(),
+  strategy: z.object({}).passthrough(),
+  written: z.object({}).passthrough(),
+});
+
+v3Pipeline.post(
+  '/reverify',
+  authMiddleware,
+  rateLimitMiddleware(20, 60_000),
+  async (c) => {
+    const user = c.get('user');
+    const parsedBody = await parseJsonBodyWithLimit(c, 500_000);
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const parsed = reverifyBodySchema.safeParse(parsedBody.data);
+    if (!parsed.success) {
+      return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+    }
+
+    const structured = parsed.data.structured as unknown as StructuredResume;
+    const strategy = parsed.data.strategy as unknown as Strategy;
+    const written = parsed.data.written as unknown as WrittenResume;
+
+    try {
+      const { result } = await verifyWithTelemetry(written, structured, strategy);
+      return c.json({ verify: result });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error({ userId: user.id, err: msg }, 'POST /v3-pipeline/reverify failed');
+      return c.json({ error: 'Re-verify failed', message: msg }, 500);
+    }
+  },
+);
 
 v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (c) => {
   const user = c.get('user');

@@ -15,7 +15,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
-import { Link2, FileText, AlertTriangle, RotateCcw } from 'lucide-react';
+import {
+  Link2, FileText, AlertTriangle, RotateCcw, RefreshCw, Loader2, X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EditableText } from './EditableText';
 import type {
@@ -63,6 +65,18 @@ interface Props {
    * the Strategy panel's emphasized-accomplishment card for this position.
    */
   onSourceChipClick?: (positionIndex: number) => void;
+  /**
+   * Regenerate a single bullet via the Phase-4 REST endpoint. When provided,
+   * every is_new bullet shows a regenerate icon next to the revert icon.
+   * Optional `guidance` is a free-form steering hint ("shorter", "add metrics").
+   */
+  onRegenerateBullet?: (
+    positionIndex: number,
+    bulletIndex: number,
+    guidance?: string,
+  ) => void | Promise<void>;
+  /** Bullet keys (`${posIdx}#${bulletIdx}`) currently being regenerated — spinner. */
+  pendingBulletKeys?: Set<string>;
 }
 
 // Immutable updater helpers for editing.
@@ -304,6 +318,7 @@ function BulletLine({
   verify,
   path,
   positionIndex,
+  bulletIndex,
   editable,
   onTextChange,
   pristineText,
@@ -311,33 +326,51 @@ function BulletLine({
   dismissedIssueKeys,
   onTriangleClick,
   onSourceChipClick,
+  onRegenerateBullet,
+  isRegenerating,
 }: {
   bullet: V3Bullet;
   structured: V3StructuredResume | null;
   verify: V3VerifyResult | null;
   path: string;
   positionIndex: number;
+  bulletIndex: number;
   editable: boolean;
   onTextChange?: (next: string) => void;
-  /** The pipeline's original text for this bullet. When the current text
-   * diverges, an edit-dot shows in the gutter. */
   pristineText?: string;
-  /** Register this bullet's DOM element under its section path, so the
-   * parent view can scroll to it when the Review panel asks. */
   registerSectionRef?: (section: string, el: HTMLElement | null) => void;
   dismissedIssueKeys?: Set<string>;
   onTriangleClick?: (key: string, section: string) => void;
   onSourceChipClick?: (positionIndex: number) => void;
+  onRegenerateBullet?: (
+    positionIndex: number,
+    bulletIndex: number,
+    guidance?: string,
+  ) => void | Promise<void>;
+  isRegenerating?: boolean;
 }) {
   const hasDiverged =
     typeof pristineText === 'string' && normalize(bullet.text) !== normalize(pristineText);
   const source = resolveSingleSourceBullet(bullet.source, structured);
   const isReverted = source !== null && normalize(bullet.text) === normalize(source);
+  const [guidanceOpen, setGuidanceOpen] = useState(false);
+  const [guidance, setGuidance] = useState('');
+
+  const submitRegen = (hint: string | undefined) => {
+    if (!onRegenerateBullet) return;
+    setGuidanceOpen(false);
+    setGuidance('');
+    void onRegenerateBullet(positionIndex, bulletIndex, hint);
+  };
 
   return (
     <li
       ref={(el) => registerSectionRef?.(path, el)}
-      className={cn('relative pl-1 leading-relaxed text-[14px] text-[var(--text-strong)]', confidenceClass(bullet.confidence))}
+      className={cn(
+        'relative pl-1 leading-relaxed text-[14px] text-[var(--text-strong)]',
+        confidenceClass(bullet.confidence),
+        isRegenerating && 'opacity-50',
+      )}
     >
       {hasDiverged && (
         <span
@@ -351,7 +384,7 @@ function BulletLine({
         value={bullet.text}
         onChange={(next) => onTextChange?.(next)}
         multiline
-        disabled={!editable || !onTextChange}
+        disabled={!editable || !onTextChange || isRegenerating}
       />
       <AttributionBadge
         bullet={bullet}
@@ -365,6 +398,77 @@ function BulletLine({
         onTriangleClick={onTriangleClick}
         onSourceChipClick={onSourceChipClick}
       />
+      {/* Regenerate icon — next to the revert chrome. Click = no-guidance
+          regen; Alt-click = open the guidance textbox for a steered rewrite. */}
+      {bullet.is_new && editable && onRegenerateBullet && (
+        <button
+          type="button"
+          onClick={(e) => {
+            if (e.altKey) {
+              setGuidanceOpen((o) => !o);
+            } else {
+              submitRegen(undefined);
+            }
+          }}
+          disabled={isRegenerating}
+          className={cn(
+            'inline-flex items-center gap-0.5 text-[10px] rounded px-1 py-0.5 ml-1.5 align-baseline transition-colors',
+            isRegenerating
+              ? 'text-[var(--text-soft)] cursor-wait'
+              : 'text-[var(--text-soft)] hover:text-[var(--badge-blue-text)] hover:bg-[var(--badge-blue-bg)]',
+          )}
+          title="Regenerate this bullet (Alt-click for guided)"
+          aria-label="Regenerate bullet"
+        >
+          {isRegenerating ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3 w-3" />
+          )}
+        </button>
+      )}
+      {/* Guided-regen inline input. Enter submits; Esc or X closes. */}
+      {guidanceOpen && !isRegenerating && (
+        <div className="mt-1.5 ml-4 flex items-center gap-1">
+          <input
+            type="text"
+            value={guidance}
+            onChange={(e) => setGuidance(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                submitRegen(guidance);
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setGuidanceOpen(false);
+                setGuidance('');
+              }
+            }}
+            autoFocus
+            maxLength={200}
+            placeholder="shorter, add metrics, lead with outcome…"
+            className="flex-1 text-[12px] px-2 py-1 rounded border border-[var(--line-soft)] bg-[var(--surface-1)] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--badge-blue-text)] focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => submitRegen(guidance.trim() || undefined)}
+            className="text-[11px] text-[var(--badge-blue-text)] hover:underline font-medium"
+          >
+            Regenerate
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setGuidanceOpen(false);
+              setGuidance('');
+            }}
+            className="text-[var(--text-soft)] hover:text-[var(--text-muted)]"
+            aria-label="Cancel"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
     </li>
   );
 }
@@ -386,6 +490,8 @@ function PositionBlock({
   dismissedIssueKeys,
   onTriangleClick,
   onSourceChipClick,
+  onRegenerateBullet,
+  pendingBulletKeys,
 }: {
   position: V3WrittenPosition;
   pristinePosition?: V3WrittenPosition;
@@ -398,6 +504,12 @@ function PositionBlock({
   dismissedIssueKeys?: Set<string>;
   onTriangleClick?: (key: string, section: string) => void;
   onSourceChipClick?: (positionIndex: number) => void;
+  onRegenerateBullet?: (
+    positionIndex: number,
+    bulletIndex: number,
+    guidance?: string,
+  ) => void | Promise<void>;
+  pendingBulletKeys?: Set<string>;
 }) {
   return (
     <div
@@ -430,6 +542,7 @@ function PositionBlock({
               verify={verify}
               path={`positions[${posIdx}].bullets[${i}]`}
               positionIndex={posIdx}
+              bulletIndex={i}
               editable={editable}
               onTextChange={onBulletChange ? (next) => onBulletChange(i, next) : undefined}
               pristineText={pristinePosition?.bullets[i]?.text}
@@ -437,6 +550,8 @@ function PositionBlock({
               dismissedIssueKeys={dismissedIssueKeys}
               onTriangleClick={onTriangleClick}
               onSourceChipClick={onSourceChipClick}
+              onRegenerateBullet={onRegenerateBullet}
+              isRegenerating={pendingBulletKeys?.has(`${posIdx}#${i}`)}
             />
           ))}
         </ul>
@@ -458,6 +573,8 @@ export function V3ResumeView({
   dismissedIssueKeys,
   onTriangleClick,
   onSourceChipClick,
+  onRegenerateBullet,
+  pendingBulletKeys,
 }: Props) {
   const emitEdit = useCallback(
     (next: V3WrittenResume) => onEdit?.(next),
@@ -637,6 +754,8 @@ export function V3ResumeView({
               dismissedIssueKeys={dismissedIssueKeys}
               onTriangleClick={onTriangleClick}
               onSourceChipClick={onSourceChipClick}
+              onRegenerateBullet={onRegenerateBullet}
+              pendingBulletKeys={pendingBulletKeys}
             />
           ))}
         </>

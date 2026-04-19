@@ -26,8 +26,10 @@ import {
   type V3SuggestedPatch,
   type V3WrittenResume,
   type V3Bullet,
+  type V3VerifyResult,
 } from '@/hooks/useV3Pipeline';
 import { useV3Master } from '@/hooks/useV3Master';
+import { useV3Regenerate, type PositionWeight } from '@/hooks/useV3Regenerate';
 import { V3StageProgress } from './V3StageProgress';
 import { V3IntakeForm } from './V3IntakeForm';
 import { V3StrategyPanel } from './V3StrategyPanel';
@@ -112,6 +114,21 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
   // the strategy panel flashes any emphasized-accomplishment cards tied to
   // that bullet's position (cross-panel trace #2 from the phase 2 spec).
   const [strategyFlash, setStrategyFlash] = useState<{ positionIndex: number; at: number } | null>(null);
+  // Phase 4: verify result override. After a regenerate, we fire reverify
+  // and stash the new result here, shadowing the pipeline's original
+  // verify for display purposes. Cleared on Start over.
+  const [overrideVerify, setOverrideVerify] = useState<V3VerifyResult | null>(null);
+  // Phase 4: the resume snapshot that was last verified. The Review panel
+  // uses this (not pristineWritten) to compute staleness, so that after a
+  // reverify completes, the staleness cue clears even though editedWritten
+  // still diverges from the pipeline's pristine output.
+  const [lastVerifiedWritten, setLastVerifiedWritten] = useState<V3WrittenResume | null>(null);
+
+  const regen = useV3Regenerate({
+    accessToken,
+    structured: pipeline.structured,
+    strategy: pipeline.strategy,
+  });
 
   // sessionId comes from the backend's pipeline_complete event and is the
   // real coach_sessions.id for this run. Promote UI uses it so evidence
@@ -128,6 +145,7 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
   const showIntake = !pipeline.isRunning && !pipeline.isComplete && !pipeline.error;
   const showResults = pipeline.isRunning || pipeline.isComplete || Boolean(pipeline.error);
   const effectiveWritten = editedWritten ?? pipeline.written;
+  const effectiveVerify = overrideVerify ?? pipeline.verify;
 
   const handleStart = (input: StartV3PipelineInput) => {
     setEditedWritten(null);
@@ -135,6 +153,8 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
     setDismissedIssueKeys(new Set());
     setAppliedIssueKeys(new Set());
     setStrategyFlash(null);
+    setOverrideVerify(null);
+    setLastVerifiedWritten(null);
     void pipeline.start(input);
   };
 
@@ -145,6 +165,8 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
     setDismissedIssueKeys(new Set());
     setAppliedIssueKeys(new Set());
     setStrategyFlash(null);
+    setOverrideVerify(null);
+    setLastVerifiedWritten(null);
   };
 
   const handleFocusIssue = useCallback((key: string, section: string) => {
@@ -172,6 +194,61 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
   const handleSourceChipClick = useCallback((positionIndex: number) => {
     setStrategyFlash({ positionIndex, at: Date.now() });
   }, []);
+
+  // Fire-and-forget re-verify after any resume-changing action (regenerate
+  // bullet, regenerate position). Silent: no spinner, the Review panel's
+  // staleness cue from Phase 2 already tells the user the notes are stale;
+  // this just clears them when the re-run finishes. Non-blocking so the
+  // user can keep editing while verify runs.
+  const scheduleReverify = useCallback(
+    (written: V3WrittenResume) => {
+      void (async () => {
+        const result = await regen.reverify(written);
+        if (result) {
+          setOverrideVerify(result);
+          // Record what was verified so the staleness cue can clear after
+          // the re-run completes (editedWritten still diverges from pristine,
+          // but it matches lastVerifiedWritten now).
+          setLastVerifiedWritten(written);
+        }
+      })();
+    },
+    [regen],
+  );
+
+  const handleRegenerateBullet = useCallback(
+    async (positionIndex: number, bulletIndex: number, guidance?: string) => {
+      const base = editedWritten ?? pipeline.written;
+      if (!base) return;
+      const newBullet = await regen.regenerateBullet(positionIndex, bulletIndex, guidance);
+      if (!newBullet) return;
+      const positions = base.positions.slice();
+      const pos = positions[positionIndex];
+      if (!pos) return;
+      const bullets = pos.bullets.slice();
+      bullets[bulletIndex] = newBullet;
+      positions[positionIndex] = { ...pos, bullets };
+      const nextWritten = { ...base, positions };
+      setEditedWritten(nextWritten);
+      scheduleReverify(nextWritten);
+    },
+    [editedWritten, pipeline.written, regen, scheduleReverify],
+  );
+
+  const handleRegeneratePosition = useCallback(
+    async (positionIndex: number, weight?: PositionWeight) => {
+      const base = editedWritten ?? pipeline.written;
+      if (!base) return;
+      const newPosition = await regen.regeneratePosition(positionIndex, weight);
+      if (!newPosition) return;
+      const positions = base.positions.slice();
+      positions[positionIndex] = newPosition;
+      const nextWritten = { ...base, positions };
+      setEditedWritten(nextWritten);
+      scheduleReverify(nextWritten);
+    },
+    [editedWritten, pipeline.written, regen, scheduleReverify],
+  );
 
   // Apply a translator-provided patch to editedWritten and mark the issue
   // resolved. The apply targets come from the verify-translate.v1 prompt's
@@ -307,6 +384,10 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
                 strategy={pipeline.strategy}
                 flashPositionIndex={strategyFlash?.positionIndex ?? null}
                 flashTick={strategyFlash?.at ?? 0}
+                onRegeneratePosition={
+                  pipeline.isComplete ? handleRegeneratePosition : undefined
+                }
+                pendingPositions={regen.pendingPositions}
               />
             </div>
 
@@ -316,23 +397,28 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
                 structured={pipeline.structured}
                 written={effectiveWritten}
                 pristineWritten={pipeline.written}
-                verify={pipeline.verify}
+                verify={effectiveVerify}
                 editable={pipeline.isComplete}
                 onEdit={(updated) => setEditedWritten(updated)}
                 focusCue={focusCue}
                 dismissedIssueKeys={dismissedIssueKeys}
                 onTriangleClick={handleFocusIssue}
                 onSourceChipClick={handleSourceChipClick}
+                onRegenerateBullet={
+                  pipeline.isComplete ? handleRegenerateBullet : undefined
+                }
+                pendingBulletKeys={regen.pendingBullets}
               />
             </div>
 
             {/* Right: verify */}
             <div className="space-y-4">
               <V3VerifyPanel
-                verify={pipeline.verify}
+                verify={effectiveVerify}
                 isRunning={pipeline.isRunning}
+                reverifying={regen.reverifying}
                 editedWritten={editedWritten}
-                pristineWritten={pipeline.written}
+                pristineWritten={lastVerifiedWritten ?? pipeline.written}
                 focusCue={focusCue}
                 dismissedIssueKeys={dismissedIssueKeys}
                 appliedIssueKeys={appliedIssueKeys}

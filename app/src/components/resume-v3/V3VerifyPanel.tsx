@@ -46,9 +46,14 @@ interface FocusCue {
 interface Props {
   verify: V3VerifyResult | null;
   isRunning: boolean;
+  /** True while a Phase-4 re-verify REST call is in flight. Renders a
+   *  subtle "Re-checking…" label without throwing away the visible issues. */
+  reverifying?: boolean;
   /** The edited resume (if the user has diverged from the pipeline output). */
   editedWritten: V3WrittenResume | null;
-  /** The pipeline's original output — used to detect which issues are stale. */
+  /** The snapshot verify was last run against. Used for staleness detection;
+   *  after a reverify completes the screen updates this to the newly verified
+   *  snapshot so stale cues clear. */
   pristineWritten: V3WrittenResume | null;
   /** Cross-panel scroll cue; when its `.at` bumps with `key` in this panel, the row scrolls+flashes. */
   focusCue: FocusCue | null;
@@ -173,6 +178,7 @@ function isSectionStale(
 export function V3VerifyPanel({
   verify,
   isRunning,
+  reverifying,
   editedWritten,
   pristineWritten,
   focusCue,
@@ -230,6 +236,11 @@ export function V3VerifyPanel({
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
           Review
         </h2>
+        {reverifying && (
+          <span className="text-[10px] text-[var(--text-soft)] italic">
+            re-checking…
+          </span>
+        )}
       </div>
 
       {/* Status line */}

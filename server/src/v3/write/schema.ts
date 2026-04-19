@@ -62,6 +62,12 @@ export const WrittenPositionSchema = z.object({
   bullets: z.array(writtenBullet),
 });
 
+// Single-bullet regenerate output (write-bullet.v1). Mirrors the bullet
+// shape emitted by write-position but wrapped in a top-level `bullet` key.
+export const WrittenSingleBulletSchema = z.object({
+  bullet: writtenBullet,
+});
+
 export const WrittenCustomSectionSchema = writtenCustomSection;
 
 export const WrittenResumeSchema = z.object({
