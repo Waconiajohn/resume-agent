@@ -110,11 +110,16 @@ export interface V3Strategy {
     summary: string;
     rationale?: string;
   }>;
+  objections: Array<{
+    objection: string;
+    rebuttal: string;
+  }>;
   positionEmphasis: Array<{
     positionIndex: number;
-    weight: 'brief' | 'medium' | 'heavy';
+    weight: 'primary' | 'secondary' | 'brief';
     rationale?: string;
   }>;
+  notes?: string;
   // additional fields tolerated but not typed
   [k: string]: unknown;
 }
