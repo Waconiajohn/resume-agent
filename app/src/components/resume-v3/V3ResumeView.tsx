@@ -432,6 +432,7 @@ function BulletLine({
           ) : (
             <RefreshCw className="h-3 w-3" />
           )}
+          <span>AI</span>
         </button>
       )}
       {/* Guided-regen inline input. Enter submits; Esc or X closes. */}

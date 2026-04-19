@@ -69,6 +69,18 @@ interface Props {
   onUndismiss: (key: string) => void;
   /** Apply a pre-written patch — inserts into editedWritten and auto-resolves the issue. */
   onApplyPatch: (key: string, patch: V3SuggestedPatch) => void;
+  /**
+   * Bridge from a rewrite-class review note (no suggestedPatches) whose
+   * target is regeneratable (summary/bullet) to the middle-panel's
+   * regenerate flow. Uses the note's `suggestion` as the guidance hint.
+   * Optional: the host screen only provides this when the pipeline is
+   * complete — otherwise the button stays hidden.
+   */
+  onRegenerateFromSuggestion?: (
+    key: string,
+    section: string,
+    suggestion: string,
+  ) => void;
 }
 
 interface DisplayItem {
@@ -188,6 +200,7 @@ export function V3VerifyPanel({
   onDismiss,
   onUndismiss,
   onApplyPatch,
+  onRegenerateFromSuggestion,
 }: Props) {
   const [reverifyToast, setReverifyToast] = useState<string | null>(null);
   // Hooks must run unconditionally; compute items before the early return.
@@ -306,6 +319,11 @@ export function V3VerifyPanel({
               onDismiss={() => onDismiss(item.key)}
               onReverifyToast={handleReverifyToast}
               onApplyPatch={(patch) => onApplyPatch(item.key, patch)}
+              onRegenerateFromSuggestion={
+                onRegenerateFromSuggestion && item.suggestion
+                  ? () => onRegenerateFromSuggestion(item.key, item.section, item.suggestion!)
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -333,6 +351,7 @@ function IssueRow({
   onDismiss,
   onReverifyToast,
   onApplyPatch,
+  onRegenerateFromSuggestion,
 }: {
   item: DisplayItem;
   stale: boolean;
@@ -341,11 +360,21 @@ function IssueRow({
   onDismiss: () => void;
   onReverifyToast: () => void;
   onApplyPatch: (patch: V3SuggestedPatch) => void;
+  /** Optional — present only when the row qualifies (rewrite-class + regeneratable section). */
+  onRegenerateFromSuggestion?: () => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const patches = item.suggestedPatches ?? [];
   const hasPatches = patches.length > 0;
+  // The Review-bridge button qualifies only for rewrite-class rows whose
+  // section is regeneratable. Additive rows route through Apply instead
+  // (different semantic — insert vs rewrite).
+  const isRegeneratable =
+    item.section === 'summary' ||
+    /^positions\[\d+\]\.bullets\[\d+\]$/.test(item.section);
+  const showRegenButton =
+    Boolean(onRegenerateFromSuggestion) && !hasPatches && isRegeneratable;
 
   // Scroll+flash when the focus cue hits this row.
   useEffect(() => {
@@ -444,6 +473,17 @@ function IssueRow({
           >
             <Sparkles className="h-3 w-3" />
             Apply
+          </button>
+        )}
+        {showRegenButton && (
+          <button
+            type="button"
+            onClick={onRegenerateFromSuggestion}
+            className="inline-flex items-center gap-0.5 text-[11px] rounded px-1.5 py-1 transition-colors font-medium text-[var(--badge-blue-text)] hover:bg-[var(--badge-blue-bg)]"
+            title="Regenerate the target using this note's suggestion as guidance"
+          >
+            <Sparkles className="h-3 w-3" />
+            AI rewrite
           </button>
         )}
         <button

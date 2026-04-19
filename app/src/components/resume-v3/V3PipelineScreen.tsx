@@ -250,6 +250,63 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
     [editedWritten, pipeline.written, regen, scheduleReverify],
   );
 
+  // Phase-5 AI-button consistency pass: Review row → regenerate bridge.
+  // When a review note has an actionable `suggestion` AND targets a
+  // regeneratable section (summary or a specific bullet), offer a button
+  // that fires the existing regenerate flow with the note's suggestion
+  // passed through as the guidance hint. Treats the row as "applied" for
+  // the resolved-strip visual (same semantic as the Apply flow).
+  const handleRegenerateFromSuggestion = useCallback(
+    (issueKey: string, section: string, suggestion: string) => {
+      const base = editedWritten ?? pipeline.written;
+      if (!base) return;
+      if (section === 'summary') {
+        void (async () => {
+          const newSummary = await regen.regenerateSummary(suggestion);
+          if (!newSummary) return;
+          const nextWritten = { ...base, summary: newSummary };
+          setEditedWritten(nextWritten);
+          setFocusCue({
+            key: `regen-summary-${Date.now()}`,
+            section: 'summary',
+            at: Date.now(),
+          });
+          scheduleReverify(nextWritten);
+        })();
+      } else {
+        const m = section.match(/^positions\[(\d+)\]\.bullets\[(\d+)\]$/);
+        if (!m) return;
+        const posIdx = Number(m[1]);
+        const bulletIdx = Number(m[2]);
+        void (async () => {
+          const newBullet = await regen.regenerateBullet(posIdx, bulletIdx, suggestion);
+          if (!newBullet) return;
+          const positions = base.positions.slice();
+          const pos = positions[posIdx];
+          if (!pos) return;
+          const bullets = pos.bullets.slice();
+          bullets[bulletIdx] = newBullet;
+          positions[posIdx] = { ...pos, bullets };
+          const nextWritten = { ...base, positions };
+          setEditedWritten(nextWritten);
+          setFocusCue({
+            key: `regen-bullet-${posIdx}-${bulletIdx}-${Date.now()}`,
+            section,
+            at: Date.now(),
+          });
+          scheduleReverify(nextWritten);
+        })();
+      }
+      setAppliedIssueKeys((prev) => {
+        if (prev.has(issueKey)) return prev;
+        const s = new Set(prev);
+        s.add(issueKey);
+        return s;
+      });
+    },
+    [editedWritten, pipeline.written, regen, scheduleReverify],
+  );
+
   const handleRegenerateSummary = useCallback(
     async (guidance?: string) => {
       const base = editedWritten ?? pipeline.written;
@@ -496,6 +553,9 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
                 onDismiss={handleDismissIssue}
                 onUndismiss={handleUndismissIssue}
                 onApplyPatch={handleApplyPatch}
+                onRegenerateFromSuggestion={
+                  pipeline.isComplete ? handleRegenerateFromSuggestion : undefined
+                }
               />
             </div>
           </div>
