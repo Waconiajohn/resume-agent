@@ -10,7 +10,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { GlassInput } from '@/components/GlassInput';
-import { BookMarked, Link as LinkIcon, Loader2, Pencil } from 'lucide-react';
+import { BookMarked, Link as LinkIcon, Loader2, Upload } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { FileDropZone } from './FileDropZone';
 import { extractResumeTextFromUpload } from '@/lib/resume-upload';
 import { extractJobDescriptionTextFromUpload } from '@/lib/job-description-upload';
@@ -147,44 +148,138 @@ export function V3IntakeForm({
       </div>
 
       <div className="space-y-5">
-        {/* Master resume card — shown when a default master exists */}
-        {master && !overridingMaster && (
-          <div className="rounded-[var(--radius-card,18px)] border border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] p-4 flex items-start gap-3">
-            <BookMarked className="h-4 w-4 text-[var(--bullet-confirm)] flex-shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-[var(--text-strong)]">
-                Using your knowledge base
-              </div>
-              <div className="text-[12px] text-[var(--text-muted)] mt-0.5">
-                v{master.version}, last updated {formatRelativeDate(master.updated_at)} · {master.positionCount} positions · {master.evidenceCount} evidence items
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOverridingMaster(true)}
-              className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-strong)] whitespace-nowrap"
+        {/* Resume source — two-card chooser when the user has a master;
+            upload-only when they don't. */}
+        {master ? (
+          <div className="space-y-2">
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+              Resume source
+            </label>
+            <div
+              role="radiogroup"
+              aria-label="Choose the resume to tailor"
+              className="space-y-3"
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  setOverridingMaster(true);
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  setOverridingMaster(false);
+                  setResumeText('');
+                }
+              }}
             >
-              Paste a different resume
-            </button>
-          </div>
-        )}
+              {/* Master option */}
+              <div
+                role="radio"
+                aria-checked={usingMaster}
+                tabIndex={0}
+                onClick={() => {
+                  if (!usingMaster) { setOverridingMaster(false); setResumeText(''); }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (!usingMaster) { setOverridingMaster(false); setResumeText(''); }
+                  }
+                }}
+                className={cn(
+                  'rounded-[var(--radius-card,18px)] border p-4 flex items-start gap-3 transition-all duration-150 cursor-pointer select-none',
+                  usingMaster
+                    ? 'border-[var(--bullet-confirm)] bg-[var(--bullet-confirm-bg)] shadow-[var(--shadow-low)]'
+                    : 'border-[var(--line-soft)] bg-[var(--surface-1)] hover:border-[var(--bullet-confirm)]/40 hover:bg-[var(--bullet-confirm-bg)]/30',
+                )}
+              >
+                <RadioDot active={usingMaster} />
+                <BookMarked
+                  className={cn(
+                    'h-4 w-4 flex-shrink-0 mt-0.5 transition-colors',
+                    usingMaster ? 'text-[var(--bullet-confirm)]' : 'text-[var(--text-soft)]',
+                  )}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-[var(--text-strong)]">
+                    Use my knowledge base
+                  </div>
+                  <div className="text-[12px] text-[var(--text-muted)] mt-0.5">
+                    v{master.version}, last updated {formatRelativeDate(master.updated_at)} · {master.positionCount} positions · {master.evidenceCount} evidence items
+                  </div>
+                  {usingMaster && (
+                    <div className="text-[11px] text-[var(--text-soft)] mt-2 leading-snug">
+                      Tailored resume will offer new accomplishments to add back to your vault.
+                    </div>
+                  )}
+                </div>
+              </div>
 
-        {(!master || overridingMaster) && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
-                Your resume
-              </label>
-              {master && overridingMaster && (
-                <button
-                  type="button"
-                  onClick={() => { setOverridingMaster(false); setResumeText(''); }}
-                  className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-strong)] flex items-center gap-1"
-                >
-                  <Pencil className="h-3 w-3" /> Use knowledge base instead
-                </button>
-              )}
+              {/* Upload option */}
+              <div
+                role="radio"
+                aria-checked={!usingMaster}
+                tabIndex={0}
+                onClick={() => {
+                  if (usingMaster) setOverridingMaster(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (usingMaster) setOverridingMaster(true);
+                  }
+                }}
+                className={cn(
+                  'rounded-[var(--radius-card,18px)] border p-4 transition-all duration-150 select-none',
+                  !usingMaster
+                    ? 'border-[var(--bullet-confirm)] bg-[var(--bullet-confirm-bg)] shadow-[var(--shadow-low)]'
+                    : 'border-[var(--line-soft)] bg-[var(--surface-1)] hover:border-[var(--bullet-confirm)]/40 hover:bg-[var(--bullet-confirm-bg)]/30 cursor-pointer',
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <RadioDot active={!usingMaster} />
+                  <Upload
+                    className={cn(
+                      'h-4 w-4 flex-shrink-0 mt-0.5 transition-colors',
+                      !usingMaster ? 'text-[var(--bullet-confirm)]' : 'text-[var(--text-soft)]',
+                    )}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-[var(--text-strong)]">
+                      Upload a different resume for this run
+                    </div>
+                    <div className="text-[12px] text-[var(--text-muted)] mt-0.5">
+                      Use a new PDF, DOCX, or TXT — or paste text. Your knowledge base stays unchanged until you choose to promote new bullets.
+                    </div>
+                  </div>
+                </div>
+                {!usingMaster && (
+                  <div
+                    className="mt-4"
+                    // Clicks inside the dropzone (file browser, drag events, textarea typing)
+                    // must not re-trigger the card's radio handler.
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <FileDropZone
+                      label="resume"
+                      accept=".txt,.docx,.pdf"
+                      extract={extractResumeTextFromUpload}
+                      value={resumeText}
+                      onChange={setResumeText}
+                      disabled={disabled}
+                      pastePlaceholder="Paste your resume text here…"
+                      pasteRows={10}
+                      defaultPasteOpen={Boolean(initialResumeText)}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] mb-2">
+              Your resume
+            </label>
             <FileDropZone
               label="resume"
               accept=".txt,.docx,.pdf"
@@ -321,5 +416,24 @@ export function V3IntakeForm({
         </div>
       </div>
     </GlassCard>
+  );
+}
+
+/** Small radio-dot indicator rendered at the left edge of each option card. */
+function RadioDot({ active }: { active: boolean }) {
+  return (
+    <div
+      className={cn(
+        'relative mt-0.5 h-4 w-4 flex-shrink-0 rounded-full border-2 transition-colors',
+        active
+          ? 'border-[var(--bullet-confirm)]'
+          : 'border-[var(--line-strong)]',
+      )}
+      aria-hidden="true"
+    >
+      {active && (
+        <div className="absolute inset-[2px] rounded-full bg-[var(--bullet-confirm)]" />
+      )}
+    </div>
   );
 }
