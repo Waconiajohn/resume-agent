@@ -1,11 +1,19 @@
 ---
 stage: verify-translate
-version: "1.0"
+version: "1.1"
 capability: fast-writer
 temperature: 0.2
 last_edited: 2026-04-19
 last_editor: claude
 notes: |
+  v1.1 — added `suggestedPatches` for additive-only issues (Phase 3 of the
+  three-panel redesign). The translator classifies each issue as additive
+  vs rewrite-class and emits 1–3 ready-to-apply patches for additive ones.
+  Rewrite-class issues never receive patches — pre-written rewrites risk
+  factual drift. Schema in server/src/v3/verify/translate.ts enforces the
+  target regex (summary / selectedAccomplishments / positions[N]) and the
+  0–3 patch cap.
+
   v1.0 — user-facing translator for the verify stage output.
 
   Runs AFTER verify detects issues. Takes the raw issue list (with the
@@ -42,7 +50,11 @@ Produce a JSON object:
       "severity": "error" | "warning",
       "label": "string (short section tag)",
       "message": "string (one plain-English sentence)",
-      "suggestion": "string (optional short action)"
+      "suggestion": "string (optional short action)",
+      "suggestedPatches": [
+        { "target": "summary | selectedAccomplishments | positions[N]",
+          "text": "string (ready-to-insert prose)" }
+      ]
     }
   ]
 }
@@ -105,7 +117,68 @@ When there's an obvious next action, add one short italic-ready sentence. Do not
 
 Omit the field entirely when no clean suggestion exists.
 
-### 5. Hard rules
+### 5. Suggested patches — `suggestedPatches` (additive only)
+
+Pre-written inserts the user can one-click apply. Emit **only for additive issues** — issues that describe content *missing* from the resume. Leave the field absent for every other issue.
+
+#### The additive / rewrite test
+
+An issue is **additive** if its message describes content that's *missing or omitted*:
+- a strategy-emphasized strength that never made it into the summary or key accomplishments
+- a gap the narrative asked the writer to preempt but didn't
+- an accomplishment called out in the benchmark that the resume doesn't echo
+- a signal the frame should send but doesn't
+
+An issue is **rewrite-class** if its message describes content that's *present but weak*:
+- "too vague", "wrong tense", "overfitted", "buried", "leads with the wrong thing"
+- any variant of "rephrase X to emphasize Y"
+- critiques of an existing sentence's prose quality or word choice
+
+**Additive → emit patches. Rewrite → omit `suggestedPatches` entirely.** Pre-writing rewrites risks silently changing factual claims; the user will handle those through direct editing.
+
+#### Format
+
+Each patch is `{ target, text }`:
+- `target` must be `"summary"`, `"selectedAccomplishments"`, or `"positions[N]"` where N is a zero-indexed position number.
+- `text` is the ready-to-insert prose — **not** a hint, **not** a placeholder. Written in the same style as the rest of the resume: active voice, past tense (unless ongoing), no first-person pronouns, no "I" or "we", concrete when the source material allows.
+- Emit 1 to 3 patches per issue. One well-chosen patch is better than three mediocre ones.
+
+#### Target choice
+
+- `"summary"` — replaces the summary. Use when the missing content is frame-level and belongs in the opener. Rare; the summary is short.
+- `"selectedAccomplishments"` — appends a new key-accomplishments line. Use when the missing content is a standalone wins-and-impact statement.
+- `"positions[N]"` — appends a new bullet to position N. Use when the missing content belongs under a specific role.
+
+#### Examples
+
+- Input issue: *"The cross-role highlight 'Recognized with VP awards for outstanding performance' (strategy-endorsed) is missing from the WrittenResume's summary or selectedAccomplishments."*
+  Output `suggestedPatches`:
+  ```json
+  [
+    { "target": "selectedAccomplishments",
+      "text": "Recognized with VP Awards for outstanding performance and contributions to closed sales." }
+  ]
+  ```
+
+- Input issue: *"Position 2's bullets don't reflect the strategy's emphasis on 'technical leadership in public-sector deals'."*
+  Output `suggestedPatches`:
+  ```json
+  [
+    { "target": "positions[2]",
+      "text": "Led technical strategy for flagship public-sector engagement, translating federal compliance requirements into a deployment plan adopted across three agency customers." }
+  ]
+  ```
+
+- Input issue: *"This bullet is too vague — 'Led the team to success' lacks metrics."*
+  → REWRITE-CLASS. Omit `suggestedPatches`. (The user will regenerate or edit this bullet directly.)
+
+#### Hard rules for patches
+
+- **Never fabricate metrics, dates, or named entities** the source material doesn't support. When the issue cites a specific strength from the strategy or source, reuse that language; don't embellish.
+- **Never patch a rewrite-class issue.** If in doubt whether an issue is additive or rewrite, err toward omitting patches — over-suggesting erodes trust faster than under-suggesting.
+- **No first-person pronouns in patch text.** Same rule as the rest of the resume: active voice, no `I` / `me` / `my` / `we` / `our`.
+
+### 6. Hard rules
 
 - **Preserve severity exactly** — never promote warning to error or demote error to warning.
 - **Preserve order exactly** — one output entry per input issue, in the same array position.

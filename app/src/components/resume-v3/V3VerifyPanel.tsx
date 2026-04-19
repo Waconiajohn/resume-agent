@@ -29,11 +29,12 @@ import { GlassButton } from '@/components/GlassButton';
 import {
   CheckCircle2, AlertTriangle, AlertCircle, Shield,
   ArrowRight, X, ChevronDown, ChevronRight as ChevronRightIcon,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type {
   V3VerifyResult, V3VerifyIssue, V3TranslatedIssue,
-  V3WrittenResume,
+  V3WrittenResume, V3SuggestedPatch,
 } from '@/hooks/useV3Pipeline';
 
 interface FocusCue {
@@ -53,12 +54,16 @@ interface Props {
   focusCue: FocusCue | null;
   /** Dismissed issue keys (session-only). */
   dismissedIssueKeys: Set<string>;
+  /** Issues resolved via Apply (Phase 3); distinct bucket from dismissed for UX signaling. */
+  appliedIssueKeys: Set<string>;
   /** Address click — scroll middle panel to the target. */
   onAddress: (key: string, section: string) => void;
   /** Dismiss click — mark issue as deliberately ignored. */
   onDismiss: (key: string) => void;
   /** Restore a previously dismissed issue. */
   onUndismiss: (key: string) => void;
+  /** Apply a pre-written patch — inserts into editedWritten and auto-resolves the issue. */
+  onApplyPatch: (key: string, patch: V3SuggestedPatch) => void;
 }
 
 interface DisplayItem {
@@ -70,8 +75,8 @@ interface DisplayItem {
   label: string;
   message: string;
   suggestion?: string;
-  /** Future: phase-3 will populate this from the translator. */
-  suggestedPatches?: Array<{ target: string; text: string }>;
+  /** Additive-only patches from the translator; populated via the Phase-3 wire. */
+  suggestedPatches?: V3SuggestedPatch[];
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -108,6 +113,7 @@ function buildDisplayItems(verify: V3VerifyResult): DisplayItem[] {
         label: t.label,
         message: t.message,
         suggestion: t.suggestion,
+        suggestedPatches: t.suggestedPatches,
       });
     });
     return items;
@@ -171,9 +177,11 @@ export function V3VerifyPanel({
   pristineWritten,
   focusCue,
   dismissedIssueKeys,
+  appliedIssueKeys,
   onAddress,
   onDismiss,
   onUndismiss,
+  onApplyPatch,
 }: Props) {
   const [reverifyToast, setReverifyToast] = useState<string | null>(null);
   // Hooks must run unconditionally; compute items before the early return.
@@ -201,8 +209,11 @@ export function V3VerifyPanel({
     );
   }
 
-  const activeItems = items.filter((i) => !dismissedIssueKeys.has(i.key));
+  const activeItems = items.filter(
+    (i) => !dismissedIssueKeys.has(i.key) && !appliedIssueKeys.has(i.key),
+  );
   const dismissedItems = items.filter((i) => dismissedIssueKeys.has(i.key));
+  const appliedItems = items.filter((i) => appliedIssueKeys.has(i.key));
   const errorCount = activeItems.filter((i) => i.severity === 'error').length;
   const totalShown = activeItems.length;
   const anyErrors = errorCount > 0;
@@ -283,15 +294,17 @@ export function V3VerifyPanel({
               onAddress={() => onAddress(item.key, item.section)}
               onDismiss={() => onDismiss(item.key)}
               onReverifyToast={handleReverifyToast}
+              onApplyPatch={(patch) => onApplyPatch(item.key, patch)}
             />
           ))}
         </div>
       )}
 
-      {/* Dismissed strip — compact list at the bottom, always expandable */}
-      {dismissedItems.length > 0 && (
-        <DismissedStrip
-          items={dismissedItems}
+      {/* Resolved strip — applied (phase 3) + dismissed items, session-scoped. */}
+      {(dismissedItems.length > 0 || appliedItems.length > 0) && (
+        <ResolvedStrip
+          appliedItems={appliedItems}
+          dismissedItems={dismissedItems}
           onUndismiss={onUndismiss}
         />
       )}
@@ -308,6 +321,7 @@ function IssueRow({
   onAddress,
   onDismiss,
   onReverifyToast,
+  onApplyPatch,
 }: {
   item: DisplayItem;
   stale: boolean;
@@ -315,9 +329,12 @@ function IssueRow({
   onAddress: () => void;
   onDismiss: () => void;
   onReverifyToast: () => void;
+  onApplyPatch: (patch: V3SuggestedPatch) => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const hasPatches = (item.suggestedPatches?.length ?? 0) > 0;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const patches = item.suggestedPatches ?? [];
+  const hasPatches = patches.length > 0;
 
   // Scroll+flash when the focus cue hits this row.
   useEffect(() => {
@@ -400,10 +417,21 @@ function IssueRow({
         {hasPatches && (
           <button
             type="button"
-            disabled
-            className="inline-flex items-center gap-0.5 text-[11px] text-[var(--text-soft)] rounded px-1.5 py-1 cursor-not-allowed opacity-60"
-            title="Apply a suggested fix — coming in the next phase"
+            onClick={() => setPickerOpen((o) => !o)}
+            className={cn(
+              'inline-flex items-center gap-0.5 text-[11px] rounded px-1.5 py-1 transition-colors font-medium',
+              pickerOpen
+                ? 'text-[var(--badge-blue-text)] bg-[var(--badge-blue-bg)]'
+                : 'text-[var(--badge-blue-text)] hover:bg-[var(--badge-blue-bg)]',
+            )}
+            title={
+              patches.length === 1
+                ? 'Apply the suggested fix'
+                : `Pick from ${patches.length} suggested fixes`
+            }
+            aria-expanded={pickerOpen}
           >
+            <Sparkles className="h-3 w-3" />
             Apply
           </button>
         )}
@@ -417,18 +445,71 @@ function IssueRow({
           <X className="h-3 w-3" />
         </button>
       </div>
+
+      {/* Patch picker — 1 to 3 pre-written inserts the translator produced.
+          Each is read-only here; clicking applies it in place. The user can
+          still edit or revert afterwards in the resume view. */}
+      {pickerOpen && hasPatches && (
+        <div className="mt-2 space-y-1.5">
+          {patches.map((patch, i) => (
+            <div
+              key={i}
+              className="rounded border border-[var(--badge-blue-bg)] bg-[var(--surface-1)] p-2"
+            >
+              <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)] mb-1 flex items-center justify-between">
+                <span>{patchTargetLabel(patch.target)}</span>
+                {patches.length > 1 && (
+                  <span className="text-[var(--text-soft)]">Option {i + 1}</span>
+                )}
+              </div>
+              <div className="text-[11px] leading-snug text-[var(--text-strong)]">
+                {patch.text}
+              </div>
+              <div className="mt-1.5 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => onApplyPatch(patch)}
+                  className="inline-flex items-center gap-0.5 text-[11px] text-[var(--badge-blue-text)] hover:underline font-medium"
+                >
+                  Insert
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function DismissedStrip({
-  items,
+function patchTargetLabel(target: string): string {
+  if (target === 'summary') return 'Replaces summary';
+  if (target === 'selectedAccomplishments') return 'Adds key accomplishment';
+  const m = target.match(/^positions\[(\d+)\]$/);
+  if (m) return `Adds bullet to position ${Number(m[1]) + 1}`;
+  return target;
+}
+
+/**
+ * Resolved strip — one collapsible footer that shows both "applied" (the
+ * user accepted a pre-written patch) and "dismissed" (the user said the
+ * issue was intentional) items. They share a section because they share a
+ * meaning: "this row is no longer in the active list." The distinction
+ * shows as a per-row prefix so the user can tell at a glance what happened.
+ */
+function ResolvedStrip({
+  appliedItems,
+  dismissedItems,
   onUndismiss,
 }: {
-  items: DisplayItem[];
+  appliedItems: DisplayItem[];
+  dismissedItems: DisplayItem[];
   onUndismiss: (key: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const total = appliedItems.length + dismissedItems.length;
+  const appliedLabel = appliedItems.length === 1 ? 'applied' : 'applied';
   return (
     <div className="mt-4 pt-3 border-t border-[var(--line-soft)]">
       <button
@@ -437,15 +518,34 @@ function DismissedStrip({
         className="flex items-center gap-1 text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)] hover:text-[var(--text-muted)]"
       >
         {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRightIcon className="h-3 w-3" />}
-        Dismissed ({items.length})
+        Resolved ({total})
+        {appliedItems.length > 0 && (
+          <span className="ml-1 text-[var(--badge-blue-text)] normal-case tracking-normal">
+            · {appliedItems.length} {appliedLabel}
+          </span>
+        )}
       </button>
       {open && (
         <ul className="mt-2 space-y-1.5">
-          {items.map((item) => (
+          {appliedItems.map((item) => (
             <li
               key={item.key}
               className="flex items-center gap-2 text-[11px] text-[var(--text-soft)]"
             >
+              <CheckCircle2 className="h-3 w-3 text-[var(--badge-blue-text)] flex-shrink-0" />
+              <span className="flex-1 truncate" title={item.message}>
+                <span className="text-[var(--text-muted)] font-medium">{item.label}</span>
+                {' — '}
+                <span className="italic">applied suggested fix</span>
+              </span>
+            </li>
+          ))}
+          {dismissedItems.map((item) => (
+            <li
+              key={item.key}
+              className="flex items-center gap-2 text-[11px] text-[var(--text-soft)]"
+            >
+              <X className="h-3 w-3 flex-shrink-0 opacity-60" />
               <span className="flex-1 truncate" title={item.message}>
                 <span className="text-[var(--text-muted)] font-medium">{item.label}</span>
                 {' — '}

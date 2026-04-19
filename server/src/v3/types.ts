@@ -269,6 +269,28 @@ export interface VerifyIssue {
 }
 
 /**
+ * A pre-written candidate insert produced by the translator when it
+ * classifies an issue as ADDITIVE (content missing from the WrittenResume).
+ *
+ * Additive issues are the only class of verify finding where handing the
+ * user a ready-to-apply fix is safe: the system knows what's missing and
+ * has the candidate prose already. Rewrite-class issues ("this bullet is
+ * too vague") are NOT patched — pre-written rewrites risk factual drift,
+ * which defeats the purpose of verify. Those route through regenerate-
+ * with-guidance in a later phase.
+ *
+ * Target vocabulary:
+ *  - `'summary'` — replace the WrittenResume.summary text with `text`.
+ *  - `'selectedAccomplishments'` — append `text` to the array as a new
+ *    accomplishment line.
+ *  - `'positions[N]'` — append a new bullet with `text` to position N.
+ */
+export interface SuggestedPatch {
+  target: string;
+  text: string;
+}
+
+/**
  * User-facing translation of a VerifyIssue. Produced by the post-verify
  * translation helper (server/src/v3/verify/translate.ts). The frontend
  * renders these in the Review panel when present, and falls back to the
@@ -281,6 +303,8 @@ export interface VerifyIssue {
  *    (no "crossRoleHighlights", "WrittenResume", "mechanical attribution").
  *  - `shouldShow: false` = filter out (e.g. internal-QA false positives
  *    the system already resolved); the panel drops these entirely.
+ *  - `suggestedPatches` is populated only for additive issues; rewrite-
+ *    class issues leave it empty/absent.
  */
 export interface TranslatedIssue {
   shouldShow: boolean;
@@ -288,6 +312,7 @@ export interface TranslatedIssue {
   label: string;
   message: string;
   suggestion?: string;
+  suggestedPatches?: SuggestedPatch[];
 }
 
 export interface VerifyResult {

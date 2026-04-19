@@ -29,12 +29,26 @@ const MAX_OUTPUT_TOKENS = 4_000;
 
 // ─── Schema ────────────────────────────────────────────────────────────────
 
+// A pre-written patch the user can one-click apply. Only emitted for additive
+// issues (missing content). The target must resolve to a section the frontend
+// knows how to mutate; anything else is treated as malformed and dropped.
+const SuggestedPatchSchema = z.object({
+  target: z.string().regex(
+    /^(summary|selectedAccomplishments|positions\[\d+\])$/,
+    'target must be "summary", "selectedAccomplishments", or "positions[N]"',
+  ),
+  text: z.string().min(5).max(400),
+});
+
 const TranslatedIssueSchema = z.object({
   shouldShow: z.boolean(),
   severity: z.enum(['error', 'warning']),
   label: z.string().min(1).max(120),
   message: z.string().min(5).max(800),
   suggestion: z.string().max(400).optional(),
+  // Additive-only. Translator omits for rewrite-class issues; accepts
+  // 0-3 candidates when present. Frontend renders these as Apply buttons.
+  suggestedPatches: z.array(SuggestedPatchSchema).max(3).optional(),
 });
 const TranslateResponseSchema = z.object({
   translated: z.array(TranslatedIssueSchema),

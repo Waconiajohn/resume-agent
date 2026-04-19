@@ -20,7 +20,13 @@ import { useLocation } from 'react-router-dom';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { AlertTriangle, RefreshCw, Pencil, Undo2 } from 'lucide-react';
-import { useV3Pipeline, type StartV3PipelineInput } from '@/hooks/useV3Pipeline';
+import {
+  useV3Pipeline,
+  type StartV3PipelineInput,
+  type V3SuggestedPatch,
+  type V3WrittenResume,
+  type V3Bullet,
+} from '@/hooks/useV3Pipeline';
 import { useV3Master } from '@/hooks/useV3Master';
 import { V3StageProgress } from './V3StageProgress';
 import { V3IntakeForm } from './V3IntakeForm';
@@ -45,6 +51,49 @@ interface FocusCue {
   at: number;
 }
 
+/**
+ * Apply a translator-provided patch to a WrittenResume. Returns a new
+ * WrittenResume (immutable update) or null if the target path is
+ * unrecognized — the Zod regex on the server side already gates this, so
+ * hitting the null branch means either a bug or a stale translator output.
+ *
+ * Target semantics:
+ *   - `summary` → replace `summary` with patch text
+ *   - `selectedAccomplishments` → append patch text to the array
+ *   - `positions[N]` → append a new is_new bullet to position N
+ */
+function applyPatchToWritten(
+  w: V3WrittenResume,
+  patch: V3SuggestedPatch,
+): V3WrittenResume | null {
+  if (patch.target === 'summary') {
+    return { ...w, summary: patch.text };
+  }
+  if (patch.target === 'selectedAccomplishments') {
+    return {
+      ...w,
+      selectedAccomplishments: [...w.selectedAccomplishments, patch.text],
+    };
+  }
+  const posMatch = patch.target.match(/^positions\[(\d+)\]$/);
+  if (posMatch) {
+    const idx = Number(posMatch[1]);
+    const pos = w.positions[idx];
+    if (!pos) return null;
+    const newBullet: V3Bullet = {
+      text: patch.text,
+      is_new: true,
+      source: null,
+      evidence_found: false,
+      confidence: 0.75,
+    };
+    const positions = w.positions.slice();
+    positions[idx] = { ...pos, bullets: [...pos.bullets, newBullet] };
+    return { ...w, positions };
+  }
+  return null;
+}
+
 export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineScreenProps) {
   const pipeline = useV3Pipeline(accessToken);
   const master = useV3Master(accessToken);
@@ -55,6 +104,10 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
   // view (middle) and the Review panel (right) can react to the same events.
   const [focusCue, setFocusCue] = useState<FocusCue | null>(null);
   const [dismissedIssueKeys, setDismissedIssueKeys] = useState<Set<string>>(new Set());
+  // Phase 3: issues whose resolution came from clicking Apply on a pre-written
+  // patch. Tracked separately from dismissal so the strip can show a success
+  // badge for these instead of the generic "dismissed" tag.
+  const [appliedIssueKeys, setAppliedIssueKeys] = useState<Set<string>>(new Set());
   // Strategy card flash target — when the user clicks a bullet's source chip,
   // the strategy panel flashes any emphasized-accomplishment cards tied to
   // that bullet's position (cross-panel trace #2 from the phase 2 spec).
@@ -80,6 +133,7 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
     setEditedWritten(null);
     setFocusCue(null);
     setDismissedIssueKeys(new Set());
+    setAppliedIssueKeys(new Set());
     setStrategyFlash(null);
     void pipeline.start(input);
   };
@@ -89,6 +143,7 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
     setEditedWritten(null);
     setFocusCue(null);
     setDismissedIssueKeys(new Set());
+    setAppliedIssueKeys(new Set());
     setStrategyFlash(null);
   };
 
@@ -117,6 +172,27 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
   const handleSourceChipClick = useCallback((positionIndex: number) => {
     setStrategyFlash({ positionIndex, at: Date.now() });
   }, []);
+
+  // Apply a translator-provided patch to editedWritten and mark the issue
+  // resolved. The apply targets come from the verify-translate.v1 prompt's
+  // suggestedPatches — additive only (never rewrite-class), enforced
+  // server-side by the Zod target regex.
+  const handleApplyPatch = useCallback(
+    (issueKey: string, patch: V3SuggestedPatch) => {
+      const base = editedWritten ?? pipeline.written;
+      if (!base) return;
+      const next = applyPatchToWritten(base, patch);
+      if (!next) return;
+      setEditedWritten(next);
+      setAppliedIssueKeys((prev) => {
+        if (prev.has(issueKey)) return prev;
+        const s = new Set(prev);
+        s.add(issueKey);
+        return s;
+      });
+    },
+    [editedWritten, pipeline.written],
+  );
 
   return (
     <div className="h-[calc(100vh-3.5rem)] overflow-y-auto bg-[var(--bg-0)]">
@@ -259,9 +335,11 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
                 pristineWritten={pipeline.written}
                 focusCue={focusCue}
                 dismissedIssueKeys={dismissedIssueKeys}
+                appliedIssueKeys={appliedIssueKeys}
                 onAddress={handleFocusIssue}
                 onDismiss={handleDismissIssue}
                 onUndismiss={handleUndismissIssue}
+                onApplyPatch={handleApplyPatch}
               />
             </div>
           </div>

@@ -160,6 +160,17 @@ export interface V3VerifyIssue {
 }
 
 /**
+ * A pre-written patch the translator emits for additive issues (content
+ * missing from the resume). One-click apply in the Review panel. Rewrite-
+ * class issues never receive patches — see verify-translate.v1 rule 5.
+ */
+export interface V3SuggestedPatch {
+  /** 'summary' | 'selectedAccomplishments' | 'positions[N]' */
+  target: string;
+  text: string;
+}
+
+/**
  * User-facing translation of a verify issue. Produced server-side by a
  * cheap post-verify LLM call. When present, the Review panel renders
  * these instead of the raw `issues` (which stay in plumbing vocabulary).
@@ -170,6 +181,8 @@ export interface V3TranslatedIssue {
   label: string;
   message: string;
   suggestion?: string;
+  /** Additive-only; absent for rewrite-class issues. 0–3 items. */
+  suggestedPatches?: V3SuggestedPatch[];
 }
 
 export interface V3VerifyResult {
