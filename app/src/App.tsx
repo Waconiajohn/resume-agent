@@ -676,12 +676,33 @@ export default function App() {
                 )}
               />
               <Route path="/resume-builder" element={<Navigate to={buildResumeWorkspaceRoute()} replace />} />
-              <Route
-                path="/resume-v3"
-                element={<V3PipelineScreen accessToken={accessToken} />}
-              />
+              {/* v3 cutover phase C: the resume-builder session route now serves v3.
+                  V2ResumeScreen is still in the tree under /resume-v2-legacy
+                  as a temporary escape hatch until Phase F deletes v2 entirely. */}
               <Route
                 path={RESUME_BUILDER_SESSION_ROUTE}
+                element={(
+                  <WorkspaceLayout>
+                    <V3PipelineScreen
+                      accessToken={accessToken}
+                      initialResumeText={intakeInitialResumeText}
+                    />
+                  </WorkspaceLayout>
+                )}
+              />
+              <Route
+                path="/resume-v3"
+                element={(
+                  <WorkspaceLayout>
+                    <V3PipelineScreen
+                      accessToken={accessToken}
+                      initialResumeText={intakeInitialResumeText}
+                    />
+                  </WorkspaceLayout>
+                )}
+              />
+              <Route
+                path="/resume-v2-legacy"
                 element={(
                   <WorkspaceLayout>
                     <V2ResumeScreen
@@ -693,7 +714,7 @@ export default function App() {
                         const resume = await getDefaultResume();
                         return resume?.raw_text?.trim() || null;
                       }}
-      initialSessionId={resumeRouteSessionId ?? undefined}
+                      initialSessionId={resumeRouteSessionId ?? undefined}
                       onSyncToMasterResume={handleSyncV2ResumeToMaster}
                     />
                   </WorkspaceLayout>
