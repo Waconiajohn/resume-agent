@@ -17,7 +17,7 @@ This document is the single source of truth for how v3 stages route to providers
 | Write-accomplishments (stage 4) | `fast-writer` | **Vertex** | `deepseek-ai/deepseek-v3.2-maas` | Same. |
 | Write-competencies (stage 4) | `fast-writer` | **Vertex** | `deepseek-ai/deepseek-v3.2-maas` | Same. |
 | Write-custom-section (stage 4) | `fast-writer` | **Vertex** | `deepseek-ai/deepseek-v3.2-maas` | Same. |
-| Write-position (stage 4) | `deep-writer` | **OpenAI** | `gpt-4.1` | Write-position is the quality-critical path. GPT-4.1 produces attribution-disciplined bullets that pass verify without the 11 false-positive patterns DeepSeek generates (Phase 4.9 analysis). |
+| Write-position (stage 4) | `deep-writer` | **OpenAI** | `gpt-5.4-mini` | Write-position is the quality-critical path. Phase 4.13 validated gpt-5.4-mini at 19/19 with same-or-better latency than gpt-4.1 and 61% lower write-position cost. GPT-4.1 is the fallback reference (also hits 19/19); swap `RESUME_V3_DEEP_WRITER_MODEL_OPENAI=gpt-4.1` if gpt-5.4-mini produces regressions in shadow deploy. |
 | Verify (stage 5) | `strong-reasoning` | **OpenAI** | `gpt-4.1` | DeepSeek-verify had a self-consistency problem (Phase 4.6 Step A). GPT-4.1 doesn't trip on tense changes, whitespace differences, or paraphrase reorderings. |
 
 ### Env var configuration for production
@@ -30,7 +30,7 @@ RESUME_V3_DEEP_WRITER_BACKEND=openai
 
 # Models for each capability on OpenAI
 RESUME_V3_STRONG_REASONING_MODEL_OPENAI=gpt-4.1
-RESUME_V3_DEEP_WRITER_MODEL_OPENAI=gpt-4.1
+RESUME_V3_DEEP_WRITER_MODEL_OPENAI=gpt-5.4-mini
 
 # Vertex config (required for fast-writer + classify)
 VERTEX_PROJECT=<gcp-project-id>
@@ -49,40 +49,48 @@ DEEPINFRA_API_KEY=<key>    # 5xx/timeout-failover to DeepInfra
 
 ## 2. Cost model
 
+**Measured on the 19-fixture corpus in Phase 4.13** with the production smart hybrid config (gpt-5.4-mini on write-position). Re-measure against real production traffic during shadow deploy to confirm fixture-corpus ↔ production translation holds.
+
 ### Per-resume cost breakdown
 
 | Stage | Backend | Typical in-tokens | Typical out-tokens | Cost |
 |---|---|---|---|---|
-| Classify | Vertex DeepSeek | ~12K | ~2.5K | $0.003 |
-| Strategize | OpenAI gpt-4.1 | ~7K | ~900 | $0.021 |
+| Classify | Vertex DeepSeek | ~12K | ~2.5K | $0.003 (cached in most flows) |
+| Strategize | OpenAI gpt-4.1 | ~7K | ~900 | $0.023 |
 | Write-summary | Vertex DeepSeek | ~5K | ~200 | $0.001 |
 | Write-accomplishments | Vertex DeepSeek | ~5K | ~300 | $0.001 |
 | Write-competencies | Vertex DeepSeek | ~5K | ~400 | $0.001 |
 | Write-custom-section | Vertex DeepSeek | ~3K | ~200 | $0.000 (usually empty for most fixtures) |
-| Write-position (6-11 parallel) | OpenAI gpt-4.1 | ~60-100K total | ~2-3K total | $0.010-0.016 |
-| Verify | OpenAI gpt-4.1 | ~11K | ~100-500 | $0.022 |
-| **Total** | | | | **~$0.059/resume** |
+| Write-position (6-11 parallel) | OpenAI gpt-5.4-mini | ~60-100K total | ~2-3K total | $0.046 |
+| Verify | OpenAI gpt-4.1 | ~11K | ~100-500 | $0.025 |
+| **Total (classify cached)** | | | | **~$0.097/resume** |
 
-In Phase 4.10 validation the average was $0.046/resume because classify was cached. Production will run classify per request, adding ~$0.003 → **production estimate ~$0.049/resume.**
+Phase 4.13 measured $0.097/resume across 19 fixtures with classify cached (standard production flow). Production cold-classify paths add ~$0.003.
+
+Phase 4.10 reported $0.046/resume; that estimate under-counted write-position by ~3× (real per-position cost on gpt-4.1 was higher than projected). The $0.097 figure here is the measured cost on gpt-5.4-mini — already 42% cheaper than the measured gpt-4.1 baseline of $0.168/resume.
 
 ### Per-user-month projections
 
 | Tier | Typical usage | Smart hybrid cost | % of $49 retail |
 |---|---|---|---|
-| Light | 4 resumes/month | $0.20 | 0.4% |
-| Standard | 12 resumes/month | $0.59 | 1.2% |
-| Power | 40 resumes/month | $1.96 | 4.0% |
-| Heavy | 120 resumes/month | $5.88 | 12.0% |
+| Trial | 2 resumes/month | $0.19 | 0.4% |
+| Light | 4 resumes/month | $0.39 | 0.8% |
+| Standard | 8 resumes/month | $0.78 | 1.6% |
+| Power | 40 resumes/month | $3.88 | 7.9% |
+| Heavy (4/day) | 120 resumes/month | $11.64 | 23.8% |
+
+Heavy-tier (120 resumes/month) leaves ~$37 of revenue after LLM cost, supporting ~68% gross margin after infra + payment + support overhead. The 4/day at $49 plan is economically viable.
 
 ### Comparison to alternatives
 
 | Config | Pass rate | $/resume | Standard-tier $/user-month | % of retail |
 |---|---|---|---|---|
-| Pure-DeepSeek | 11/19 (58%) | $0.018 | $0.22 | 0.4% |
-| **Smart hybrid (production)** | **17/19 (89%)** | **$0.049** | **$0.59** | **1.2%** |
-| Pure-GPT-4.1 | 19/19 (100%) | $0.20 | $2.40 | 4.9% |
+| Pure-DeepSeek | 11/19 (58%) | $0.018 | $0.14 | 0.3% |
+| **Smart hybrid (production, gpt-5.4-mini)** | **19/19 (100%)** | **$0.097** | **$0.78** | **1.6%** |
+| Smart hybrid (gpt-4.1 fallback) | 19/19 (100%) | $0.168 | $1.34 | 2.7% |
+| Pure-GPT-4.1 | 19/19 (100%) | $0.20 | $1.60 | 3.3% |
 
-Smart hybrid produces 89% of pure-GPT-4.1's quality at 25% of the cost. The 2 fixtures that still fail on hybrid are: one verify-prompt gap (fixture-10, zero-bullets-for-brief-weight not recognized by verify's Check 9 — false positive); one borderline editorial phrase (fixture-19 — minor real issue).
+Phase 4.11 + 4.12 + 4.13 closed the two residual fixture-level failures (fixture-10 verify Check 9 false positive; fixture-10 write-summary unit conversion fabrication). Production config now passes 19/19 on the fixture corpus.
 
 ---
 

@@ -154,7 +154,9 @@ The review UI is a simple admin page; build it as a Phase 5 deliverable (estimat
 
 ### Cost monitoring
 
-Daily sum of `v3_cost_usd` vs `v2_cost_usd` for the same time window. Sanity check: v3 should cost 2–3× v2 (v2 is all DeepSeek; v3 uses gpt-4.1 for strong-reasoning + deep-writer). If the ratio exceeds 5×, investigate — likely a stage is retrying or a fixture type is hitting DeepWriterFallbackProvider.
+Daily sum of `v3_cost_usd` vs `v2_cost_usd` for the same time window. Sanity check: v3 should cost **roughly 5× v2** (v2 is all DeepSeek ~$0.018/resume; v3 smart hybrid is ~$0.097/resume with gpt-5.4-mini on write-position). If the ratio exceeds **8×**, investigate — likely a stage is retrying, hitting DeepWriterFallbackProvider (gpt-5.4-mini→Vertex thinking), or the write-position token counts are drifting. Per-resume dollar threshold: **v3_cost_usd > $0.15** (55% over forecast) triggers alert.
+
+Cost model validated on 19-fixture corpus in Phase 4.13. Re-measure against real production traffic during shadow deploy to confirm fixture-corpus ↔ production translation holds.
 
 ---
 
@@ -169,7 +171,7 @@ Four promotion stages. Each gate has a measurable criterion; advance only when a
 - v3 verify-error rate ≤ 15% of shadow runs.
 - Structural guards pass on ≥ 95% of shadow runs.
 - Human review: v3 preferred-or-tied on ≥ 70% of 50 reviewed pairs.
-- Cost ratio v3/v2 ≤ 5×.
+- Cost ratio v3/v2 ≤ 8× (measured baseline ~5× on smart hybrid with gpt-5.4-mini write-position).
 
 **If any fail**: fix the root cause (prompt iteration, provider swap, telemetry fix) and reset the 2-week observation window.
 
@@ -224,7 +226,7 @@ Fire `FF_V3_CANARY=false` programmatically when any of these breach for > 10 min
 - Verify-error rate > 20% on v3 cohort (any gate).
 - User-completion rate drops > 20% vs baseline.
 - OpenAI error rate > 5% (rate limits, 5xx, auth).
-- Cost per resume > $0.15 (30% over forecast).
+- Cost per resume > $0.15 (55% over the $0.097 forecast on gpt-5.4-mini).
 
 Rollback runbook in `ops/runbooks/v3-rollback.md` (write in Phase 5 prep week).
 
@@ -240,7 +242,7 @@ All must be true after the 14-day 100% rollout (Gate 4 observation period):
 
 1. **Verify-error rate** — v3 on real traffic ≤ 12% of runs. (Fixture baseline was 10.5%; real-world dispersion could push slightly higher.)
 2. **Human review** — v3 preferred-or-tied on ≥ 80% of a 100-review pairwise sample drawn across the 14 days.
-3. **Cost** — sustained cost per resume $0.04–$0.07. Deviations investigated.
+3. **Cost** — sustained cost per resume $0.08–$0.12 (measured baseline $0.097 on gpt-5.4-mini; range accommodates position-count + resume-size variance). Deviations outside this band investigated.
 4. **User outcomes** — no statistically significant regression in pipeline-completion rate, DOCX-export rate, or user-reported bugs vs the v2-era baseline from the 4 weeks pre-rollout.
 5. **Stage telemetry** — no single stage accounts for > 20% of verify errors. (If yes, that stage needs a prompt iteration before v2 can be deprecated.)
 6. **Operational stability** — no unresolved P1 bugs against v3 routing, failover, or telemetry.
