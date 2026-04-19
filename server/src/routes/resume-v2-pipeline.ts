@@ -23,6 +23,7 @@ import { runV2Pipeline } from '../agents/resume-v2/orchestrator.js';
 import type { V2PipelineSSEEvent, V2PipelineStage } from '../agents/resume-v2/types.js';
 import { llm } from '../lib/llm.js';
 import { setUsageTrackingContext, startUsageTracking, stopUsageTracking } from '../lib/llm-provider.js';
+import { enqueueShadow } from '../v3/shadow/enqueue.js';
 import { MODEL_MID, MODEL_LIGHT, MODEL_PRIMARY } from '../lib/model-constants.js';
 import { repairJSON } from '../lib/json-repair.js';
 import { loadCareerProfileContext } from '../lib/career-profile-context.js';
@@ -168,6 +169,7 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
   totalStarted++;
 
   // Pipeline runs asynchronously — events are emitted to SSE connections
+  const pipelineStartedAt = Date.now();
   void (async () => {
     const liveSnapshot = initialSnapshot;
     let snapshotPersistChain: Promise<void> = Promise.resolve();
@@ -250,6 +252,18 @@ resumeV2Pipeline.post('/start', authMiddleware, rateLimitMiddleware(10, 60_000),
       liveSnapshot.pipeline_data.error = null;
 
       await queueSnapshotPersist('complete', 'complete');
+
+      // Phase 5 shadow deploy — fire v3 silently after v2 completes. Gated by
+      // FF_V3_SHADOW_ENABLED; no-op when off. Zero latency impact on the user
+      // response, which was flushed via SSE long before this point.
+      enqueueShadow({
+        sessionId,
+        userId: userId ?? null,
+        resumeText: resume_text,
+        jobDescription: job_description,
+        v2OutputJson: result.final_resume ?? null,
+        v2DurationMs: Date.now() - pipelineStartedAt,
+      });
 
       totalCompleted++;
     } catch (error) {

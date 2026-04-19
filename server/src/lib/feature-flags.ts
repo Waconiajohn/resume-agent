@@ -330,3 +330,20 @@ export const FF_VIRTUAL_COACH = envBool('FF_VIRTUAL_COACH', true);
  * Set FF_RESUME_V2=false to disable /api/pipeline/* for emergency rollback.
  */
 export const FF_RESUME_V2 = envBool('FF_RESUME_V2', true);
+
+// ─── Resume v3 Shadow Deploy ──────────────────────────────────────────────────
+
+/**
+ * FF_V3_SHADOW_ENABLED — Enable v3 shadow deploy for every v2 pipeline run.
+ *
+ * Default: false (shadow runs disabled).
+ * Set FF_V3_SHADOW_ENABLED=true in server/.env to activate.
+ *
+ * When on, the v2 pipeline fires v3 as a post-response background job after
+ * v2 finalizes. v3 output + verify result + per-stage timings + per-stage cost
+ * are written to the `resume_v3_shadow_runs` Supabase table. v2 response is
+ * authoritative; v3 errors are logged but never affect user-facing response.
+ *
+ * See docs/v3-rebuild/07-Phase-5-Shadow-Deploy-Plan.md.
+ */
+export const FF_V3_SHADOW_ENABLED = envBool('FF_V3_SHADOW_ENABLED', false);

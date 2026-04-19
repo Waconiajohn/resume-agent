@@ -14,7 +14,8 @@ export type V3Stage =
   | 'verify'
   | 'prompts'
   | 'providers'
-  | 'fixtures';
+  | 'fixtures'
+  | 'shadow';
 
 export function createV3Logger(stage: V3Stage, extra?: Record<string, unknown>) {
   return platformLogger.child({ v3Stage: stage, ...extra });
