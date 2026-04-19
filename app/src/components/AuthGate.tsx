@@ -23,6 +23,8 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [signUpSent, setSignUpSent] = useState(false);
+  const [signUpEmail, setSignUpEmail] = useState('');
 
   const isSignUp = view === 'sign_up';
 
@@ -37,6 +39,14 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
 
     if (error) {
       setError((error as { message?: string })?.message ?? String(error));
+    } else if (isSignUp) {
+      // Supabase email-confirmation flow: signUp succeeded but the user
+      // must click the link in their inbox before they're authenticated.
+      // Show the check-your-email state so they know what to do next.
+      setSignUpEmail(email);
+      setSignUpSent(true);
+      // Clear sensitive fields from the form state.
+      setPassword('');
     }
     setLoading(false);
   };
@@ -68,6 +78,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
     setView(next);
     setError(null);
     setResetSent(false);
+    setSignUpSent(false);
   };
 
   if (view === 'forgot_password') {
@@ -131,6 +142,48 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
               </button>
             </form>
           )}
+        </GlassCard>
+      </div>
+    );
+  }
+
+  // Post-signup "check your email" screen. Shown instead of the form after
+  // a successful signUp() call, because Supabase's default flow requires
+  // email confirmation before the user is authenticated.
+  if (signUpSent) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface p-4">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-300/[0.08] via-transparent to-transparent" />
+
+        <GlassCard className="relative z-10 w-full max-w-sm p-8">
+          <div className="mb-6 flex flex-col items-center gap-2">
+            <Briefcase className="h-8 w-8 text-[var(--link)]" />
+            <h1 className="text-xl font-semibold text-[var(--text-strong)]">Almost there</h1>
+            <p className="text-center text-sm text-[var(--text-soft)]">
+              Confirm your email to finish creating your account.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-lg bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-strong)] space-y-2">
+              <p>
+                We sent a confirmation link to{' '}
+                <span className="font-semibold text-[var(--link)]">{signUpEmail}</span>.
+              </p>
+              <p className="text-[13px] text-[var(--text-muted)]">
+                Click the link in that email to verify your address, then come back here and sign in.
+                It may take a minute to arrive — and check your spam folder if you don&apos;t see it.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => switchView('sign_in')}
+              className="w-full rounded-[var(--radius-control,12px)] bg-[var(--surface-2)] py-2 text-sm text-[var(--text-strong)] hover:bg-[var(--surface-elevated)] transition-colors"
+            >
+              Back to sign in
+            </button>
+          </div>
         </GlassCard>
       </div>
     );
