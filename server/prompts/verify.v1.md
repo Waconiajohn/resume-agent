@@ -1,11 +1,17 @@
 ---
 stage: verify
-version: "1.2.3"
+version: "1.2.4"
 capability: strong-reasoning
 temperature: 0.1
 last_edited: 2026-04-19
 last_editor: claude
 notes: |
+  v1.2.4 (2026-04-19 — Check 11 role-aware tense):
+    - New Check 11 enforces verb tense matches role currency
+      (dates.end). Past roles should use past-tense verbs, current
+      roles should use present-tense. Severity: error. Mirrors the
+      role-aware tense rule now in write-position v1.5 and
+      write-bullet v1.1.
   v1.2.3 (2026-04-19 — silence is the correct output for non-issues):
     - Adds an upfront "emit nothing for non-issues" directive above the
       Checks list, and explicit guidance in Check 1 that a mechanically-
@@ -264,6 +270,24 @@ Within each custom section, entries' factual claims trace the same way as positi
 
 <!-- Why: Phase 3.5 added custom sections (Board Service, Patents, etc.) as first-class schema. Verify must check they round-trip correctly. docs/v3-rebuild/04-Decision-Log.md 2026-04-18. -->
 
+### Check 11 — Verb tense matches role currency.
+
+For each `WrittenResume.positions[i]`, read `dates.end` from the corresponding `resume.positions[i]`:
+
+- **Current role** — `dates.end === null` (classified as `"Present"` / `"Current"` / `"—"` / similar in source). Bullet verbs should be **present tense** (`lead`, `deliver`, `oversee`, `manage`, `direct`).
+- **Past role** — `dates.end` is a specific date string (e.g. `"2023"`, `"2020"`). Bullet verbs should be **past tense** (`led`, `delivered`, `oversaw`, `managed`, `directed`).
+
+Flag a bullet as an `"error"` ONLY when you can read `dates.end` AND the bullet's opening verb is unambiguously the wrong tense for the currency:
+
+  ✗ Position end=2023 (past), bullet "Oversee operations..." → error (should be "Oversaw").
+  ✗ Position end=null (current), bullet "Oversaw operations..." → error (should be "Oversee").
+  ✓ Position end=2023, bullet "Led operations..." → no issue.
+  ✓ Position end=null, bullet "Lead operations..." → no issue.
+
+Do NOT infer tense from the surrounding content, JD language, or strategy. Consult `dates.end` only. Do NOT emit warnings for Check 11 — either the tense matches the currency or it doesn't, and the writer either got it right or wrong. Ambiguous cases (bullets that start with non-verbs, noun-led bullets) → emit NOTHING for that bullet.
+
+<!-- Why: write-position v1.5 splits tense by role currency. Verify Check 11 enforces the same rule as a backstop. HR-exec session showed three "Oversee" flags at Indian River State College driven by write-position's old blanket past-tense rule mismatching a past role. 2026-04-19. -->
+
 ## Rules about severity
 
 - Factual fabrication → `"error"`
@@ -276,6 +300,7 @@ Within each custom section, entries' factual claims trace the same way as positi
 - Missing strategy-endorsed cross-role highlight → `"warning"`
 - Redaction token in body text → `"warning"`
 - Missing numeric claim that could have helped (content gap, not content error) → `"warning"`
+- Verb tense mismatch with role currency → `"error"` (see Check 11)
 
 If you're unsure whether an issue is error vs. warning, pick the more conservative (warning). Do NOT omit issues you're unsure about.
 
