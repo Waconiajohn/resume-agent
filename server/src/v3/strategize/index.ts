@@ -136,22 +136,35 @@ export async function strategizeWithTelemetry(
   let attribution = checkStrategizeAttribution(parsed, resume);
   let attributionRetryFired = false;
 
-  // Phase 4.6 — if the mechanical attribution check flags unsourced tokens,
-  // retry once with the offending phrases fed back as structured context.
-  if (!options.disableAttributionRetry && attribution.summary.unverifiedCount > 0) {
+  // Phase 4.6 + Fix 3 (2026-04-19) — if the mechanical attribution check flags
+  // unsourced tokens in summaries OR unsourced content words in
+  // positioningFrame / targetDisciplinePhrase, retry once with the offending
+  // phrases fed back as structured context.
+  const needsRetry =
+    attribution.summary.unverifiedCount > 0 ||
+    attribution.summary.fieldsUnverifiedCount > 0;
+  if (!options.disableAttributionRetry && needsRetry) {
     const unverifiedSummaries = attribution.summaries.filter((s) => !s.verified);
+    const unverifiedFields = attribution.fields.filter((f) => !f.verified);
     logger.info(
       {
         promptName,
-        unverifiedCount: attribution.summary.unverifiedCount,
+        unverifiedSummaryCount: attribution.summary.unverifiedCount,
+        unverifiedFieldCount: attribution.summary.fieldsUnverifiedCount,
         totalMissingTokens: attribution.summary.totalMissingTokens,
         firstSummaryMissing: unverifiedSummaries[0]?.missingTokens.slice(0, 5),
+        firstFieldMissing: unverifiedFields[0]
+          ? `${unverifiedFields[0].field}: ${unverifiedFields[0].missingWords.slice(0, 5).join(', ')}`
+          : null,
       },
       'strategize attribution retry triggered',
     );
     attributionRetryFired = true;
 
-    const retryAddendum = buildAttributionRetryAddendum(unverifiedSummaries);
+    const retryAddendum = buildAttributionRetryAddendum(
+      unverifiedSummaries,
+      unverifiedFields,
+    );
     const retryCall = await runLLM({
       provider,
       model,
@@ -166,18 +179,30 @@ export async function strategizeWithTelemetry(
     parsed = parseAndValidate(retryCall.text, promptName);
     attribution = checkStrategizeAttribution(parsed, resume);
 
-    if (attribution.summary.unverifiedCount > 0) {
+    const stillFailing =
+      attribution.summary.unverifiedCount > 0 ||
+      attribution.summary.fieldsUnverifiedCount > 0;
+    if (stillFailing) {
       // Second attempt also failed attribution — surface loudly with detail.
       const failingSummaries = attribution.summaries.filter((s) => !s.verified);
-      const summary = failingSummaries
+      const failingFields = attribution.fields.filter((f) => !f.verified);
+      const summaryDetail = failingSummaries
         .map(
           (s) =>
             `  [${s.summaryIndex}] pos=${s.positionIndex} text="${s.text.slice(0, 120)}" missing=[${s.missingTokens.slice(0, 6).join('; ')}]`,
         )
         .join('\n');
+      const fieldDetail = failingFields
+        .map(
+          (f) =>
+            `  [${f.field}] text="${f.text}" missingWords=[${f.missingWords.slice(0, 6).join(', ')}]`,
+        )
+        .join('\n');
       throw new StrategizeError(
         `Strategize attribution check failed on retry from ${model} via ${backend} (prompt ${promptName} v${prompt.version}). ` +
-          `${attribution.summary.unverifiedCount} summaries contain claim tokens not found in the source resume:\n${summary}\n` +
+          `${attribution.summary.unverifiedCount} summaries and ${attribution.summary.fieldsUnverifiedCount} fields contain claims not found in the source resume:\n` +
+          (summaryDetail ? `${summaryDetail}\n` : '') +
+          (fieldDetail ? `${fieldDetail}\n` : '') +
           `Fix: tighten the strategize prompt (server/prompts/strategize.v${prompt.version}.md) ` +
           `to prevent the model from emitting phrases not present in source. Do NOT add a silent repair step here.`,
         {
@@ -279,28 +304,44 @@ function parseAndValidate(rawText: string, promptName: string): Strategy {
 
 /**
  * Build the system-prompt addendum for the attribution retry. Lists each
- * unverified summary's missing tokens so the model can rewrite specifically.
+ * unverified summary's missing tokens AND each unverified field's missing
+ * content words so the model can rewrite specifically.
  */
 function buildAttributionRetryAddendum(
   unverifiedSummaries: StrategizeAttributionResult['summaries'],
+  unverifiedFields: StrategizeAttributionResult['fields'],
 ): string {
   const lines: string[] = [
-    'RETRY: Your previous response contained phrases in `emphasizedAccomplishments[].summary` that do NOT appear in the candidate\'s source resume. Rewrite the flagged summaries using ONLY phrases present in the source bullets. Keep the same `positionIndex` and `rationale`; change only `summary`.',
-    '',
-    'Flagged summaries:',
+    "RETRY: Your previous response contained phrases not present in the candidate's source resume. Rewrite the flagged content using ONLY phrases whose content words appear somewhere in the source resume (titles, bullets, scope fields, discipline, crossRoleHighlights). Keep unflagged content verbatim.",
   ];
-  for (const s of unverifiedSummaries) {
-    lines.push(
-      `  [${s.summaryIndex}] positionIndex=${s.positionIndex}`,
-    );
-    lines.push(`    current summary: "${s.text}"`);
-    lines.push(
-      `    phrases not in source (rewrite or remove these): ${s.missingTokens.map((t) => `"${t}"`).join(', ')}`,
-    );
+  if (unverifiedFields.length > 0) {
+    lines.push('');
+    lines.push('Flagged fields (content words not found in source — drop or replace):');
+    for (const f of unverifiedFields) {
+      lines.push(`  [${f.field}]`);
+      lines.push(`    current value: "${f.text}"`);
+      lines.push(
+        `    words not in source: ${f.missingWords.map((w) => `"${w}"`).join(', ')}`,
+      );
+      lines.push(
+        `    (fix: replace industry/discipline qualifier with one the source supports, or drop the qualifier entirely and use a more generic frame)`,
+      );
+    }
+  }
+  if (unverifiedSummaries.length > 0) {
+    lines.push('');
+    lines.push('Flagged summaries (phrases not in source):');
+    for (const s of unverifiedSummaries) {
+      lines.push(`  [${s.summaryIndex}] positionIndex=${s.positionIndex}`);
+      lines.push(`    current summary: "${s.text}"`);
+      lines.push(
+        `    phrases not in source (rewrite or remove these): ${s.missingTokens.map((t) => `"${t}"`).join(', ')}`,
+      );
+    }
   }
   lines.push('');
   lines.push(
-    'Return the full Strategy JSON as before. Only the flagged summaries need to change; the others should be preserved verbatim.',
+    'Return the full Strategy JSON. Change only the flagged content; preserve unflagged fields verbatim.',
   );
   return lines.join('\n');
 }

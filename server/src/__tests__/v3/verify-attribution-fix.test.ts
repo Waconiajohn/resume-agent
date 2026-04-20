@@ -19,8 +19,13 @@ import { describe, expect, it } from 'vitest';
 import {
   canonicalizeNumbers,
   checkAttributionMechanically,
+  checkStrategizeAttribution,
 } from '../../v3/verify/attribution.js';
-import type { StructuredResume, WrittenResume } from '../../v3/types.js';
+import type {
+  Strategy,
+  StructuredResume,
+  WrittenResume,
+} from '../../v3/types.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -245,6 +250,76 @@ describe('checkAttributionMechanically — fix regressions', () => {
     const w = written(['Led Enterprise DevOps Transformation across three BUs.']);
     const result = checkAttributionMechanically(w, src);
     expect(result.bullets[0].missingTokens).not.toContain('Enterprise DevOps Transformation');
+  });
+
+  // ─── Fix 3 (2026-04-19): strategize field-grounding checks ─────────
+
+  function minimalStrategy(frame: string, discipline: string): Strategy {
+    return {
+      positioningFrame: frame,
+      targetDisciplinePhrase: discipline,
+      emphasizedAccomplishments: [],
+      objections: [],
+      positionEmphasis: [],
+    };
+  }
+
+  it('strategize field check: grounded positioningFrame verified', () => {
+    const src = resume({
+      positionCompany: 'Universal Insurance',
+      positionTitle: 'Senior Project Manager',
+      positionBullets: [
+        'Led P&C insurance platform modernization programs across multiple business units.',
+      ],
+      discipline: 'project management and insurance platform modernization',
+    });
+    // All non-role-shape, non-stopword content words must appear in source:
+    // "insurance", "platform", "modernization" all do.
+    const s = minimalStrategy(
+      'insurance platform modernization leader',
+      'Director of Insurance Platform Modernization',
+    );
+    const result = checkStrategizeAttribution(s, src);
+    const frame = result.fields.find((f) => f.field === 'positioningFrame');
+    const discipline = result.fields.find((f) => f.field === 'targetDisciplinePhrase');
+    expect(frame?.verified).toBe(true);
+    expect(discipline?.verified).toBe(true);
+  });
+
+  it('strategize field check: ungrounded positioningFrame ("hospitality" not in source) flagged', () => {
+    const src = resume({
+      positionCompany: 'The Restaurant Store',
+      positionTitle: 'VP Operations',
+      positionBullets: ['Directed multi-site retail distribution strategy.'],
+      discipline: 'operations leadership',
+    });
+    const s = minimalStrategy('multi-property hospitality leader', 'Multi-Site Operations Director');
+    const result = checkStrategizeAttribution(s, src);
+    const frame = result.fields.find((f) => f.field === 'positioningFrame');
+    expect(frame?.verified).toBe(false);
+    expect(frame?.missingWords).toContain('hospitality');
+  });
+
+  it('strategize field check: ungrounded targetDisciplinePhrase ("fintech" not in source) flagged', () => {
+    const src = resume({
+      positionCompany: 'Hospital System',
+      positionTitle: 'VP Engineering',
+      positionBullets: ['Led healthcare SaaS modernization.'],
+      discipline: 'healthcare SaaS engineering',
+    });
+    const s = minimalStrategy('enterprise SaaS modernization leader', 'VP of Engineering, Fintech');
+    const result = checkStrategizeAttribution(s, src);
+    const discipline = result.fields.find((f) => f.field === 'targetDisciplinePhrase');
+    expect(discipline?.verified).toBe(false);
+    expect(discipline?.missingWords).toContain('fintech');
+  });
+
+  it('strategize field check: empty phrases verified (not checked)', () => {
+    const src = resume({ positionBullets: ['Anything.'] });
+    const s = minimalStrategy('', '');
+    const result = checkStrategizeAttribution(s, src);
+    expect(result.summary.fieldsVerifiedCount).toBe(2);
+    expect(result.summary.fieldsUnverifiedCount).toBe(0);
   });
 
   it('does not accept a number + unit when both appear but far apart in the resume', () => {

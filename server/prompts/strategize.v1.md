@@ -1,11 +1,29 @@
 ---
 stage: strategize
-version: "1.2"
+version: "1.3"
 capability: strong-reasoning
 temperature: 0.2
-last_edited: 2026-04-18
+last_edited: 2026-04-19
 last_editor: claude
 notes: |
+  v1.3 (2026-04-19 — positioningFrame + targetDisciplinePhrase grounding):
+    - Rule 2b (NEW): positioningFrame's noun phrases must appear in
+      source material. JD may provide language, source provides
+      evidence. Drops unsupported industry/scope qualifiers.
+    - Rule 5b (NEW): same grounding contract applied to
+      targetDisciplinePhrase. Rule 5 previously said only
+      "supportable by the candidate's record" with no mechanical
+      enforcement.
+    - strategize/index.ts now validates BOTH fields via the
+      extended mechanical attribution check (previously
+      emphasizedAccomplishments.summary only). One-retry loop
+      covers all three now.
+    - Motivation: HR-exec session showed "multi-property
+      hospitality leadership" leaking from JD into written summary
+      when the source resume had no hospitality content.
+      Strategize was the upstream cause; write-summary faithfully
+      echoed an unsourced strategy frame. Fix stops the leak at
+      the source.
   v1.2 (Phase 4.6 — source-traceable discipline):
     - Phase 4.5 hybrid validation caught this prompt embellishing
       emphasizedAccomplishments.summary with causal-framing phrases
@@ -142,6 +160,21 @@ If the candidate's record and the JD demand different frames (e.g., candidate is
 
 <!-- Why: Every resume needs one story, not three. The "consolidator" / "builder" / "turnaround" vocabulary is the coaching framework at CareerIQ. 2026-04-18. -->
 
+### Rule 2b — positioningFrame must be grounded in source material.
+
+The frame's noun phrases (industry qualifier, scale qualifier, discipline qualifier) MUST appear in the candidate's source resume — in titles, bullets, scope fields, discipline field, or crossRoleHighlights.
+
+The JD may provide language hints ("multi-property hospitality director," "enterprise fintech architect"), but the source must provide the evidence. If the JD calls for a "multi-property hospitality director" and the source has no hospitality content whatsoever, you MUST drop the hospitality qualifier and pick a supportable parent frame instead (e.g., "multi-site operations director" if the source shows multi-site ops in any industry).
+
+Pattern:
+  ✓ JD says "Multi-Property Hospitality Director"; source has 8 locations in hospitality → frame can include "multi-property hospitality" (both supported).
+  ✓ JD says "Multi-Property Hospitality Director"; source has 8 retail locations but no hospitality → frame drops "hospitality"; use "multi-site operations leader" or similar.
+  ✗ JD says "Enterprise Fintech Architect"; source is healthcare IT → frame "enterprise fintech architect" is unsourced. Use "enterprise healthcare architect" (supported) or a discipline-only frame.
+
+The mechanical attribution check in strategize/index.ts now validates positioningFrame tokens against the full resume haystack. An unsourced industry/scale qualifier in the frame will trigger the one-retry loop.
+
+<!-- Why: HR-exec session showed "multi-property hospitality leadership" leaking from JD into the written summary even when the source resume had no hospitality content. Strategize's positioningFrame is the upstream cause; write-summary faithfully echoes it. Rule 2b stops the leak at the source. 2026-04-19. -->
+
 ### Rule 3 — Identify 2 to 3 likely hiring-manager objections.
 
 An `objection` is something a hiring manager would hesitate about: a gap, a title mismatch, a missing credential, an industry jump, a tenure pattern, a seniority gap relative to the JD. Identify **2 to 3** real objections and a rebuttal for each.
@@ -186,6 +219,21 @@ This is NOT the candidate's most recent job title. It's the title the candidate 
 - Aligned with the JD (mirror the target role's language where honest)
 
 <!-- Why: The branded title under the name is what the hiring manager reads first. 2026-04-18. -->
+
+### Rule 5b — targetDisciplinePhrase must be grounded in source material.
+
+Same contract as Rule 2b, applied to `targetDisciplinePhrase`. The phrase's discipline, industry, and scope qualifiers MUST appear in the candidate's source resume (titles, bullets, scope, discipline field, or crossRoleHighlights).
+
+JD-mirroring is allowed for seniority terms and generic role language. Inventing an industry or discipline qualifier the source doesn't carry is NOT allowed. If the source has no evidence of a specific industry the JD names, use a parent frame the source supports.
+
+Pattern:
+  ✓ JD: "VP of Engineering, Fintech"; source has multiple fintech roles → phrase can include "fintech".
+  ✓ JD: "VP of Engineering, Fintech"; source has healthcare SaaS roles, no fintech → phrase drops "fintech"; use "VP of Engineering, Enterprise SaaS" (supported).
+  ✗ JD: "Multi-Property Hospitality Director"; source has retail multi-site operations, no hospitality → phrase "Multi-Property Hospitality Director" is unsourced. Use "Multi-Site Operations Director".
+
+The mechanical attribution check in strategize/index.ts also validates targetDisciplinePhrase tokens. An unsourced industry/scope qualifier triggers the one-retry loop.
+
+<!-- Why: Rule 5 previously said only "supportable by the candidate's record" with no mechanical check. The attribution retry loop (Phase 4.6) only covered emphasizedAccomplishments.summary. An unsourced targetDisciplinePhrase ended up echoed into the written resume's branded title and summary, with verify catching the downstream drift. Extending the same grounding rule closes that gap. 2026-04-19. -->
 
 ### Rule 6 — Notes are optional but used for tension flags.
 

@@ -172,13 +172,32 @@ export interface SummaryAttributionCheck {
   foundTokens: string[];
 }
 
+/**
+ * Per-field attribution check result (added 2026-04-19 for Fix 3).
+ * Used for positioningFrame and targetDisciplinePhrase, which are short
+ * free-form phrases rather than structured claims — so this check uses
+ * word-bag matching (each content word must appear somewhere in the
+ * resume haystack) rather than substring-matching individual tokens.
+ */
+export interface FieldAttributionCheck {
+  field: 'positioningFrame' | 'targetDisciplinePhrase';
+  text: string;
+  verified: boolean;
+  /** Content words (stopwords dropped) that were NOT found in the haystack. */
+  missingWords: string[];
+}
+
 export interface StrategizeAttributionResult {
   summaries: SummaryAttributionCheck[];
+  fields: FieldAttributionCheck[];
   summary: {
     totalSummaries: number;
     verifiedCount: number;
     unverifiedCount: number;
     totalMissingTokens: number;
+    totalFields: number;
+    fieldsVerifiedCount: number;
+    fieldsUnverifiedCount: number;
   };
 }
 
@@ -227,15 +246,112 @@ export function checkStrategizeAttribution(
     });
   }
 
+  // Fix 3 (2026-04-19): also validate positioningFrame and targetDisciplinePhrase
+  // against the source resume. These are short free-form phrases (2-5 words
+  // each) that the JD can legitimately influence, but the industry/discipline/
+  // scope qualifiers they use must be present somewhere in the source — not
+  // invented from the JD alone. Word-bag match: every content word in the
+  // field must appear in the haystack (substring inclusion so simple plural/
+  // suffix variants match).
+  const fields: FieldAttributionCheck[] = [];
+  fields.push(
+    checkPhraseAgainstHaystack(
+      'positioningFrame',
+      strategy.positioningFrame ?? '',
+      haystack,
+    ),
+  );
+  fields.push(
+    checkPhraseAgainstHaystack(
+      'targetDisciplinePhrase',
+      strategy.targetDisciplinePhrase ?? '',
+      haystack,
+    ),
+  );
+
   const verifiedCount = summaries.filter((s) => s.verified).length;
+  const fieldsVerifiedCount = fields.filter((f) => f.verified).length;
   return {
     summaries,
+    fields,
     summary: {
       totalSummaries: summaries.length,
       verifiedCount,
       unverifiedCount: summaries.length - verifiedCount,
       totalMissingTokens: summaries.reduce((s, r) => s + r.missingTokens.length, 0),
+      totalFields: fields.length,
+      fieldsVerifiedCount,
+      fieldsUnverifiedCount: fields.length - fieldsVerifiedCount,
     },
+  };
+}
+
+/**
+ * Role-shape vocabulary that appears in positioningFrame/
+ * targetDisciplinePhrase without being an industry, scope, or discipline
+ * qualifier. These words are acceptable in a frame even when absent from
+ * the source, because they describe role shape (every resume has some
+ * "leader" or "manager" role even if the specific word isn't in source
+ * prose). Only industry/scope/discipline qualifiers are subject to
+ * grounding per Rule 2b and Rule 5b of strategize.v1.
+ */
+const ROLE_SHAPE_STOPWORDS = new Set<string>([
+  'leader', 'leaders', 'leadership',
+  'specialist', 'specialists',
+  'expert', 'experts',
+  'builder', 'builders',
+  'operator', 'operators',
+  'practitioner', 'practitioners',
+  'manager', 'managers',
+  'director', 'directors',
+  'architect', 'architects',
+  'consultant', 'consultants',
+  'executive', 'executives',
+  'advisor', 'advisors',
+  'strategist', 'strategists',
+  'scaler', 'scalers',
+  'consolidator', 'consolidators',
+  'owner', 'owners',
+  'head', 'lead',
+  'vp', 'svp', 'evp',
+  'chief', 'officer',
+  'president', 'ceo', 'cfo', 'coo', 'cto', 'cio',
+  'senior', 'principal', 'staff',
+]);
+
+/**
+ * Check whether every industry/scope/discipline content word in `phrase`
+ * appears in `haystack`. Used by checkStrategizeAttribution to validate
+ * positioningFrame and targetDisciplinePhrase per strategize.v1 Rule 2b /
+ * Rule 5b.
+ *
+ * Role-shape vocabulary (leader, specialist, manager, etc.) is dropped
+ * before matching — those are acceptable in a frame even when absent from
+ * source prose. The rule targets industry/scope/discipline qualifiers
+ * like "hospitality", "fintech", "multi-property" — the slots where JD
+ * language can leak into a resume the source doesn't back up.
+ *
+ * Empty phrase → verified true (nothing to check).
+ */
+function checkPhraseAgainstHaystack(
+  fieldName: 'positioningFrame' | 'targetDisciplinePhrase',
+  phrase: string,
+  haystack: string,
+): FieldAttributionCheck {
+  if (!phrase.trim()) {
+    return { field: fieldName, text: phrase, verified: true, missingWords: [] };
+  }
+  // Filter: frame content words minus role-shape vocabulary.
+  const words = frameContentWords(phrase).filter((w) => !ROLE_SHAPE_STOPWORDS.has(w));
+  const missingWords: string[] = [];
+  for (const w of words) {
+    if (!haystack.includes(w)) missingWords.push(w);
+  }
+  return {
+    field: fieldName,
+    text: phrase,
+    verified: missingWords.length === 0,
+    missingWords,
   };
 }
 
