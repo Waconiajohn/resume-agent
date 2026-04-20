@@ -1,11 +1,21 @@
 ---
 stage: verify
-version: "1.2.2"
+version: "1.2.3"
 capability: strong-reasoning
 temperature: 0.1
 last_edited: 2026-04-19
 last_editor: claude
 notes: |
+  v1.2.3 (2026-04-19 — silence is the correct output for non-issues):
+    - Adds an upfront "emit nothing for non-issues" directive above the
+      Checks list, and explicit guidance in Check 1 that a mechanically-
+      missing token later found in source MUST produce NO output entry
+      (not even a warning). Post-attribution-fix re-run of fixture-10
+      surfaced self-contradicting items where severity: "error" was
+      paired with messages like "the claim is present in source" — the
+      model was emitting its reasoning as "issues" rather than dropping
+      them. This tightens the output contract: items in `issues` are
+      things the user must act on; everything else is silence.
   v1.2.2 (2026-04-19 — pronoun ban absolute):
     - Check 2 no longer carves out an exception for non-null
       resume.pronoun. Any personal pronoun in the rewritten resume
@@ -62,6 +72,19 @@ Your output shape is:
 
 `passed` is `true` if and only if there are zero `"error"`-severity issues. Warnings do not fail the resume.
 
+## Output contract — silence is the correct response for non-issues
+
+The `issues` array contains ONLY items the user must act on. Every entry you emit ends up in the user's Review panel and drives the error/warning counts the product tracks as its quality signal. Do not emit:
+
+- Narration about the mechanical pre-check ("the attribution check flagged X but the claim is actually present in source").
+- Reasoning traces about tokens you scanned and resolved favorably.
+- Acknowledgements that a paraphrase is acceptable, or that a claim is sourced.
+- Any item whose `message` concludes with "no fabrication found", "the claim is sourced", "this is acceptable", or equivalent.
+
+If your analysis concludes there is NO problem, the correct output is to emit no entry for that bullet at all. Not a warning, not an info note — nothing. `issues` should be empty when the resume is clean, and should contain only genuine problems otherwise.
+
+<!-- Why: Post-attribution-fix re-run of fixture-10 (2026-04-19) produced items at severity: "error" whose message read "claim is present in source" and "paraphrase is acceptable, so no fabrication" — the model was emitting its reasoning process as error-severity findings. These are not findings; they are resolved observations. This rule makes the output contract explicit: issues mean user action, not analysis logs. -->
+
 ## Checks to perform (in order)
 
 Run every check. Do NOT stop at first issue.
@@ -91,7 +114,7 @@ Run every check. Do NOT stop at first issue.
    - Tokens that appear in a different position's bullets where the writer legitimately drew from `crossRoleHighlights`.
    - Heuristic extraction noise (e.g., "Led Strategy" captured as a proper noun when it's really the verb "Led" + noun).
 
-   For each flagged token: **scan ALL source bullets in the position, the position's scope, and the resume's crossRoleHighlights** for a semantic match. If you find the claim (even if the mechanical check missed it), DO NOT emit an error — the bullet is verified in practice.
+   For each flagged token: **scan ALL source bullets in the position, the position's scope, and the resume's crossRoleHighlights** for a semantic match. If you find the claim (even if the mechanical check missed it), emit NOTHING for that bullet — no error, no warning, no observational note. The bullet is verified in practice; your output `issues` array must not mention it.
 
 3. **Only emit a Check-1 error when a specific claim in the rewrite is NOT findable anywhere in the relevant source material** after you've done step 2. A SPECIFIC CLAIM is:
    - A metric or number not in source.
@@ -117,12 +140,13 @@ Run every check. Do NOT stop at first issue.
 
 ### Examples:
 
-  ✓ pre-check reports `verified: true` → no Check-1 error, period.
-  ✓ pre-check reports `missingTokens: ["15 Agile Release Trains"]`; source bullets[0] contains "15 Agile Release Trains" → mechanical miss; no error.
-  ✗ pre-check reports `missingTokens: ["$40M", "12 business units"]`; neither appears in source bullets or scope → emit error (fabricated).
+  ✓ pre-check reports `verified: true` → no Check-1 entry, period. Do not emit anything, not even a confirmation.
+  ✓ pre-check reports `missingTokens: ["15 Agile Release Trains"]`; source bullets[0] contains "15 Agile Release Trains" → mechanical miss. Emit NOTHING for that bullet. Do not emit a warning saying "the mechanical check flagged this but the claim is present" — the user does not need to know the mechanical check's internal state.
+  ✓ pre-check reports `missingTokens: ["$150MM"]`; source contains "$150MM" in different casing or a different section. You confirm the claim is sourced. Emit NOTHING — not an error, not a warning explaining the miss.
+  ✗ pre-check reports `missingTokens: ["$40M", "12 business units"]`; neither appears in source bullets or scope → emit error (fabricated). Message: "Bullet claims $40M and 12 business units not present in source position."
   ✗ rewrite says "Built consultative sales culture focused on solution selling"; source mentions neither "culture" nor "selling philosophy" → emit error (unsourced claim).
 
-A false-positive error is worse than a missing real error. Calibrate toward precision: the mechanical check is the floor, your job is to remove its false positives, not to add more.
+A false-positive error is worse than a missing real error. Calibrate toward precision: the mechanical check is the floor, your job is to remove its false positives, not to add more. And a spurious warning or observational note is a false positive in its own right — every entry in `issues` must be worth acting on.
 
 <!-- Why: Phase 3.5 iteration + Phase 4 Intervention 1 showed DeepSeek-verify from-scratch attribution produces many false positives: it flags phrases that ARE in source when the phrase is paraphrased, or flags a synonym substitution as fabrication. Intervention 2 moves the deterministic part to code (attribution.ts) and constrains verify's LLM to filter-down that list, not generate its own. See docs/v3-rebuild/reports/phase-3.5-report.md "verify false-positive residue". 2026-04-18. -->
 
