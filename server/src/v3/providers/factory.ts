@@ -83,10 +83,22 @@ const DEFAULT_OPENAI_STRONG_MODEL = 'gpt-5.4-mini';
 const DEFAULT_OPENAI_FAST_MODEL = 'gpt-5.4-mini';
 const DEFAULT_OPENAI_DEEP_MODEL = 'gpt-5.4-mini';
 
-// Phase 4.5 hybrid production defaults per capability.
+// 2026-04-20: flipped to all-OpenAI after a 3-fixture validation showed
+// (a) a 3–4× wall-clock speedup end-to-end on GPT-5.4-mini and
+// (b) the one quality regression was GPT-5.4-mini inventing industry
+//     framing ("GTM", "wholesale") at strategize on a cross-domain JD.
+//
+// The original hybrid treated that second point as a shipping blocker and
+// kept strong-reasoning on Vertex DeepSeek. Product reframe (2026-04-20)
+// decided minor framing-vocabulary drift is reviewable by the user in the
+// Review panel, not a hard-fail condition. See
+// docs/v3-rebuild/reports/model-validation/all-openai-vs-hybrid.md.
+//
+// The prior Vertex hybrid is still selectable per-capability via env
+// overrides (RESUME_V3_STRONG_REASONING_BACKEND=vertex etc.).
 const DEFAULT_CAPABILITY_BACKEND: Record<Capability, Backend> = {
-  'strong-reasoning': 'vertex',
-  'fast-writer': 'vertex',
+  'strong-reasoning': 'openai',
+  'fast-writer': 'openai',
   'deep-writer': 'openai',
 };
 

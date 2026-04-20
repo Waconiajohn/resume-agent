@@ -134,3 +134,30 @@ Hold the `verify` capability on DeepSeek for now even under Option B. Attributio
 - `raw-side-by-side.md` — machine-generated per-fixture tables + text diffs
 - Runner logs: `/tmp/v3-validation/{baseline,candidate}/<fixture>.runner.log` (ephemeral; not checked in)
 - Validation harness: `/tmp/v3-validation/run-validation.sh` + `analyze.mjs` (ephemeral)
+
+---
+
+## Addendum — 2026-04-20 afternoon: flip shipped with v1.4 strategize prompt
+
+Original recommendation was Option A (partial flip). John chose full flip + prompt tightening instead, explicitly rejecting the proposal to soften the strategize attribution hard-fail: "the attribution guardrail is load-bearing — it's what caught the joel-hough fabrication Friday. Softening it means producing fabrications and hoping users catch them. Tighten the prompt, keep the guardrail."
+
+**Changes shipped:**
+1. `server/src/v3/providers/factory.ts`: `DEFAULT_CAPABILITY_BACKEND` for all three capabilities (`strong-reasoning`, `fast-writer`, `deep-writer`) now defaults to `openai`. Per-capability env overrides (`RESUME_V3_STRONG_REASONING_BACKEND=vertex` etc.) still work for rollback.
+2. `server/prompts/strategize.v1.md` bumped to v1.4 with new **Rule 0a — JD-vocabulary firewall**. Imperative "list source tokens, check every emitted phrase, drop anything not sourced" instructions. Explicit Jessica-boquist ✓/✗ example using the exact failure shape.
+3. **No change to** `server/src/v3/strategize/index.ts`. Attribution hard-fail preserved.
+
+**Re-validation on the flipped default + v1.4 prompt, same three fixtures:**
+
+| Fixture | Wall-clock | Attribution hard-fail | Verify errors | Verify warnings | JD-vocab in strategy? |
+|---|---:|---|---:|---:|---|
+| fixture-04 bshook | 24s | no | 0 | 1 | no |
+| fixture-10 jessica-boquist | 31s | **no** (previously failed) | 6 | 1 | **no** (previously "GTM"/"wholesale") |
+| fixture-12 joel-hough | 21s | no | 1 | 0 | no |
+
+Notes:
+- Jessica's 6 verify errors are downstream issues (2 date-normalization false positives, 3 `evidence_found=false` bullets, 1 strategy/writer coordination issue on a brief-weight position) — none are JD-vocabulary regressions.
+- Joel's 1 error is the "3 vs 4 distribution centers" intra-resume consistency issue documented in the original UX test — pre-existing on his source, surfaces stochastically.
+- Bshook's 1 warning is a writer/strategy framing-word mismatch, minor review-panel item.
+- Full 3–4× latency win preserved. No attribution hard-fail on any fixture.
+
+**Outcome:** ship.
