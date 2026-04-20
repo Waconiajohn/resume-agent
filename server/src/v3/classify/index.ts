@@ -20,7 +20,8 @@
 // - NO silent repair. No JSON-fixer. No fallback to regex. No guardrails.
 //   OPERATING-MANUAL.md "No silent fallbacks": errors propagate visibly.
 
-import type { StreamEvent } from '../../lib/llm-provider.js';
+import type { LLMProvider, StreamEvent } from '../../lib/llm-provider.js';
+import type { ZodError } from 'zod';
 import { loadPrompt } from '../prompts/loader.js';
 import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
@@ -39,6 +40,14 @@ export interface ClassifyOptions {
   variant?: string;
   /** Optional caller-supplied abort signal. */
   signal?: AbortSignal;
+  /**
+   * Disable the schema-failure one-shot retry loop. Default: false (retry on).
+   * Primarily for tests that mock the LLM and don't want a second call.
+   * Added 2026-04-20 pm as Fix 5 of "Option 4" — see
+   * docs/v3-rebuild/reports/all-openai-19-fixture-validation-v2.md for the
+   * gpt-5.4-mini schema-compliance regression class that motivated the retry.
+   */
+  disableSchemaRetry?: boolean;
 }
 
 export class ClassifyError extends Error {
@@ -64,6 +73,15 @@ export interface ClassifyTelemetry {
   inputTokens: number;
   outputTokens: number;
   durationMs: number;
+  /**
+   * True iff the one-shot schema-failure retry fired (first attempt produced
+   * output that failed Zod validation; second attempt was made with the Zod
+   * errors fed back as a system-message addendum). Retry is a loud, visible
+   * recovery mechanism — NOT a silent fallback. If the retry's output also
+   * fails validation, classify throws (same behavior as the pre-Fix-5 code).
+   * Added 2026-04-20 pm.
+   */
+  schemaRetryFired: boolean;
 }
 
 export interface ClassifyResult {
@@ -116,44 +134,96 @@ export async function classifyWithTelemetry(
     'classify start',
   );
 
-  // Streaming is used for classify because max_tokens at 32K exceeds the
-  // Anthropic SDK's 10-minute non-streaming safety threshold and works well
-  // on Vertex-hosted DeepSeek for long outputs.
-  let fullText = '';
-  let usage = { input_tokens: 0, output_tokens: 0 };
-  for await (const event of provider.stream({
+  // First attempt.
+  const firstCall = await streamClassify({
+    provider,
     model,
     system: prompt.systemMessage,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: MAX_OUTPUT_TOKENS,
+    userMessage,
     temperature: prompt.temperature,
     signal: options.signal,
-  })) {
-    const e = event as StreamEvent;
-    if (e.type === 'text') {
-      fullText += e.text;
-    } else if (e.type === 'done') {
-      usage = e.usage;
+    promptName,
+    promptVersion: prompt.version,
+    backend,
+  });
+
+  let totalInputTokens = firstCall.usage.input_tokens;
+  let totalOutputTokens = firstCall.usage.output_tokens;
+
+  // Parse and validate the first attempt. JSON-parse errors throw
+  // immediately (no retry path — a response that isn't JSON at all is an
+  // LLM-side structural failure, not a schema-compliance one). Zod
+  // validation failures trigger one retry with the validation errors fed
+  // back as system-message context; this is the Fix 5 class added
+  // 2026-04-20 pm. See docs/v3-rebuild/reports/all-openai-19-fixture-
+  // validation-v2.md for the joel-hough regression that motivated this.
+  const firstParsed = parseJsonOrThrow(firstCall.cleaned, promptName);
+  const firstValidation = StructuredResumeSchema.safeParse(firstParsed);
+
+  let validated: StructuredResume;
+  let schemaRetryFired = false;
+
+  if (firstValidation.success) {
+    validated = firstValidation.data as StructuredResume;
+  } else if (options.disableSchemaRetry) {
+    // Tests / caller opted out of retry. Preserve pre-Fix-5 loud behavior.
+    throwSchemaError(firstValidation.error, promptName, firstCall.cleaned);
+    return undefined as never;
+  } else {
+    schemaRetryFired = true;
+    const retryAddendum = buildSchemaRetryAddendum(firstValidation.error);
+    logger.info(
+      {
+        promptName,
+        model,
+        backend,
+        firstIssueCount: firstValidation.error.issues.length,
+        firstIssuePaths: firstValidation.error.issues
+          .slice(0, 5)
+          .map((i) => i.path.join('.') || '<root>'),
+      },
+      'classify schema retry triggered',
+    );
+
+    const retryCall = await streamClassify({
+      provider,
+      model,
+      system: `${prompt.systemMessage}\n\n---\n\n${retryAddendum}`,
+      userMessage,
+      temperature: prompt.temperature,
+      signal: options.signal,
+      promptName,
+      promptVersion: prompt.version,
+      backend,
+    });
+    totalInputTokens += retryCall.usage.input_tokens;
+    totalOutputTokens += retryCall.usage.output_tokens;
+
+    const retryParsed = parseJsonOrThrow(retryCall.cleaned, promptName);
+    const retryValidation = StructuredResumeSchema.safeParse(retryParsed);
+
+    if (retryValidation.success) {
+      validated = retryValidation.data as StructuredResume;
+      logger.info(
+        { promptName, model, backend },
+        'classify schema retry succeeded',
+      );
+    } else {
+      // Both attempts failed validation. Throw with detail from both so the
+      // operator can see the failure pattern and decide whether the prompt
+      // needs further tightening.
+      throwBothAttemptsFailed(
+        firstValidation.error,
+        retryValidation.error,
+        promptName,
+        firstCall.cleaned,
+        retryCall.cleaned,
+      );
+      return undefined as never;
     }
   }
 
   const durationMs = Date.now() - start;
-
-  if (!fullText || fullText.trim().length === 0) {
-    throw new ClassifyError(
-      `Classify returned empty response from ${model} via ${backend} (prompt ${promptName} v${prompt.version}). ` +
-        `The model emitted zero text content. This is an LLM-side failure — retry or check provider health.`,
-      { promptName, rawResponse: fullText },
-    );
-  }
-
-  // Mechanical fence strip before JSON.parse. DeepSeek-on-Vertex sometimes
-  // wraps output in markdown fences even when the prompt forbids them; this
-  // is a syntactic preprocessing step, not semantic repair.
-  const cleaned = stripMarkdownJsonFence(fullText.trim());
-
-  const parsed = parseJsonOrThrow(cleaned, promptName);
-  const validated = validateOrThrow(parsed, promptName, cleaned);
 
   logger.info(
     {
@@ -161,9 +231,10 @@ export async function classifyWithTelemetry(
       promptVersion: prompt.version,
       model,
       backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
       durationMs,
+      schemaRetryFired,
       positions: validated.positions.length,
       education: validated.education.length,
       certifications: validated.certifications.length,
@@ -184,11 +255,148 @@ export async function classifyWithTelemetry(
       model,
       capability: prompt.capability,
       backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
       durationMs,
+      schemaRetryFired,
     },
   };
+}
+
+// -----------------------------------------------------------------------------
+// Streaming + retry helpers
+// -----------------------------------------------------------------------------
+
+interface StreamClassifyInput {
+  provider: LLMProvider;
+  model: string;
+  system: string;
+  userMessage: string;
+  temperature?: number;
+  signal?: AbortSignal;
+  promptName: string;
+  promptVersion: string;
+  backend: string;
+}
+
+interface StreamClassifyOutput {
+  /** Raw response text (with markdown fence already stripped). */
+  cleaned: string;
+  usage: { input_tokens: number; output_tokens: number };
+}
+
+/**
+ * Stream one classify LLM call and return the fence-stripped text plus
+ * token usage. Empty-response check is enforced here so both the initial
+ * attempt and the retry attempt get the same loud failure on empty output.
+ */
+async function streamClassify(input: StreamClassifyInput): Promise<StreamClassifyOutput> {
+  let fullText = '';
+  let usage = { input_tokens: 0, output_tokens: 0 };
+  for await (const event of input.provider.stream({
+    model: input.model,
+    system: input.system,
+    messages: [{ role: 'user', content: input.userMessage }],
+    max_tokens: MAX_OUTPUT_TOKENS,
+    temperature: input.temperature,
+    signal: input.signal,
+  })) {
+    const e = event as StreamEvent;
+    if (e.type === 'text') {
+      fullText += e.text;
+    } else if (e.type === 'done') {
+      usage = e.usage;
+    }
+  }
+
+  if (!fullText || fullText.trim().length === 0) {
+    throw new ClassifyError(
+      `Classify returned empty response from ${input.model} via ${input.backend} (prompt ${input.promptName} v${input.promptVersion}). ` +
+        `The model emitted zero text content. This is an LLM-side failure — retry or check provider health.`,
+      { promptName: input.promptName, rawResponse: fullText },
+    );
+  }
+
+  return {
+    cleaned: stripMarkdownJsonFence(fullText.trim()),
+    usage,
+  };
+}
+
+/**
+ * Build the system-message addendum for a classify schema retry. The model
+ * sees the full list of Zod validation paths + messages so it can fix each
+ * one specifically without re-validating unflagged content.
+ */
+function buildSchemaRetryAddendum(error: ZodError): string {
+  const issues = error.issues.slice(0, 20).map((i) => {
+    const path = i.path.map((p) => String(p)).join('.');
+    return `  • ${path || '<root>'}: ${i.message}`;
+  });
+  const more = error.issues.length > 20 ? `\n  • ...(${error.issues.length - 20} more)` : '';
+
+  return [
+    'RETRY: Your previous response failed StructuredResume schema validation. The schema reported the following issues:',
+    '',
+    issues.join('\n') + more,
+    '',
+    'Return the full StructuredResume JSON with these fields corrected. Preserve all other content verbatim. Common fixes:',
+    '  • Every `confidence` field is a number between 0.0 and 1.0 — NOT a boolean, NOT a string, NOT null.',
+    '  • Every position needs a `dates` object. When the source has no date range, emit `dates: { start: null, end: null, raw: "<section label>" }` — do not omit the field.',
+    '  • Required arrays may be empty but must be present: `education`, `certifications`, `skills`, `careerGaps`, `crossRoleHighlights`, `customSections`, `flags`.',
+    '  • `null` vs missing field matters — optional nullable fields may be null; required fields must be present with the correct type.',
+    '',
+    'Return ONLY the JSON — no prose, no markdown fences.',
+  ].join('\n');
+}
+
+function throwSchemaError(
+  error: ZodError,
+  promptName: string,
+  rawResponse: string,
+): void {
+  const issues = error.issues
+    .slice(0, 20)
+    .map((i) => `${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`);
+  throw new ClassifyError(
+    `Classify output did not match the StructuredResume schema (prompt ${promptName}). ` +
+      `Zod reported ${error.issues.length} issue(s): ` +
+      issues.join('; ') +
+      (error.issues.length > 20 ? '; ...(more)' : '') +
+      `. Fix: update the prompt's schema section or the prompt's hard rules to prevent this shape. ` +
+      `Do NOT add a JSON-repair guardrail in code.`,
+    {
+      promptName,
+      rawResponse: rawResponse.slice(0, 500),
+      validationIssues: error.issues,
+    },
+  );
+}
+
+function throwBothAttemptsFailed(
+  first: ZodError,
+  second: ZodError,
+  promptName: string,
+  firstRaw: string,
+  secondRaw: string,
+): void {
+  const fmt = (err: ZodError) =>
+    err.issues
+      .slice(0, 10)
+      .map((i) => `${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`)
+      .join('; ');
+  throw new ClassifyError(
+    `Classify schema validation failed on BOTH the first attempt AND the retry (prompt ${promptName}). ` +
+      `This indicates a systemic prompt/model compliance issue, not a one-off flake. ` +
+      `First attempt (${first.issues.length} issues): ${fmt(first)}. ` +
+      `Retry (${second.issues.length} issues): ${fmt(second)}. ` +
+      `Fix: strengthen the prompt for the repeated failure pattern, or investigate whether the source resume has a pathological shape.`,
+    {
+      promptName,
+      rawResponse: secondRaw.slice(0, 500),
+      validationIssues: [...first.issues, ...second.issues],
+    },
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -224,29 +432,8 @@ function parseJsonOrThrow(raw: string, promptName: string): unknown {
   }
 }
 
-function validateOrThrow(
-  parsed: unknown,
-  promptName: string,
-  rawResponse: string,
-): StructuredResume {
-  const result = StructuredResumeSchema.safeParse(parsed);
-  if (!result.success) {
-    const issues = result.error.issues
-      .slice(0, 20)
-      .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`);
-    throw new ClassifyError(
-      `Classify output did not match the StructuredResume schema (prompt ${promptName}). ` +
-        `Zod reported ${result.error.issues.length} issue(s): ` +
-        issues.join('; ') +
-        (result.error.issues.length > 20 ? '; ...(more)' : '') +
-        `. Fix: update the prompt's schema section or the prompt's hard rules to prevent this shape. ` +
-        `Do NOT add a JSON-repair guardrail in code.`,
-      {
-        promptName,
-        rawResponse: rawResponse.slice(0, 500),
-        validationIssues: result.error.issues,
-      },
-    );
-  }
-  return result.data as StructuredResume;
-}
+// validateOrThrow removed 2026-04-20 pm — superseded by Fix 5's inline
+// safeParse + retry flow in classifyWithTelemetry. The failure-path branches
+// now live in throwSchemaError (single-attempt fail; used via disableSchemaRetry)
+// and throwBothAttemptsFailed (both-attempt fail; the loud post-retry throw).
+
