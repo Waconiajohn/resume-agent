@@ -26,6 +26,10 @@ import {
   buildPronounRetryAddendum,
   detectBannedPronouns,
 } from './pronoun-retry.js';
+import {
+  buildForbiddenPhraseRetryAddendum,
+  detectForbiddenPhrases,
+} from './forbidden-phrase-retry.js';
 import type {
   CustomSection,
   Position,
@@ -253,6 +257,42 @@ async function runSummary(
     out = retry;
   }
 
+  // Ship 2026-04-20 — one-shot forbidden-phrase retry. The shared
+  // forbidden-phrases fragment is ~50–60% effective in practice (UX test
+  // surfaced "with a track record" + "Orchestrated" slipping through on
+  // jessica-boquist). Same mechanical pattern as the pronoun retry:
+  // scan the final output; if any banned phrase matches, re-invoke once
+  // with a targeted addendum. Runs AFTER the pronoun retry so the second
+  // attempt's content is what we scan.
+  const phraseScan = detectForbiddenPhrases(out.parsed.summary);
+  if (phraseScan.foundIds.length > 0) {
+    logger.info(
+      { section: 'summary', promptName, phrases: phraseScan.foundIds, retry: 1 },
+      'summary forbidden-phrase retry triggered',
+    );
+    const retry = await runSection<{ summary: string }>(
+      'summary',
+      promptName,
+      replacements,
+      safeParse,
+      signal,
+      buildForbiddenPhraseRetryAddendum(phraseScan.foundIds),
+    );
+    const retryScan = detectForbiddenPhrases(retry.parsed.summary);
+    if (retryScan.foundIds.length > 0) {
+      logger.warn(
+        {
+          section: 'summary',
+          promptName,
+          initialPhrases: phraseScan.foundIds,
+          retryPhrases: retryScan.foundIds,
+        },
+        'summary forbidden-phrase retry failed to fully clear — emitting output anyway',
+      );
+    }
+    out = retry;
+  }
+
   return { summary: out.parsed.summary, telemetry: out.telemetry };
 }
 
@@ -302,6 +342,43 @@ async function runAccomplishments(
           retryPronouns: retryScan.found,
         },
         'accomplishments pronoun retry failed to fully clear — emitting output anyway',
+      );
+    }
+    out = retry;
+  }
+
+  // Ship 2026-04-20 — forbidden-phrase retry (same pattern as summary).
+  // Checked against the concatenated accomplishment text because any one
+  // bullet with a filler phrase is one too many. The "Orchestrated the
+  // development and implementation of..." tell from jessica-boquist is
+  // exactly the shape this catches.
+  const joinedForScan = out.parsed.selectedAccomplishments.join('\n');
+  const phraseScan = detectForbiddenPhrases(joinedForScan);
+  if (phraseScan.foundIds.length > 0) {
+    logger.info(
+      { section: 'accomplishments', promptName, phrases: phraseScan.foundIds, retry: 1 },
+      'accomplishments forbidden-phrase retry triggered',
+    );
+    const retry = await runSection<{ selectedAccomplishments: string[] }>(
+      'accomplishments',
+      promptName,
+      replacements,
+      safeParse,
+      signal,
+      buildForbiddenPhraseRetryAddendum(phraseScan.foundIds),
+    );
+    const retryScan = detectForbiddenPhrases(
+      retry.parsed.selectedAccomplishments.join('\n'),
+    );
+    if (retryScan.foundIds.length > 0) {
+      logger.warn(
+        {
+          section: 'accomplishments',
+          promptName,
+          initialPhrases: phraseScan.foundIds,
+          retryPhrases: retryScan.foundIds,
+        },
+        'accomplishments forbidden-phrase retry failed to fully clear — emitting output anyway',
       );
     }
     out = retry;
