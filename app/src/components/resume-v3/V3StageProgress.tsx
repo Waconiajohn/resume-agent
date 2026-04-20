@@ -1,16 +1,20 @@
 /**
  * V3StageProgress — horizontal 6-stage indicator for the v3 pipeline,
- * paired with a short paragraph that explains the *craft* behind the
- * active stage. The pipeline takes 150–200 seconds; this component turns
- * that wait into transparency about how professional resume writers
- * think, rather than a progress bar full of engineering jargon.
+ * paired with a persistent list of "why this matters" paragraphs that
+ * explain the craft behind each stage.
+ *
+ * Design: reveal-and-persist. As each stage starts, its card appears in
+ * the scrollable region below the progress row. Once revealed, a card
+ * stays visible (and its paragraph stays readable) for the rest of the
+ * run — so fast stages like Extract (~5s) don't flash past before users
+ * can read them. Pending stages render as compact headers so users can
+ * see what's coming without seeing the full paragraph prematurely.
  *
  * Visual spec: pending=muted, running=coral with a subtle pulse,
- * complete=coral solid with checkmark, failed=red. Labels sit below each
- * dot; a longer "why this matters" card sits below the row for the
- * currently-active stage.
+ * complete=coral solid with checkmark, failed=red.
  */
 
+import { useEffect, useRef } from 'react';
 import { Check, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { V3Stage, V3StageStatus } from '@/hooks/useV3Pipeline';
@@ -24,27 +28,22 @@ interface StageCopy {
   id: V3Stage;
   /** Short name shown under each dot. Plain English — no engineering jargon. */
   label: string;
-  /** One-line status shown under the label and referenced inline by the
-   *  active-stage card as the "doing right now" line. */
+  /** One-line status used in the card header. */
   subDescription: string;
-  /** The paragraph shown in the active-stage card. Explains the real
-   *  craft problem this stage solves — what an experienced executive
-   *  resume writer would think about at this point. */
+  /** The paragraph shown once the stage has started. Explains the real
+   *  craft problem this stage solves. */
   whyThisMatters: string;
-  /** Advertised typical duration in seconds. Shown on the active card
-   *  so the user has a rough expectation during the wait. */
+  /** Advertised typical duration in seconds. */
   typicalSeconds: number;
 }
 
 /**
  * Stage copy. Tone rules (keep these in mind if you edit):
- *   • Conversational, not casual. "We take extra care", not "We go the
- *     extra mile!!!"
+ *   • Conversational, not casual.
  *   • Educational, not condescending.
- *   • Honest about difficulty. "This is the hardest part" is fine.
- *   • Grounded in real craft. Every paragraph should reference something
- *     an actual resume writer thinks about.
- *   • No marketing language. No "cutting-edge AI", no "revolutionary".
+ *   • Honest about difficulty.
+ *   • Grounded in real craft.
+ *   • No marketing language.
  */
 const STAGES: readonly StageCopy[] = [
   {
@@ -119,32 +118,46 @@ function connectorClass(leftStatus: V3StageStatus): string {
 }
 
 export function V3StageProgress({ stageStatus, currentStage }: V3StageProgressProps) {
-  // Which stage should the "why this matters" card describe?
-  // Priority: an actively-running stage → the last-completed stage (so the
-  // card is never empty once work has begun) → the first stage.
-  const runningStage = (Object.entries(stageStatus) as Array<[V3Stage, V3StageStatus]>)
-    .find(([, status]) => status === 'running')?.[0] ?? null;
-  const lastCompleteStage = [...STAGES]
-    .reverse()
-    .find((s) => stageStatus[s.id] === 'complete')?.id ?? null;
-  const anyRunningOrDone = runningStage !== null || lastCompleteStage !== null;
-  const activeStageId: V3Stage | null =
-    runningStage ?? currentStage ?? lastCompleteStage ?? (anyRunningOrDone ? null : 'extract');
-  const active = activeStageId
-    ? STAGES.find((s) => s.id === activeStageId) ?? null
-    : null;
-  const activeStatus = active ? stageStatus[active.id] : 'pending';
-  const isActiveRunning = activeStatus === 'running';
+  const listRef = useRef<HTMLDivElement>(null);
+  const lastActiveStageRef = useRef<V3Stage | null>(null);
+
+  // When a stage transitions from pending → running, scroll its card
+  // into view inside the bounded list. Uses `block: 'nearest'` so a card
+  // already in view doesn\u2019t jump, only off-screen cards are brought in.
+  useEffect(() => {
+    if (!currentStage) return;
+    if (lastActiveStageRef.current === currentStage) return;
+    lastActiveStageRef.current = currentStage;
+    const host = listRef.current;
+    if (!host) return;
+    const el = host.querySelector<HTMLDivElement>(
+      `[data-stage-card="${currentStage}"]`,
+    );
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [currentStage]);
+
+  const totalStarted = (
+    Object.values(stageStatus) as V3StageStatus[]
+  ).filter((s) => s === 'running' || s === 'complete' || s === 'failed').length;
 
   return (
     <div className="w-full">
       {/* Welcoming preamble — sets expectations AND signals that the
           stage descriptions are worth reading. */}
-      <div className="mb-3 text-[12px] text-[var(--text-muted)]">
-        <span className="font-semibold text-[var(--text-strong)]">Building your resume.</span>{' '}
-        Typical run: 2&ndash;3 minutes. Here&rsquo;s what we&rsquo;re doing and why.
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <div className="text-[12px] text-[var(--text-muted)]">
+          <span className="font-semibold text-[var(--text-strong)]">Building your resume.</span>{' '}
+          Typical run: 2&ndash;3 minutes. Here&rsquo;s what we&rsquo;re doing and why.
+        </div>
+        <div className="text-[11px] text-[var(--text-soft)] flex-shrink-0 tabular-nums">
+          {totalStarted} / {STAGES.length}
+        </div>
       </div>
 
+      {/* Compact dot row — scannable overview. Sub-descriptions live in
+          the card list below so we don\u2019t double up the text. */}
       <div className="flex items-start justify-between">
         {STAGES.map((s, idx) => {
           const status = stageStatus[s.id];
@@ -183,70 +196,123 @@ export function V3StageProgress({ stageStatus, currentStage }: V3StageProgressPr
                   )}
                 />
               </div>
-              <div className="mt-2 text-center">
-                <div
-                  className={cn(
-                    'text-[11px] font-semibold tracking-[0.02em] transition-colors',
-                    status === 'complete' || status === 'running' || isCurrent
-                      ? 'text-[var(--text-strong)]'
-                      : status === 'failed'
-                        ? 'text-[var(--badge-red-text)]'
-                        : 'text-[var(--text-soft)]',
-                  )}
-                >
-                  {s.label}
-                </div>
-                <div className="text-[10px] text-[var(--text-soft)] mt-0.5 max-w-[110px] leading-snug">
-                  {s.subDescription}
-                </div>
+              <div
+                className={cn(
+                  'mt-1.5 text-[11px] font-semibold text-center px-1 max-w-[110px] leading-snug tracking-[0.01em] transition-colors',
+                  status === 'complete' || status === 'running' || isCurrent
+                    ? 'text-[var(--text-strong)]'
+                    : status === 'failed'
+                      ? 'text-[var(--badge-red-text)]'
+                      : 'text-[var(--text-soft)]',
+                )}
+              >
+                {s.label}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* "Why this matters" expansion for the active stage. Pairs the
-          explanation with the experience — users read the reasoning in
-          real time as each stage works. */}
-      {active && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={cn(
-            'mt-4 rounded-lg border p-3.5 transition-colors duration-300',
-            isActiveRunning
-              ? 'bg-[var(--bullet-confirm-bg)] border-[var(--bullet-confirm-border)]'
-              : 'bg-[var(--surface-2)] border-[var(--line-soft)]',
-          )}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-baseline gap-2 min-w-0">
-              <span
+      {/* Persistent list of "why this matters" cards. Stages that have
+          started (running or complete) reveal the full paragraph and
+          keep it visible for the rest of the run. Pending stages show a
+          compact header so the user can see what\u2019s still to come. The
+          region is bounded and scrollable so the top strip doesn\u2019t
+          crowd the three-panel content below.
+
+          Readability over layout: 320px gives ~3 expanded cards visible
+          at once, and the auto-scroll hook keeps the active one in
+          view as the pipeline progresses. */}
+      <div
+        ref={listRef}
+        role="list"
+        aria-label="Pipeline stage explanations"
+        aria-live="polite"
+        className="mt-4 max-h-[320px] overflow-y-auto pr-1 space-y-2"
+      >
+        {STAGES.map((s) => {
+          const status = stageStatus[s.id];
+          const isRunning = status === 'running';
+          const isComplete = status === 'complete';
+          const isFailed = status === 'failed';
+          const hasStarted = isRunning || isComplete || isFailed;
+          const statusLabel = isRunning
+            ? 'Now'
+            : isComplete
+              ? 'Done'
+              : isFailed
+                ? 'Failed'
+                : 'Up next';
+          return (
+            <div
+              key={s.id}
+              role="listitem"
+              data-stage-card={s.id}
+              className={cn(
+                'rounded-lg border p-3 transition-colors duration-300',
+                isRunning
+                  ? 'bg-[var(--bullet-confirm-bg)] border-[var(--bullet-confirm)]'
+                  : isComplete
+                    ? 'bg-[var(--surface-2)] border-[var(--line-soft)]'
+                    : isFailed
+                      ? 'bg-[var(--badge-red-bg)] border-[var(--badge-red-text)]/40'
+                      : 'bg-[var(--surface-1)] border-[var(--line-soft)]/60',
+              )}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={cn(
+                      'text-[10px] font-semibold uppercase tracking-[0.14em] flex-shrink-0',
+                      isRunning
+                        ? 'text-[var(--bullet-confirm)]'
+                        : isComplete
+                          ? 'text-[var(--text-muted)]'
+                          : isFailed
+                            ? 'text-[var(--badge-red-text)]'
+                            : 'text-[var(--text-soft)]',
+                    )}
+                  >
+                    {isComplete && (
+                      <Check
+                        className="inline h-3 w-3 mr-1 -mt-0.5"
+                        strokeWidth={2.75}
+                      />
+                    )}
+                    {statusLabel}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-[13px] font-semibold truncate',
+                      hasStarted ? 'text-[var(--text-strong)]' : 'text-[var(--text-muted)]',
+                    )}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+                <span className="flex-shrink-0 text-[11px] text-[var(--text-soft)] tabular-nums">
+                  ~{s.typicalSeconds}s
+                </span>
+              </div>
+              <div
                 className={cn(
-                  'text-[11px] font-semibold uppercase tracking-[0.12em] flex-shrink-0',
-                  isActiveRunning ? 'text-[var(--bullet-confirm)]' : 'text-[var(--text-muted)]',
+                  'mt-1 text-[12px]',
+                  hasStarted ? 'text-[var(--text-muted)]' : 'text-[var(--text-soft)]',
                 )}
               >
-                {isActiveRunning ? 'Now' : activeStatus === 'complete' ? 'Just finished' : 'Up next'}
-              </span>
-              <span className="text-[13px] font-semibold text-[var(--text-strong)] truncate">
-                {active.label}
-              </span>
+                {s.id === 'verify' && isRunning
+                  ? 'Fact-checking every claim against your source material\u2026'
+                  : s.subDescription}
+              </div>
+              {hasStarted && (
+                <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--text-strong)]/90">
+                  {s.whyThisMatters}
+                </p>
+              )}
             </div>
-            <span className="flex-shrink-0 text-[11px] text-[var(--text-soft)]">
-              ~{active.typicalSeconds}s
-            </span>
-          </div>
-          <div className="mt-1 text-[12.5px] text-[var(--text-muted)]">
-            {active.id === 'verify' && isActiveRunning
-              ? 'Fact-checking every claim against your source material…'
-              : active.subDescription}
-          </div>
-          <p className="mt-2.5 text-[12.5px] leading-relaxed text-[var(--text-strong)]/90">
-            {active.whyThisMatters}
-          </p>
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
