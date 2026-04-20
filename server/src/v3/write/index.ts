@@ -22,6 +22,10 @@ import {
   WrittenPositionSchema,
   WrittenCustomSectionSchema,
 } from './schema.js';
+import {
+  buildPronounRetryAddendum,
+  detectBannedPronouns,
+} from './pronoun-retry.js';
 import type {
   CustomSection,
   Position,
@@ -203,13 +207,52 @@ async function runSummary(
   resumeJson: string,
   signal?: AbortSignal,
 ): Promise<{ summary: string; telemetry: SectionTelemetry }> {
-  const out = await runSection<{ summary: string }>(
+  const promptName = `write-summary.${variant}`;
+  const replacements = { strategy_json: strategyJson, resume_json: resumeJson };
+  const safeParse = WrittenSummarySchema.safeParse.bind(WrittenSummarySchema);
+
+  let out = await runSection<{ summary: string }>(
     'summary',
-    `write-summary.${variant}`,
-    { strategy_json: strategyJson, resume_json: resumeJson },
-    WrittenSummarySchema.safeParse.bind(WrittenSummarySchema),
+    promptName,
+    replacements,
+    safeParse,
     signal,
   );
+
+  // Fix 4 (2026-04-19) — one-shot pronoun retry. The shared pronoun-policy
+  // fragment tells the model to avoid personal pronouns, but DeepSeek
+  // occasionally slips (HR-exec and Jessica Boquist regressions). Scan the
+  // output for banned pronouns; if any found, re-invoke once with a
+  // targeted nudge. Second attempt is accepted as-is (no infinite retry).
+  const scan = detectBannedPronouns(out.parsed.summary);
+  if (scan.found.length > 0) {
+    logger.info(
+      { section: 'summary', promptName, pronouns: scan.found, retry: 1 },
+      'summary pronoun retry triggered',
+    );
+    const retry = await runSection<{ summary: string }>(
+      'summary',
+      promptName,
+      replacements,
+      safeParse,
+      signal,
+      buildPronounRetryAddendum(scan.found),
+    );
+    const retryScan = detectBannedPronouns(retry.parsed.summary);
+    if (retryScan.found.length > 0) {
+      logger.warn(
+        {
+          section: 'summary',
+          promptName,
+          initialPronouns: scan.found,
+          retryPronouns: retryScan.found,
+        },
+        'summary pronoun retry failed to fully clear — emitting output anyway',
+      );
+    }
+    out = retry;
+  }
+
   return { summary: out.parsed.summary, telemetry: out.telemetry };
 }
 
@@ -219,13 +262,51 @@ async function runAccomplishments(
   resumeJson: string,
   signal?: AbortSignal,
 ): Promise<{ selectedAccomplishments: string[]; telemetry: SectionTelemetry }> {
-  const out = await runSection<{ selectedAccomplishments: string[] }>(
+  const promptName = `write-accomplishments.${variant}`;
+  const replacements = { strategy_json: strategyJson, resume_json: resumeJson };
+  const safeParse = WrittenAccomplishmentsSchema.safeParse.bind(WrittenAccomplishmentsSchema);
+
+  let out = await runSection<{ selectedAccomplishments: string[] }>(
     'accomplishments',
-    `write-accomplishments.${variant}`,
-    { strategy_json: strategyJson, resume_json: resumeJson },
-    WrittenAccomplishmentsSchema.safeParse.bind(WrittenAccomplishmentsSchema),
+    promptName,
+    replacements,
+    safeParse,
     signal,
   );
+
+  // Fix 4 (2026-04-19) — same pronoun retry as runSummary. Scan all
+  // accomplishment strings; if ANY contains a banned pronoun, retry once
+  // with a nudge.
+  const joinedAccs = out.parsed.selectedAccomplishments.join('\n');
+  const scan = detectBannedPronouns(joinedAccs);
+  if (scan.found.length > 0) {
+    logger.info(
+      { section: 'accomplishments', promptName, pronouns: scan.found, retry: 1 },
+      'accomplishments pronoun retry triggered',
+    );
+    const retry = await runSection<{ selectedAccomplishments: string[] }>(
+      'accomplishments',
+      promptName,
+      replacements,
+      safeParse,
+      signal,
+      buildPronounRetryAddendum(scan.found),
+    );
+    const retryScan = detectBannedPronouns(retry.parsed.selectedAccomplishments.join('\n'));
+    if (retryScan.found.length > 0) {
+      logger.warn(
+        {
+          section: 'accomplishments',
+          promptName,
+          initialPronouns: scan.found,
+          retryPronouns: retryScan.found,
+        },
+        'accomplishments pronoun retry failed to fully clear — emitting output anyway',
+      );
+    }
+    out = retry;
+  }
+
   return {
     selectedAccomplishments: out.parsed.selectedAccomplishments,
     telemetry: out.telemetry,
@@ -307,6 +388,12 @@ async function runSection<T>(
   replacements: Record<string, string>,
   safeParse: SafeParseFn<T>,
   signal: AbortSignal | undefined,
+  /**
+   * Optional addendum appended to the system message. Used by the
+   * pronoun-retry path (Fix 4, 2026-04-19) to nudge a re-run without
+   * touching the prompt file.
+   */
+  systemAddendum?: string,
 ): Promise<{ parsed: T; telemetry: SectionTelemetry }> {
   const prompt = loadPrompt(promptName);
   let userMessage = prompt.userMessageTemplate;
@@ -317,6 +404,10 @@ async function runSection<T>(
   const { provider, model, backend, extraParams } = getProvider(prompt.capability);
   const start = Date.now();
 
+  const system = systemAddendum
+    ? `${prompt.systemMessage}\n\n---\n\n${systemAddendum}`
+    : prompt.systemMessage;
+
   logger.info(
     {
       section,
@@ -325,6 +416,7 @@ async function runSection<T>(
       model,
       backend,
       thinking: extraParams?.thinking === true,
+      withAddendum: Boolean(systemAddendum),
     },
     'section start',
   );
@@ -339,7 +431,7 @@ async function runSection<T>(
   let usage = { input_tokens: 0, output_tokens: 0 };
   for await (const event of provider.stream({
     model,
-    system: prompt.systemMessage,
+    system,
     messages: [{ role: 'user', content: userMessage }],
     max_tokens: maxTokens,
     temperature: prompt.temperature,
