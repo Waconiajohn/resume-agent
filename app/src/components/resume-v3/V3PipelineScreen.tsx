@@ -30,12 +30,15 @@ import {
 } from '@/hooks/useV3Pipeline';
 import { useV3Master } from '@/hooks/useV3Master';
 import { useV3Regenerate, type PositionWeight } from '@/hooks/useV3Regenerate';
+import { useV3SessionPersistence } from '@/hooks/useV3SessionPersistence';
+import { useAuth } from '@/hooks/useAuth';
 import { V3StageProgress } from './V3StageProgress';
 import { V3IntakeForm } from './V3IntakeForm';
 import { V3StrategyPanel } from './V3StrategyPanel';
 import { V3ResumeView } from './V3ResumeView';
 import { V3VerifyPanel } from './V3VerifyPanel';
 import { V3PromotePanel } from './V3PromotePanel';
+import { V3ResumeBanner } from './V3ResumeBanner';
 
 interface V3PipelineScreenProps {
   accessToken: string | null;
@@ -99,8 +102,14 @@ function applyPatchToWritten(
 export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineScreenProps) {
   const pipeline = useV3Pipeline(accessToken);
   const master = useV3Master(accessToken);
+  const { user } = useAuth();
   const location = useLocation();
   const [editedWritten, setEditedWritten] = useState<typeof pipeline.written | null>(null);
+  // Track the JD title/company that produced the current run so the banner
+  // can label it on return. Stored separately from pipeline state because
+  // v3 doesn't echo these back; we only know them at submit time.
+  const [runJdTitle, setRunJdTitle] = useState<string | null>(null);
+  const [runJdCompany, setRunJdCompany] = useState<string | null>(null);
 
   // Three-panel cross-scroll state (Phase 2). Lives here so both the Resume
   // view (middle) and the Review panel (right) can react to the same events.
@@ -130,6 +139,25 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
     strategy: pipeline.strategy,
   });
 
+  const persistence = useV3SessionPersistence({
+    accessToken,
+    userId: user?.id ?? null,
+    pipeline: {
+      isComplete: pipeline.isComplete,
+      sessionId: pipeline.sessionId,
+      structured: pipeline.structured,
+      benchmark: pipeline.benchmark,
+      strategy: pipeline.strategy,
+      written: pipeline.written,
+      verify: pipeline.verify,
+      timings: pipeline.timings,
+      costs: pipeline.costs,
+    },
+    editedWritten,
+    jdTitle: runJdTitle,
+    jdCompany: runJdCompany,
+  });
+
   // sessionId comes from the backend's pipeline_complete event and is the
   // real coach_sessions.id for this run. Promote UI uses it so evidence
   // items reference a real audit-trail row.
@@ -155,6 +183,12 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
     setStrategyFlash(null);
     setOverrideVerify(null);
     setLastVerifiedWritten(null);
+    setRunJdTitle(input.jdTitle ?? null);
+    setRunJdCompany(input.jdCompany ?? null);
+    // Discard the stored snapshot — once a new run starts, the old one is
+    // no longer the "last" session. Server-side retains its row; only the
+    // banner + localStorage pointer gets cleared.
+    persistence.clear();
     void pipeline.start(input);
   };
 
@@ -167,7 +201,37 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
     setStrategyFlash(null);
     setOverrideVerify(null);
     setLastVerifiedWritten(null);
+    setRunJdTitle(null);
+    setRunJdCompany(null);
+    persistence.clear();
   };
+
+  const handleResumeLastSession = useCallback(() => {
+    const snap = persistence.lastSession;
+    if (!snap) return;
+    pipeline.hydrate({
+      sessionId: snap.sessionId,
+      structured: snap.structured,
+      benchmark: snap.benchmark,
+      strategy: snap.strategy,
+      written: snap.written,
+      verify: snap.verify,
+      timings: snap.timings,
+      costs: snap.costs,
+    });
+    // If the user had been mid-editing when they closed the tab, restore
+    // that too. Otherwise clear any stale edited state.
+    setEditedWritten(snap.editedWritten ?? null);
+    setRunJdTitle(snap.jdTitle ?? null);
+    setRunJdCompany(snap.jdCompany ?? null);
+    // Dismiss the banner but keep localStorage — if they refresh during
+    // this hydrated session, they get the banner again next mount.
+    persistence.acknowledge();
+  }, [persistence, pipeline]);
+
+  const handleDiscardLastSession = useCallback(() => {
+    persistence.clear();
+  }, [persistence]);
 
   const handleFocusIssue = useCallback((key: string, section: string) => {
     setFocusCue({ key, section, at: Date.now() });
@@ -475,7 +539,16 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
           own overflow-y-auto. */}
       <div className="flex-1 min-h-0 w-full mx-auto max-w-7xl px-4 pb-4">
         {showIntake && (
-          <div className="h-full overflow-y-auto">
+          <div className="h-full overflow-y-auto space-y-4">
+            {persistence.lastSession && (
+              <V3ResumeBanner
+                jdTitle={persistence.lastSession.jdTitle}
+                jdCompany={persistence.lastSession.jdCompany}
+                savedAt={persistence.lastSession.savedAt}
+                onResume={handleResumeLastSession}
+                onDiscard={handleDiscardLastSession}
+              />
+            )}
             <V3IntakeForm
               onSubmit={handleStart}
               initialResumeText={initialResumeText}

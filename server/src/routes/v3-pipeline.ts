@@ -325,7 +325,18 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
       logger.info({ sessionId }, 'v3 pipeline client aborted');
     });
 
+    // Capture the pipeline_complete payload on the way through so we can
+    // persist it to coach_sessions after the stream closes. Client-side
+    // localStorage handles the hot path; this row is the durable fallback
+    // for "open the app on a different device and find your last run."
+    let completePayload:
+      | Extract<V3PipelineSSEEvent, { type: 'pipeline_complete' }>
+      | null = null;
+
     const emit = (event: V3PipelineSSEEvent): void => {
+      if (event.type === 'pipeline_complete') {
+        completePayload = event;
+      }
       void stream.writeSSE({
         event: event.type,
         data: JSON.stringify(event),
@@ -372,17 +383,38 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
 
       // Persist the run outcome to the coach_sessions row so admin stats
       // + per-user billing aggregates see this run. Best-effort; never
-      // blocks the stream close.
+      // blocks the stream close. On success, also serialize the pipeline
+      // output JSONB so the user can hydrate it on page refresh / new
+      // device. We strip the `sessionId`/`timestamp`/`type` envelope from
+      // the SSE event since those are already on the row or meaningless
+      // once restored.
       const durationMs = Date.now() - pipelineStartedAt;
       try {
+        const update: Record<string, unknown> = {
+          pipeline_status: finalStatus,
+          pipeline_stage: finalStatus === 'complete' ? 'complete' : 'error',
+          error_message: finalErrorMessage,
+          estimated_cost_usd: finalCostUsd,
+        };
+        if (finalStatus === 'complete' && completePayload) {
+          const payload = completePayload as Extract<V3PipelineSSEEvent, { type: 'pipeline_complete' }>;
+          update.v3_pipeline_output = {
+            structured: payload.structured,
+            benchmark: payload.benchmark,
+            strategy: payload.strategy,
+            written: payload.written,
+            verify: payload.verify,
+            timings: payload.timings,
+            costs: payload.costs,
+          };
+          update.v3_jd_text = job_description;
+          update.v3_jd_title = jd_title ?? null;
+          update.v3_jd_company = jd_company ?? null;
+          update.v3_resume_source = use_master ? 'master' : 'upload';
+        }
         await supabaseAdmin
           .from('coach_sessions')
-          .update({
-            pipeline_status: finalStatus,
-            pipeline_stage: finalStatus === 'complete' ? 'complete' : 'error',
-            error_message: finalErrorMessage,
-            estimated_cost_usd: finalCostUsd,
-          })
+          .update(update)
           .eq('id', sessionId);
       } catch (err) {
         logger.warn(
@@ -395,3 +427,104 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
     }
   });
 });
+
+// ─── GET /api/v3-pipeline/sessions/latest ────────────────────────────
+// Returns the user's most recent completed v3 run so the frontend can
+// rehydrate on page refresh / new device. Scoped to the partial index
+// `idx_coach_sessions_user_v3_latest`.
+v3Pipeline.get('/sessions/latest', authMiddleware, async (c) => {
+  const user = c.get('user');
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('coach_sessions')
+      .select(
+        'id, updated_at, v3_pipeline_output, v3_jd_text, v3_jd_title, v3_jd_company, v3_resume_source, v3_edited_written',
+      )
+      .eq('user_id', user.id)
+      .eq('product_type', 'resume_v3')
+      .not('v3_pipeline_output', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      logger.error({ userId: user.id, err: error.message }, 'GET /v3-pipeline/sessions/latest failed');
+      return c.json({ error: 'Failed to load session' }, 500);
+    }
+    if (!data) return c.json({ session: null });
+    return c.json({
+      session: {
+        id: data.id,
+        updatedAt: data.updated_at,
+        pipelineOutput: data.v3_pipeline_output,
+        jdText: data.v3_jd_text,
+        jdTitle: data.v3_jd_title,
+        jdCompany: data.v3_jd_company,
+        resumeSource: data.v3_resume_source,
+        editedWritten: data.v3_edited_written,
+      },
+    });
+  } catch (err) {
+    logger.error(
+      { userId: user.id, err: err instanceof Error ? err.message : String(err) },
+      'GET /v3-pipeline/sessions/latest unexpected error',
+    );
+    return c.json({ error: 'Failed to load session' }, 500);
+  }
+});
+
+// ─── PATCH /api/v3-pipeline/sessions/:id/edits ───────────────────────
+// Persist the user's click-to-edit changes (or applied patches) to their
+// v3 resume. Authed + scoped to the user_id on the row so one user can't
+// write to another's session even if they know the UUID.
+const editsBodySchema = z.object({
+  editedWritten: z.object({}).passthrough(),
+});
+
+v3Pipeline.patch(
+  '/sessions/:id/edits',
+  authMiddleware,
+  rateLimitMiddleware(60, 60_000),
+  async (c) => {
+    const user = c.get('user');
+    const sessionId = c.req.param('id');
+    if (!sessionId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+      return c.json({ error: 'Invalid session id' }, 400);
+    }
+
+    const parsedBody = await parseJsonBodyWithLimit(c, 500_000);
+    if (!parsedBody.ok) return parsedBody.response;
+
+    const parsed = editsBodySchema.safeParse(parsedBody.data);
+    if (!parsed.success) {
+      return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
+    }
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('coach_sessions')
+        .update({ v3_edited_written: parsed.data.editedWritten })
+        .eq('id', sessionId)
+        .eq('user_id', user.id)
+        .eq('product_type', 'resume_v3')
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        logger.error(
+          { userId: user.id, sessionId, err: error.message },
+          'PATCH /v3-pipeline/sessions/:id/edits failed',
+        );
+        return c.json({ error: 'Failed to save edits' }, 500);
+      }
+      if (!data) return c.json({ error: 'Session not found' }, 404);
+      return c.json({ ok: true });
+    } catch (err) {
+      logger.error(
+        { userId: user.id, sessionId, err: err instanceof Error ? err.message : String(err) },
+        'PATCH /v3-pipeline/sessions/:id/edits unexpected error',
+      );
+      return c.json({ error: 'Failed to save edits' }, 500);
+    }
+  },
+);

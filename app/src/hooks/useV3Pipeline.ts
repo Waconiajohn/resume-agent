@@ -431,9 +431,53 @@ export function useV3Pipeline(accessToken: string | null) {
     [accessToken, handleEvent],
   );
 
+  /**
+   * Replace the in-memory state with a previously saved snapshot — used by
+   * the session-restore banner to rehydrate the three-panel layout without
+   * re-running the pipeline. All stages are marked complete; isComplete is
+   * true; no LLM calls happen.
+   */
+  const hydrate = useCallback((snapshot: {
+    sessionId: string | null;
+    structured: V3StructuredResume;
+    benchmark: V3BenchmarkProfile;
+    strategy: V3Strategy;
+    written: V3WrittenResume;
+    verify: V3VerifyResult;
+    timings: V3StageTimings | null;
+    costs: V3StageCosts | null;
+  }) => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setState({
+      sessionId: snapshot.sessionId,
+      stageStatus: {
+        extract: 'complete',
+        classify: 'complete',
+        benchmark: 'complete',
+        strategize: 'complete',
+        write: 'complete',
+        verify: 'complete',
+      },
+      currentStage: null,
+      structured: snapshot.structured,
+      benchmark: snapshot.benchmark,
+      strategy: snapshot.strategy,
+      written: snapshot.written,
+      verify: snapshot.verify,
+      timings: snapshot.timings,
+      costs: snapshot.costs,
+      isRunning: false,
+      isComplete: true,
+      error: null,
+      errorStage: null,
+    });
+  }, []);
+
   return {
     ...state,
     start,
     reset,
+    hydrate,
   };
 }
