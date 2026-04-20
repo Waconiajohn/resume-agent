@@ -24,6 +24,7 @@
 // regression that motivated the strategize variant.
 
 import type {
+  JobDescription,
   Position,
   Strategy,
   StructuredResume,
@@ -185,6 +186,20 @@ export interface FieldAttributionCheck {
   verified: boolean;
   /** Content words (stopwords dropped) that were NOT found in the haystack. */
   missingWords: string[];
+  /**
+   * Bigrams (2-word phrases) and trigrams (3-word phrases) present in the
+   * emitted text and also present in the JD, but NOT present in the
+   * candidate's source resume. These are "JD-vocabulary leaks" at the
+   * phrase level — the token-level `missingWords` check misses them when
+   * each individual word happens to exist somewhere in source. Empty when
+   * no JD was provided to the check, or when no n-gram leaks were found.
+   *
+   * Added 2026-04-20 pm (Fix 2 of "fix the real problems, validate clean"
+   * Option 4 path). See docs/v3-rebuild/reports/all-openai-19-fixture-
+   * validation.md for the 5-fixture "Account Manager" leak cohort that
+   * motivated this.
+   */
+  leakedPhrases: string[];
 }
 
 export interface StrategizeAttributionResult {
@@ -220,6 +235,7 @@ export interface StrategizeAttributionResult {
 export function checkStrategizeAttribution(
   strategy: Strategy,
   source: StructuredResume,
+  jd?: JobDescription,
 ): StrategizeAttributionResult {
   const haystack = buildResumeHaystack(source);
   const summaries: SummaryAttributionCheck[] = [];
@@ -246,19 +262,27 @@ export function checkStrategizeAttribution(
     });
   }
 
-  // Fix 3 (2026-04-19): also validate positioningFrame and targetDisciplinePhrase
-  // against the source resume. These are short free-form phrases (2-5 words
-  // each) that the JD can legitimately influence, but the industry/discipline/
-  // scope qualifiers they use must be present somewhere in the source — not
-  // invented from the JD alone. Word-bag match: every content word in the
-  // field must appear in the haystack (substring inclusion so simple plural/
-  // suffix variants match).
+  // Pre-compute n-gram sets from source and JD so the per-field checks below
+  // do it once, not twice. When jd is undefined (older test callers, no JD
+  // context), phrase-aware matching is skipped and the behavior matches the
+  // pre-Fix-2 word-level check.
+  const sourceNgrams = buildNgramSet(haystack);
+  const jdNgrams = jd?.text ? buildNgramSet(normalize(jd.text)) : null;
+
+  // Fix 3 (2026-04-19) + Fix 2 of 2026-04-20 pm: validate positioningFrame
+  // and targetDisciplinePhrase against the source resume. Two-layer check:
+  //   (a) word-level (every content word in field must appear in source)
+  //   (b) phrase-level (any 2- or 3-word n-gram in the field that ALSO
+  //       appears in the JD but NOT in source is flagged as a leak — with a
+  //       small allowlist for pure role-shape n-grams like "senior manager")
   const fields: FieldAttributionCheck[] = [];
   fields.push(
     checkPhraseAgainstHaystack(
       'positioningFrame',
       strategy.positioningFrame ?? '',
       haystack,
+      sourceNgrams,
+      jdNgrams,
     ),
   );
   fields.push(
@@ -266,6 +290,8 @@ export function checkStrategizeAttribution(
       'targetDisciplinePhrase',
       strategy.targetDisciplinePhrase ?? '',
       haystack,
+      sourceNgrams,
+      jdNgrams,
     ),
   );
 
@@ -337,10 +363,19 @@ function checkPhraseAgainstHaystack(
   fieldName: 'positioningFrame' | 'targetDisciplinePhrase',
   phrase: string,
   haystack: string,
+  sourceNgrams?: { bigrams: Set<string>; trigrams: Set<string> } | null,
+  jdNgrams?: { bigrams: Set<string>; trigrams: Set<string> } | null,
 ): FieldAttributionCheck {
   if (!phrase.trim()) {
-    return { field: fieldName, text: phrase, verified: true, missingWords: [] };
+    return {
+      field: fieldName,
+      text: phrase,
+      verified: true,
+      missingWords: [],
+      leakedPhrases: [],
+    };
   }
+  // (a) Word-level check (pre-Fix-2 behavior).
   // Filter: frame content words minus role-shape vocabulary.
   // Strip leading/trailing punctuation from each word before matching so
   // that "management," (comma attached after split) correctly matches
@@ -353,12 +388,93 @@ function checkPhraseAgainstHaystack(
   for (const w of words) {
     if (!haystack.includes(w)) missingWords.push(w);
   }
+
+  // (b) Phrase-level n-gram leak check (Fix 2 of 2026-04-20 pm).
+  //
+  // When the caller provided both source and JD n-gram sets, extract all
+  // 2- and 3-word n-grams from `phrase`. Any n-gram that:
+  //   - appears in the JD, AND
+  //   - does NOT appear in the source, AND
+  //   - is NOT a pure role-shape n-gram (every word in ROLE_SHAPE_STOPWORDS)
+  // is flagged as a JD-vocabulary leak. These are hard-fails — the field
+  // is considered unverified, the retry fires with the leak called out by
+  // name, and if the retry also fails the strategize stage throws.
+  //
+  // Pure role-shape n-grams ("senior manager", "vice president") slip
+  // through the allowlist because those words are already generic in
+  // ROLE_SHAPE_STOPWORDS and legitimately describe seniority rather than
+  // JD-specific identity. Anything else — "account manager", "wholesale
+  // account", "commercial account" — must appear in source to pass.
+  const leakedPhrases: string[] = [];
+  if (sourceNgrams && jdNgrams) {
+    const phraseNgrams = buildNgramSet(normalize(phrase));
+    for (const bg of phraseNgrams.bigrams) {
+      if (sourceNgrams.bigrams.has(bg)) continue;
+      if (!jdNgrams.bigrams.has(bg)) continue;
+      if (isPureRoleShapeNgram(bg)) continue;
+      leakedPhrases.push(bg);
+    }
+    for (const tg of phraseNgrams.trigrams) {
+      if (sourceNgrams.trigrams.has(tg)) continue;
+      if (!jdNgrams.trigrams.has(tg)) continue;
+      if (isPureRoleShapeNgram(tg)) continue;
+      // Avoid double-reporting when a flagged bigram already covers the
+      // leak (e.g. "account manager" bigram + "sales account manager"
+      // trigram both name the same underlying issue). Keep only trigrams
+      // that add new words beyond the flagged bigrams.
+      const trigramWords = tg.split(' ');
+      const covered = leakedPhrases.some((p) => {
+        const pw = p.split(' ');
+        return pw.every((w) => trigramWords.includes(w));
+      });
+      if (!covered) leakedPhrases.push(tg);
+    }
+  }
+
   return {
     field: fieldName,
     text: phrase,
-    verified: missingWords.length === 0,
+    verified: missingWords.length === 0 && leakedPhrases.length === 0,
     missingWords,
+    leakedPhrases,
   };
+}
+
+/**
+ * Build bigram + trigram sets from a normalized text. The text is split on
+ * any non-alphanumeric character (so punctuation doesn't fuse two words
+ * into a single token) and filtered for non-empty tokens. Bigrams are
+ * 2-word phrases joined by single space; trigrams are 3-word phrases.
+ *
+ * Normalization is the caller's responsibility (pass `normalize(x)` in).
+ * All tokens are therefore already lowercase and canonical-numbered.
+ */
+function buildNgramSet(normalizedText: string): { bigrams: Set<string>; trigrams: Set<string> } {
+  const words = normalizedText.split(/[^a-z0-9]+/).filter((w) => w.length > 0);
+  const bigrams = new Set<string>();
+  const trigrams = new Set<string>();
+  for (let i = 0; i < words.length - 1; i++) {
+    bigrams.add(`${words[i]} ${words[i + 1]}`);
+  }
+  for (let i = 0; i < words.length - 2; i++) {
+    trigrams.add(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
+  }
+  return { bigrams, trigrams };
+}
+
+/**
+ * A pure-role-shape n-gram has every word in ROLE_SHAPE_STOPWORDS. These
+ * are generic seniority/role descriptors ("senior manager", "vice
+ * president", "senior director") that are acceptable in a framing field
+ * even if the exact phrase is not in source. Any n-gram containing a
+ * domain or function word ("account manager", "project manager",
+ * "product manager") is NOT pure role-shape and must pass the source
+ * check.
+ */
+function isPureRoleShapeNgram(ngram: string): boolean {
+  const words = ngram.split(' ');
+  if (words.length === 0) return false;
+  return words.every((w) => ROLE_SHAPE_STOPWORDS.has(w));
 }
 
 // -----------------------------------------------------------------------------

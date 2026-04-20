@@ -133,7 +133,7 @@ export async function strategizeWithTelemetry(
   let totalOutputTokens = firstCall.usage.output_tokens;
 
   let parsed = parseAndValidate(firstCall.text, promptName);
-  let attribution = checkStrategizeAttribution(parsed, resume);
+  let attribution = checkStrategizeAttribution(parsed, resume, jd);
   let attributionRetryFired = false;
 
   // Phase 4.6 + Fix 3 (2026-04-19) — if the mechanical attribution check flags
@@ -177,7 +177,7 @@ export async function strategizeWithTelemetry(
     totalOutputTokens += retryCall.usage.output_tokens;
 
     parsed = parseAndValidate(retryCall.text, promptName);
-    attribution = checkStrategizeAttribution(parsed, resume);
+    attribution = checkStrategizeAttribution(parsed, resume, jd);
 
     const stillFailing =
       attribution.summary.unverifiedCount > 0 ||
@@ -193,10 +193,18 @@ export async function strategizeWithTelemetry(
         )
         .join('\n');
       const fieldDetail = failingFields
-        .map(
-          (f) =>
-            `  [${f.field}] text="${f.text}" missingWords=[${f.missingWords.slice(0, 6).join(', ')}]`,
-        )
+        .map((f) => {
+          const parts = [`  [${f.field}] text="${f.text}"`];
+          if (f.missingWords.length > 0) {
+            parts.push(`missingWords=[${f.missingWords.slice(0, 6).join(', ')}]`);
+          }
+          if (f.leakedPhrases.length > 0) {
+            parts.push(
+              `leakedPhrases=[${f.leakedPhrases.slice(0, 6).map((p) => `"${p}"`).join(', ')}]`,
+            );
+          }
+          return parts.join(' ');
+        })
         .join('\n');
       throw new StrategizeError(
         `Strategize attribution check failed on retry from ${model} via ${backend} (prompt ${promptName} v${prompt.version}). ` +
@@ -316,15 +324,25 @@ function buildAttributionRetryAddendum(
   ];
   if (unverifiedFields.length > 0) {
     lines.push('');
-    lines.push('Flagged fields (content words not found in source — drop or replace):');
+    lines.push('Flagged fields (content not grounded in the candidate\'s source resume):');
     for (const f of unverifiedFields) {
       lines.push(`  [${f.field}]`);
       lines.push(`    current value: "${f.text}"`);
+      if (f.missingWords.length > 0) {
+        lines.push(
+          `    words not in source: ${f.missingWords.map((w) => `"${w}"`).join(', ')}`,
+        );
+      }
+      if (f.leakedPhrases.length > 0) {
+        lines.push(
+          `    JD-vocabulary phrase leaks (phrase appears in JD but NOT in candidate's source): ${f.leakedPhrases.map((p) => `"${p}"`).join(', ')}`,
+        );
+        lines.push(
+          `    (these bigrams/trigrams are lifted from the JD's role-title or framing language and cannot be emitted unless the candidate literally held that role or used that framing in source)`,
+        );
+      }
       lines.push(
-        `    words not in source: ${f.missingWords.map((w) => `"${w}"`).join(', ')}`,
-      );
-      lines.push(
-        `    (fix: replace industry/discipline qualifier with one the source supports, or drop the qualifier entirely and use a more generic frame)`,
+        `    (fix: replace flagged content with phrases the source supports, or drop the qualifier entirely and surface the strategic tension in 'notes')`,
       );
     }
   }
