@@ -616,6 +616,7 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
               <V3VerifyPanel
                 verify={effectiveVerify}
                 isRunning={pipeline.isRunning}
+                currentStage={pipeline.currentStage}
                 reverifying={regen.reverifying}
                 editedWritten={editedWritten}
                 pristineWritten={lastVerifiedWritten ?? pipeline.written}

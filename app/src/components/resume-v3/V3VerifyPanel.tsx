@@ -34,7 +34,7 @@ import {
 import { cn } from '@/lib/utils';
 import type {
   V3VerifyResult, V3VerifyIssue, V3TranslatedIssue,
-  V3WrittenResume, V3SuggestedPatch,
+  V3WrittenResume, V3SuggestedPatch, V3Stage,
 } from '@/hooks/useV3Pipeline';
 
 interface FocusCue {
@@ -46,6 +46,11 @@ interface FocusCue {
 interface Props {
   verify: V3VerifyResult | null;
   isRunning: boolean;
+  /** The pipeline stage currently executing. Lets the placeholder copy
+   *  distinguish "verify is actively working" from "an earlier stage is
+   *  still running" so the review panel doesn't claim active fact-checking
+   *  before verify begins. */
+  currentStage?: V3Stage | null;
   /** True while a Phase-4 re-verify REST call is in flight. Renders a
    *  subtle "Re-checking…" label without throwing away the visible issues. */
   reverifying?: boolean;
@@ -190,6 +195,7 @@ function isSectionStale(
 export function V3VerifyPanel({
   verify,
   isRunning,
+  currentStage,
   reverifying,
   editedWritten,
   pristineWritten,
@@ -216,7 +222,11 @@ export function V3VerifyPanel({
           </h2>
         </div>
         <p className="text-sm text-[var(--text-soft)] mt-3">
-          {isRunning ? 'Waiting on review…' : 'Not yet run.'}
+          {isRunning
+            ? currentStage === 'verify'
+              ? 'Fact-checking every claim against your source material…'
+              : 'Your review notes will appear here once fact-checking runs.'
+            : 'Not yet run.'}
         </p>
         {isRunning && (
           <div className="mt-3 space-y-2">
