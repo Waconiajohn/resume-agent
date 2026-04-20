@@ -232,6 +232,115 @@ describe('bigram leak detection — the bshook pattern', () => {
     expect(targetField!.leakedPhrases).toEqual([]);
   });
 
+  // Fix 7 (2026-04-20 pm) — stopword filter. Bigrams containing any
+  // FRAME_STOPWORD ("and", "of", "the", "for", "to", "with", etc.) are
+  // syntactic glue, not content phrases, and must not be flagged as
+  // JD-vocabulary leaks even when they coincidentally appear in both
+  // the JD and not in the candidate's source. Fixture-13 lisa-slagle's
+  // v3 hard-fail on "and product" motivated this.
+
+  it('stopword-containing bigram passes: "and product" is glue, not a leak', () => {
+    // JD has "and product" (in "sales channels and product categories").
+    // Candidate source doesn't contain that exact bigram verbatim. Pre-Fix-7
+    // this would have been flagged as a leak; post-Fix-7 the stopword
+    // "and" short-circuits detection.
+    const jdWithAndProduct: JobDescription = {
+      text: 'Account Manager role covering sales channels and product categories across wholesale partners.',
+      title: 'Account Manager, Wholesale',
+      company: 'Test',
+    };
+    const src = resume([
+      {
+        title: 'Business Systems Consultant',
+        company: 'Financial Services Co',
+        bullets: [
+          'Led business systems and product ownership initiatives across enterprise CRM.',
+        ],
+      },
+    ]);
+    const strat = strategy(
+      'business systems and product ownership',
+      'Business Systems Consultant and Product Owner',
+    );
+    const result = checkStrategizeAttribution(strat, src, jdWithAndProduct);
+    const posField = result.fields.find((f) => f.field === 'positioningFrame');
+    expect(posField!.leakedPhrases).not.toContain('and product');
+    expect(posField!.leakedPhrases).not.toContain('systems and');
+  });
+
+  it('lisa-slagle v3 reproduction: exact emitted frame no longer hard-fails', () => {
+    const jdWithAndProduct: JobDescription = {
+      text: 'sales channels and product categories across mall-based retail accounts',
+      title: 'Account Manager, Wholesale',
+      company: 'Test',
+    };
+    const src = resume(
+      [
+        {
+          title: 'Sr Business Systems Consultant',
+          company: 'Test Co',
+          bullets: ['Supported Salesforce CRM and requirements engineering.'],
+        },
+      ],
+      {
+        discipline:
+          'business systems analysis, product ownership, and requirements engineering for enterprise CRM and regulated financial services environments',
+      },
+    );
+    // Exact v3 positioningFrame from fixture-13's snapshot.
+    const strat = strategy(
+      'business systems and product ownership',
+      'Business Systems Consultant and Product Owner',
+    );
+    const result = checkStrategizeAttribution(strat, src, jdWithAndProduct);
+    const posField = result.fields.find((f) => f.field === 'positioningFrame');
+    // No leakedPhrases; field verified.
+    expect(posField!.leakedPhrases).toEqual([]);
+  });
+
+  it('multi-stopword bigram always passes: "of the" in both texts', () => {
+    const jdWithOfThe: JobDescription = {
+      text: 'Head of the Wholesale Team',
+      title: 'Head of Wholesale',
+      company: 'Test',
+    };
+    const src = resume([
+      { title: 'Director', company: 'Test Co', bullets: ['Managed of the accounts team.'] },
+    ]);
+    // "head of" and "of the" are both stopword-laden — neither should ever
+    // be flagged regardless of JD/source composition.
+    const strat = strategy('head of the team', 'Director of Operations');
+    const result = checkStrategizeAttribution(strat, src, jdWithOfThe);
+    const posField = result.fields.find((f) => f.field === 'positioningFrame');
+    expect(
+      posField!.leakedPhrases.some((p) => p === 'of the' || p === 'head of'),
+    ).toBe(false);
+  });
+
+  it('regression guard: real "Account Manager" leak on bshook-shape still FAILS after Fix 7', () => {
+    // Same bshook pattern from the top of this file. "account manager" has
+    // NO stopword in it — Fix 7 should not short-circuit this. The
+    // guardrail continues to catch genuine role-title leaks.
+    const src = resume([
+      {
+        title: 'Senior Project Controls Manager',
+        company: 'Eclipse Automation',
+        bullets: [
+          'Directed commercial management of intercompany work.',
+          'Mentored 26 PMs across customer accounts.',
+        ],
+      },
+    ]);
+    const strat = strategy(
+      'commercial operations leader',
+      'Account Manager, Commercial Programs',
+    );
+    const result = checkStrategizeAttribution(strat, src, UA_JD);
+    const targetField = result.fields.find((f) => f.field === 'targetDisciplinePhrase');
+    expect(targetField!.verified).toBe(false);
+    expect(targetField!.leakedPhrases).toContain('account manager');
+  });
+
   it('de-duplicates overlapping trigram when a flagged bigram already covers it', () => {
     // "account manager wholesale" trigram and "account manager" bigram both
     // leak the same underlying issue. Bigram wins; trigram should not be

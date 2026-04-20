@@ -412,12 +412,14 @@ function checkPhraseAgainstHaystack(
       if (sourceNgrams.bigrams.has(bg)) continue;
       if (!jdNgrams.bigrams.has(bg)) continue;
       if (isPureRoleShapeNgram(bg)) continue;
+      if (containsFrameStopword(bg)) continue;
       leakedPhrases.push(bg);
     }
     for (const tg of phraseNgrams.trigrams) {
       if (sourceNgrams.trigrams.has(tg)) continue;
       if (!jdNgrams.trigrams.has(tg)) continue;
       if (isPureRoleShapeNgram(tg)) continue;
+      if (containsFrameStopword(tg)) continue;
       // Avoid double-reporting when a flagged bigram already covers the
       // leak (e.g. "account manager" bigram + "sales account manager"
       // trigram both name the same underlying issue). Keep only trigrams
@@ -475,6 +477,27 @@ function isPureRoleShapeNgram(ngram: string): boolean {
   const words = ngram.split(' ');
   if (words.length === 0) return false;
   return words.every((w) => ROLE_SHAPE_STOPWORDS.has(w));
+}
+
+/**
+ * An n-gram containing any FRAME_STOPWORD (grammatical connective like
+ * "and", "of", "the") is a syntactic fragment, not a content phrase that
+ * can meaningfully "leak" from the JD into source. Skip these from leak
+ * detection.
+ *
+ * Example: the bigram "and product" extracted from a phrase like
+ * "business systems and product ownership" contains the connector "and".
+ * Even if "and product" happens to appear in the JD in "sales channels
+ * and product categories" but not as a bigram in the source haystack,
+ * it's not a JD-vocabulary lift — just English glue.
+ *
+ * Added 2026-04-20 pm as Fix 7 — see fixture-13 lisa-slagle in
+ * docs/v3-rebuild/reports/all-openai-19-fixture-validation-v3.md for
+ * the false-positive that motivated this.
+ */
+function containsFrameStopword(ngram: string): boolean {
+  const words = ngram.split(' ');
+  return words.some((w) => FRAME_STOPWORDS.has(w));
 }
 
 // -----------------------------------------------------------------------------
