@@ -163,6 +163,55 @@ describe('canonicalizeNumbers', () => {
     expect(canonicalizeNumbers('22 percent')).toBe('22%');
     expect(canonicalizeNumbers('22percent')).toBe('22%');
   });
+
+  // Fix 6 (2026-04-20 pm) — MM/BB/KK doubled-letter finance notation.
+  // The pre-fix regex only recognized single-letter abbreviations (m/b/k),
+  // so source "$150MM" and model output "$150M" canonicalized to
+  // different strings and attribution substring-match failed on what is
+  // actually the same dollar figure in two notations. fixture-10
+  // jessica-boquist hard-failed on this exact mismatch in the 2026-04-20
+  // am and 2026-04-20 pm 19-fixture validations.
+  it('expands doubled-letter MM/BB/KK notation to the same canonical form as single-letter', () => {
+    // MM (million) — the fixture-10 case.
+    expect(canonicalizeNumbers('$150mm')).toBe('$150 million');
+    expect(canonicalizeNumbers('$150m')).toBe('$150 million');
+    expect(canonicalizeNumbers('$150 million')).toBe('$150 million');
+    expect(canonicalizeNumbers('$1.5mm')).toBe('$1.5 million');
+    expect(canonicalizeNumbers('delivered $150mm in revenue')).toBe(
+      'delivered $150 million in revenue',
+    );
+
+    // BB (billion).
+    expect(canonicalizeNumbers('$2bb enterprise')).toBe('$2 billion enterprise');
+    expect(canonicalizeNumbers('$2b enterprise')).toBe('$2 billion enterprise');
+    expect(canonicalizeNumbers('$1.2bb pipeline')).toBe('$1.2 billion pipeline');
+
+    // KK (thousand).
+    expect(canonicalizeNumbers('$500kk budget')).toBe('$500 thousand budget');
+    expect(canonicalizeNumbers('$500k budget')).toBe('$500 thousand budget');
+  });
+
+  it('does NOT mangle mid-word letters that happen to follow digits (regression)', () => {
+    // "5km" — `k` followed by `m`, not a word boundary, not a doubled `k`.
+    // The regex must NOT match here. Previously this was already safe with
+    // single-letter `\b`; keep the invariant under doubled-letter regex.
+    expect(canonicalizeNumbers('5km route')).toBe('5km route');
+    // "5kg" — same story.
+    expect(canonicalizeNumbers('5kg shipment')).toBe('5kg shipment');
+    // "10mb of data" — `m` is followed by `b`, which is a word character;
+    // `mm?\b` can't match because `m` has no word boundary after it (next
+    // char is also a word char). Same reasoning applied to the old
+    // single-letter regex, so this is a preserved invariant: doubled-letter
+    // doesn't make us more aggressive on ambiguous mid-word cases.
+    expect(canonicalizeNumbers('10mb of data')).toBe('10mb of data');
+  });
+
+  it('is idempotent for the new MM/BB/KK forms', () => {
+    const cases = ['$150mm', '$2bb', '$500kk', '$1.2bb growth'];
+    for (const c of cases) {
+      expect(canonicalizeNumbers(canonicalizeNumbers(c))).toBe(canonicalizeNumbers(c));
+    }
+  });
 });
 
 // ─── Attribution matcher end-to-end ─────────────────────────────────────────

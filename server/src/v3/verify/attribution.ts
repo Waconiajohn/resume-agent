@@ -810,13 +810,22 @@ export function canonicalizeNumbers(input: string): string {
   s = s.replace(/(\d+(?:\.\d+)?)\s*percent\b/g, '$1%');
   // 3. Insert space between number and attached unit word.
   s = s.replace(/(\d+(?:\.\d+)?)(million|billion|thousand)\b/g, '$1 $2');
-  // 4. Expand letter abbreviations m/k/b immediately attached to a number.
-  //    Example: "$40m" → "$40 million"; "40m" → "40 million".
-  //    The leading \B pattern would reject mid-word, but \b on the letter's
-  //    right is what we actually want — so require the letter to be followed
-  //    by a word boundary (end of word).
-  s = s.replace(/(\d+(?:\.\d+)?)m\b/g, '$1 million');
-  s = s.replace(/(\d+(?:\.\d+)?)k\b/g, '$1 thousand');
-  s = s.replace(/(\d+(?:\.\d+)?)b\b/g, '$1 billion');
+  // 4. Expand letter abbreviations m/k/b immediately attached to a number,
+  //    PLUS doubled forms mm/bb/kk used in finance-and-consulting-style
+  //    notation (mm = million in Roman-numeral convention). The pattern
+  //    `x?` matches one OR two consecutive letters followed by a word
+  //    boundary, so "$150m" and "$150mm" both canonicalize to
+  //    "$150 million"; "$2b" and "$2bb" both to "$2 billion"; "$500k" and
+  //    "$500kk" both to "$500 thousand". Word boundary on the right
+  //    prevents collisions with mid-word letters (e.g. "5km" doesn't match
+  //    because `k` is followed by `m`, neither a boundary nor a repeated
+  //    `k`). Fixed 2026-04-20 pm as Fix 6 — see the fixture-10 jessica
+  //    regression in docs/v3-rebuild/reports/all-openai-19-fixture-
+  //    validation-v2.md where source "$150MM" and model output "$150M"
+  //    canonicalized to different strings under the prior single-letter
+  //    regex, producing a false attribution hard-fail.
+  s = s.replace(/(\d+(?:\.\d+)?)mm?\b/g, '$1 million');
+  s = s.replace(/(\d+(?:\.\d+)?)kk?\b/g, '$1 thousand');
+  s = s.replace(/(\d+(?:\.\d+)?)bb?\b/g, '$1 billion');
   return s;
 }
