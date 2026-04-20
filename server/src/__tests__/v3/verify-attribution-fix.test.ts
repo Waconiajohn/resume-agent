@@ -314,6 +314,26 @@ describe('checkAttributionMechanically — fix regressions', () => {
     expect(discipline?.missingWords).toContain('fintech');
   });
 
+  it('strategize field check: strips punctuation from content words before matching', () => {
+    // Regression: "Director of Product Management, Enterprise SaaS" previously
+    // flagged "management," (with comma) as missing even when "management"
+    // was in source. Punctuation stripping before substring match fixes it.
+    const src = resume({
+      positionTitle: 'Senior Product Manager',
+      positionBullets: ['Led product management across a SaaS portfolio.'],
+      discipline: 'product management and SaaS leadership',
+    });
+    const s = minimalStrategy(
+      'product management leader',
+      'Director of Product Management, Enterprise SaaS',
+    );
+    const result = checkStrategizeAttribution(s, src);
+    const discipline = result.fields.find((f) => f.field === 'targetDisciplinePhrase');
+    // "management" (stripped of comma) should match; "saas" matches; "enterprise" matches.
+    expect(discipline?.missingWords).not.toContain('management,');
+    expect(discipline?.missingWords).not.toContain('management');
+  });
+
   it('strategize field check: empty phrases verified (not checked)', () => {
     const src = resume({ positionBullets: ['Anything.'] });
     const s = minimalStrategy('', '');

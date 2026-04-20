@@ -342,7 +342,13 @@ function checkPhraseAgainstHaystack(
     return { field: fieldName, text: phrase, verified: true, missingWords: [] };
   }
   // Filter: frame content words minus role-shape vocabulary.
-  const words = frameContentWords(phrase).filter((w) => !ROLE_SHAPE_STOPWORDS.has(w));
+  // Strip leading/trailing punctuation from each word before matching so
+  // that "management," (comma attached after split) correctly matches
+  // "management" in the haystack.
+  const words = frameContentWords(phrase)
+    .map((w) => w.replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, ''))
+    .filter((w) => w.length > 0)
+    .filter((w) => !ROLE_SHAPE_STOPWORDS.has(w));
   const missingWords: string[] = [];
   for (const w of words) {
     if (!haystack.includes(w)) missingWords.push(w);
