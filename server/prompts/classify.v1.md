@@ -1,11 +1,32 @@
 ---
 stage: classify
-version: "1.3"
+version: "1.4"
 capability: strong-reasoning
 temperature: 0.2
-last_edited: 2026-04-18
+last_edited: 2026-04-20
 last_editor: claude
 notes: |
+  v1.4 (2026-04-20 pm — Rule 7 explicit handling for "no dates at all"):
+    - Addresses a gpt-5.4-mini-only regression surfaced in the
+      2026-04-20 morning 19-fixture validation (commit b43686b6):
+      fixture-17 davidchicks hard-failed at classify because the model
+      omitted the `dates` object entirely on the last position
+      ("Additional experiences → Microsoft Corporation, Software
+      Design Engineer..."), which has no date range in source. The
+      Zod schema requires `dates` on every position.
+    - DeepSeek did not have this failure. The bug is
+      gpt-5.4-mini-specific and surfaces on an ambiguous source
+      pattern: an "Additional experiences" / "Early career" entry
+      that lists a company and roles without explicit date strings.
+    - v1.4 extends Rule 7 with an explicit instruction that `dates`
+      MUST be emitted on every position, with a concrete example
+      using the davidchicks Microsoft shape showing the correct
+      output: `dates: { start: null, end: null, raw: "<section label
+      from source>" }` plus a lowered confidence. The ✓/✗ contrast
+      names the exact failure form.
+    - The classify schema already allows null start/end dates (the
+      `raw` field is the only required string), so this is a prompt
+      clarification, not a schema change.
   v1.3 (Phase 3.5 port to DeepSeek-on-Vertex):
     - Frontmatter changed from model: to capability: strong-reasoning.
     - Role-playing opener ("You are a senior resume intelligence analyst...").
@@ -154,15 +175,70 @@ When `pronoun` is `null`, downstream writers default to active voice. That is th
 ### Rule 7 — Dates are faithful to the source.
 
 For each position's `dates` field:
-- `start`: the year or year-month as printed in the source (e.g., `"2018"`, `"2018-03"`, `"March 2018"`)
-- `end`: the same, or `null` if the position is current (words like "Present", "Current", "—" with no follow-up date)
-- `raw`: the exact date substring as it appeared in the source (e.g., `"2018 – Present"`, `"March 2018 — October 2024"`, `"2018-03 to 2024-10"`)
+- `start`: the year or year-month as printed in the source (e.g., `"2018"`, `"2018-03"`, `"March 2018"`). May be `null` if no start date appears in source.
+- `end`: the same, or `null` if the position is current (words like "Present", "Current", "—" with no follow-up date), or `null` if no end date appears in source at all.
+- `raw`: the exact date substring as it appeared in the source (e.g., `"2018 – Present"`, `"March 2018 — October 2024"`, `"2018-03 to 2024-10"`). **Must be a non-empty string — never null, never missing.**
 
-Do not normalize dates to ISO format. Do not infer missing dates. Do not insert `"undefined"` or `"unknown"` placeholders. If a date is missing or illegible, set `start` or `end` to the best-effort string you can read and lower the position's `confidence` accordingly.
+Do not normalize dates to ISO format. Do not infer missing dates. Do not insert `"undefined"` or `"unknown"` placeholders as values. If a date is missing or illegible, set `start` or `end` to the best-effort string you can read (or `null`) and lower the position's `confidence` accordingly.
 
 Concurrent positions with overlapping dates are allowed (the candidate really did hold two jobs at once, or a contract overlap happened). Do not merge them.
 
-<!-- Why: v2 serialized missing end-dates as the string "undefined" (literally) and broke downstream date-handling. Fixture-03 has two simultaneous current contracts; fixture-06 has a part-time and a full-time both "Present". Both need to round-trip faithfully. April 17, 2026. -->
+**The `dates` object is required on every position — even when the source shows no dates at all.** This is a hard rule of the schema; omitting the `dates` object entirely will fail validation downstream. If you are emitting a position and the source has no dates for it (e.g., an "Additional experiences," "Early career," or "Previously" section that lists companies without any date strings), emit:
+
+```json
+"dates": {
+  "start": null,
+  "end": null,
+  "raw": "<a short descriptive string lifted from the source label, e.g. 'Additional experiences', 'Early career', 'Previously', or 'dates not specified in source'>"
+}
+```
+
+The `raw` string captures *what the candidate's resume said* about the timing — the section label is an honest answer when literal dates are absent. Lower the position's `confidence` to 0.5–0.7 to flag the date ambiguity.
+
+**Example — the "additional experiences" pattern** (real shape from fixture-17 davidchicks):
+
+Source text:
+```
+...
+Additional experiences
+
+Microsoft Corporation, Redmond, WA
+
+Software Design Engineer | Software Design Engineer Test | Software Test Engineer
+
+Early career experience shipping large-scale, highly reliable software in multiple roles...
+- Built infrastructure enabling large-scale automated testing ...
+- Created installer for the first release of Team Foundation Server ...
+```
+
+Correct classify output:
+```json
+{
+  "title": "Software Design Engineer / Software Design Engineer Test / Software Test Engineer",
+  "company": "Microsoft Corporation",
+  "location": "Redmond, WA",
+  "dates": { "start": null, "end": null, "raw": "Additional experiences — early career, dates not specified" },
+  "bullets": [ ... ],
+  "confidence": 0.6
+}
+```
+
+Wrong — omits the `dates` object entirely:
+```json
+{
+  "title": "...",
+  "company": "Microsoft Corporation",
+  "location": "Redmond, WA",
+  "bullets": [ ... ],
+  "confidence": 0.6
+}
+```
+
+The wrong form fails Zod validation at the pipeline boundary and stops the whole run.
+
+<!-- Why: v2 serialized missing end-dates as the string "undefined" (literally) and broke downstream date-handling. Fixture-03 has two simultaneous current contracts; fixture-06 has a part-time and a full-time both "Present". Both need to round-trip faithfully. April 17, 2026. Updated 2026-04-20 pm: gpt-5.4-mini on fixture-17 (davidchicks) omitted the `dates` object entirely on the final "Additional experiences → Microsoft Corporation" entry, which has no explicit date range in source. DeepSeek did not have this failure. Rule 7 explicit handling for "no dates at all" plus the concrete example closes the case. See docs/v3-rebuild/reports/all-openai-19-fixture-validation.md for the original failure trace. -->
+
+
 
 ### Rule 8 — Confidence scores per field and strict dotted-path flags.
 

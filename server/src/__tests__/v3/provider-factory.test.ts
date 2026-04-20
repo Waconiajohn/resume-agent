@@ -64,9 +64,11 @@ afterEach(() => {
 // -----------------------------------------------------------------------------
 
 describe('resolveBackend precedence', () => {
-  it('uses default when no env vars set', () => {
-    expect(resolveBackend('strong-reasoning')).toBe('vertex');
-    expect(resolveBackend('fast-writer')).toBe('vertex');
+  it('uses default when no env vars set (post-2026-04-20 all-OpenAI flip)', () => {
+    // Defaults flipped 2026-04-20 pm (commit 171cb7be) from the earlier
+    // vertex/vertex/openai hybrid to all-OpenAI.
+    expect(resolveBackend('strong-reasoning')).toBe('openai');
+    expect(resolveBackend('fast-writer')).toBe('openai');
     expect(resolveBackend('deep-writer')).toBe('openai');
   });
 
@@ -88,7 +90,8 @@ describe('resolveBackend precedence', () => {
   it('per-capability env var works without global env var', () => {
     process.env.RESUME_V3_STRONG_REASONING_BACKEND = 'anthropic';
     expect(resolveBackend('strong-reasoning')).toBe('anthropic');
-    expect(resolveBackend('fast-writer')).toBe('vertex');
+    // fast-writer + deep-writer fall back to the post-flip default (openai).
+    expect(resolveBackend('fast-writer')).toBe('openai');
     expect(resolveBackend('deep-writer')).toBe('openai');
   });
 
