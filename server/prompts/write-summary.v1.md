@@ -1,11 +1,25 @@
 ---
 stage: write-summary
-version: "1.2"
+version: "1.4"
 capability: fast-writer
 temperature: 0.4
-last_edited: 2026-04-18
+last_edited: 2026-04-19
 last_editor: claude
 notes: |
+  v1.4 (2026-04-19 — narrow forbidden-phrases fragment):
+    - Adds {{shared:forbidden-phrases}} which consolidates
+      write-position's Rule 0 lexicon (21 items) plus four audit
+      additions ("utilizing", "transformative", "thought leader",
+      "robust" as filler). Unlike v1.3 (Phase A, reverted), this
+      is a narrow extraction — ONLY the forbidden-phrases lexicon,
+      NOT the source-every-claim rule, NOT a self-check step, and
+      NO temperature change. Those three Phase A additions caused
+      pronoun drift, fabrication attempts, and content omissions
+      respectively; shipping them bundled made root-cause analysis
+      impossible. This version ships only the piece we're confident
+      in. Temperature stays 0.4.
+    - Skips v1.3 to avoid version collision with the briefly-shipped
+      Phase A variant that lives in git history.
   v1.2 (Phase 4.12 — unit fidelity):
     - Rule 2b (UNIT FIDELITY, HARD) forbids unit conversions not present
       in source material: percentage <-> absolute number, currency types,
@@ -110,6 +124,8 @@ Remove any of these if they slip in: "spearheaded", "leveraged", "orchestrated",
 Never emit strings like `"[INSERT X]"`, `"Example-"`, `"as an AI language model"`, `"I apologize"`. If the task is underspecified, fall back to the positioning frame and targetDisciplinePhrase. Produce complete output or throw (the calling code will surface a loud error).
 
 <!-- Why: These phrases are universal resume filler. They signal "AI wrote this" to hiring managers and dilute the actual accomplishment claims. The list is lexical so the model can scan-check its own output. 2026-04-18. -->
+
+{{shared:forbidden-phrases}}
 
 {{shared:pronoun-policy}}
 

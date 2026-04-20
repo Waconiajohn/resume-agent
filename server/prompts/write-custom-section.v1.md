@@ -1,11 +1,17 @@
 ---
 stage: write-custom-section
-version: "1.0"
+version: "1.2"
 capability: fast-writer
 temperature: 0.4
-last_edited: 2026-04-18
+last_edited: 2026-04-19
 last_editor: claude
 notes: |
+  v1.2 (2026-04-19 — narrow forbidden-phrases fragment):
+    - Adds {{shared:forbidden-phrases}} (same fragment referenced
+      by write-summary v1.4, write-accomplishments v1.3,
+      write-competencies v1.3). Phrase-level discipline only;
+      no Rule 1 change, no self-check, no source-every-claim rule.
+    - Skips v1.1 to avoid collision with Phase A's variant.
   v1.0 (Phase 3.5): new prompt. Reverses the earlier v3 decision to
   drop custom sections. Senior executive resumes routinely include
   Board Service, Speaking Engagements, Patents, Publications, Awards.
@@ -89,6 +95,8 @@ If a source entry contains a soft claim ("delivered training to hundreds of lead
 ### Rule 7 — No template placeholders, no redaction tokens, no AI artifacts.
 
 Same constraint as the other write prompts.
+
+{{shared:forbidden-phrases}}
 
 ## Example
 

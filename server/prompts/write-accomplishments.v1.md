@@ -1,11 +1,20 @@
 ---
 stage: write-accomplishments
-version: "1.1"
+version: "1.3"
 capability: fast-writer
 temperature: 0.4
-last_edited: 2026-04-18
+last_edited: 2026-04-19
 last_editor: claude
 notes: |
+  v1.3 (2026-04-19 — narrow forbidden-phrases fragment):
+    - Adds {{shared:forbidden-phrases}}. Same fragment that
+      write-summary v1.4, write-competencies v1.3, and
+      write-custom-section v1.2 reference. Narrow intervention —
+      forbidden-phrases lexicon only, no source-every-claim rule,
+      no self-check, no temperature change. See audit notes in
+      docs/v3-rebuild/reports/quality-fixes-followup.md once that
+      report exists.
+    - Skips v1.2 to avoid collision with Phase A's reverted variant.
   v1.1 (Phase 3.5 port to DeepSeek-on-Vertex):
     - capability: fast-writer (replaces model: claude-sonnet-4-6)
     - Role-playing opener retained ("you write the greatest-hits section")
@@ -59,6 +68,8 @@ Not every bullet has all three, but every bullet has at least outcome + method. 
 ### Rule 4 — Active voice, action-verb-first.
 
 Start each bullet with a past-tense action verb. The shared pronoun policy below applies — pronouns only when `resume.pronoun` is non-null, active voice always.
+
+{{shared:forbidden-phrases}}
 
 {{shared:pronoun-policy}}
 
