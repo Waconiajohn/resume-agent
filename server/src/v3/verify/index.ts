@@ -14,6 +14,7 @@ import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
 import { VerifyResultSchema } from './schema.js';
 import { checkAttributionMechanically } from './attribution.js';
+import { checkIntraResumeConsistency } from './consistency.js';
 import { translateVerifyIssues, type TranslateTelemetry } from './translate.js';
 import type {
   Strategy,
@@ -168,6 +169,21 @@ export async function verifyWithTelemetry(
 
   const validated = result.data as VerifyResult;
 
+  // Mechanical intra-resume consistency check (2026-04-19). Adds errors
+  // for number+noun contradictions in summary + selectedAccomplishments
+  // that the verify LLM doesn't catch because its checks are all
+  // source-to-rewrite, never within-rewrite. Motivating case: fixture-12
+  // joel-hough summary says "three facilities" while an accomplishment
+  // says "four distribution centers" — same canonical noun, different
+  // numbers, a hiring-manager-visible tell.
+  const consistencyIssues = checkIntraResumeConsistency(written);
+  if (consistencyIssues.length > 0) {
+    for (const issue of consistencyIssues) {
+      validated.issues.push(issue);
+      if (issue.severity === 'error') validated.passed = false;
+    }
+  }
+
   logger.info(
     {
       promptName,
@@ -177,6 +193,7 @@ export async function verifyWithTelemetry(
       passed: validated.passed,
       errors: validated.issues.filter((i) => i.severity === 'error').length,
       warnings: validated.issues.filter((i) => i.severity === 'warning').length,
+      consistencyIssues: consistencyIssues.length,
       inputTokens: usage.input_tokens,
       outputTokens: usage.output_tokens,
       durationMs,
