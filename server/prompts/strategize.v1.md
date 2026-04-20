@@ -1,11 +1,34 @@
 ---
 stage: strategize
-version: "1.4"
+version: "1.5"
 capability: strong-reasoning
 temperature: 0.2
 last_edited: 2026-04-20
 last_editor: claude
 notes: |
+  v1.5 (2026-04-20 pm — Rule 0a extended to JD role-title bigrams):
+    - The 2026-04-20 morning 19-fixture validation showed Rule 0a
+      solved the specific Jessica pattern but didn't generalize.
+      Five cross-domain fixtures (bshook, jay-alger, joel-hough,
+      lutz, steve-alexander) silently lifted the JD's role-title
+      bigram "Account Manager" into their targetDisciplinePhrase
+      despite never holding an account-manager role and the phrase
+      "Account Manager" not appearing in their source.
+    - Why the v1.4 firewall missed this: Rule 0a focused on
+      industry/domain/function tokens. The JD ROLE TITLE as a phrase
+      ("Account Manager") was not explicitly called out. The
+      mechanical check matches at the word level — "Account" and
+      "Manager" each appear harmlessly in most resumes, so the
+      bigram lift was silent.
+    - v1.5 adds an explicit role-title sub-rule under Rule 0a naming
+      the JD title as a forbidden phrase bigram for
+      targetDisciplinePhrase / positioningFrame unless the candidate
+      literally held that role. Includes a concrete bshook ✓/✗
+      example.
+    - Companion change in server/src/v3/verify/attribution.ts
+      upgrades the mechanical check to phrase-aware matching on
+      framing fields so the guardrail catches this class at runtime
+      even if the prompt is ignored.
   v1.4 (2026-04-20 — JD-vocabulary firewall for GPT-5.4-mini):
     - The 2026-04-20 all-OpenAI validation (see
       docs/v3-rebuild/reports/model-validation/all-openai-vs-hybrid.md)
@@ -129,6 +152,31 @@ If the candidate's source resume genuinely has NO industry/domain overlap with t
 The mechanical attribution check that runs after this stage is a hard-fail, not a warning. Your output will be rejected and the pipeline stopped if you emit unsourced industry/scope vocabulary in these framing fields. Get it right on the first attempt.
 
 <!-- Why: This rule is the model-agnostic version of Rules 2b/5b, written as an imperative firewall rather than soft guidance. Rules 2b/5b narratively said "drop unsourced qualifiers" but gpt-5.4-mini treated them as hints and pulled JD vocabulary anyway. Rule 0a makes the firewall mechanical, concrete, and model-compliance-friendly. The downstream attribution check remains the hard safety net — this rule is to prevent triggering it. See docs/v3-rebuild/reports/model-validation/all-openai-vs-hybrid.md. 2026-04-20. -->
+
+### Rule 0a-title — Role-title firewall (specific JD-phrase case of Rule 0a).
+
+The **JD's role title**, as a full phrase, is NOT authorized vocabulary for `targetDisciplinePhrase` or `positioningFrame`. This is a specific, common failure mode of the broader Rule 0a and it deserves its own treatment because role titles are the most tempting phrase to echo.
+
+**Rules:**
+
+1. **Phrase-level, not word-level.** If the JD's role title is "Account Manager, Wholesale," you cannot emit "Account Manager" as or within the candidate's `targetDisciplinePhrase` unless the candidate's source resume shows them actually holding an account-management role (the exact phrase "Account Manager" or "Account Management" or similar appears verbatim as a title or in their actual responsibility description). Having separately the word "account" (e.g., "managed major accounts") and the word "manager" (e.g., "senior manager") in the source does NOT license emitting them as the bigram "Account Manager" in a framing field when that bigram is pure JD vocabulary.
+
+2. **Think of the JD's role-title phrase as a single unit.** Your framing fields should NEVER contain the JD's role-title phrase unless the candidate literally held that exact role.
+
+3. **Strategic tension over title-borrowing.** If the candidate's actual discipline is meaningfully different from the JD's role title, surface that in `notes` — do NOT paper over the mismatch by borrowing the JD's title.
+
+**Failure pattern this rule prevents** — the 2026-04-20 morning validation blind spot:
+
+- Source resume: Senior Project Controls Manager in nuclear energy / power generation / advanced manufacturing automation. Role is project delivery and operations leadership. Source has no account-management role; "account" appears only in contexts like "customer accounts" or "account teams"; "manager" appears in his own title "Project Controls Manager".
+- JD: Under Armour **Account Manager**, Wholesale — Mall.
+- **Wrong** (what gpt-5.4-mini emitted in the morning run): `targetDisciplinePhrase: "Account Manager, Commercial Programs"`. This lifts the JD's role-title bigram "Account Manager" even though the candidate never held an account-management role.
+- **Right**: `targetDisciplinePhrase: "Project Delivery and Operations Leader"` (all tokens sourced), with `notes: "Source is project/program delivery in industrial domains (nuclear, power, manufacturing); JD is retail wholesale account management. Positioning emphasizes transferable operational discipline and cross-functional delivery leadership, not industry or role-title fit."`
+
+This rule applies equally to `positioningFrame`. If the JD is "Account Manager, Wholesale" and the candidate is a project manager, the positioning frame must not be "account and commercial leader" (lifts "account" adjective from JD).
+
+The mechanical attribution check in `server/src/v3/verify/attribution.ts` upgrades to phrase-aware (bigram / trigram) matching for `targetDisciplinePhrase` and `positioningFrame`. The check extracts bigrams from the JD, extracts bigrams from the source, and flags any framing-field bigram that appears in the JD but not in the source (with a small allowlist for pure role-shape bigrams like "senior manager" where both words are already generic). Hard-fail severity — same as existing attribution errors.
+
+<!-- Why: The 2026-04-20 morning 19-fixture validation surfaced silent role-title bigram leaks ("Account Manager") in 5 cross-domain fixtures that Rule 0a (v1.4) did not catch. Rule 0a's language said "check every noun phrase" but the compliance signal gpt-5.4-mini picked up from that wording was token-level only. Rule 0a-title names the role-title bigram case specifically with a concrete ✓/✗ example using the exact bshook failure shape. See docs/v3-rebuild/reports/all-openai-19-fixture-validation.md for the leak inventory. 2026-04-20 pm. -->
 
 ### Rule 0 — Forbidden framing phrases in emphasizedAccomplishments.summary.
 
