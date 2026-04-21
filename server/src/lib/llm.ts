@@ -1,4 +1,4 @@
-import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider, DeepInfraProvider, VertexProvider, getVertexAccessToken, FailoverProvider, isRateLimitError } from './llm-provider.js';
+import { LLMProvider, AnthropicProvider, ZAIProvider, GroqProvider, DeepSeekProvider, DeepInfraProvider, OpenAIProvider, VertexProvider, getVertexAccessToken, FailoverProvider, isRateLimitError } from './llm-provider.js';
 import type { ChatParams, ChatResponse, StreamEvent } from './llm-provider.js';
 import logger from './logger.js';
 import { MODEL as ANTHROPIC_MODEL, MAX_TOKENS as ANTHROPIC_MAX_TOKENS } from './anthropic.js';
@@ -144,6 +144,15 @@ function buildProvider(name: string): LLMProvider {
     return new ZAIProvider({ apiKey, baseUrl });
   }
 
+  if (name === 'openai') {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY environment variable is required when using openai provider');
+    }
+    const baseUrl = process.env.OPENAI_BASE_URL;
+    return new OpenAIProvider({ apiKey, ...(baseUrl && { baseUrl }) });
+  }
+
   // Anthropic is the ultimate fallback — lazy-initializes its client on first use.
   return new AnthropicProvider();
 }
@@ -284,6 +293,42 @@ export const writerLlm: LLMProvider = (() => {
 
 /** @deprecated Use writerLlm instead */
 export const resumeV2Llm = writerLlm;
+
+// ─── Feature-scoped provider: Cover-letter writer trial ─────────────
+// 2026-04-21 — foundation for bringing gpt-5.4-mini to non-v3 products.
+// The handoff at memory/handoff-2026-04-20-v3-and-gpt54mini-rollout.md
+// says cover-letter is the natural first non-v3 product for the trial
+// (small, 2-agent pipeline, low blast radius).
+//
+// Not yet used by cover-letter tools — this export exists so the trial
+// can flip `COVER_LETTER_WRITER_PROVIDER=openai` + supply OPENAI_API_KEY
+// to switch cover-letter off Groq without touching tool code twice.
+//
+// When the env vars are unset or the provider throws at construction,
+// falls back to the global `llm` (Groq Qwen3 today). This preserves
+// current behavior until the trial starts.
+//
+// The trial itself (wiring + 10-fixture comparison + go/no-go) is a
+// separate piece of work — see docs/cover-letter-gpt54mini-trial.md.
+
+export const coverLetterWriterLlm: LLMProvider = (() => {
+  const providerName = process.env.COVER_LETTER_WRITER_PROVIDER;
+  if (!providerName || providerName === ACTIVE_PROVIDER) return llm;
+  try {
+    const primary = buildProvider(providerName);
+    logger.info(
+      { provider: providerName, fallback: ACTIVE_PROVIDER },
+      'Cover letter writer LLM: feature-scoped provider',
+    );
+    return new FailoverProvider(primary, llm);
+  } catch (err) {
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err), requested: providerName },
+      'Cover letter writer LLM: feature-scoped provider construction failed, falling back to global llm',
+    );
+    return llm;
+  }
+})();
 
 /**
  * Get the default model for the configured primary provider.

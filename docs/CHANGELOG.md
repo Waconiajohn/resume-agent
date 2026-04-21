@@ -1,5 +1,29 @@
 # Changelog — Resume Agent
 
+## 2026-04-21 — Foundation for cover-letter gpt-5.4-mini trial
+**Sprint:** LMS + CareerIQ Integration (infrastructure) | **Story:** Bring gpt-5.4-mini to non-v3 products (cover-letter trial)
+**Summary:** Scaffolded the machinery needed to run a per-product OpenAI + gpt-5.4-mini trial on the cover-letter writer, without rewiring any cover-letter code yet. The trial itself (rewire + 10-fixture harness + go/no-go) is queued pending soak of commits af84c4c0 / cb41f477.
+
+### Changes Made
+- `server/src/lib/llm.ts` —
+  - Imported `OpenAIProvider` from `llm-provider.js` (the class already existed; it was only reachable through v3's own factory before).
+  - Added `openai` branch to `buildProvider()` — reads `OPENAI_API_KEY` + optional `OPENAI_BASE_URL`.
+  - Added new export `coverLetterWriterLlm: LLMProvider`. Mirrors the `writerLlm` (DeepSeek-scoped resume writer) pattern: reads `COVER_LETTER_WRITER_PROVIDER`, builds the named provider, wraps with `FailoverProvider(primary, llm)` so any failure falls back to the global `llm` (Groq today). Unset or `=== ACTIVE_PROVIDER` returns the global `llm` unchanged — this is the no-op default until the trial starts.
+- `docs/cover-letter-gpt54mini-trial.md` — new plan doc detailing: scope (what migrates, what stays), foundation summary, four-step trial execution (rewire writer tools → wrap review_letter in primitive → 10-fixture harness → go/no-go gate), explicit "do not do" list, rollback path.
+
+### Decisions Made
+- **Trial is env-var driven, not code-change-driven.** The rewire inside `cover-letter/writer/tools.ts` reads the env-configurable model ID from `COVER_LETTER_WRITER_MODEL`, so flipping the provider on/off requires a config change, not a code change. Same pattern `resumeV2Llm` uses.
+- **Only two writer-tier calls migrate** (`write_letter`, `review_letter`) — analyst stays on Groq. Scopes the A/B surface so quality differences attribute cleanly to the model.
+- **Analyst stays on Groq regardless of trial outcome.** Extraction / planning is a different task class than writing; the trial conclusion doesn't generalize across them.
+- **Foundation without rewire** was the right break: commits af84c4c0 and cb41f477 (commit 2 of structured-llm + primitive promotion) need to soak before a second product starts changing models. The foundation compiles and exports without touching any cover-letter code path, so nothing changes until the env var is set.
+
+### Known Issues
+- `coverLetterWriterLlm` is exported but unused by production code. It will stay that way until the trial starts — dead-export warning is fine.
+
+### Next Steps
+- Let commits af84c4c0 / cb41f477 soak on Vercel for several real pipeline runs.
+- When the user greenlights the trial: execute the four-step plan in `docs/cover-letter-gpt54mini-trial.md`.
+
 ## 2026-04-21 — v3 commit 2 of structured-llm plan: migrate remaining stages + bounded write concurrency
 **Sprint:** LMS + CareerIQ Integration (infrastructure) | **Story:** structured-llm primitive rollout (commit 2 of 2)
 **Summary:** Migrated benchmark, classify, verify, strategize, and all three regenerate entrypoints onto the shared `structuredLlmCall<T>` primitive extracted in commit 1 (`f6f81f19`). Added bounded-concurrency fan-out to the write stage (default cap 6, `RESUME_V3_WRITE_CONCURRENCY` override). Each migrated stage now inherits one-shot JSON/Zod retry coverage with stage-specific addenda. `verify/translate.ts` intentionally left on its pre-existing fail-soft path. Zero test regressions.
