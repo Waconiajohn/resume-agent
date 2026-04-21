@@ -48,6 +48,63 @@ import type {
 const logger = createV3Logger('write');
 const MAX_OUTPUT_TOKENS = 8_000;
 
+/**
+ * Cap on simultaneous section LLM calls during the write stage fan-out.
+ * Without a cap, a 20-position executive would fire 23+ concurrent
+ * gpt-5.4-mini / DeepSeek calls (summary + accomplishments + competencies +
+ * N positions + M custom sections). That's rate-limit territory on busy
+ * days and offers no recovery if one provider starts throttling.
+ *
+ * 6 was picked empirically: three non-position sections plus three position
+ * calls in the first wave, which matches the section types a reviewer sees
+ * streamed first anyway. Override at runtime via RESUME_V3_WRITE_CONCURRENCY
+ * for fixture scripts that want to push the envelope.
+ *
+ * Added 2026-04-21 as part of commit 2 of the structured-llm plan.
+ */
+const DEFAULT_WRITE_CONCURRENCY = 6;
+function getWriteConcurrency(): number {
+  const raw = process.env.RESUME_V3_WRITE_CONCURRENCY;
+  if (!raw) return DEFAULT_WRITE_CONCURRENCY;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_WRITE_CONCURRENCY;
+}
+
+/**
+ * Minimal FIFO concurrency limiter. Accepts an array of thunks (functions
+ * returning Promise) and runs at most `limit` of them simultaneously.
+ * Results come back in the SAME ORDER as the input array — callers that
+ * slice the result (positionResults vs customSectionResults) depend on
+ * this. Rejection semantics match Promise.all: the first rejection
+ * propagates; remaining in-flight tasks continue but their results are
+ * discarded.
+ *
+ * Deliberately not a dependency (p-limit / p-queue) — the whole helper is
+ * ~25 lines and keeps the write stage free of new packages.
+ */
+async function runBounded<T>(
+  limit: number,
+  tasks: ReadonlyArray<() => Promise<T>>,
+): Promise<T[]> {
+  if (tasks.length === 0) return [];
+  const effectiveLimit = Math.max(1, Math.min(limit, tasks.length));
+  const results: T[] = new Array(tasks.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= tasks.length) return;
+      results[i] = await tasks[i]!();
+    }
+  }
+
+  const workers: Promise<void>[] = [];
+  for (let i = 0; i < effectiveLimit; i++) workers.push(worker());
+  await Promise.all(workers);
+  return results;
+}
+
 export interface WriteOptions {
   variant?: string;       // e.g. "v1" loads write-summary.v1.md etc.
   signal?: AbortSignal;
@@ -139,29 +196,58 @@ export async function writeWithTelemetry(
   const strategyJson = JSON.stringify(strategy, null, 2);
   const resumeJson = JSON.stringify(resume, null, 2);
 
-  const positionRunners = resume.positions.map((position, idx) =>
-    runPosition(position, idx, variant, strategyJson, resumeJson, options.signal),
-  );
-  const customSectionRunners = resume.customSections.map((section, idx) =>
-    runCustomSection(section, idx, variant, strategyJson, options.signal),
+  // Bounded-concurrency fan-out. Tasks run in a FIFO queue capped at
+  // getWriteConcurrency() simultaneous calls; see DEFAULT_WRITE_CONCURRENCY
+  // for rationale.
+  const positionCount = resume.positions.length;
+  const customSectionCount = resume.customSections.length;
+  type WriteTask =
+    | { kind: 'summary'; run: () => ReturnType<typeof runSummary> }
+    | { kind: 'accomplishments'; run: () => ReturnType<typeof runAccomplishments> }
+    | { kind: 'competencies'; run: () => ReturnType<typeof runCompetencies> }
+    | { kind: 'position'; run: () => ReturnType<typeof runPosition> }
+    | { kind: 'customSection'; run: () => ReturnType<typeof runCustomSection> };
+  const tasks: WriteTask[] = [
+    { kind: 'summary', run: () => runSummary(variant, strategyJson, resumeJson, options.signal) },
+    {
+      kind: 'accomplishments',
+      run: () => runAccomplishments(variant, strategyJson, resumeJson, options.signal),
+    },
+    {
+      kind: 'competencies',
+      run: () => runCompetencies(variant, strategyJson, resumeJson, options.signal),
+    },
+    ...resume.positions.map(
+      (position, idx): WriteTask => ({
+        kind: 'position',
+        run: () => runPosition(position, idx, variant, strategyJson, resumeJson, options.signal),
+      }),
+    ),
+    ...resume.customSections.map(
+      (section, idx): WriteTask => ({
+        kind: 'customSection',
+        run: () => runCustomSection(section, idx, variant, strategyJson, options.signal),
+      }),
+    ),
+  ];
+  const concurrency = getWriteConcurrency();
+  logger.info(
+    { concurrency, totalSections: tasks.length, positions: positionCount, customSections: customSectionCount },
+    'write fan-out with bounded concurrency',
   );
 
-  // Fire in parallel. Promise.all rejects on first failure.
-  const results = await Promise.all([
-    runSummary(variant, strategyJson, resumeJson, options.signal),
-    runAccomplishments(variant, strategyJson, resumeJson, options.signal),
-    runCompetencies(variant, strategyJson, resumeJson, options.signal),
-    ...positionRunners,
-    ...customSectionRunners,
-  ]);
+  const results = await runBounded<unknown>(
+    concurrency,
+    tasks.map((t) => t.run as () => Promise<unknown>),
+  );
 
   const summaryRes = results[0] as Awaited<ReturnType<typeof runSummary>>;
   const accomplishmentsRes = results[1] as Awaited<ReturnType<typeof runAccomplishments>>;
   const competenciesRes = results[2] as Awaited<ReturnType<typeof runCompetencies>>;
-  const positionResults = results.slice(3, 3 + positionRunners.length) as Awaited<
+  const positionResults = results.slice(3, 3 + positionCount) as Awaited<
     ReturnType<typeof runPosition>
   >[];
-  const customSectionResults = results.slice(3 + positionRunners.length) as Awaited<
+  const customSectionResults = results.slice(3 + positionCount) as Awaited<
     ReturnType<typeof runCustomSection>
   >[];
 

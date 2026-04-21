@@ -1,5 +1,33 @@
 # Changelog — Resume Agent
 
+## 2026-04-21 — v3 commit 2 of structured-llm plan: migrate remaining stages + bounded write concurrency
+**Sprint:** LMS + CareerIQ Integration (infrastructure) | **Story:** structured-llm primitive rollout (commit 2 of 2)
+**Summary:** Migrated benchmark, classify, verify, strategize, and all three regenerate entrypoints onto the shared `structuredLlmCall<T>` primitive extracted in commit 1 (`f6f81f19`). Added bounded-concurrency fan-out to the write stage (default cap 6, `RESUME_V3_WRITE_CONCURRENCY` override). Each migrated stage now inherits one-shot JSON/Zod retry coverage with stage-specific addenda. `verify/translate.ts` intentionally left on its pre-existing fail-soft path. Zero test regressions.
+
+### Changes Made
+- `server/src/v3/benchmark/index.ts` — Previously had NO retry coverage; now uses the primitive with benchmark-specific retry addendum (names gap-severity enums, directMatches min-1, strength enum). `BenchmarkError` preserved; new `schemaRetryFired` telemetry field.
+- `server/src/v3/classify/index.ts` — Replaced bespoke stream/parseJsonOrThrow/safeParse/retry machinery with the primitive. Preserves pre-Fix-5 policy of retrying ONLY on Zod schema failure (not JSON.parse — LLM-side structural failure) via `retryOn: ['zod-schema']`. `ClassifyError` + `disableSchemaRetry` option preserved. Error phrasing ("did not match the StructuredResume schema", "schema validation failed on BOTH") preserved for existing catch-sites and tests.
+- `server/src/v3/verify/index.ts` — Replaced Fix 8 retry machinery with the primitive (retries on BOTH json-parse and zod-schema). `VerifyError` + `disableJsonRetry` option preserved. `checkIntraResumeConsistency` + `translateVerifyIssues` sidecar still run around the primitive, unchanged.
+- `server/src/v3/strategize/index.ts` — First LLM call uses the primitive with `maxStructuralAttempts: 2`. Phase 4.6 attribution retry layers OUTSIDE the primitive and passes `maxStructuralAttempts: 1` so stacked retries don't compound LLM call counts — mirrors the write/pronoun-retry pattern. `StrategizeError` + `disableAttributionRetry` preserved.
+- `server/src/v3/write/regenerate.ts` — All three entrypoints (`regeneratePosition`, `regenerateBullet`, `regenerateSummary`) migrated to a shared `runRegenerate` helper that wraps the primitive. Previously had NO retry coverage. Plain `Error` re-thrown to preserve existing catch-site semantics.
+- `server/src/v3/write/index.ts` — Added `runBounded` concurrency limiter (~25 lines, no new dep) + `getWriteConcurrency()` env reader. Write fan-out converted from eager `Promise.all` to thunks dispatched through the limiter. Default cap 6; `RESUME_V3_WRITE_CONCURRENCY` overrides. Result order preserved (FIFO worker pool) so downstream `results.slice()` indexing still works.
+
+### Decisions Made
+- **`verify/translate.ts` intentionally NOT migrated.** Its contract is fail-soft (return null → frontend renders raw issues). The primitive throws on double-failure, which is the opposite semantic. Migrating would regress user-visible behavior on transient failures.
+- **Classify keeps its pre-migration `retryOn: ['zod-schema']` policy** — a response that isn't JSON at all is an LLM-side structural failure, not a schema-compliance one. The primitive's default retries both; classify opts out of json-parse retry.
+- **Strategize attribution retry uses `maxStructuralAttempts: 1` on the retry call** to prevent stacking: structural retry inside the attribution retry would double the worst-case LLM calls for this stage.
+- **Inline concurrency limiter instead of `p-limit` dep** — the helper is ~25 lines, adds no install step, and avoids an ADR for an import-only utility. If multiple stages need bounded concurrency we'll revisit.
+- **Default write concurrency 6** chosen from observed fan-out (3 non-position + N positions + M custom sections — 20-position executives were firing 23+ concurrent calls). 6 is a conservative bound for OpenAI/Vertex/DeepSeek at current quota levels.
+
+### Known Issues
+- 33 pre-existing server test failures in non-v3 files (agent-loop, cover-letter, etc.) confirmed identical before and after this commit via stash-and-re-run. Not caused by this work; worth scheduling a separate sprint to investigate.
+- `verify/translate.ts` remains on its bespoke stream/parse/validate path. If its prompt ever becomes critical (rather than cosmetic) we'll migrate it with a try/catch around the primitive so it still returns null on double-failure.
+
+### Next Steps
+- Promote `server/src/v3/lib/structured-llm.ts` to `server/src/lib/structured-llm.ts` so non-v3 products can use it.
+- Scope cover-letter as the first non-v3 product to trial gpt-5.4-mini — feature-scoped `openaiCoverLetterLlm`, writer stage migrated to primitive, 10-fixture side-by-side harness design.
+- Monitor a real v3 pipeline run to confirm the bounded concurrency doesn't measurably slow the wall-clock versus fully-parallel fan-out (expected: negligible for typical 10-position executives; meaningful protection for 20+-position executives).
+
 ## 2026-04-17 — LLM-derived discipline + remove name-led summary framing
 **Sprint:** Production Readiness | **Stories:** Wrong-discipline opener on banking resume; bio-voice summary
 **Summary:** Two independent fixes. (1) Replaced the keyword-regex `deriveSourceBackedDiscipline` (which returned "manufacturing operations" for a banking candidate because "operations" appeared several times) with a small LLM call, precomputed in parallel with section writing and cached per-input for synchronous access from the deterministic-fallback chain. (2) Removed the name-led framing option from the summary prompt — it was producing third-person narrator prose ("Tatiana eliminated 90%...") that reads like a bio, not a resume. Summary is now active-voice only.

@@ -8,14 +8,20 @@
 // the StructuredResume + JD so it can anti-calibrate against poorly-written
 // JDs instead of slavishly matching JD phrasing.
 //
-// Shape parallels strategize/index.ts: load prompt → get provider → stream →
-// parse → zod validate → loud throw. No attribution retry (benchmark emits
-// reference judgment, not claims that trace back to source bullets).
+// 2026-04-21 — migrated to the shared structured-llm-call primitive
+// (commit 2 of the structured-llm plan). Benchmark previously had NO retry
+// coverage — now it inherits the one-shot JSON/Zod retry with benchmark-
+// specific addendum. The wrapping BenchmarkError type is preserved so
+// existing catch-sites continue to work.
 
-import type { StreamEvent } from '../../lib/llm-provider.js';
 import { loadPrompt } from '../prompts/loader.js';
 import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
+import {
+  structuredLlmCall,
+  StructuredLlmCallError,
+  type StructuralError,
+} from '../lib/structured-llm.js';
 import { BenchmarkProfileSchema } from './schema.js';
 import type { BenchmarkProfile, JobDescription, StructuredResume } from '../types.js';
 
@@ -50,6 +56,13 @@ export interface BenchmarkTelemetry {
   inputTokens: number;
   outputTokens: number;
   durationMs: number;
+  /**
+   * True iff the structural-retry primitive fired a retry (first LLM call
+   * produced output that failed JSON.parse or Zod validation; second call
+   * succeeded). Added 2026-04-21 as part of benchmark's migration to the
+   * shared structured-llm-call primitive.
+   */
+  schemaRetryFired: boolean;
 }
 
 export interface BenchmarkResult {
@@ -80,7 +93,6 @@ export async function benchmarkWithTelemetry(
     .replaceAll('{{resume_json}}', JSON.stringify(resume, null, 2));
 
   const { provider, model, backend } = getProvider(prompt.capability);
-  const start = Date.now();
 
   logger.info(
     {
@@ -97,108 +109,118 @@ export async function benchmarkWithTelemetry(
     'benchmark start',
   );
 
-  let fullText = '';
-  let usage = { input_tokens: 0, output_tokens: 0 };
-  for await (const event of provider.stream({
-    model,
-    system: prompt.systemMessage,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: MAX_OUTPUT_TOKENS,
-    temperature: prompt.temperature,
-    signal: options.signal,
-  })) {
-    const e = event as StreamEvent;
-    if (e.type === 'text') fullText += e.text;
-    else if (e.type === 'done') usage = e.usage;
-  }
-
-  if (!fullText.trim()) {
-    throw new BenchmarkError(`Benchmark returned empty response from ${model}.`, { promptName });
-  }
-
-  const parsed = parseAndValidate(fullText, promptName);
-
-  const durationMs = Date.now() - start;
-
-  logger.info(
-    {
+  try {
+    const result = await structuredLlmCall<BenchmarkProfile>({
+      provider,
+      model,
+      system: prompt.systemMessage,
+      userMessage,
+      temperature: prompt.temperature,
+      maxTokens: MAX_OUTPUT_TOKENS,
+      signal: options.signal,
+      schema: BenchmarkProfileSchema,
+      buildRetryAddendum: buildBenchmarkRetryAddendum,
+      stage: 'benchmark',
       promptName,
       promptVersion: prompt.version,
-      model,
-      backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      durationMs,
-      directMatches: parsed.directMatches.length,
-      gaps: parsed.gapAssessment.length,
-      objections: parsed.hiringManagerObjections.length,
-    },
-    'benchmark complete',
-  );
+    });
 
-  return {
-    benchmark: parsed,
-    telemetry: {
-      promptName,
-      promptVersion: prompt.version,
-      model,
-      capability: prompt.capability,
-      backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      durationMs,
-    },
-  };
+    logger.info(
+      {
+        promptName,
+        promptVersion: prompt.version,
+        model,
+        backend,
+        inputTokens: result.usage.input_tokens,
+        outputTokens: result.usage.output_tokens,
+        durationMs: result.durationMs,
+        schemaRetryFired: result.retryFired,
+        directMatches: result.parsed.directMatches.length,
+        gaps: result.parsed.gapAssessment.length,
+        objections: result.parsed.hiringManagerObjections.length,
+      },
+      'benchmark complete',
+    );
+
+    return {
+      benchmark: result.parsed,
+      telemetry: {
+        promptName,
+        promptVersion: prompt.version,
+        model,
+        capability: prompt.capability,
+        backend,
+        inputTokens: result.usage.input_tokens,
+        outputTokens: result.usage.output_tokens,
+        durationMs: result.durationMs,
+        schemaRetryFired: result.retryFired,
+      },
+    };
+  } catch (err) {
+    if (err instanceof StructuredLlmCallError) {
+      throw wrapAsBenchmarkError(err, promptName, prompt.version);
+    }
+    throw err;
+  }
 }
 
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
 
-function parseAndValidate(rawText: string, promptName: string): BenchmarkProfile {
-  const cleaned = stripMarkdownJsonFence(rawText.trim());
-  const parsed = parseJsonOrThrow(cleaned, promptName);
-  return validateOrThrow(parsed, promptName, cleaned);
+function buildBenchmarkRetryAddendum(error: StructuralError): string {
+  if (error.kind === 'json-parse') {
+    return [
+      `RETRY: Your previous response was not valid JSON — the parser reported: ${error.message}.`,
+      '',
+      'Likely causes: response truncated (unclosed string or bracket), unescaped quote inside a string, or prose/markdown alongside the JSON.',
+      '',
+      'Return ONLY the complete BenchmarkProfile JSON object. No prose. No markdown fences. Every string properly quoted; every bracket/brace balanced.',
+    ].join('\n');
+  }
+  const issues = error.issues
+    .slice(0, 20)
+    .map((i) => `  • ${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`);
+  return [
+    'RETRY: Your previous response failed BenchmarkProfile schema validation. The schema reported:',
+    '',
+    issues.join('\n'),
+    '',
+    'Return the full BenchmarkProfile JSON with these fields corrected. Preserve unflagged content verbatim. Common fixes:',
+    '  • `directMatches` requires at least 1 entry and each `strength` is "strong" | "moderate" | "tangential".',
+    '  • `gapAssessment` severities are "critical" | "manageable" | "minor" only.',
+    '  • All required fields must be present; arrays may be empty only when the schema permits.',
+    '',
+    'Return ONLY the JSON — no prose, no markdown fences.',
+  ].join('\n');
 }
 
-function stripMarkdownJsonFence(input: string): string {
-  const s = input.trim();
-  const fenceStart = /^```(?:json|JSON)?\s*\n/;
-  const fenceEnd = /\n```\s*$/;
-  if (fenceStart.test(s) && fenceEnd.test(s)) {
-    return s.replace(fenceStart, '').replace(fenceEnd, '').trim();
-  }
-  return s;
+function wrapAsBenchmarkError(
+  err: StructuredLlmCallError,
+  promptName: string,
+  promptVersion: string,
+): BenchmarkError {
+  const firstSummary = summarizeStructuralError(err.detail.firstError);
+  const retrySummary = err.detail.retryError
+    ? ` | retry: ${summarizeStructuralError(err.detail.retryError)}`
+    : '';
+  const rawResponse = (err.detail.rawRetry ?? err.detail.rawFirst).slice(0, 500);
+  const validationIssues =
+    err.detail.firstError.kind === 'zod-schema' ? err.detail.firstError.issues : undefined;
+  return new BenchmarkError(
+    `Benchmark failed on ${err.detail.retryError ? 'BOTH the first attempt AND the retry' : 'the first attempt'} ` +
+      `(prompt ${promptName} v${promptVersion}). First: ${firstSummary}${retrySummary}. ` +
+      `Fix: strengthen the prompt for the failure pattern, investigate provider health, or widen the schema if the emitted shape is semantically valid.`,
+    { promptName, rawResponse, validationIssues },
+  );
 }
 
-function parseJsonOrThrow(raw: string, promptName: string): unknown {
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    throw new BenchmarkError(
-      `Benchmark response is not valid JSON (prompt ${promptName}): ${err instanceof Error ? err.message : String(err)}`,
-      { promptName, rawResponse: raw.slice(0, 500) },
-    );
-  }
-}
-
-function validateOrThrow(parsed: unknown, promptName: string, rawResponse: string): BenchmarkProfile {
-  const result = BenchmarkProfileSchema.safeParse(parsed);
-  if (!result.success) {
-    const issues = result.error.issues
-      .slice(0, 20)
-      .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`);
-    throw new BenchmarkError(
-      `Benchmark output did not match the BenchmarkProfile schema (prompt ${promptName}). ` +
-        `Zod reported ${result.error.issues.length} issue(s): ` +
-        issues.join('; ') +
-        (result.error.issues.length > 20 ? '; ...(more)' : ''),
-      {
-        promptName,
-        rawResponse: rawResponse.slice(0, 500),
-        validationIssues: result.error.issues,
-      },
-    );
-  }
-  return result.data as BenchmarkProfile;
+function summarizeStructuralError(err: StructuralError): string {
+  if (err.kind === 'json-parse') return `JSON parse: ${err.message}`;
+  const head = err.issues
+    .slice(0, 5)
+    .map((i) => `${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`)
+    .join('; ');
+  const more = err.issues.length > 5 ? `; ...(${err.issues.length - 5} more)` : '';
+  return `Zod (${err.issues.length} issue(s)): ${head}${more}`;
 }

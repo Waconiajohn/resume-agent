@@ -14,11 +14,22 @@
 //
 // Neither helper touches session state or accounting; the route handler owns
 // usage tracking via AsyncLocalStorage (see v3-pipeline.ts).
+//
+// 2026-04-21 — migrated to the shared structured-llm-call primitive
+// (commit 2 of the structured-llm plan). All three entrypoints (position,
+// bullet, summary) now gain the one-shot JSON/Zod retry coverage that
+// write/index.ts's runSection has. Error path preserves the prior plain
+// Error type so existing catch-sites continue to work.
 
-import type { StreamEvent } from '../../lib/llm-provider.js';
+import type { ZodSchema } from 'zod';
 import { loadPrompt } from '../prompts/loader.js';
 import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
+import {
+  structuredLlmCall,
+  StructuredLlmCallError,
+  type StructuralError,
+} from '../lib/structured-llm.js';
 import {
   WrittenPositionSchema,
   WrittenSingleBulletSchema,
@@ -73,70 +84,25 @@ export async function regeneratePosition(
     position_index: String(positionIndex),
   };
 
-  let userMessage = prompt.userMessageTemplate;
-  for (const [k, v] of Object.entries(replacements)) {
-    userMessage = userMessage.replaceAll(`{{${k}}}`, v);
-  }
-
-  const start = Date.now();
-  const { provider, model, backend, extraParams } = getProvider(prompt.capability);
-  const maxTokens = extraParams?.thinking === true ? MAX_OUTPUT_TOKENS * 2 : MAX_OUTPUT_TOKENS;
-
   logger.info(
-    { promptName, model, backend, positionIndex, weightOverride: options.weightOverride ?? null },
+    {
+      promptName,
+      positionIndex,
+      weightOverride: options.weightOverride ?? null,
+    },
     'regeneratePosition start',
   );
 
-  let fullText = '';
-  let usage = { input_tokens: 0, output_tokens: 0 };
-  for await (const event of provider.stream({
-    model,
-    system: prompt.systemMessage,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: maxTokens,
-    temperature: prompt.temperature,
-    ...(extraParams?.thinking === true && { thinking: true }),
+  const { result, telemetry } = await runRegenerate({
+    label: `regeneratePosition[${positionIndex}]`,
+    promptName,
+    prompt,
+    replacements,
+    schema: WrittenPositionSchema,
     signal: options.signal,
-  })) {
-    const e = event as StreamEvent;
-    if (e.type === 'text') fullText += e.text;
-    else if (e.type === 'done') usage = e.usage;
-  }
-
-  const durationMs = Date.now() - start;
-  const cleaned = stripJsonFence(fullText.trim());
-  let parsedRaw: unknown;
-  try {
-    parsedRaw = JSON.parse(cleaned);
-  } catch (err) {
-    throw new Error(
-      `regeneratePosition: invalid JSON from ${promptName}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-  const result = WrittenPositionSchema.safeParse(parsedRaw);
-  if (!result.success) {
-    throw new Error(
-      `regeneratePosition: schema mismatch — ${result.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
-    );
-  }
-
-  logger.info(
-    { promptName, positionIndex, inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, durationMs },
-    'regeneratePosition complete',
-  );
-
-  return {
-    position: result.data,
-    telemetry: {
-      promptName,
-      promptVersion: prompt.version,
-      model,
-      backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      durationMs,
-    },
-  };
+    extractResult: (parsed) => parsed,
+  });
+  return { position: result, telemetry };
 }
 
 // ─── Bullet regenerate ────────────────────────────────────────────────────
@@ -189,70 +155,26 @@ export async function regenerateBullet(
     guidance: options.guidance?.trim() ? options.guidance.trim() : '(none — standard rewrite)',
   };
 
-  let userMessage = prompt.userMessageTemplate;
-  for (const [k, v] of Object.entries(replacements)) {
-    userMessage = userMessage.replaceAll(`{{${k}}}`, v);
-  }
-
-  const start = Date.now();
-  const { provider, model, backend, extraParams } = getProvider(prompt.capability);
-  const maxTokens = extraParams?.thinking === true ? MAX_OUTPUT_TOKENS * 2 : MAX_OUTPUT_TOKENS;
-
   logger.info(
-    { promptName, model, backend, positionIndex, bulletIndex, hasGuidance: Boolean(options.guidance?.trim()) },
+    {
+      promptName,
+      positionIndex,
+      bulletIndex,
+      hasGuidance: Boolean(options.guidance?.trim()),
+    },
     'regenerateBullet start',
   );
 
-  let fullText = '';
-  let usage = { input_tokens: 0, output_tokens: 0 };
-  for await (const event of provider.stream({
-    model,
-    system: prompt.systemMessage,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: maxTokens,
-    temperature: prompt.temperature,
-    ...(extraParams?.thinking === true && { thinking: true }),
+  const { result, telemetry } = await runRegenerate({
+    label: `regenerateBullet[${positionIndex},${bulletIndex}]`,
+    promptName,
+    prompt,
+    replacements,
+    schema: WrittenSingleBulletSchema,
     signal: options.signal,
-  })) {
-    const e = event as StreamEvent;
-    if (e.type === 'text') fullText += e.text;
-    else if (e.type === 'done') usage = e.usage;
-  }
-
-  const durationMs = Date.now() - start;
-  const cleaned = stripJsonFence(fullText.trim());
-  let parsedRaw: unknown;
-  try {
-    parsedRaw = JSON.parse(cleaned);
-  } catch (err) {
-    throw new Error(
-      `regenerateBullet: invalid JSON from ${promptName}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-  const result = WrittenSingleBulletSchema.safeParse(parsedRaw);
-  if (!result.success) {
-    throw new Error(
-      `regenerateBullet: schema mismatch — ${result.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
-    );
-  }
-
-  logger.info(
-    { promptName, positionIndex, bulletIndex, inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, durationMs },
-    'regenerateBullet complete',
-  );
-
-  return {
-    bullet: result.data.bullet,
-    telemetry: {
-      promptName,
-      promptVersion: prompt.version,
-      model,
-      backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      durationMs,
-    },
-  };
+    extractResult: (parsed) => parsed.bullet,
+  });
+  return { bullet: result, telemetry };
 }
 
 // ─── Summary regenerate ──────────────────────────────────────────────────
@@ -273,87 +195,48 @@ export async function regenerateSummary(
   const promptName = `write-summary.${variant}`;
   const prompt = loadPrompt(promptName);
 
-  // Reuse write-summary.v1 unchanged; append an optional guidance paragraph
-  // after template substitution. Keeping the guidance OUT of the prompt file
-  // preserves the existing template invariants and fixture telemetry.
-  let userMessage = prompt.userMessageTemplate
-    .replaceAll('{{strategy_json}}', JSON.stringify(strategy, null, 2))
-    .replaceAll('{{resume_json}}', JSON.stringify(resume, null, 2));
+  // Guidance is appended to the user message AFTER standard template sub —
+  // keep it out of the prompt file to preserve template invariants / fixtures.
+  const replacements = {
+    strategy_json: JSON.stringify(strategy, null, 2),
+    resume_json: JSON.stringify(resume, null, 2),
+  };
 
   const hint = options.guidance?.trim();
-  if (hint) {
-    userMessage += [
-      '',
-      '## User guidance',
-      '',
-      hint,
-      '',
-      'Factor this hint into your rewrite; never invent claims to satisfy it.',
-    ].join('\n');
-  }
-
-  const start = Date.now();
-  const { provider, model, backend, extraParams } = getProvider(prompt.capability);
-  const maxTokens = extraParams?.thinking === true ? MAX_OUTPUT_TOKENS * 2 : MAX_OUTPUT_TOKENS;
+  const userMessageSuffix = hint
+    ? [
+        '',
+        '',
+        '## User guidance',
+        '',
+        hint,
+        '',
+        'Factor this hint into your rewrite; never invent claims to satisfy it.',
+      ].join('\n')
+    : '';
 
   logger.info(
-    { promptName, model, backend, hasGuidance: Boolean(hint) },
+    {
+      promptName,
+      hasGuidance: Boolean(hint),
+    },
     'regenerateSummary start',
   );
 
-  let fullText = '';
-  let usage = { input_tokens: 0, output_tokens: 0 };
-  for await (const event of provider.stream({
-    model,
-    system: prompt.systemMessage,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: maxTokens,
-    temperature: prompt.temperature,
-    ...(extraParams?.thinking === true && { thinking: true }),
+  const { result, telemetry } = await runRegenerate({
+    label: 'regenerateSummary',
+    promptName,
+    prompt,
+    replacements,
+    schema: WrittenSummarySchema,
     signal: options.signal,
-  })) {
-    const e = event as StreamEvent;
-    if (e.type === 'text') fullText += e.text;
-    else if (e.type === 'done') usage = e.usage;
-  }
-
-  const durationMs = Date.now() - start;
-  const cleaned = stripJsonFence(fullText.trim());
-  let parsedRaw: unknown;
-  try {
-    parsedRaw = JSON.parse(cleaned);
-  } catch (err) {
-    throw new Error(
-      `regenerateSummary: invalid JSON from ${promptName}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-  const result = WrittenSummarySchema.safeParse(parsedRaw);
-  if (!result.success) {
-    throw new Error(
-      `regenerateSummary: schema mismatch — ${result.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
-    );
-  }
-
-  logger.info(
-    { promptName, inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, durationMs },
-    'regenerateSummary complete',
-  );
-
-  return {
-    summary: result.data.summary,
-    telemetry: {
-      promptName,
-      promptVersion: prompt.version,
-      model,
-      backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      durationMs,
-    },
-  };
+    extractResult: (parsed) => parsed.summary,
+    userMessageSuffix,
+  });
+  return { summary: result, telemetry };
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────
+// ─── Shared core ──────────────────────────────────────────────────────────
 
 export interface RegenerateTelemetry {
   promptName: string;
@@ -363,6 +246,138 @@ export interface RegenerateTelemetry {
   inputTokens: number;
   outputTokens: number;
   durationMs: number;
+  /**
+   * True iff the structural-retry primitive fired a retry (first LLM call
+   * produced output that failed JSON.parse or Zod validation; second call
+   * succeeded). Added 2026-04-21 as part of regenerate's migration to the
+   * shared structured-llm-call primitive.
+   */
+  schemaRetryFired: boolean;
+}
+
+interface RunRegenerateInput<TParsed, TOut> {
+  label: string;
+  promptName: string;
+  prompt: ReturnType<typeof loadPrompt>;
+  replacements: Record<string, string>;
+  schema: ZodSchema<TParsed>;
+  signal?: AbortSignal;
+  extractResult: (parsed: TParsed) => TOut;
+  userMessageSuffix?: string;
+}
+
+async function runRegenerate<TParsed, TOut>(
+  input: RunRegenerateInput<TParsed, TOut>,
+): Promise<{ result: TOut; telemetry: RegenerateTelemetry }> {
+  let userMessage = input.prompt.userMessageTemplate;
+  for (const [k, v] of Object.entries(input.replacements)) {
+    userMessage = userMessage.replaceAll(`{{${k}}}`, v);
+  }
+  if (input.userMessageSuffix) userMessage += input.userMessageSuffix;
+
+  const { provider, model, backend, extraParams } = getProvider(input.prompt.capability);
+  const maxTokens =
+    extraParams?.thinking === true ? MAX_OUTPUT_TOKENS * 2 : MAX_OUTPUT_TOKENS;
+
+  try {
+    const result = await structuredLlmCall<TParsed>({
+      provider,
+      model,
+      system: input.prompt.systemMessage,
+      userMessage,
+      temperature: input.prompt.temperature ?? 0.4,
+      maxTokens,
+      signal: input.signal,
+      thinking: extraParams?.thinking === true,
+      schema: input.schema,
+      buildRetryAddendum: (err) => buildRegenerateRetryAddendum(input.label, err),
+      stage: `regenerate:${input.label}`,
+      promptName: input.promptName,
+      promptVersion: input.prompt.version,
+    });
+
+    logger.info(
+      {
+        promptName: input.promptName,
+        label: input.label,
+        inputTokens: result.usage.input_tokens,
+        outputTokens: result.usage.output_tokens,
+        durationMs: result.durationMs,
+        schemaRetryFired: result.retryFired,
+      },
+      'regenerate complete',
+    );
+
+    return {
+      result: input.extractResult(result.parsed),
+      telemetry: {
+        promptName: input.promptName,
+        promptVersion: input.prompt.version,
+        model,
+        backend,
+        inputTokens: result.usage.input_tokens,
+        outputTokens: result.usage.output_tokens,
+        durationMs: result.durationMs,
+        schemaRetryFired: result.retryFired,
+      },
+    };
+  } catch (err) {
+    if (err instanceof StructuredLlmCallError) {
+      throw wrapAsRegenerateError(err, input.label, input.promptName, input.prompt.version);
+    }
+    throw err;
+  }
+}
+
+function buildRegenerateRetryAddendum(label: string, error: StructuralError): string {
+  if (error.kind === 'json-parse') {
+    return [
+      `RETRY: Your previous response was not valid JSON — the parser reported: ${error.message}.`,
+      '',
+      'Return ONLY the complete JSON object matching the schema the prompt describes. No prose. No markdown fences. Every string properly quoted; every bracket/brace balanced.',
+    ].join('\n');
+  }
+  const issues = error.issues
+    .slice(0, 20)
+    .map((i) => `  • ${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`);
+  return [
+    `RETRY (${label}): Your previous response failed schema validation. The schema reported:`,
+    '',
+    issues.join('\n'),
+    '',
+    'Return the full JSON with these fields corrected. Preserve all other content verbatim. Common fixes:',
+    '  • `confidence` fields are numbers between 0.0 and 1.0 — NOT booleans, NOT strings, NOT null.',
+    '  • `is_new` and `evidence_found` are booleans — true or false, NOT strings.',
+    '  • Required arrays may be empty but must be present.',
+    '',
+    'Return ONLY the JSON — no prose, no markdown fences.',
+  ].join('\n');
+}
+
+function wrapAsRegenerateError(
+  err: StructuredLlmCallError,
+  label: string,
+  promptName: string,
+  promptVersion: string,
+): Error {
+  const { firstError, retryError } = err.detail;
+  const firstSummary = summarizeStructural(firstError);
+  const retrySummary = retryError ? ` | retry: ${summarizeStructural(retryError)}` : '';
+  return new Error(
+    `${label}: failed on ${retryError ? 'BOTH the first attempt AND the retry' : 'the first attempt'} ` +
+      `(prompt ${promptName} v${promptVersion}). First: ${firstSummary}${retrySummary}. ` +
+      `Fix: strengthen the prompt or investigate provider health.`,
+  );
+}
+
+function summarizeStructural(err: StructuralError): string {
+  if (err.kind === 'json-parse') return `JSON parse: ${err.message}`;
+  const head = err.issues
+    .slice(0, 5)
+    .map((i) => `${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`)
+    .join('; ');
+  const more = err.issues.length > 5 ? `; ...(${err.issues.length - 5} more)` : '';
+  return `Zod (${err.issues.length} issue(s)): ${head}${more}`;
 }
 
 function patchStrategyWeight(
@@ -382,12 +397,4 @@ function patchStrategyWeight(
         { positionIndex, weight, rationale: 'user override' },
       ];
   return { ...strategy, positionEmphasis: nextEmphasis };
-}
-
-function stripJsonFence(s: string): string {
-  const t = s.trim();
-  const start = /^```(?:json|JSON)?\s*\n/;
-  const end = /\n```\s*$/;
-  if (start.test(t) && end.test(t)) return t.replace(start, '').replace(end, '').trim();
-  return t;
 }

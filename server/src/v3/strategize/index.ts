@@ -17,13 +17,22 @@
 // would faithfully inherit as fabrications (Phase 4.5 regression).
 // Retry is explicit and visible; second-attempt failure surfaces loudly.
 //
-// Contract: stream + accumulate + parse + zod validate + attribution
-// check + optional retry + loud throw.
+// 2026-04-21 — migrated to the shared structured-llm-call primitive
+// (commit 2 of the structured-llm plan). The primitive owns ONLY the
+// structural retry (JSON.parse + Zod). The Phase 4.6 attribution retry
+// layers OUTSIDE the primitive and passes maxStructuralAttempts=1 so
+// stacked retries don't compound LLM call counts — mirrors the
+// write/pronoun-retry pattern.
 
-import type { StreamEvent } from '../../lib/llm-provider.js';
+import type { LLMProvider } from '../../lib/llm-provider.js';
 import { loadPrompt } from '../prompts/loader.js';
 import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
+import {
+  structuredLlmCall,
+  StructuredLlmCallError,
+  type StructuralError,
+} from '../lib/structured-llm.js';
 import { StrategySchema } from './schema.js';
 import {
   checkStrategizeAttribution,
@@ -72,6 +81,12 @@ export interface StrategizeTelemetry {
   attributionRetryFired: boolean;
   /** Phase 4.6: attribution pre-check result on the final accepted strategy. */
   attribution: StrategizeAttributionResult;
+  /**
+   * True iff the primitive's structural retry fired on either the first LLM
+   * call or the attribution-retry LLM call. Added 2026-04-21 as part of the
+   * strategize migration to the shared structured-llm-call primitive.
+   */
+  schemaRetryFired: boolean;
 }
 
 export interface StrategizeResult {
@@ -119,30 +134,32 @@ export async function strategizeWithTelemetry(
     'strategize start',
   );
 
-  // First attempt.
-  let firstCall = await runLLM({
+  // First attempt — primitive handles json-parse + zod-schema retries.
+  let firstStructured = await callStrategizeLLM({
     provider,
     model,
     system: prompt.systemMessage,
     userMessage,
     temperature: prompt.temperature,
     signal: options.signal,
+    promptName,
+    promptVersion: prompt.version,
+    // Primitive structural retries allowed on first call.
+    maxStructuralAttempts: 2,
   });
+  let schemaRetryFired = firstStructured.retryFired;
 
-  let totalInputTokens = firstCall.usage.input_tokens;
-  let totalOutputTokens = firstCall.usage.output_tokens;
-
-  let parsed = parseAndValidate(firstCall.text, promptName);
+  let totalInputTokens = firstStructured.usage.input_tokens;
+  let totalOutputTokens = firstStructured.usage.output_tokens;
+  let parsed: Strategy = firstStructured.parsed;
   let attribution = checkStrategizeAttribution(parsed, resume, jd);
   let attributionRetryFired = false;
+  let lastRawForError = '';
 
-  // Phase 4.6 + Fix 3 (2026-04-19) — if the mechanical attribution check flags
-  // unsourced tokens in summaries OR unsourced content words in
-  // positioningFrame / targetDisciplinePhrase, retry once with the offending
-  // phrases fed back as structured context.
   const needsRetry =
     attribution.summary.unverifiedCount > 0 ||
     attribution.summary.fieldsUnverifiedCount > 0;
+
   if (!options.disableAttributionRetry && needsRetry) {
     const unverifiedSummaries = attribution.summaries.filter((s) => !s.verified);
     const unverifiedFields = attribution.fields.filter((f) => !f.verified);
@@ -165,19 +182,27 @@ export async function strategizeWithTelemetry(
       unverifiedSummaries,
       unverifiedFields,
     );
-    const retryCall = await runLLM({
+
+    // Attribution retry is a SEMANTIC retry — cap primitive structural
+    // attempts at 1 so stacked retries don't compound LLM call counts.
+    const retryStructured = await callStrategizeLLM({
       provider,
       model,
       system: `${prompt.systemMessage}\n\n---\n\n${retryAddendum}`,
       userMessage,
       temperature: prompt.temperature,
       signal: options.signal,
+      promptName,
+      promptVersion: prompt.version,
+      maxStructuralAttempts: 1,
     });
-    totalInputTokens += retryCall.usage.input_tokens;
-    totalOutputTokens += retryCall.usage.output_tokens;
+    totalInputTokens += retryStructured.usage.input_tokens;
+    totalOutputTokens += retryStructured.usage.output_tokens;
+    if (retryStructured.retryFired) schemaRetryFired = true;
 
-    parsed = parseAndValidate(retryCall.text, promptName);
+    parsed = retryStructured.parsed;
     attribution = checkStrategizeAttribution(parsed, resume, jd);
+    lastRawForError = retryStructured.rawResponse;
 
     const stillFailing =
       attribution.summary.unverifiedCount > 0 ||
@@ -215,13 +240,11 @@ export async function strategizeWithTelemetry(
           `to prevent the model from emitting phrases not present in source. Do NOT add a silent repair step here.`,
         {
           promptName,
-          rawResponse: retryCall.text.slice(0, 500),
+          rawResponse: lastRawForError.slice(0, 500),
           attribution,
         },
       );
     }
-
-    firstCall = retryCall; // keep last-known-good text for logging
   }
 
   const durationMs = Date.now() - start;
@@ -242,9 +265,13 @@ export async function strategizeWithTelemetry(
       attributionRetryFired,
       attributionVerifiedCount: attribution.summary.verifiedCount,
       attributionUnverifiedCount: attribution.summary.unverifiedCount,
+      schemaRetryFired,
     },
     'strategize complete',
   );
+
+  // Silence unused lint on firstStructured after retry path rebinds parsed.
+  void firstStructured;
 
   return {
     strategy: parsed,
@@ -259,6 +286,7 @@ export async function strategizeWithTelemetry(
       durationMs,
       attributionRetryFired,
       attribution,
+      schemaRetryFired,
     },
   };
 }
@@ -267,47 +295,129 @@ export async function strategizeWithTelemetry(
 // Helpers
 // -----------------------------------------------------------------------------
 
-interface LLMCallInput {
-  provider: ReturnType<typeof getProvider>['provider'];
+interface CallStrategizeInput {
+  provider: LLMProvider;
   model: string;
   system: string;
   userMessage: string;
   temperature: number;
   signal?: AbortSignal;
+  promptName: string;
+  promptVersion: string;
+  maxStructuralAttempts: 1 | 2;
 }
 
-interface LLMCallOutput {
-  text: string;
+interface CallStrategizeOutput {
+  parsed: Strategy;
   usage: { input_tokens: number; output_tokens: number };
+  retryFired: boolean;
+  rawResponse: string;
 }
 
-async function runLLM(input: LLMCallInput): Promise<LLMCallOutput> {
-  let fullText = '';
-  let usage = { input_tokens: 0, output_tokens: 0 };
-  for await (const event of input.provider.stream({
-    model: input.model,
-    system: input.system,
-    messages: [{ role: 'user', content: input.userMessage }],
-    max_tokens: MAX_OUTPUT_TOKENS,
-    temperature: input.temperature,
-    signal: input.signal,
-  })) {
-    const e = event as StreamEvent;
-    if (e.type === 'text') fullText += e.text;
-    else if (e.type === 'done') usage = e.usage;
+/**
+ * Wrap the primitive so both the first strategize call and the attribution-
+ * retry call share the same structural error translation. Converts
+ * StructuredLlmCallError → StrategizeError with the phrasing existing
+ * catch-sites expect.
+ */
+async function callStrategizeLLM(input: CallStrategizeInput): Promise<CallStrategizeOutput> {
+  try {
+    const result = await structuredLlmCall<Strategy>({
+      provider: input.provider,
+      model: input.model,
+      system: input.system,
+      userMessage: input.userMessage,
+      temperature: input.temperature,
+      maxTokens: MAX_OUTPUT_TOKENS,
+      signal: input.signal,
+      schema: StrategySchema,
+      maxStructuralAttempts: input.maxStructuralAttempts,
+      buildRetryAddendum: buildStrategizeStructuralRetryAddendum,
+      stage: 'strategize',
+      promptName: input.promptName,
+      promptVersion: input.promptVersion,
+    });
+    return {
+      parsed: result.parsed,
+      usage: result.usage,
+      retryFired: result.retryFired,
+      rawResponse: '',
+    };
+  } catch (err) {
+    if (err instanceof StructuredLlmCallError) {
+      throw wrapAsStrategizeError(err, input.promptName, input.promptVersion);
+    }
+    throw err;
   }
-  if (!fullText.trim()) {
-    throw new StrategizeError(
-      `Strategize returned empty response from ${input.model}.`,
+}
+
+function buildStrategizeStructuralRetryAddendum(error: StructuralError): string {
+  if (error.kind === 'json-parse') {
+    return [
+      `RETRY: Your previous response was not valid JSON — the parser reported: ${error.message}.`,
+      '',
+      'Return ONLY the complete Strategy JSON object. No prose. No markdown fences. Every string properly quoted; every bracket/brace balanced.',
+    ].join('\n');
+  }
+  const issues = error.issues
+    .slice(0, 20)
+    .map((i) => `  • ${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`);
+  return [
+    'RETRY: Your previous response failed Strategy schema validation. The schema reported:',
+    '',
+    issues.join('\n'),
+    '',
+    'Return the full Strategy JSON with these fields corrected. Preserve unflagged content verbatim. Return ONLY the JSON — no prose, no markdown fences.',
+  ].join('\n');
+}
+
+function wrapAsStrategizeError(
+  err: StructuredLlmCallError,
+  promptName: string,
+  promptVersion: string,
+): StrategizeError {
+  const { firstError, retryError, rawFirst, rawRetry } = err.detail;
+  const rawResponse = (rawRetry ?? rawFirst).slice(0, 500);
+  const validationIssues =
+    firstError.kind === 'zod-schema'
+      ? firstError.issues
+      : retryError && retryError.kind === 'zod-schema'
+        ? retryError.issues
+        : undefined;
+
+  if (!retryError) {
+    if (firstError.kind === 'json-parse') {
+      return new StrategizeError(
+        `Strategize response is not valid JSON (prompt ${promptName} v${promptVersion}): ${firstError.message}`,
+        { promptName, rawResponse },
+      );
+    }
+    const issues = firstError.issues
+      .slice(0, 20)
+      .map((i) => `${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`);
+    return new StrategizeError(
+      `Strategize output did not match the Strategy schema (prompt ${promptName} v${promptVersion}). ` +
+        `Zod reported ${firstError.issues.length} issue(s): ` +
+        issues.join('; ') +
+        (firstError.issues.length > 20 ? '; ...(more)' : ''),
+      { promptName, rawResponse, validationIssues },
     );
   }
-  return { text: fullText, usage };
-}
 
-function parseAndValidate(rawText: string, promptName: string): Strategy {
-  const cleaned = stripMarkdownJsonFence(rawText.trim());
-  const parsed = parseJsonOrThrow(cleaned, promptName);
-  return validateOrThrow(parsed, promptName, cleaned);
+  const fmt = (e: StructuralError): string =>
+    e.kind === 'json-parse'
+      ? `JSON parse: ${e.message}`
+      : `Zod (${e.issues.length} issues): ` +
+        e.issues
+          .slice(0, 6)
+          .map((i) => `${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`)
+          .join('; ');
+  return new StrategizeError(
+    `Strategize output failed on BOTH the first attempt AND the retry (prompt ${promptName} v${promptVersion}). ` +
+      `First attempt: ${fmt(firstError)}. Retry: ${fmt(retryError)}. ` +
+      `Fix: strengthen the prompt for the repeated failure pattern or investigate provider health.`,
+    { promptName, rawResponse, validationIssues },
+  );
 }
 
 /**
@@ -362,46 +472,4 @@ function buildAttributionRetryAddendum(
     'Return the full Strategy JSON. Change only the flagged content; preserve unflagged fields verbatim.',
   );
   return lines.join('\n');
-}
-
-function stripMarkdownJsonFence(input: string): string {
-  const s = input.trim();
-  const fenceStart = /^```(?:json|JSON)?\s*\n/;
-  const fenceEnd = /\n```\s*$/;
-  if (fenceStart.test(s) && fenceEnd.test(s)) {
-    return s.replace(fenceStart, '').replace(fenceEnd, '').trim();
-  }
-  return s;
-}
-
-function parseJsonOrThrow(raw: string, promptName: string): unknown {
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    throw new StrategizeError(
-      `Strategize response is not valid JSON (prompt ${promptName}): ${err instanceof Error ? err.message : String(err)}`,
-      { promptName, rawResponse: raw.slice(0, 500) },
-    );
-  }
-}
-
-function validateOrThrow(parsed: unknown, promptName: string, rawResponse: string): Strategy {
-  const result = StrategySchema.safeParse(parsed);
-  if (!result.success) {
-    const issues = result.error.issues
-      .slice(0, 20)
-      .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`);
-    throw new StrategizeError(
-      `Strategize output did not match the Strategy schema (prompt ${promptName}). ` +
-        `Zod reported ${result.error.issues.length} issue(s): ` +
-        issues.join('; ') +
-        (result.error.issues.length > 20 ? '; ...(more)' : ''),
-      {
-        promptName,
-        rawResponse: rawResponse.slice(0, 500),
-        validationIssues: result.error.issues,
-      },
-    );
-  }
-  return result.data as Strategy;
 }
