@@ -42,11 +42,9 @@ vi.mock('../lib/emotional-baseline.js', () => ({
 }));
 
 vi.mock('../lib/llm.js', () => ({
-  llm: { chat: mockLlmChat, stream: mockLlmStream },
-  // coverLetterWriterLlm falls back to `llm` when COVER_LETTER_WRITER_PROVIDER
-  // is unset. In tests we wire both exports to the same chat + stream mocks —
-  // write_letter uses .chat, review_letter uses .stream (via structuredLlmCall).
-  coverLetterWriterLlm: { chat: mockLlmChat, stream: mockLlmStream, name: 'mock' },
+  // write_letter calls llm.chat; review_letter calls llm.stream (via
+  // structuredLlmCall). Both routes use the same underlying mock spies.
+  llm: { chat: mockLlmChat, stream: mockLlmStream, name: 'mock' },
   MODEL_PRIMARY: 'mock-primary',
   MODEL_MID: 'mock-mid',
   MODEL_ORCHESTRATOR: 'mock-orchestrator',

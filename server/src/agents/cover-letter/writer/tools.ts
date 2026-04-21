@@ -9,7 +9,7 @@
 import type { AgentTool } from '../../runtime/agent-protocol.js';
 import { CoverLetterReviewSchema } from '../types.js';
 import type { CoverLetterReview, CoverLetterState, CoverLetterSSEEvent } from '../types.js';
-import { coverLetterWriterLlm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
+import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import {
   structuredLlmCall,
   StructuredLlmCallError,
@@ -144,14 +144,8 @@ TONE: ${tone}
 Write the full letter now. Start with "Dear Hiring Manager," and end with a professional sign-off using the candidate's name. Every paragraph must reference a specific role, company, or metric from the candidate data above.`;
 
     try {
-      // 2026-04-21 — swapped `llm` → `coverLetterWriterLlm` so the cover
-      // letter writer can be routed to a different provider (e.g.
-      // OpenAI + gpt-5.4-mini) via COVER_LETTER_WRITER_PROVIDER env var
-      // without touching tool code. Falls back to the global `llm`
-      // (Groq today) when the env var is unset. Model ID is env-override
-      // via COVER_LETTER_WRITER_MODEL (e.g. "gpt-5.4-mini").
-      const response = await coverLetterWriterLlm.chat({
-        model: process.env.COVER_LETTER_WRITER_MODEL ?? MODEL_PRIMARY,
+      const response = await llm.chat({
+        model: MODEL_PRIMARY,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
         max_tokens: 4096,
@@ -250,8 +244,8 @@ Be strict. Only list issues that, if fixed, would materially improve the letter.
       // the same graceful word-count fallback the pre-migration code
       // produced.
       const result = await structuredLlmCall<CoverLetterReview>({
-        provider: coverLetterWriterLlm,
-        model: process.env.COVER_LETTER_REVIEWER_MODEL ?? MODEL_MID,
+        provider: llm,
+        model: MODEL_MID,
         system: 'You are a rigorous cover letter reviewer. Return only valid JSON.',
         userMessage: reviewPrompt,
         temperature: 0.2,
