@@ -11,10 +11,15 @@
 // Phase 3.5: provider resolution via factory; bullets carry per-source
 // metadata; custom sections become a first-class output.
 
-import type { StreamEvent } from '../../lib/llm-provider.js';
+import type { ZodSchema } from 'zod';
 import { loadPrompt } from '../prompts/loader.js';
 import { getProvider } from '../providers/factory.js';
 import { createV3Logger } from '../observability/logger.js';
+import {
+  structuredLlmCall,
+  StructuredLlmCallError,
+  type StructuralError,
+} from '../lib/structured-llm.js';
 import {
   WrittenSummarySchema,
   WrittenAccomplishmentsSchema,
@@ -86,6 +91,15 @@ export interface SectionTelemetry {
   inputTokens: number;
   outputTokens: number;
   durationMs: number;
+  /**
+   * True iff the structural-retry primitive fired a retry (first LLM call
+   * produced output that failed JSON.parse or Zod validation; second call
+   * succeeded). Orthogonal to pronoun-retry / forbidden-phrase-retry,
+   * which are semantic retries layered above the primitive. Added
+   * 2026-04-20 pm as part of the write stage's migration to the shared
+   * structured-llm-call primitive.
+   */
+  schemaRetryFired: boolean;
 }
 
 export interface WriteResult {
@@ -213,13 +227,11 @@ async function runSummary(
 ): Promise<{ summary: string; telemetry: SectionTelemetry }> {
   const promptName = `write-summary.${variant}`;
   const replacements = { strategy_json: strategyJson, resume_json: resumeJson };
-  const safeParse = WrittenSummarySchema.safeParse.bind(WrittenSummarySchema);
-
   let out = await runSection<{ summary: string }>(
     'summary',
     promptName,
     replacements,
-    safeParse,
+    WrittenSummarySchema,
     signal,
   );
 
@@ -238,7 +250,7 @@ async function runSummary(
       'summary',
       promptName,
       replacements,
-      safeParse,
+      WrittenSummarySchema,
       signal,
       buildPronounRetryAddendum(scan.found),
     );
@@ -274,7 +286,7 @@ async function runSummary(
       'summary',
       promptName,
       replacements,
-      safeParse,
+      WrittenSummarySchema,
       signal,
       buildForbiddenPhraseRetryAddendum(phraseScan.foundIds),
     );
@@ -304,13 +316,11 @@ async function runAccomplishments(
 ): Promise<{ selectedAccomplishments: string[]; telemetry: SectionTelemetry }> {
   const promptName = `write-accomplishments.${variant}`;
   const replacements = { strategy_json: strategyJson, resume_json: resumeJson };
-  const safeParse = WrittenAccomplishmentsSchema.safeParse.bind(WrittenAccomplishmentsSchema);
-
   let out = await runSection<{ selectedAccomplishments: string[] }>(
     'accomplishments',
     promptName,
     replacements,
-    safeParse,
+    WrittenAccomplishmentsSchema,
     signal,
   );
 
@@ -328,7 +338,7 @@ async function runAccomplishments(
       'accomplishments',
       promptName,
       replacements,
-      safeParse,
+      WrittenAccomplishmentsSchema,
       signal,
       buildPronounRetryAddendum(scan.found),
     );
@@ -363,7 +373,7 @@ async function runAccomplishments(
       'accomplishments',
       promptName,
       replacements,
-      safeParse,
+      WrittenAccomplishmentsSchema,
       signal,
       buildForbiddenPhraseRetryAddendum(phraseScan.foundIds),
     );
@@ -400,7 +410,7 @@ async function runCompetencies(
     'competencies',
     `write-competencies.${variant}`,
     { strategy_json: strategyJson, resume_json: resumeJson },
-    WrittenCompetenciesSchema.safeParse.bind(WrittenCompetenciesSchema),
+    WrittenCompetenciesSchema,
     signal,
   );
   return { coreCompetencies: out.parsed.coreCompetencies, telemetry: out.telemetry };
@@ -424,7 +434,7 @@ async function runPosition(
       position_json: positionJson,
       position_index: String(positionIndex),
     },
-    WrittenPositionSchema.safeParse.bind(WrittenPositionSchema),
+    WrittenPositionSchema,
     signal,
   );
   return { position: out.parsed, telemetry: out.telemetry };
@@ -445,7 +455,7 @@ async function runCustomSection(
       strategy_json: strategyJson,
       section_json: sectionJson,
     },
-    WrittenCustomSectionSchema.safeParse.bind(WrittenCustomSectionSchema),
+    WrittenCustomSectionSchema,
     signal,
   );
   return { section: out.parsed, telemetry: out.telemetry };
@@ -455,21 +465,33 @@ async function runCustomSection(
 // Shared section invocation
 // -----------------------------------------------------------------------------
 
-interface SafeParseFn<T> {
-  (data: unknown): { success: true; data: T } | { success: false; error: { issues: unknown[] } };
-}
-
+/**
+ * Run a single write-stage section through the shared structured-llm-call
+ * primitive: load prompt → fill template → stream → fence-strip → parse →
+ * validate → one-shot schema retry with write-specific addendum → throw
+ * WriteError if both attempts fail.
+ *
+ * 2026-04-20 pm — migrated from a bespoke stream/parse/validate block to
+ * `structuredLlmCall` so write-position gains the schema-retry coverage
+ * classify (Fix 5) and verify (Fix 8) already had. See the plan at
+ * /Users/johnschrup/.claude/plans/dazzling-weaving-meerkat.md.
+ *
+ * Semantic retries (pronoun, forbidden-phrase) live as OUTER wrappers in
+ * runSummary / runAccomplishments. When they re-invoke runSection with a
+ * systemAddendum, they pass `isSemanticRetry: true` so the primitive's
+ * structural retry is capped at one attempt — preventing stacked retries
+ * from multiplying LLM call counts.
+ */
 async function runSection<T>(
   section: string,
   promptName: string,
   replacements: Record<string, string>,
-  safeParse: SafeParseFn<T>,
+  schema: ZodSchema<T>,
   signal: AbortSignal | undefined,
-  /**
-   * Optional addendum appended to the system message. Used by the
-   * pronoun-retry path (Fix 4, 2026-04-19) to nudge a re-run without
-   * touching the prompt file.
-   */
+  /** Optional addendum appended to the system message. Used by the
+   *  semantic-retry wrappers (pronoun, forbidden-phrase) to nudge a
+   *  re-run without touching the prompt file. When provided, the
+   *  primitive's structural retry is disabled to cap total LLM calls. */
   systemAddendum?: string,
 ): Promise<{ parsed: T; telemetry: SectionTelemetry }> {
   const prompt = loadPrompt(promptName);
@@ -479,9 +501,8 @@ async function runSection<T>(
   }
 
   const { provider, model, backend, extraParams } = getProvider(prompt.capability);
-  const start = Date.now();
-
-  const system = systemAddendum
+  const isSemanticRetry = Boolean(systemAddendum);
+  const system = isSemanticRetry
     ? `${prompt.systemMessage}\n\n---\n\n${systemAddendum}`
     : prompt.systemMessage;
 
@@ -493,7 +514,7 @@ async function runSection<T>(
       model,
       backend,
       thinking: extraParams?.thinking === true,
-      withAddendum: Boolean(systemAddendum),
+      withAddendum: isSemanticRetry,
     },
     'section start',
   );
@@ -504,103 +525,124 @@ async function runSection<T>(
   // the reasoning tokens consume their share.
   const maxTokens = extraParams?.thinking === true ? MAX_OUTPUT_TOKENS * 2 : MAX_OUTPUT_TOKENS;
 
-  let fullText = '';
-  let usage = { input_tokens: 0, output_tokens: 0 };
-  for await (const event of provider.stream({
-    model,
-    system,
-    messages: [{ role: 'user', content: userMessage }],
-    max_tokens: maxTokens,
-    temperature: prompt.temperature,
-    ...(extraParams?.thinking === true && { thinking: true }),
-    signal,
-  })) {
-    const e = event as StreamEvent;
-    if (e.type === 'text') fullText += e.text;
-    else if (e.type === 'done') usage = e.usage;
-  }
-
-  const durationMs = Date.now() - start;
-
-  if (!fullText.trim()) {
-    throw new WriteError(`Write ${section} returned empty response`, {
-      section,
-      promptName,
-      rawResponse: fullText,
-    });
-  }
-
-  const cleaned = stripMarkdownJsonFence(fullText.trim());
-
-  let parsedRaw: unknown;
   try {
-    parsedRaw = JSON.parse(cleaned);
-  } catch (err) {
-    throw new WriteError(
-      `Write ${section} response is not valid JSON (prompt ${promptName}): ${err instanceof Error ? err.message : String(err)}`,
-      { section, promptName, rawResponse: fullText.slice(0, 500) },
-    );
-  }
+    const result = await structuredLlmCall<T>({
+      provider,
+      model,
+      system,
+      userMessage,
+      temperature: prompt.temperature ?? 0.4,
+      maxTokens,
+      signal,
+      thinking: extraParams?.thinking === true,
+      schema,
+      buildRetryAddendum: (err) => buildWriteRetryAddendum(section, err),
+      // Semantic retry wrappers already constitute a retry — don't let
+      // the primitive add a third structural retry on top of that.
+      maxStructuralAttempts: isSemanticRetry ? 1 : 2,
+      stage: `write:${section}`,
+      promptName,
+      promptVersion: prompt.version,
+    });
 
-  const result = safeParse(parsedRaw);
-  if (!result.success) {
-    const issues = result.error.issues
-      .slice(0, 20)
-      .map((i) => {
-        const issue = i as { path?: unknown[]; message?: string };
-        const path = Array.isArray(issue.path) ? issue.path.join('.') : '<root>';
-        return `${path}: ${issue.message ?? 'invalid'}`;
-      });
-    throw new WriteError(
-      `Write ${section} output did not match its schema (prompt ${promptName}). ` +
-        `Zod reported ${result.error.issues.length} issue(s): ` +
-        issues.join('; '),
+    logger.info(
       {
         section,
         promptName,
-        rawResponse: fullText.slice(0, 500),
-        validationIssues: result.error.issues,
+        promptVersion: prompt.version,
+        model,
+        backend,
+        inputTokens: result.usage.input_tokens,
+        outputTokens: result.usage.output_tokens,
+        durationMs: result.durationMs,
+        schemaRetryFired: result.retryFired,
       },
+      'section complete',
     );
+
+    return {
+      parsed: result.parsed,
+      telemetry: {
+        promptName,
+        promptVersion: prompt.version,
+        model,
+        capability: prompt.capability,
+        backend,
+        inputTokens: result.usage.input_tokens,
+        outputTokens: result.usage.output_tokens,
+        durationMs: result.durationMs,
+        schemaRetryFired: result.retryFired,
+      },
+    };
+  } catch (err) {
+    // Re-throw as WriteError so existing catch-sites continue to work.
+    if (err instanceof StructuredLlmCallError) {
+      const firstSummary = summarizeStructuralError(err.detail.firstError);
+      const retrySummary = err.detail.retryError
+        ? ` | retry: ${summarizeStructuralError(err.detail.retryError)}`
+        : '';
+      throw new WriteError(
+        `Write ${section} failed on ${err.detail.retryError ? 'BOTH the first attempt AND the retry' : 'the first attempt (no retry fired)'} ` +
+          `(prompt ${promptName} v${prompt.version}). First: ${firstSummary}${retrySummary}. ` +
+          `Fix: strengthen the prompt for the failure pattern, investigate provider health, or widen the write schema if the emitted shape is semantically valid.`,
+        {
+          section,
+          promptName,
+          rawResponse: (err.detail.rawRetry ?? err.detail.rawFirst).slice(0, 500),
+          validationIssues:
+            err.detail.firstError.kind === 'zod-schema'
+              ? err.detail.firstError.issues
+              : undefined,
+        },
+      );
+    }
+    throw err;
   }
-
-  logger.info(
-    {
-      section,
-      promptName,
-      promptVersion: prompt.version,
-      model,
-      backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      durationMs,
-    },
-    'section complete',
-  );
-
-  return {
-    parsed: result.data,
-    telemetry: {
-      promptName,
-      promptVersion: prompt.version,
-      model,
-      capability: prompt.capability,
-      backend,
-      inputTokens: usage.input_tokens,
-      outputTokens: usage.output_tokens,
-      durationMs,
-    },
-  };
 }
 
-// Strip a surrounding ```json ... ``` (or ``` ... ```) markdown fence if
-// present. Idempotent; safe to call on already-bare JSON.
-function stripMarkdownJsonFence(input: string): string {
-  const s = input.trim();
-  const fenceStart = /^```(?:json|JSON)?\s*\n/;
-  const fenceEnd = /\n```\s*$/;
-  if (fenceStart.test(s) && fenceEnd.test(s)) {
-    return s.replace(fenceStart, '').replace(fenceEnd, '').trim();
+/**
+ * Write-stage retry addendum. Names the specific Zod paths or parse error
+ * so the model knows exactly what to fix. Generic per-field type guidance
+ * covers the most-observed failure modes (boolean-for-number on confidence,
+ * string-for-number, missing required fields).
+ */
+function buildWriteRetryAddendum(section: string, error: StructuralError): string {
+  if (error.kind === 'json-parse') {
+    return [
+      `RETRY: Your previous response was not valid JSON — the parser reported: ${error.message}.`,
+      '',
+      'Likely causes: the response was truncated (check that you closed every string and bracket), an unescaped quote appeared inside a string value, or prose/markdown was emitted alongside the JSON.',
+      '',
+      'Return ONLY the complete JSON object matching the schema the prompt describes. No prose. No markdown fences. Every string properly quoted and terminated; every bracket/brace balanced.',
+    ].join('\n');
   }
-  return s;
+  const issues = error.issues
+    .slice(0, 20)
+    .map((i) => {
+      const path = i.path.map((p) => String(p)).join('.') || '<root>';
+      return `  • ${path}: ${i.message}`;
+    });
+  return [
+    `RETRY: Your previous response failed schema validation. The schema reported:`,
+    '',
+    issues.join('\n'),
+    '',
+    'Return the full JSON with these fields corrected. Preserve all other content verbatim. Common fixes:',
+    '  • `confidence` fields are numbers between 0.0 and 1.0 — NOT booleans, NOT strings, NOT null.',
+    '  • `is_new` and `evidence_found` are booleans — true or false, NOT strings.',
+    '  • Required arrays (bullets, entries, etc.) may be empty but must be present.',
+    '  • String fields are strings — never null unless the schema explicitly permits it.',
+    '',
+    'Return ONLY the JSON — no prose, no markdown fences.',
+  ].join('\n');
+}
+
+function summarizeStructuralError(err: StructuralError): string {
+  if (err.kind === 'json-parse') return `JSON parse: ${err.message}`;
+  const head = err.issues
+    .slice(0, 5)
+    .map((i) => `${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`)
+    .join('; ');
+  const more = err.issues.length > 5 ? `; ...(${err.issues.length - 5} more)` : '';
+  return `Zod (${err.issues.length} issue(s)): ${head}${more}`;
 }
