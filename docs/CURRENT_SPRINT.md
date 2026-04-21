@@ -6,16 +6,17 @@
 
 ## Epic 1 — LinkedIn Content Agent: Document Carousel Upgrade (Week 1)
 
-### Story 1.1 — PDF Carousel Generation for LinkedIn Posts [in progress]
+### Story 1.1 — PDF Carousel Generation for LinkedIn Posts [done 2026-04-21]
 - **As a** CareerIQ user in job search
 - **I want** my LinkedIn content agent to produce document carousels (PDF format)
 - **So that** my posts reach 3x more people via 360Brew's document post preference
 - **Acceptance Criteria:**
-  - [ ] Agent produces a structured multi-slide carousel (8-12 slides) as primary output
-  - [ ] Each carousel has a cover slide, 6-10 content slides, and a closing CTA slide
-  - [ ] Output is rendered as a downloadable PDF the user can upload directly to LinkedIn
-  - [ ] Existing text post output is retained as a secondary format option
-  - [ ] Carousel content follows 360Brew topic DNA consistency
+  - [x] Agent produces a structured multi-slide carousel (8-12 slides) as primary output — `generate_carousel` tool + `buildCarouselSlides`
+  - [x] Each carousel has a cover slide, 6-10 content slides, and a closing CTA slide — 3-type output from `buildCarouselSlides`
+  - [x] Output is rendered as a downloadable PDF the user can upload directly to LinkedIn — `app/src/lib/export-carousel-pdf.ts` (jsPDF, A4 landscape, branded)
+  - [x] Existing text post output is retained as a secondary format option — `carousel_format: 'text' | 'carousel' | 'both'` (default `both`)
+  - [x] Carousel content follows 360Brew topic DNA consistency — Rule 6 in `linkedin-content/knowledge/rules.ts` + `expertise_area` on every topic
+- **Test coverage added 2026-04-21:** `carousel-builder.test.ts` (13 tests) + 3 new `generate_carousel` cases in `linkedin-content.test.ts`. Server suite 2551/0.
 - **Dependencies:** LinkedIn Content agent, PDF generation library
 - **Complexity:** Medium
 

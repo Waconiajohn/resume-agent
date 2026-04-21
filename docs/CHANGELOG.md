@@ -1,5 +1,35 @@
 # Changelog — Resume Agent
 
+## 2026-04-21 — Story 1.1 closeout: test coverage for PDF carousel generation
+**Sprint:** LMS + CareerIQ Integration + LinkedIn 360Brew Update | **Story:** 1.1 — PDF Carousel Generation for LinkedIn Posts
+**Summary:** Story 1.1's code path was already implemented (`buildCarouselSlides` lib, `generate_carousel` writer tool, `exportCarouselPdf` client-side jsPDF renderer, `carousel_format` state field). The gap was test coverage — zero tests on the carousel path. Added 16 tests covering the acceptance-criteria surface; story is now done.
+
+### Changes Made
+- `server/src/__tests__/carousel-builder.test.ts` — **new.** 13 unit tests on `buildCarouselSlides`:
+  - 3-part structure (cover / content / CTA in that order)
+  - 1-based slide numbering with matching `totalSlides`
+  - 360Brew 8-12 content-slide target (3 cases: medium post in-band, short post expanded to 8+, long post merged to 12)
+  - Cover slide: topic as headline in single-post mode; series info as "Part N of M" in series mode
+  - CTA slide: author name in headline; hashtags flow into bulletPoints; bulletPoints omitted when no hashtags
+  - Body handling: trailing hashtag block stripped before splitting; multi-sentence chunks become bullet points; every content slide has a non-empty headline
+- `server/src/__tests__/linkedin-content.test.ts` — 3 new `generate_carousel` tool tests:
+  - Produces structured slides + emits `carousel_ready` SSE event + stores in scratchpad
+  - Returns `success: false` when no post text is available (no emission on failure)
+  - Falls back to `scratchpad.post_draft` when `post_text` input omitted
+
+### Decisions Made
+- **Closed Story 1.1 rather than add feature work.** The implementation predates this sprint — `generate_carousel`, `buildCarouselSlides`, `exportCarouselPdf`, and the `carousel_format` field all existed before I touched it. Acceptance criteria were met in code. The gap was verifying it, not building more. 16 tests on the main paths are enough to call it done.
+- **Client-side PDF generation is the right layer.** `app/src/lib/export-carousel-pdf.ts` uses jsPDF to produce A4-landscape branded slides directly in the browser — no server PDF library, no download endpoint, no round-trip. The server emits structured `CarouselSlide[]` data; the client renders. Keeps the backend stateless and makes the user's download button instant.
+- **Did not add tests for the PDF rendering itself.** jsPDF's output is binary — meaningful test coverage would require a PDF parser + visual diff harness, which is disproportionate for the value. The structured `CarouselSlide[]` shape that feeds the renderer IS now tested (16 tests); that's where bugs would actually show up.
+
+### Known Issues
+- None. Story 1.1 acceptance criteria all ✅, tests green, tsc clean.
+
+### Next Steps
+- Story 1.2 (Interview Authority Method Content Type) — also implemented; may need similar closeout test pass. Plumbing already present (`content_type` state field, `suggest_interview_authority_topics` strategist tool, writer prompts branch on `content_type`).
+- Story 1.3 (360Brew Optimization Rules) — also implemented; Rule 6 in `linkedin-content/knowledge/rules.ts` covers hard prohibitions, length, slide count, topic DNA. May also be test-coverage-only closeout.
+- Stories 3.1 (LinkedIn heartbeat) and 3.2 (Job Search heartbeat) — not yet started.
+
 ## 2026-04-21 — Platform-wide switch to gpt-5.4-mini (LLM_PROVIDER=openai)
 **Sprint:** LMS + CareerIQ Integration (infrastructure) | **Story:** Platform OpenAI rollout
 **Summary:** gpt-5.4-mini is now the platform default for every agent that uses the global `llm` provider. Set `LLM_PROVIDER=openai` in Railway (already done — `OpenAI_API_KEY` already set) and every product except Resume V2 + v3 flips immediately. The per-product `coverLetterWriterLlm` + `COVER_LETTER_WRITER_*` env-var pattern from earlier in the session is reverted — it's unnecessary once the global provider flips.

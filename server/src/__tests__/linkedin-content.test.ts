@@ -493,3 +493,95 @@ describe('self_review_post tool', () => {
     expect(result).toHaveProperty('success', false);
   });
 });
+
+// ─── Story 1.1: generate_carousel tool ─────────────────────────────────
+
+describe('generate_carousel tool', () => {
+  const SAMPLE_POST = [
+    'Scaling operations is less about adding capacity and more about removing bottlenecks.',
+    'The first instinct when volume rises is to hire. But headcount without process discipline creates chaos, not throughput.',
+    'What works instead is measurement. You cannot improve what you do not measure.',
+    'Once the constraint is visible, the rest of the team can stop guessing.',
+    'That discipline compounds. A quarter of focused work on one constraint beats a year of generic "operational excellence" initiatives.',
+    'This principle ports well beyond manufacturing. Software teams hit the same walls.',
+    'Find the constraint. Measure the constraint. Work the constraint. Everything else is noise.',
+    'The leverage of constraint-first thinking is obvious once you have seen it work. Before that, it sounds like another framework.',
+  ].join('\n\n');
+
+  it('produces structured slides and emits carousel_ready SSE event', async () => {
+    const { writerTools } = await import('../agents/linkedin-content/writer/tools.js');
+    const tool = writerTools.find((t) => t.name === 'generate_carousel');
+    expect(tool).toBeDefined();
+    if (!tool) throw new Error('generate_carousel tool not found');
+
+    const state = makeState({
+      selected_topic: 'Scaling Operations',
+      post_draft: SAMPLE_POST,
+    });
+    const ctx = makeCtx(state);
+    ctx.scratchpad.post_hashtags = ['Operations', 'Leadership'];
+
+    const result = await tool.execute(
+      { post_text: SAMPLE_POST, topic: 'Scaling Operations' },
+      ctx as unknown as Parameters<typeof tool.execute>[1],
+    );
+
+    const res = result as { slides_generated: number; format: string };
+    expect(res.format).toBe('carousel');
+    expect(res.slides_generated).toBeGreaterThan(0);
+
+    // SSE event was emitted with slides payload.
+    const carouselEvent = ctx.emissions.find(
+      (e): e is { type: string; slides: unknown[]; topic: string } =>
+        typeof e === 'object' && e !== null && (e as { type?: string }).type === 'carousel_ready',
+    );
+    expect(carouselEvent).toBeDefined();
+    expect(Array.isArray(carouselEvent!.slides)).toBe(true);
+    expect(carouselEvent!.topic).toBe('Scaling Operations');
+
+    // Slides landed in scratchpad for the coordinator to hand off to the frontend.
+    expect(ctx.scratchpad.carousel_slides).toBeDefined();
+  });
+
+  it('returns failure when no post text is available', async () => {
+    const { writerTools } = await import('../agents/linkedin-content/writer/tools.js');
+    const tool = writerTools.find((t) => t.name === 'generate_carousel');
+    if (!tool) throw new Error('generate_carousel tool not found');
+
+    const state = makeState();
+    const ctx = makeCtx(state);
+    // No post_draft in state or scratchpad; no post_text in input.
+
+    const result = await tool.execute(
+      { topic: 'Some Topic' },
+      ctx as unknown as Parameters<typeof tool.execute>[1],
+    );
+
+    expect(result).toHaveProperty('success', false);
+    // No emission on failure.
+    const carouselEvent = ctx.emissions.find(
+      (e) => typeof e === 'object' && e !== null && (e as { type?: string }).type === 'carousel_ready',
+    );
+    expect(carouselEvent).toBeUndefined();
+  });
+
+  it('falls back to scratchpad.post_draft when post_text input is not provided', async () => {
+    const { writerTools } = await import('../agents/linkedin-content/writer/tools.js');
+    const tool = writerTools.find((t) => t.name === 'generate_carousel');
+    if (!tool) throw new Error('generate_carousel tool not found');
+
+    const state = makeState({ selected_topic: 'Constraint Theory' });
+    const ctx = makeCtx(state);
+    ctx.scratchpad.post_draft = SAMPLE_POST;
+    ctx.scratchpad.post_hashtags = [];
+
+    const result = await tool.execute(
+      { topic: 'Constraint Theory' },
+      ctx as unknown as Parameters<typeof tool.execute>[1],
+    );
+    const res = result as { slides_generated: number; format: string };
+
+    expect(res.format).toBe('carousel');
+    expect(res.slides_generated).toBeGreaterThan(0);
+  });
+});
