@@ -8,7 +8,7 @@
 
 import type { AgentTool } from '../../runtime/agent-protocol.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../types.js';
-import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
+import { coverLetterWriterLlm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
@@ -139,8 +139,14 @@ TONE: ${tone}
 Write the full letter now. Start with "Dear Hiring Manager," and end with a professional sign-off using the candidate's name. Every paragraph must reference a specific role, company, or metric from the candidate data above.`;
 
     try {
-      const response = await llm.chat({
-        model: MODEL_PRIMARY,
+      // 2026-04-21 — swapped `llm` → `coverLetterWriterLlm` so the cover
+      // letter writer can be routed to a different provider (e.g.
+      // OpenAI + gpt-5.4-mini) via COVER_LETTER_WRITER_PROVIDER env var
+      // without touching tool code. Falls back to the global `llm`
+      // (Groq today) when the env var is unset. Model ID is env-override
+      // via COVER_LETTER_WRITER_MODEL (e.g. "gpt-5.4-mini").
+      const response = await coverLetterWriterLlm.chat({
+        model: process.env.COVER_LETTER_WRITER_MODEL ?? MODEL_PRIMARY,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
         max_tokens: 4096,
@@ -230,8 +236,12 @@ Return JSON matching this exact schema:
 Be strict. Only list issues that, if fixed, would materially improve the letter.`;
 
     try {
-      const response = await llm.chat({
-        model: MODEL_MID,
+      // 2026-04-21 — same provider swap as write_letter. Reviewer uses
+      // the MID model tier by default; COVER_LETTER_REVIEWER_MODEL
+      // overrides separately so the reviewer can stay on a cheap model
+      // while the writer tries a premium one (or vice versa).
+      const response = await coverLetterWriterLlm.chat({
+        model: process.env.COVER_LETTER_REVIEWER_MODEL ?? MODEL_MID,
         system: 'You are a rigorous cover letter reviewer. Return only valid JSON.',
         messages: [{ role: 'user', content: reviewPrompt }],
         max_tokens: 1024,

@@ -31,6 +31,10 @@ vi.mock('../lib/emotional-baseline.js', () => ({
 
 vi.mock('../lib/llm.js', () => ({
   llm: { chat: mockLlmChat },
+  // coverLetterWriterLlm falls back to `llm` when COVER_LETTER_WRITER_PROVIDER
+  // is unset — in tests we want both exports to resolve to the same mock so
+  // existing assertions on `mockLlmChat` calls continue to work.
+  coverLetterWriterLlm: { chat: mockLlmChat },
   MODEL_PRIMARY: 'mock-primary',
   MODEL_MID: 'mock-mid',
   MODEL_ORCHESTRATOR: 'mock-orchestrator',
