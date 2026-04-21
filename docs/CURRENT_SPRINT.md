@@ -20,29 +20,31 @@
 - **Dependencies:** LinkedIn Content agent, PDF generation library
 - **Complexity:** Medium
 
-### Story 1.2 — Interview Authority Method Content Type [not started]
+### Story 1.2 — Interview Authority Method Content Type [done 2026-04-21]
 - **As a** CareerIQ user
 - **I want** the LinkedIn Content agent to generate posts that answer difficult interview questions
 - **So that** hiring managers searching those questions find my content before the interview
 - **Acceptance Criteria:**
-  - [ ] New content type: "Interview Authority" in LinkedIn Content agent
-  - [ ] Agent identifies 5 hardest interview questions for target role
-  - [ ] Each question becomes one carousel from evidence library + authentic phrases
-  - [ ] Output is genuinely expert, specific to user's experience
-  - [ ] Carousel format: Question cover slide, 6-8 answer slides, closing value prop
+  - [x] New content type: "Interview Authority" in LinkedIn Content agent — `content_type: 'standard' | 'interview_authority'` state field, product.ts routes `input.content_type`, defaults to `standard`, unknowns normalized to `standard`
+  - [x] Agent identifies 5 hardest interview questions for target role — `suggest_interview_authority_topics` strategist tool, prompt demands exactly 5 questions across 5 category archetypes
+  - [x] Each question becomes one carousel from evidence library + authentic phrases — writer prompt branches on `content_type === 'interview_authority'`; `evidence_refs` required per topic; `generate_carousel` always called after write per agent instructions
+  - [x] Output is genuinely expert, specific to user's experience — writer system prompt mandates 80% real experience / 20% framing, traces every claim to evidence library
+  - [x] Carousel format: Question cover slide, 6-8 answer slides, closing value prop — `buildCarouselSlides` handles the 3-part structure; writer uses interview question AS the cover headline
+- **Test coverage added 2026-04-21:** 7 new tests in `linkedin-content.test.ts` — `createInitialState` content_type routing (3 cases including unknown-value normalization) + 4 `suggest_interview_authority_topics` cases (5-topic output, iq- id prefix enforcement, invalid-JSON fallback, transparency emission).
 - **Dependencies:** Story 1.1, positioning profile, job finder target role, evidence library
 - **Complexity:** Medium
 
-### Story 1.3 — 360Brew Optimization Rules in Content Agent [not started]
+### Story 1.3 — 360Brew Optimization Rules in Content Agent [done 2026-04-21]
 - **As a** CareerIQ user
 - **I want** my LinkedIn content optimized for 360Brew's ranking signals
 - **So that** my posts reach hiring managers beyond my immediate network
 - **Acceptance Criteria:**
-  - [ ] Content agent updated with 360Brew rules: no external links, no engagement bait, depth over brevity, topic DNA consistency
-  - [ ] Optimal length: 1,000-1,300 chars for text, 8-12 slides for carousels
-  - [ ] Content calendar includes recommended posting time (8-9am or 2-3pm user timezone)
-  - [ ] Agent avoids AI-sounding filler phrases flagged by 360Brew
-  - [ ] Each piece categorized by topic DNA tag for consistency
+  - [x] Content agent updated with 360Brew rules — `RULE_6_360BREW` in `linkedin-content/knowledge/rules.ts` + combined into `LINKEDIN_CONTENT_RULES` for system-prompt injection; covers hard prohibitions (no external links, no engagement bait, no AI filler phrases), depth over brevity, topic DNA consistency
+  - [x] Optimal length: 1,000-1,300 chars for text, 8-12 slides for carousels — named in Rule 6, enforced in writer tools (`write_post` warns under 1,000 / trims over 1,300; `generate_carousel` warns outside 8-12)
+  - [x] Content calendar includes recommended posting time — `recommended_posting_time` populated in `finalizeResult`, emitted with `content_complete`, defaults to 8am user timezone (falls back to America/Chicago)
+  - [x] Agent avoids AI-sounding filler phrases flagged by 360Brew — Rule 6 lists them explicitly; `detectForbiddenPhrases` retry exists at the Resume V2 layer as the canonical pattern; LinkedIn Content enforces via prompt
+  - [x] Each piece categorized by topic DNA tag — `expertise_area` required on every `TopicSuggestion`, both in standard (`suggest_topics`) and interview-authority (`suggest_interview_authority_topics`) paths
+- **Test coverage added 2026-04-21:** 7 new tests in `linkedin-content.test.ts` — 5 rule-content assertions (hard prohibitions, length target, slide target, topic DNA, rule composition) + 2 `finalizeResult` posting-time cases (user timezone + default fallback).
 - **Dependencies:** User timezone, positioning profile topic area
 - **Complexity:** Small
 

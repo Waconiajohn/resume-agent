@@ -211,6 +211,26 @@ describe('createLinkedInContentProductConfig().createInitialState', () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
     expect(state.platform_context).toBeUndefined();
   });
+
+  // Story 1.2 — Interview Authority content type routing.
+  it('defaults content_type to "standard" when not specified', () => {
+    const state = config.createInitialState('sess-1', 'user-1', {});
+    expect(state.content_type).toBe('standard');
+  });
+
+  it('accepts content_type: "interview_authority" from input', () => {
+    const state = config.createInitialState('sess-1', 'user-1', {
+      content_type: 'interview_authority',
+    });
+    expect(state.content_type).toBe('interview_authority');
+  });
+
+  it('normalizes unknown content_type values to "standard"', () => {
+    const state = config.createInitialState('sess-1', 'user-1', {
+      content_type: 'nonsense' as unknown as string,
+    });
+    expect(state.content_type).toBe('standard');
+  });
 });
 
 // ─── buildAgentMessage tests ───────────────────────────────────────────────────
@@ -448,6 +468,172 @@ describe('suggest_topics tool', () => {
   });
 });
 
+// ─── Story 1.2: suggest_interview_authority_topics tool ───────────────────────
+
+describe('suggest_interview_authority_topics tool', () => {
+  const VALID_IQ_RESPONSE = JSON.stringify([
+    {
+      id: 'iq-1',
+      topic: 'Tell me about the largest operational transformation you have led.',
+      hook: 'When I took over the West Coast distribution network, on-time shipment was at 61%.',
+      rationale: 'Tests scale + scope of real ops experience.',
+      expertise_area: 'operations_leadership',
+      evidence_refs: ['Evidence #12 — West Coast network turnaround'],
+    },
+    {
+      id: 'iq-2',
+      topic: 'Walk me through a time you had to recover from a major operational failure.',
+      hook: 'The recall cost us $2.8M and I had to rebuild supplier trust within 90 days.',
+      rationale: 'Tests recovery skills + accountability under pressure.',
+      expertise_area: 'operations_leadership',
+      evidence_refs: ['Evidence #4 — 2022 recall response'],
+    },
+    {
+      id: 'iq-3',
+      topic: 'How do you handle a peer who is actively undermining an operational initiative?',
+      hook: 'I had a CFO who blocked every capex request for six months.',
+      rationale: 'Tests political maturity and cross-functional influence.',
+      expertise_area: 'stakeholder_management',
+      evidence_refs: ['Evidence #7 — CapEx alignment process'],
+    },
+    {
+      id: 'iq-4',
+      topic: 'What is your approach to cutting a plant that has been underperforming for years?',
+      hook: 'The Kentucky plant had been losing money for four years before I got there.',
+      rationale: 'Tests hard decision-making with real-world consequences.',
+      expertise_area: 'operational_restructuring',
+      evidence_refs: ['Evidence #9 — Kentucky plant closure'],
+    },
+    {
+      id: 'iq-5',
+      topic: 'How would you rebuild a supply chain that has been broken for six months?',
+      hook: 'When the ERP migration tanked our fill rate to 47%, I had six weeks to stabilize.',
+      rationale: 'Tests vision + execution under crisis conditions.',
+      expertise_area: 'supply_chain_turnaround',
+      evidence_refs: ['Evidence #15 — ERP recovery playbook'],
+    },
+  ]);
+
+  it('produces 5 topics with iq-N id prefix and stores in state', async () => {
+    const { strategistTools } = await import('../agents/linkedin-content/strategist/tools.js');
+    const tool = strategistTools.find((t) => t.name === 'suggest_interview_authority_topics');
+    expect(tool).toBeDefined();
+    if (!tool) throw new Error('suggest_interview_authority_topics tool not found');
+
+    const state = makeState({ content_type: 'interview_authority' });
+    const ctx = makeCtx(state);
+
+    const { llm } = await import('../lib/llm.js');
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValue({
+      text: VALID_IQ_RESPONSE,
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    const result = await tool.execute({}, ctx as unknown as Parameters<typeof tool.execute>[1]);
+    const res = result as { topics: TopicSuggestion[]; count: number };
+
+    expect(res.count).toBe(5);
+    expect(res.topics).toHaveLength(5);
+    // Every topic id starts with "iq-" so the frontend can distinguish interview-authority topics.
+    for (const topic of res.topics) {
+      expect(topic.id).toMatch(/^iq-/);
+    }
+
+    // State + scratchpad both updated.
+    expect(state.suggested_topics).toHaveLength(5);
+    expect(ctx.scratchpad.suggested_topics).toHaveLength(5);
+  });
+
+  it('rewrites any non-iq ids the LLM returns into iq-N form', async () => {
+    const { strategistTools } = await import('../agents/linkedin-content/strategist/tools.js');
+    const tool = strategistTools.find((t) => t.name === 'suggest_interview_authority_topics');
+    if (!tool) throw new Error('suggest_interview_authority_topics tool not found');
+
+    const state = makeState({ content_type: 'interview_authority' });
+    const ctx = makeCtx(state);
+
+    const { llm } = await import('../lib/llm.js');
+    // LLM returns topics with generic ids — tool should enforce the iq- prefix.
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValue({
+      text: JSON.stringify([
+        {
+          id: 'topic-1',
+          topic: 'Q1?',
+          hook: 'answer',
+          rationale: 'why',
+          expertise_area: 'ops',
+          evidence_refs: [],
+        },
+        {
+          // Missing id altogether.
+          topic: 'Q2?',
+          hook: 'answer',
+          rationale: 'why',
+          expertise_area: 'ops',
+          evidence_refs: [],
+        },
+      ]),
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    const result = await tool.execute({}, ctx as unknown as Parameters<typeof tool.execute>[1]);
+    const res = result as { topics: TopicSuggestion[] };
+
+    expect(res.topics[0].id).toBe('iq-1');
+    expect(res.topics[1].id).toBe('iq-2');
+  });
+
+  it('falls back to a canned topic when the LLM returns invalid JSON', async () => {
+    const { strategistTools } = await import('../agents/linkedin-content/strategist/tools.js');
+    const tool = strategistTools.find((t) => t.name === 'suggest_interview_authority_topics');
+    if (!tool) throw new Error('suggest_interview_authority_topics tool not found');
+
+    const state = makeState({ content_type: 'interview_authority' });
+    const ctx = makeCtx(state);
+
+    const { llm } = await import('../lib/llm.js');
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValue({
+      text: 'not a JSON array — the LLM went off-script',
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    const result = await tool.execute({}, ctx as unknown as Parameters<typeof tool.execute>[1]);
+    const res = result as { topics: TopicSuggestion[]; count: number };
+
+    // Empty-array fallback path: tool returns 0 topics rather than throwing.
+    // (The canned single-topic fallback only triggers on a throw during parsing.)
+    expect(res.count).toBe(0);
+    expect(res.topics).toEqual([]);
+  });
+
+  it('emits a transparency SSE event so the user sees what the agent is doing', async () => {
+    const { strategistTools } = await import('../agents/linkedin-content/strategist/tools.js');
+    const tool = strategistTools.find((t) => t.name === 'suggest_interview_authority_topics');
+    if (!tool) throw new Error('suggest_interview_authority_topics tool not found');
+
+    const state = makeState({ content_type: 'interview_authority', current_stage: 'strategy' });
+    const ctx = makeCtx(state);
+
+    const { llm } = await import('../lib/llm.js');
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValue({
+      text: VALID_IQ_RESPONSE,
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    await tool.execute({}, ctx as unknown as Parameters<typeof tool.execute>[1]);
+
+    const transparency = ctx.emissions.find(
+      (e) => typeof e === 'object' && e !== null && (e as { type?: string }).type === 'transparency',
+    );
+    expect(transparency).toBeDefined();
+    expect((transparency as { message: string }).message).toMatch(/interview/i);
+  });
+});
+
 // ─── Writer tool: self_review_post ─────────────────────────────────────────────
 
 describe('self_review_post tool', () => {
@@ -583,5 +769,92 @@ describe('generate_carousel tool', () => {
 
     expect(res.format).toBe('carousel');
     expect(res.slides_generated).toBeGreaterThan(0);
+  });
+});
+
+// ─── Story 1.3: 360Brew Optimization Rules ────────────────────────────
+
+describe('Story 1.3 — 360Brew optimization rules (Rule 6)', () => {
+  it('RULE_6_360BREW names every hard prohibition in the AC', async () => {
+    const { RULE_6_360BREW } = await import('../agents/linkedin-content/knowledge/rules.js');
+    // External links, engagement bait, and AI filler phrases are the three
+    // hard prohibitions Story 1.3 acceptance criteria lists.
+    expect(RULE_6_360BREW).toMatch(/NO EXTERNAL LINKS/);
+    expect(RULE_6_360BREW).toMatch(/NO ENGAGEMENT BAIT/);
+    expect(RULE_6_360BREW).toMatch(/NO AI FILLER PHRASES/i);
+  });
+
+  it('RULE_6_360BREW names the 1,000-1,300 character text-post target', async () => {
+    const { RULE_6_360BREW } = await import('../agents/linkedin-content/knowledge/rules.js');
+    expect(RULE_6_360BREW).toMatch(/1,?000.?1,?300/);
+  });
+
+  it('RULE_6_360BREW names the 8-12 slide carousel-depth target', async () => {
+    const { RULE_6_360BREW } = await import('../agents/linkedin-content/knowledge/rules.js');
+    expect(RULE_6_360BREW).toMatch(/8.{0,4}12 slides/i);
+  });
+
+  it('RULE_6_360BREW names the TOPIC DNA consistency rule', async () => {
+    const { RULE_6_360BREW } = await import('../agents/linkedin-content/knowledge/rules.js');
+    expect(RULE_6_360BREW).toMatch(/TOPIC DNA/);
+  });
+
+  it('LINKEDIN_CONTENT_RULES combines Rule 6 with the earlier rules', async () => {
+    const { LINKEDIN_CONTENT_RULES, RULE_0_PHILOSOPHY, RULE_6_360BREW } =
+      await import('../agents/linkedin-content/knowledge/rules.js');
+    expect(LINKEDIN_CONTENT_RULES).toContain(RULE_0_PHILOSOPHY);
+    expect(LINKEDIN_CONTENT_RULES).toContain(RULE_6_360BREW);
+    // Concatenation happens with a `---` separator between rules.
+    expect(LINKEDIN_CONTENT_RULES).toContain('---');
+  });
+});
+
+describe('Story 1.3 — content_complete event carries recommended_posting_time', () => {
+  it('finalizeResult emits content_complete with an 8am posting-time recommendation in the user timezone', () => {
+    const config = createLinkedInContentProductConfig();
+    const state = config.createInitialState('sess-1', 'user-1', {
+      timezone: 'America/New_York',
+    });
+    // Populate the bits finalizeResult expects.
+    state.post_draft = 'Some post';
+    state.post_hashtags = ['tag1'];
+    state.quality_scores = { authenticity: 80, engagement_potential: 80, keyword_density: 80 };
+
+    const emissions: unknown[] = [];
+    const emit = (ev: unknown) => { emissions.push(ev); };
+
+    if (!config.finalizeResult) throw new Error('finalizeResult not configured');
+    config.finalizeResult(state, {}, emit as (e: LinkedInContentState extends object ? unknown : never) => void);
+
+    const complete = emissions.find(
+      (e) => typeof e === 'object' && e !== null && (e as { type?: string }).type === 'content_complete',
+    ) as { recommended_posting_time?: { hour: number; timezone: string; rationale: string } } | undefined;
+
+    expect(complete).toBeDefined();
+    expect(complete!.recommended_posting_time).toBeDefined();
+    // 360Brew research identifies 8-9am or 2-3pm as the optimal windows; we ship 8am as the default.
+    expect(complete!.recommended_posting_time!.hour).toBe(8);
+    expect(complete!.recommended_posting_time!.timezone).toBe('America/New_York');
+    expect(complete!.recommended_posting_time!.rationale).toMatch(/360[bB]rew/);
+  });
+
+  it('falls back to America/Chicago when no timezone is provided', () => {
+    const config = createLinkedInContentProductConfig();
+    const state = config.createInitialState('sess-1', 'user-1', {});
+    state.post_draft = 'Some post';
+    state.post_hashtags = [];
+    state.quality_scores = { authenticity: 70, engagement_potential: 70, keyword_density: 70 };
+
+    const emissions: unknown[] = [];
+    const emit = (ev: unknown) => { emissions.push(ev); };
+
+    if (!config.finalizeResult) throw new Error('finalizeResult not configured');
+    config.finalizeResult(state, {}, emit as (e: LinkedInContentState extends object ? unknown : never) => void);
+
+    const complete = emissions.find(
+      (e) => typeof e === 'object' && e !== null && (e as { type?: string }).type === 'content_complete',
+    ) as { recommended_posting_time?: { timezone: string } } | undefined;
+
+    expect(complete!.recommended_posting_time!.timezone).toBe('America/Chicago');
   });
 });

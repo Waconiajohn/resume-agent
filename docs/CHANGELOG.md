@@ -1,5 +1,30 @@
 # Changelog — Resume Agent
 
+## 2026-04-21 — Stories 1.2 + 1.3 closeout: Interview Authority + 360Brew rules
+**Sprint:** LMS + CareerIQ Integration + LinkedIn 360Brew Update | **Stories:** 1.2 + 1.3
+**Summary:** Same closeout pattern as Story 1.1 — both stories' implementations predated the sprint, just lacked test coverage. Added 14 tests across the two stories to lock in the acceptance-criteria surface.
+
+### Changes Made
+- `server/src/__tests__/linkedin-content.test.ts` — added two new describe blocks:
+  - **Story 1.2 closeout (7 tests)**:
+    - 3 `createInitialState` cases: defaults `content_type` to `standard`, accepts `interview_authority` from input, normalizes unknown values back to `standard`.
+    - 4 `suggest_interview_authority_topics` cases: produces 5 topics with `iq-N` id prefix + state/scratchpad sync, rewrites non-`iq-` ids the LLM returns, returns empty array fallback on invalid JSON, emits the transparency SSE event.
+  - **Story 1.3 closeout (7 tests)**:
+    - 5 Rule 6 content assertions: hard prohibitions (external links + engagement bait + AI filler phrases), 1,000-1,300 char text target, 8-12 slide carousel target, topic DNA language, rule composition in `LINKEDIN_CONTENT_RULES`.
+    - 2 `finalizeResult` cases: `content_complete` event carries `recommended_posting_time` with 8am + user timezone + 360Brew rationale; falls back to America/Chicago when timezone not provided.
+
+### Decisions Made
+- **Tests assert on prompt content, not on LLM outputs.** Rule 6 tests check that the `RULE_6_360BREW` string contains the specific keywords the acceptance criteria name (e.g., "NO EXTERNAL LINKS", "TOPIC DNA"). This verifies the rules reach the model's system prompt — actually making the model FOLLOW the rules is the runtime's job, not the tests'. This mirrors how `executive-bio-agents.test.ts` and `linkedin-optimizer-agents.test.ts` handle knowledge-rule coverage.
+- **`finalizeResult` tested via direct invocation with synthetic state + emit spy** rather than through the full agent-loop integration. The function is pure — no network, no LLM calls — so direct invocation is faster and less brittle. Added both the happy path (user timezone) and the default-fallback path.
+- **Story 1.2's "interview question categories" not tested separately.** The strategist prompt lists 5 category archetypes (scale/scope, failure/recovery, conflict/stakeholder, domain deep-dive, vision/transformation). Asserting the LLM returns those categories would require mocking specific LLM outputs that match each one — false precision. The `iq-N` prefix + 5-topic count + evidence-ref shape is what the frontend actually depends on.
+
+### Known Issues
+- None. Stories 1.2 + 1.3 both ✅ all AC. Server suite 2551 → 2565 passing; tsc clean.
+
+### Next Steps
+- Stories 3.1 (LinkedIn Content Calendar Heartbeat) and 3.2 (Job Search Heartbeat) remain untouched. These are genuinely new work — heartbeat infrastructure (Hermes? cron?) doesn't exist in the repo yet.
+- Epic 2 (LMS injection) is marked done; no closeout needed.
+
 ## 2026-04-21 — Story 1.1 closeout: test coverage for PDF carousel generation
 **Sprint:** LMS + CareerIQ Integration + LinkedIn 360Brew Update | **Story:** 1.1 — PDF Carousel Generation for LinkedIn Posts
 **Summary:** Story 1.1's code path was already implemented (`buildCarouselSlides` lib, `generate_carousel` writer tool, `exportCarouselPdf` client-side jsPDF renderer, `carousel_format` state field). The gap was test coverage — zero tests on the carousel path. Added 16 tests covering the acceptance-criteria surface; story is now done.
