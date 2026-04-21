@@ -15,7 +15,14 @@ vi.mock('../lib/llm.js', () => ({
   llm: {
     chat: vi.fn(),
   },
+  writerLlm: {
+    chat: vi.fn(),
+  },
+  MODEL_PRIMARY: 'test-primary',
+  MODEL_MID: 'test-mid',
   MODEL_ORCHESTRATOR: 'test-orchestrator',
+  MODEL_LIGHT: 'test-light',
+  getModelForTier: vi.fn((tier: string) => `test-${tier}`),
 }));
 
 // Mock retry to just call the function directly

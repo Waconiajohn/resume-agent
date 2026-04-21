@@ -20,12 +20,14 @@ const mockChat = vi.hoisted(() => vi.fn());
 
 vi.mock('../lib/llm.js', () => ({
   llm: { chat: mockChat },
+  writerLlm: { chat: mockChat },
   MODEL_PRIMARY: 'mock-primary',
   MODEL_MID: 'mock-mid',
   MODEL_ORCHESTRATOR: 'mock-orchestrator',
   MODEL_LIGHT: 'mock-light',
   MAX_TOKENS: 8192,
   getModelForTool: vi.fn(() => 'mock-orchestrator'),
+  getModelForTier: vi.fn((tier: string) => `mock-${tier}`),
   getDefaultModel: vi.fn(() => 'mock-orchestrator'),
   getMaxTokens: vi.fn(() => 8192),
 }));
