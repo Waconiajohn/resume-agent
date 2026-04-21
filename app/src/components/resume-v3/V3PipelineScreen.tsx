@@ -440,15 +440,23 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
   );
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] flex flex-col bg-[var(--bg-0)]">
-      {/* ─── Top strip (flows with page scroll, not pinned) ──────────
+    // V3PipelineScreen is its OWN scroll container — h-full fills the
+    // WorkspaceLayout-provided viewport, overflow-y-auto gives us the
+    // scrollbar. We can't rely on document.body scroll because
+    // WorkspaceLayout.tsx wraps its children in <main
+    // className="overflow-hidden"> (see 2026-04-20 pm investigation in
+    // /Users/johnschrup/.claude/plans/dazzling-weaving-meerkat.md). The
+    // earlier attempt at natural page scroll failed because of that
+    // upstream clip.
+    <div className="h-full overflow-y-auto flex flex-col bg-[var(--bg-0)]">
+      {/* ─── Top strip (flows with internal scroll, not pinned) ──────
           Header + stage progress + any error banner. When the user
-          scrolls down, this strip scrolls off screen so the three
-          columns below get the full viewport. Earlier design kept
-          this pinned with independent per-column scroll; the 2026-04-20
-          pm production UX feedback preferred whole-page scroll so the
-          "Building your resume" card gets out of the way once the
-          pipeline is complete. */}
+          scrolls down (inside this container's scroll), the strip
+          scrolls off screen so the three columns / intake form below
+          get the full viewport. During an active run the default
+          position shows the stage progress; once the user scrolls or
+          the pipeline completes and the card auto-collapses, they see
+          the content zone below. */}
       <div className="mx-auto w-full max-w-7xl px-4 pt-6 pb-3 space-y-4">
         <div className="flex items-center justify-between">
           <div>
