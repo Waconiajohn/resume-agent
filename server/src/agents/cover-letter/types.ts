@@ -5,9 +5,30 @@
  * works for a second product beyond resumes.
  */
 
+import { z } from 'zod';
 import type { BaseState } from '../runtime/agent-protocol.js';
 import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
 import type { SharedContext } from '../../contracts/shared-context.js';
+
+// ─── review_letter schema (added 2026-04-21) ─────────────────────────
+// Zod schema for the JSON the reviewer LLM returns. Kept deliberately
+// lenient on `criteria` (any-shape record) because the tool's graceful
+// degradation path already handles partial/absent criteria — strictness
+// here would only convert real partial responses into StructuredLlmCallError
+// throws, forcing the word-count fallback unnecessarily.
+//
+// The FOUR required fields (total_score, passed, issues, criteria presence)
+// are the minimum the tool's contract with its caller depends on. Anything
+// looser breaks the return-shape assertions in cover-letter-agents.test.ts.
+
+export const CoverLetterReviewSchema = z.object({
+  criteria: z.record(z.string(), z.unknown()).default({}),
+  total_score: z.number(),
+  passed: z.boolean(),
+  issues: z.array(z.string()),
+});
+
+export type CoverLetterReview = z.infer<typeof CoverLetterReviewSchema>;
 
 // ─── Pipeline State ───────────────────────────────────────────────────
 

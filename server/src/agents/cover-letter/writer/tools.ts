@@ -7,9 +7,14 @@
  */
 
 import type { AgentTool } from '../../runtime/agent-protocol.js';
-import type { CoverLetterState, CoverLetterSSEEvent } from '../types.js';
+import { CoverLetterReviewSchema } from '../types.js';
+import type { CoverLetterReview, CoverLetterState, CoverLetterSSEEvent } from '../types.js';
 import { coverLetterWriterLlm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
-import { repairJSON } from '../../../lib/json-repair.js';
+import {
+  structuredLlmCall,
+  StructuredLlmCallError,
+  type StructuralError,
+} from '../../../lib/structured-llm.js';
 import logger from '../../../lib/logger.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 import {
@@ -236,36 +241,33 @@ Return JSON matching this exact schema:
 Be strict. Only list issues that, if fixed, would materially improve the letter.`;
 
     try {
-      // 2026-04-21 — same provider swap as write_letter. Reviewer uses
-      // the MID model tier by default; COVER_LETTER_REVIEWER_MODEL
-      // overrides separately so the reviewer can stay on a cheap model
-      // while the writer tries a premium one (or vice versa).
-      const response = await coverLetterWriterLlm.chat({
+      // 2026-04-21 — migrated from bespoke llm.chat + repairJSON to the
+      // shared structured-llm-call primitive. The primitive owns the
+      // one-shot JSON/Zod retry so gpt-5.4-mini's stochastic schema
+      // failures (the boolean-confidence class) recover instead of
+      // hard-failing the review step. On double-failure it throws
+      // StructuredLlmCallError, which the catch block converts into
+      // the same graceful word-count fallback the pre-migration code
+      // produced.
+      const result = await structuredLlmCall<CoverLetterReview>({
+        provider: coverLetterWriterLlm,
         model: process.env.COVER_LETTER_REVIEWER_MODEL ?? MODEL_MID,
         system: 'You are a rigorous cover letter reviewer. Return only valid JSON.',
-        messages: [{ role: 'user', content: reviewPrompt }],
-        max_tokens: 1024,
+        userMessage: reviewPrompt,
+        temperature: 0.2,
+        maxTokens: 1024,
         signal: ctx.signal,
-        session_id: ctx.sessionId,
+        schema: CoverLetterReviewSchema,
+        buildRetryAddendum: buildReviewRetryAddendum,
+        stage: 'cover-letter-review',
+        promptName: 'review_letter',
+        promptVersion: '1',
       });
 
-      const parsed = repairJSON<Record<string, unknown>>(response.text);
-
-      if (!parsed) {
-        logger.warn({ session_id: ctx.sessionId }, 'review_letter response was not valid JSON, falling back to word-count check');
-        const fallbackScore = wordCount >= 200 && wordCount <= 450 ? 70 : 55;
-        state.quality_score = fallbackScore;
-        state.review_feedback = 'Review parse failed — manual check recommended';
-        ctx.scratchpad['quality_score'] = fallbackScore;
-        ctx.scratchpad['review_feedback'] = state.review_feedback;
-        return { score: fallbackScore, passed: fallbackScore >= 70, issues: ['Review parse failed'], word_count: wordCount };
-      }
-
-      const score = typeof parsed.total_score === 'number'
-        ? Math.max(0, Math.min(100, parsed.total_score))
-        : 65;
-      const passed = typeof parsed.passed === 'boolean' ? parsed.passed : score >= 70;
-      const issues = Array.isArray(parsed.issues) ? (parsed.issues as string[]) : [];
+      const parsed = result.parsed;
+      const score = Math.max(0, Math.min(100, parsed.total_score));
+      const passed = parsed.passed;
+      const issues = parsed.issues;
       const feedback = issues.length > 0 ? issues.join('; ') : 'No issues found';
 
       state.quality_score = score;
@@ -281,11 +283,60 @@ Be strict. Only list issues that, if fixed, would materially improve the letter.
         criteria: parsed.criteria,
       };
     } catch (err) {
+      if (err instanceof StructuredLlmCallError) {
+        // Graceful degradation: same word-count fallback the pre-migration
+        // repairJSON-null branch produced. Preserves the existing contract
+        // that a broken review never crashes the tool — the user sees a
+        // reduced-confidence score instead.
+        logger.warn(
+          { session_id: ctx.sessionId, err: err.message },
+          'review_letter primitive failed on both attempts — falling back to word-count check',
+        );
+        const fallbackScore = wordCount >= 200 && wordCount <= 450 ? 70 : 55;
+        state.quality_score = fallbackScore;
+        state.review_feedback = 'Review parse failed — manual check recommended';
+        ctx.scratchpad['quality_score'] = fallbackScore;
+        ctx.scratchpad['review_feedback'] = state.review_feedback;
+        return {
+          score: fallbackScore,
+          passed: fallbackScore >= 70,
+          issues: ['Review parse failed'],
+          word_count: wordCount,
+        };
+      }
       logger.error({ err, session_id: ctx.sessionId }, 'review_letter LLM call failed');
       return { error: 'Failed to review cover letter. Please try again.' };
     }
   },
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────
+
+function buildReviewRetryAddendum(error: StructuralError): string {
+  if (error.kind === 'json-parse') {
+    return [
+      `RETRY: Your previous response was not valid JSON — the parser reported: ${error.message}.`,
+      '',
+      'Return ONLY the complete review JSON object. No prose. No markdown fences. Every string properly quoted; every bracket/brace balanced.',
+    ].join('\n');
+  }
+  const issues = error.issues
+    .slice(0, 10)
+    .map((i) => `  • ${i.path.map((p) => String(p)).join('.') || '<root>'}: ${i.message}`);
+  return [
+    'RETRY: Your previous response failed review-schema validation. The schema reported:',
+    '',
+    issues.join('\n'),
+    '',
+    'Return the JSON with these fields corrected. Required fields:',
+    '  • `total_score` — number between 0 and 100.',
+    '  • `passed` — boolean (true if total_score >= 70).',
+    '  • `issues` — array of strings (may be empty).',
+    '  • `criteria` — object (may be partial but must be present).',
+    '',
+    'Return ONLY the JSON — no prose, no markdown fences.',
+  ].join('\n');
+}
 
 // ─── Export ───────────────────────────────────────────────────────────
 

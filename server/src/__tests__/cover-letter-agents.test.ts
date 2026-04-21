@@ -14,9 +14,21 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 
-const { mockLlmChat } = vi.hoisted(() => ({
+const { mockLlmChat, mockLlmStream } = vi.hoisted(() => ({
   mockLlmChat: vi.fn(),
+  mockLlmStream: vi.fn(),
 }));
+
+// Helper to construct an async generator that yields the structured-llm-call
+// primitive's expected event shape (text → done). Review_letter now flows
+// through structuredLlmCall which calls provider.stream() instead of chat.
+function streamOf(text: string, usage = { input_tokens: 100, output_tokens: 50 }) {
+  return () =>
+    (async function* () {
+      yield { type: 'text' as const, text };
+      yield { type: 'done' as const, usage };
+    })();
+}
 
 vi.mock('../lib/supabase.js', () => ({
   supabaseAdmin: {
@@ -30,11 +42,11 @@ vi.mock('../lib/emotional-baseline.js', () => ({
 }));
 
 vi.mock('../lib/llm.js', () => ({
-  llm: { chat: mockLlmChat },
+  llm: { chat: mockLlmChat, stream: mockLlmStream },
   // coverLetterWriterLlm falls back to `llm` when COVER_LETTER_WRITER_PROVIDER
-  // is unset — in tests we want both exports to resolve to the same mock so
-  // existing assertions on `mockLlmChat` calls continue to work.
-  coverLetterWriterLlm: { chat: mockLlmChat },
+  // is unset. In tests we wire both exports to the same chat + stream mocks —
+  // write_letter uses .chat, review_letter uses .stream (via structuredLlmCall).
+  coverLetterWriterLlm: { chat: mockLlmChat, stream: mockLlmStream, name: 'mock' },
   MODEL_PRIMARY: 'mock-primary',
   MODEL_MID: 'mock-mid',
   MODEL_ORCHESTRATOR: 'mock-orchestrator',
@@ -773,21 +785,24 @@ describe('review_letter tool execution', () => {
   const tool = writerTools.find((t) => t.name === 'review_letter')!;
 
   beforeEach(() => {
-    // Mock LLM to return a realistic review JSON response
-    mockLlmChat.mockResolvedValue({
-      text: JSON.stringify({
-        total_score: 82,
-        passed: true,
-        criteria: {
-          voice_authenticity: { score: 16, note: 'Good authentic tone' },
-          jd_alignment: { score: 18, note: 'Strong match' },
-          evidence_specificity: { score: 16, note: 'Specific metrics used' },
-          executive_tone: { score: 16, note: 'Professional' },
-          length_appropriateness: { score: 16, note: 'Good length' },
-        },
-        issues: [],
-      }),
-    });
+    // review_letter uses structuredLlmCall → provider.stream() since 2026-04-21.
+    // Default mock: a clean passing review.
+    mockLlmStream.mockImplementation(
+      streamOf(
+        JSON.stringify({
+          total_score: 82,
+          passed: true,
+          criteria: {
+            voice_authenticity: { score: 16, note: 'Good authentic tone' },
+            jd_alignment: { score: 18, note: 'Strong match' },
+            evidence_specificity: { score: 16, note: 'Specific metrics used' },
+            executive_tone: { score: 16, note: 'Professional' },
+            length_appropriateness: { score: 16, note: 'Good length' },
+          },
+          issues: [],
+        }),
+      ),
+    );
   });
 
   it('happy path: returns score, passed, issues, word_count', async () => {
@@ -857,14 +872,16 @@ describe('review_letter tool execution', () => {
   });
 
   it('penalizes letters that are too short (< 150 words)', async () => {
-    mockLlmChat.mockResolvedValueOnce({
-      text: JSON.stringify({
-        total_score: 45,
-        passed: false,
-        issues: ['Letter is too short — only 13 words. Expand to 250-350 words.'],
-        criteria: {},
-      }),
-    });
+    mockLlmStream.mockImplementationOnce(
+      streamOf(
+        JSON.stringify({
+          total_score: 45,
+          passed: false,
+          issues: ['Letter is too short — only 13 words. Expand to 250-350 words.'],
+          criteria: {},
+        }),
+      ),
+    );
     const state = makeStateWithPlan({
       letter_draft: 'Dear Hiring Manager, I am interested in the position. Sincerely, Jane Doe',
     });
@@ -878,14 +895,16 @@ describe('review_letter tool execution', () => {
   });
 
   it('penalizes letters containing generic phrases like "team player"', async () => {
-    mockLlmChat.mockResolvedValueOnce({
-      text: JSON.stringify({
-        total_score: 58,
-        passed: false,
-        issues: ['Contains generic phrases: "team player", "hard worker", "self-starter", "results-driven"'],
-        criteria: {},
-      }),
-    });
+    mockLlmStream.mockImplementationOnce(
+      streamOf(
+        JSON.stringify({
+          total_score: 58,
+          passed: false,
+          issues: ['Contains generic phrases: "team player", "hard worker", "self-starter", "results-driven"'],
+          criteria: {},
+        }),
+      ),
+    );
     const state = makeStateWithPlan({
       letter_draft:
         'Dear Hiring Manager,\n\nI am a team player and a hard worker with self-starter attitude. ' +
@@ -905,14 +924,16 @@ describe('review_letter tool execution', () => {
   });
 
   it('penalizes when company name is not mentioned in letter', async () => {
-    mockLlmChat.mockResolvedValueOnce({
-      text: JSON.stringify({
-        total_score: 68,
-        passed: false,
-        issues: ['Letter does not mention the target company name — add specific reference to the company'],
-        criteria: {},
-      }),
-    });
+    mockLlmStream.mockImplementationOnce(
+      streamOf(
+        JSON.stringify({
+          total_score: 68,
+          passed: false,
+          issues: ['Letter does not mention the target company name — add specific reference to the company'],
+          criteria: {},
+        }),
+      ),
+    );
     const state = makeStateWithPlan({
       letter_draft:
         'Dear Hiring Manager,\n\nI am excited to apply for the CTO role. ' +
@@ -930,14 +951,16 @@ describe('review_letter tool execution', () => {
   });
 
   it('no company-name issue when jd_analysis is absent', async () => {
-    mockLlmChat.mockResolvedValueOnce({
-      text: JSON.stringify({
-        total_score: 75,
-        passed: true,
-        issues: [],
-        criteria: {},
-      }),
-    });
+    mockLlmStream.mockImplementationOnce(
+      streamOf(
+        JSON.stringify({
+          total_score: 75,
+          passed: true,
+          issues: [],
+          criteria: {},
+        }),
+      ),
+    );
     const baseState = makeInitialState({
       letter_draft:
         'Dear Hiring Manager,\n\nI am excited to apply for this role. ' +
