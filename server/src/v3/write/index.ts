@@ -19,7 +19,7 @@ import {
   structuredLlmCall,
   StructuredLlmCallError,
   type StructuralError,
-} from '../lib/structured-llm.js';
+} from '../../lib/structured-llm.js';
 import {
   WrittenSummarySchema,
   WrittenAccomplishmentsSchema,

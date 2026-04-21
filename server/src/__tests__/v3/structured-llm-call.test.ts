@@ -14,7 +14,7 @@ import type { LLMProvider, StreamEvent } from '../../lib/llm-provider.js';
 import {
   structuredLlmCall,
   StructuredLlmCallError,
-} from '../../v3/lib/structured-llm.js';
+} from '../../lib/structured-llm.js';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────
 

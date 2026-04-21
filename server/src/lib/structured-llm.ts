@@ -1,10 +1,13 @@
-// Shared structured LLM call primitive for v3.
+// Shared structured LLM call primitive.
+//
+// Extracted from v3 in commit 1 (f6f81f19) and promoted to a shared lib
+// in commit 2 (af84c4c0) so non-v3 products (cover-letter, exec-bio,
+// LinkedIn, etc.) can reuse the same retry machinery. All v3 stages flow
+// through this primitive.
 //
 // Consolidates the stream → fence-strip → JSON.parse → Zod-validate →
-// one-shot retry pattern that was previously duplicated across
-// classify/index.ts, verify/index.ts, and (implicitly, without retry
-// coverage) benchmark/index.ts, write/index.ts's runSection,
-// write/regenerate.ts, and verify/translate.ts.
+// one-shot retry pattern that was previously duplicated across every
+// LLM-producing stage.
 //
 // Design rules (see /Users/johnschrup/.claude/plans/dazzling-weaving-meerkat.md):
 //
@@ -31,7 +34,7 @@
 //      OPERATING-MANUAL.md.
 
 import type { ZodIssue, ZodSchema } from 'zod';
-import type { LLMProvider, StreamEvent } from '../../lib/llm-provider.js';
+import type { LLMProvider, StreamEvent } from './llm-provider.js';
 
 // ─── Public types ─────────────────────────────────────────────────────
 

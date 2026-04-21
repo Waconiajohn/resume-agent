@@ -21,7 +21,7 @@ import {
   structuredLlmCall,
   StructuredLlmCallError,
   type StructuralError,
-} from '../lib/structured-llm.js';
+} from '../../lib/structured-llm.js';
 import { BenchmarkProfileSchema } from './schema.js';
 import type { BenchmarkProfile, JobDescription, StructuredResume } from '../types.js';
 

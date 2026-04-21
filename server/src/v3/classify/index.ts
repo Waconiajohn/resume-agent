@@ -26,7 +26,7 @@ import {
   structuredLlmCall,
   StructuredLlmCallError,
   type StructuralError,
-} from '../lib/structured-llm.js';
+} from '../../lib/structured-llm.js';
 import { StructuredResumeSchema } from './schema.js';
 import type { ExtractResult, StructuredResume } from '../types.js';
 

@@ -22,7 +22,7 @@ import {
   structuredLlmCall,
   StructuredLlmCallError,
   type StructuralError,
-} from '../lib/structured-llm.js';
+} from '../../lib/structured-llm.js';
 import { VerifyResultSchema } from './schema.js';
 import { checkAttributionMechanically } from './attribution.js';
 import { checkIntraResumeConsistency } from './consistency.js';
