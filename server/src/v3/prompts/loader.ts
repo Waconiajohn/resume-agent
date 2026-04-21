@@ -11,20 +11,56 @@
 // field, circular shared-fragment reference, or unknown shared fragment
 // throws PromptLoadError. See OPERATING-MANUAL.md "No silent fallbacks".
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import matter from 'gray-matter';
 import { PromptLoadError } from '../errors.js';
 import logger from '../../lib/logger.js';
 import type { LoadedPrompt } from '../types.js';
 
-// Default prompt root: <repo>/server/prompts/
-// Resolved relative to this file at compile time:
-//   server/src/v3/prompts/loader.ts  ->  server/prompts/
-const DEFAULT_PROMPT_ROOT = resolve(
-  new URL('.', import.meta.url).pathname,
-  '../../../prompts',
-);
+// Locate the prompts root by walking up the filesystem from this module
+// until we find a `prompts/_shared/` directory. Works in both environments:
+//
+//   Dev (tsx on source):
+//     loader.ts lives at       server/src/v3/prompts/loader.ts
+//     walk-up finds            server/prompts/_shared/
+//
+//   Production (compiled, self-contained dist):
+//     loader.js lives at       /app/dist/v3/prompts/loader.js
+//     walk-up finds            /app/dist/prompts/_shared/
+//     (prompts/ is copied into dist/ by `npm run build`; see package.json)
+//
+// Using the `_shared/` subdirectory as the marker avoids confusion with the
+// loader's own containing directory, which also happens to be named
+// `prompts/`. If the marker can't be found, the module throws at import
+// time — deployments with a broken prompt layout fail at server startup,
+// not on first user request.
+//
+// 2026-04-20 pm — replaced the prior hardcoded `../../../prompts` path
+// after a production incident where the Dockerfile runtime stage didn't
+// copy server/prompts/ and every classify request threw PromptLoadError.
+// See docs/v3-rebuild/reports/production-readiness-check.md §1.
+function findPromptsRoot(): string {
+  const start = new URL('.', import.meta.url).pathname;
+  let dir = start;
+  for (let i = 0; i < 8; i++) {
+    const sharedMarker = resolve(dir, 'prompts', '_shared');
+    if (existsSync(sharedMarker)) {
+      return resolve(dir, 'prompts');
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error(
+    `Prompt loader: could not find a prompts/_shared/ directory walking up from ${start}. ` +
+      `Expected locations: server/prompts/_shared/ (dev) or dist/prompts/_shared/ (prod). ` +
+      `Check that server/package.json build script copies prompts into dist/ ` +
+      `and that the Docker runtime stage ships the dist/ directory.`,
+  );
+}
+
+const DEFAULT_PROMPT_ROOT = findPromptsRoot();
 
 const SHARED_DIR = '_shared';
 
