@@ -1,0 +1,45 @@
+{
+  "name": "fixture-02-program-manager-enterprise-it",
+  "description": "Enterprise IT program manager from a Fortune 500 insurance carrier applying to an internal cloud-transformation PMO lead role at a healthcare payer. Strong overlap on regulated-industry transformation; the stretch is healthcare domain fluency.",
+  "resume_data": {
+    "name": "Priya Venkatesan",
+    "current_title": "Program Manager, Digital Transformation",
+    "key_skills": [
+      "Multi-workstream program management",
+      "Agile at scale (SAFe 6.0)",
+      "Cloud migration (AWS + Azure hybrid)",
+      "Regulatory compliance (SOX, PCI)",
+      "Cross-functional governance + steering committee reporting"
+    ],
+    "key_achievements": [
+      "Led 22-month mainframe-to-cloud migration for the claims platform — $84M program, 140+ engineers across 11 squads, delivered on committed outcome targets for latency and $19M annualized run-cost.",
+      "Stood up the PMO operating model (intake, capacity, outcome scoreboard) adopted by 4 sister programs.",
+      "Chaired the program steering committee with the CIO + CFO; turned a red-status program green in 90 days by replanning outcome milestones around deliverable risk, not activity."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Meridian Health Plan",
+    "role_title": "Director, Enterprise PMO — Cloud & Platform",
+    "requirements": [
+      "Demonstrated leadership of enterprise-wide cloud transformation programs in a regulated industry",
+      "Experience running a PMO as the accountable leader, not as an individual contributor PM",
+      "Fluency with HIPAA + HITRUST control environments preferred",
+      "Executive communication cadence — monthly steering, quarterly board updates",
+      "Change management muscle — this is a high-resistance environment"
+    ],
+    "culture_cues": [
+      "mission-driven payer",
+      "collaborative but evidence-heavy — don't walk in without data",
+      "matrixed, consensus-oriented governance"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Open with the $84M claims-platform migration — same regulated industry, same mainframe-to-cloud shape, same steering-committee cadence — to establish the program is running at the scale and regulatory complexity Meridian needs.",
+    "body_points": [
+      "$84M migration at the claims-platform level is a direct analog to Meridian's work — insurance claims processing shares HIPAA-adjacent regulatory posture and outcome risk profile with payer claims, so the playbook transfers with HIPAA-specific tailoring.",
+      "PMO stand-up (intake, capacity, outcome scoreboard) is exactly the Director, Enterprise PMO scope — position this as existing PMO leadership experience, not aspirational.",
+      "Red-to-green turnaround shows the change management muscle the JD flags; in a consensus culture, the outcome-milestone replanning approach is the kind of data-heavy proof point that lands."
+    ],
+    "closing_strategy": "Acknowledge the HIPAA/HITRUST learning curve directly (carrier background covers SOX + PCI; the payer control set is a near-neighbor) and close on the match between the claims-migration outcome discipline and Meridian's mission focus."
+  }
+}

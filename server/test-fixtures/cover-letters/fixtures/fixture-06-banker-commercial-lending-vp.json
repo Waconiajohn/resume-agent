@@ -1,0 +1,45 @@
+{
+  "name": "fixture-06-banker-commercial-lending-vp",
+  "description": "VP of Commercial Lending at a regional bank applying to a middle-market corporate banking role at a super-regional. Direct fit on lending fundamentals; stretch is larger hold sizes + syndication desk coordination.",
+  "resume_data": {
+    "name": "James O'Halloran",
+    "current_title": "Vice President, Commercial Lending",
+    "key_skills": [
+      "C&I lending (credit structuring + underwriting)",
+      "Portfolio management ($380M book)",
+      "Client relationship management — C-suite coverage",
+      "Commercial real estate + asset-based lending",
+      "Credit committee presentation"
+    ],
+    "key_achievements": [
+      "Grew commercial loan book from $210M to $380M over 3 years with NCO consistently below 8bps across the cycle.",
+      "Originated 14 new C&I relationships averaging $12M each — client acquisition in a mature, competitive regional market.",
+      "Chaired the regional credit committee that approved a $340M portfolio of new originations in FY 2024; zero criticized credits emerged from that vintage through the stress window."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Atlantic Commerce Bank",
+    "role_title": "Senior Vice President, Middle Market Corporate Banking",
+    "requirements": [
+      "10+ years of C&I lending or corporate banking experience",
+      "Demonstrated track record originating and structuring credits in the $25M-$100M range",
+      "Experience coordinating with syndication and capital markets desks on larger holds",
+      "Strong command of financial statement analysis and covenant structuring",
+      "Executive presence with C-suite and private equity sponsor clients"
+    ],
+    "culture_cues": [
+      "relationship-first — transactional bankers don't last here",
+      "credit discipline above volume",
+      "partnership with wealth management and treasury on client coverage"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Lead with the NCO-below-8bps portfolio performance — demonstrates credit discipline is the default instinct — before getting into the hold-size step-up the JD implies.",
+    "body_points": [
+      "$210M → $380M growth + clean cycle performance is the credit-discipline-above-volume proof Atlantic wants; the 14 new C&I relationships average $12M — acknowledge this is below the JD's $25M-$100M range and position it as the hold-size progression the role offers, not a gap.",
+      "Originations in a mature market demonstrate the relationship-first muscle — competitive markets reward persistent, trust-based coverage, not transactional outreach. This maps directly to Atlantic's stated culture.",
+      "Chairing the regional credit committee proves the credit-structuring command + committee presentation muscle; mention the zero-criticized-credits outcome through stress as evidence of structuring instinct under volatility."
+    ],
+    "closing_strategy": "Address the syndication coordination gap honestly — regional-bank holds rarely require capital markets partnership, so that's a learning curve. Close on the cross-functional coverage muscle (wealth + treasury partnership already modeled at current bank) as cultural-fit proof."
+  }
+}

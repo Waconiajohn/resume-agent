@@ -1,0 +1,45 @@
+{
+  "name": "fixture-10-medical-device-sales-director",
+  "description": "Regional Sales Director at a capital-equipment medical device company applying to a VP Sales role at an early-commercial surgical robotics startup. Strong enterprise-health-system selling; the stretch is going from an established brand's playbook to building one.",
+  "resume_data": {
+    "name": "Caroline Byrne",
+    "current_title": "Regional Sales Director — Capital Equipment",
+    "key_skills": [
+      "Capital equipment selling ($500K-$3M ASP)",
+      "Health system IDN + GPO contract negotiation",
+      "Clinical KOL development + surgeon engagement",
+      "Quota-carrying sales team management",
+      "Clinical economics + value-analysis committee presentations"
+    ],
+    "key_achievements": [
+      "Grew the Mountain West territory from $42M to $78M in 4 years — exceeded plan 11 of 16 quarters.",
+      "Led a 14-rep team to #1 ranking in the national sales force for 2 consecutive years; retained 13 of 14 reps through a compensation redesign.",
+      "Closed the largest single-system deal in company history — $11.4M across 5 hospitals with a single IDN contract, including a joint clinical-evidence build that the KOL surgeon published 18 months later."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Axon Surgical",
+    "role_title": "Vice President of Sales",
+    "requirements": [
+      "Proven success building and leading enterprise capital-equipment sales teams",
+      "Experience launching new surgical technology into early-adopter health systems",
+      "Deep relationships with academic medical centers and innovation-focused IDNs",
+      "Track record of designing the sales playbook — not inheriting one",
+      "Partnership with marketing, clinical, and product teams on launch strategy"
+    ],
+    "culture_cues": [
+      "early-commercial stage — playbook-building over playbook-running",
+      "founder-led — CEO is a former surgeon",
+      "clinical rigor is existential — trials and peer-reviewed evidence matter"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Lead with the $11.4M IDN deal and the KOL-published clinical evidence — demonstrates both the enterprise selling muscle and the clinical-rigor instinct Axon's founder-CEO will recognize immediately.",
+    "body_points": [
+      "Territory growth ($42M → $78M) and team leadership are the enterprise-sales-leadership proof — 14-rep management already at the scale Axon's VP Sales seat will grow into. Frame the team-retention outcome as evidence of builder-quality leadership.",
+      "Largest-deal-in-company-history + KOL co-publication demonstrates the academic medical center + clinical evidence mindset the JD flags; this is the playbook Axon needs built, not just executed. Explicitly reframe current role's playbook-running as muscle that translates to playbook-building.",
+      "Value-analysis-committee experience is the enterprise-hospital buying-committee fluency — name this specifically because VAC is a gating stage early-commercial surgical robotics navigates constantly, and it's easy for VP-Sales candidates to underweight in a cover letter."
+    ],
+    "closing_strategy": "Acknowledge the step from established-brand to early-commercial directly — running a playbook is different work than building one. Close on the founder-surgeon alignment and the clinical-evidence instinct as the reason to build Axon's playbook rather than stay in the established-brand role."
+  }
+}

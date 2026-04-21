@@ -1,0 +1,45 @@
+{
+  "name": "fixture-04-supply-chain-director-manufacturing",
+  "description": "Senior Supply Chain Director at a tier-1 auto supplier moving to a medical device manufacturer. Strong operational experience but the medical device domain has different regulatory pressure (FDA QSR, GMP).",
+  "resume_data": {
+    "name": "Robert Akinwale",
+    "current_title": "Senior Director, Supply Chain",
+    "key_skills": [
+      "Multi-plant operations (7 plants, 3 countries)",
+      "Supplier qualification + strategic sourcing",
+      "S&OP process design + demand-signal governance",
+      "Supply chain risk + resilience (dual-source, inventory buffer modeling)",
+      "Lean Six Sigma Black Belt — cost-to-serve + waste reduction"
+    ],
+    "key_achievements": [
+      "Re-engineered the supplier base during the semiconductor shortage — cut 14-day supply risk from 38% of the plant's SKUs to 4% over 11 months without inventory bloat.",
+      "Led the S&OP redesign for the $1.4B North American business — cut forecast-to-production latency from 9 weeks to 3 while improving fill rate 94.2% → 98.7%.",
+      "Managed the $280M sourcing portfolio across 340 suppliers; negotiated 4.1% aggregate cost reduction in a 6%-inflation environment."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Crescent Medical",
+    "role_title": "Vice President, Supply Chain & Operations",
+    "requirements": [
+      "15+ years of supply chain leadership in a regulated manufacturing environment",
+      "Demonstrated track record of cost discipline in a complex supplier network",
+      "Experience with FDA 21 CFR 820 (Quality System Regulation) and ISO 13485",
+      "Strong command of S&OP and demand planning at enterprise scale",
+      "Executive-level communication with commercial, regulatory, and quality partners"
+    ],
+    "culture_cues": [
+      "patient-first mission",
+      "quality-before-speed — regulatory risk is existential",
+      "matrix reporting to the COO and Chief Quality Officer"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Lead with the semiconductor-shortage resilience work — the exact kind of crisis-management supply chain instinct Crescent needs — framed to signal that resilience thinking, not cost-only thinking, is the mental model.",
+    "body_points": [
+      "Semiconductor risk reduction (38% → 4%) demonstrates the supplier-resilience muscle medical device supply chains demand — patient-supply continuity is the medical-device analog to auto OEM line-stoppage, so the playbook transfers.",
+      "S&OP redesign + fill-rate improvement shows the enterprise-scale demand-planning depth the JD flags; mention Lean Six Sigma Black Belt as the methodological foundation for the quality-before-speed culture.",
+      "$280M portfolio + cost-reduction-in-inflation proves the cost-discipline track record. Address the FDA QSR / ISO 13485 gap directly — auto has IATF 16949 + PPAP, a parallel but distinct control set, so the regulatory mindset transfers but the specific framework learning is honest."
+    ],
+    "closing_strategy": "Acknowledge the regulatory learning curve as the honest gap; close on the resilience-first instinct and the track record of operating inside a 'stoppage is existential' mindset — the cultural frame patient-first medical device work requires."
+  }
+}

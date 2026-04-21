@@ -1,0 +1,45 @@
+{
+  "name": "fixture-05-cmo-consumer-brand",
+  "description": "VP Marketing at a DTC beauty brand applying for CMO at a legacy CPG food brand. Strong digital + brand chops; stretch is traditional retail channel (grocery, mass) and a Fortune 500 matrix.",
+  "resume_data": {
+    "name": "Nora Whitfield",
+    "current_title": "Vice President, Marketing",
+    "key_skills": [
+      "Brand strategy + positioning",
+      "Performance marketing (paid social, CRM, retention)",
+      "Creative leadership + agency management",
+      "Category P&L ownership",
+      "Consumer research + insights"
+    ],
+    "key_achievements": [
+      "Grew annual revenue from $48M to $210M over 4 years at a DTC beauty brand through brand repositioning + retention-led LTV expansion.",
+      "Rebuilt the creative + performance marketing funnel in-house — cut agency spend 62% while improving blended CAC 31%.",
+      "Led the Sephora launch (exclusive 6-month window) that added $27M incremental revenue and shifted brand from 100% DTC to omnichannel."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Harvest Table Foods",
+    "role_title": "Chief Marketing Officer",
+    "requirements": [
+      "Proven success building iconic consumer brands across retail and digital channels",
+      "Experience managing a marketing P&L in the $80M+ range",
+      "Demonstrated track record partnering with national retailers on category strategy",
+      "Fluency with CPG trade promotion, broker management, and shelf economics",
+      "Comfort leading a 60+ person matrixed marketing function"
+    ],
+    "culture_cues": [
+      "heritage brand — respect the equity",
+      "numbers-heavy — boardroom expects granular category data",
+      "collaborative across sales, R&D, and operations"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Lead with the $48M → $210M growth story — modern brand building at scale — to establish credibility before the traditional-CPG stretch. Anchor on brand equity respect to signal cultural alignment with heritage.",
+    "body_points": [
+      "4x revenue growth + brand repositioning is the iconic-brand-building proof the JD demands; explicitly name the Sephora launch as the retail-partnership pattern that extends naturally to a national grocery partnership (category strategy, shelf placement, joint business planning).",
+      "In-house funnel rebuild + agency spend cut proves marketing-P&L discipline the Harvest board will want to see; frame the 62% agency reduction as the kind of matrix-team operating muscle (managing creative, analytics, media, CRM under one roof) that scales to the 60-person function.",
+      "Address the trade-promotion / broker / shelf-economics gap directly — DTC-first background means the field sales + trade marketing layer is the one domain to learn in the first 90 days; position the grocery-launch Sephora analog as proof that retail operating rhythm is not foreign."
+    ],
+    "closing_strategy": "Acknowledge the heritage-brand equity explicitly — DTC brand builders sometimes underweight this, so being loud about respecting Harvest's 80-year category position is both honest positioning and cultural signal. Close on the omnichannel muscle as the future of the category."
+  }
+}

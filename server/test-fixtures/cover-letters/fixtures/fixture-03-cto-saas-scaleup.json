@@ -1,0 +1,45 @@
+{
+  "name": "fixture-03-cto-saas-scaleup",
+  "description": "VP Engineering at a Series C vertical SaaS (logistics) applying for CTO at a Series B horizontal SaaS (developer tools). Close fit on scaling + hiring; stretch is multi-product + dev-tool specific instinct.",
+  "resume_data": {
+    "name": "Elena Rodriguez",
+    "current_title": "VP Engineering",
+    "key_skills": [
+      "Scaling engineering orgs 20 → 120",
+      "Multi-region architecture (AWS + self-hosted hybrid)",
+      "Technical hiring (eng brand + funnel)",
+      "Platform + product partnership",
+      "Board-level communication"
+    ],
+    "key_achievements": [
+      "Scaled engineering from 20 to 120 across 3 offices over 3 years while holding attrition below 7% and maintaining a 4.6 Glassdoor eng rating.",
+      "Re-architected the single-tenant monolith into a multi-tenant platform during a revenue-quadrupling window — zero migration-induced outages across the 800-customer rollout.",
+      "Owned the technical diligence process for the Series C ($95M) and a $40M strategic investment, including 9 architecture deep-dives with investor-side principals."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Ironloom",
+    "role_title": "Chief Technology Officer",
+    "requirements": [
+      "8+ years of engineering leadership, including one post-product-market-fit scaling motion",
+      "Hands-on architecture credibility with the engineering team",
+      "Developer-tooling or API-first SaaS experience strongly preferred",
+      "Track record of shipping high-quality developer UX at scale",
+      "Comfort representing technology to investors, partners, and enterprise buyers"
+    ],
+    "culture_cues": [
+      "engineer-first — the CEO still writes code on weekends",
+      "asynchronous by default — written memos over meetings",
+      "product-led growth, not enterprise sales motion"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Lead with the 20→120 scaling run — the exact post-PMF motion the JD describes — to plant credibility before addressing the dev-tool specificity the JD flags.",
+    "body_points": [
+      "Scaling + attrition + Glassdoor numbers aren't generic — they're specifically the engineer-first culture Ironloom has; cite the async-communication habits from a 3-office org as evidence this culture fit is real, not claimed.",
+      "Monolith-to-multi-tenant rewrite with zero outages demonstrates the hands-on architecture credibility the JD flags; address the dev-tool specificity directly — API-first patterns from the logistics platform transfer, but acknowledge the DX craft (docs, SDK, samples) is something to learn on the job alongside the engineering org.",
+      "Series C + $40M diligence work is direct proof of the investor-representation requirement; reframe enterprise partner conversations as the pattern that also translates to developer-community ecosystem partnerships."
+    ],
+    "closing_strategy": "Acknowledge the dev-tool domain transition as the one real stretch, and frame the candidate's operator bias as the reason they'd be credible fast — the eng-first culture and async memos are where this person already operates."
+  }
+}

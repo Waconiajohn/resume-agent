@@ -1,0 +1,45 @@
+{
+  "name": "fixture-09-salesforce-implementation-consultant",
+  "description": "Senior Salesforce Solution Architect at a Big 4 consultancy applying to an internal role — Director of Revenue Operations at a private equity portfolio company. Shift from external consulting to internal ownership of the platform.",
+  "resume_data": {
+    "name": "Yolanda Bearington",
+    "current_title": "Senior Solution Architect — Salesforce Practice",
+    "key_skills": [
+      "Salesforce architecture (Sales Cloud, Service Cloud, CPQ, Revenue Cloud)",
+      "Go-to-market process design (lead-to-cash, renewals)",
+      "Data architecture + integration (MuleSoft, Snowflake)",
+      "Change management + user adoption",
+      "Agile program delivery — multi-vendor + offshore"
+    ],
+    "key_achievements": [
+      "Led a $6.8M Salesforce rebuild for a $900M industrial distribution client — replaced a broken 7-year-old legacy org, cut quote-to-order cycle time from 11 days to 2, sustained 94% user adoption at 90 days.",
+      "Architected the lead-to-cash flow for a SaaS client through IPO readiness — including CPQ rewrite, territory-model redesign, and forecasting automation the CFO cited in S-1 prep.",
+      "Mentored 12 consultants through Salesforce certification (Advanced Admin + Sales Cloud Consultant); 11 of 12 passed on first attempt."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Redfern Labels",
+    "role_title": "Director of Revenue Operations",
+    "requirements": [
+      "7+ years of revenue operations, sales ops, or Salesforce platform ownership experience",
+      "Proven track record improving GTM efficiency — pipeline hygiene, forecast accuracy, quota setting",
+      "Demonstrated Salesforce administration and architecture fluency",
+      "Experience in private equity-owned or high-growth B2B environments",
+      "Comfort partnering directly with a CRO on territory and compensation design"
+    ],
+    "culture_cues": [
+      "PE portfolio company — board-heavy, metric-heavy",
+      "scrappy, lean operations team",
+      "bias toward action — decide with 70% data, not 100%"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Lead with the $900M industrial distribution rebuild — the kind of platform-ownership outcome (not just a project deliverable) that signals readiness for the internal Director role.",
+    "body_points": [
+      "$6.8M rebuild + 2-day quote-to-order + 94% adoption is direct proof of RevOps outcome delivery — reframe from 'consulting project' language to 'operating outcome' language (this is the translation work consultants moving to industry must do).",
+      "SaaS lead-to-cash through IPO readiness demonstrates the CFO-level partnership muscle the Redfern CRO role needs; CFO-cited forecasting automation is specifically the forecast-accuracy requirement in the JD.",
+      "Mentoring 12 consultants to certification proves the platform-admin depth — position this as evidence the candidate can be the in-house RevOps platform authority rather than the person who hires consultants to do it."
+    ],
+    "closing_strategy": "Acknowledge the consulting-to-industry transition directly — consulting selects for different muscles (scoping, selling, billing) than industry (ownership, accountability, operating rhythm). Close on the PE-lean operating style as the fit: consulting-trained, but ready to stop delivering projects and start owning an outcome."
+  }
+}

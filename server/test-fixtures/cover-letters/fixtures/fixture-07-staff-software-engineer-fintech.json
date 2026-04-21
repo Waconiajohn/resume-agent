@@ -1,0 +1,45 @@
+{
+  "name": "fixture-07-staff-software-engineer-fintech",
+  "description": "Staff engineer at a payments startup applying to a Principal Engineer role at a neobank. IC-track candidate, deep distributed-systems background; stretch is regulated-bank operational environment.",
+  "resume_data": {
+    "name": "Aarav Patel",
+    "current_title": "Staff Software Engineer",
+    "key_skills": [
+      "Distributed systems (Go, Rust)",
+      "Event-driven architecture (Kafka, exactly-once semantics)",
+      "Payment processing (ISO 8583, card networks, settlement)",
+      "Observability + SRE practices (SLI/SLO design)",
+      "Technical design + mentoring senior engineers"
+    ],
+    "key_achievements": [
+      "Designed and led the rewrite of the authorization path from monolith to an event-sourced platform — handled 2.4B transactions in the first year with 99.998% availability and p99 latency under 40ms.",
+      "Introduced SLO-based oncall governance across 8 teams — reduced page volume 71% quarter-over-quarter while tightening reliability targets.",
+      "Mentored 6 engineers to senior promotion over 3 years; three are now tech leads on platform-critical surfaces."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Oakline Bank",
+    "role_title": "Principal Engineer, Core Banking Platform",
+    "requirements": [
+      "Deep expertise in high-throughput distributed systems — ideally in payments, ledger, or adjacent domains",
+      "Demonstrated architecture ownership at the principal / staff-plus level",
+      "Experience operating in a regulated environment — SOC 2, PCI DSS, or bank-grade controls",
+      "Strong written and verbal communication — this role writes RFCs read by regulators",
+      "Willing to be hands-on in code as well as in architecture"
+    ],
+    "culture_cues": [
+      "regulated bank — change review is rigorous",
+      "document-heavy engineering culture — written design lives forever",
+      "principal engineers set direction, not just react"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Lead with the authorization-path rewrite — 2.4B transactions, 99.998% availability, p99 under 40ms — to establish the payments + distributed-systems depth before the regulated-bank step-up.",
+    "body_points": [
+      "Event-sourced authorization rewrite is a direct analog to core-banking ledger work — same exactly-once semantics, same reconciliation discipline, same availability bar. Position this as the shape the Principal role will expand (from payments rail to full core banking).",
+      "SLO-based oncall governance across 8 teams demonstrates the org-level architecture ownership the JD flags — this is principal-level impact, not staff-level IC delivery.",
+      "Mentoring 6 engineers to senior promotion proves the direction-setting muscle the regulated-bank culture demands. Mention that the payments-startup background is already SOC 2 + PCI DSS; the bank-grade controls are an additive learning layer, not a standing start."
+    ],
+    "closing_strategy": "Acknowledge the regulator-readable RFC craft honestly — payments-startup design docs skew internal-engineer-focused, so the regulator-readable writing register is something to adapt to. Close on the direction-setting mandate as the explicit reason for applying — not just bigger scale, but a role where principal engineers actually set direction."
+  }
+}

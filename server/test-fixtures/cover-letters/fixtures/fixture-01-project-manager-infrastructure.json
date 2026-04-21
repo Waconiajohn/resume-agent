@@ -1,0 +1,45 @@
+{
+  "name": "fixture-01-project-manager-infrastructure",
+  "description": "Senior PM (PMP) from transit agency applying for a utility-scale solar farm program. Clean fit on capital-project delivery; stretch is private-sector commercial acumen vs. public-sector background.",
+  "resume_data": {
+    "name": "Marcus Chen",
+    "current_title": "Senior Project Manager",
+    "key_skills": [
+      "Capital project delivery (PMP)",
+      "Stakeholder management — public + regulatory",
+      "Earned-value management",
+      "Contractor oversight (GC + subs)",
+      "Environmental permitting (NEPA, Section 106)"
+    ],
+    "key_achievements": [
+      "Delivered $340M light-rail expansion 4 months ahead of schedule, $12M under budget, across 3 municipalities and 47 private easements.",
+      "Closed a 14-month litigation stall by rebuilding the community engagement plan; secured final board approval in 6 weeks.",
+      "Built the transit agency's first integrated PMIS (Procore + Oracle Primavera), adopted across 8 active programs."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Sunfield Renewables",
+    "role_title": "Senior Program Manager, Utility-Scale Solar",
+    "requirements": [
+      "10+ years delivering capital projects in the $100M+ range",
+      "Direct experience navigating environmental permitting and community opposition",
+      "Strong vendor + contractor management across EPC scope",
+      "Ability to partner with finance + development teams on project pro formas",
+      "Willing to travel 30-40% to project sites across the Southwest"
+    ],
+    "culture_cues": [
+      "lean, fast-moving developer culture",
+      "founder-operator comfort with ambiguity",
+      "portfolio-level P&L discipline"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Lead with the $340M transit project — same dollar scale, same permitting-heavy environment, same multi-jurisdiction coordination the solar role demands — to establish capital-project credibility before the sector stretch.",
+    "body_points": [
+      "$340M delivery + schedule/budget beat demonstrates the capital-project rigor Sunfield's portfolio needs (earned-value, GC oversight, NEPA work).",
+      "14-month litigation reversal is direct proof of the community-opposition navigation the JD flags — reframe public-sector stakeholder skill as exactly the capability needed for utility-scale community relations.",
+      "Procore + Primavera integration proves the tools-and-systems fluency EPC work demands; acknowledge the sector transition and frame the prior-sector expertise as transferable craft."
+    ],
+    "closing_strategy": "Position the sector transition as a strength — a regulated, permit-intensive, capital-heavy background ports directly to utility-scale solar, and the private-sector pro-forma exposure will be a learning curve of weeks, not years."
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "name": "fixture-08-sales-engineer-enterprise-saas",
+  "description": "Sr. Sales Engineer at a cybersecurity vendor applying to a Principal SE role at a data/AI platform. Strong pre-sales + technical credibility; the step up is managing SE team coverage and deal strategy at the VP-of-SE tier.",
+  "resume_data": {
+    "name": "Derek Nwosu",
+    "current_title": "Senior Sales Engineer",
+    "key_skills": [
+      "Pre-sales technical discovery + scoping",
+      "Proof-of-value + technical evaluation design",
+      "Enterprise demo craft (custom-built, not canned)",
+      "API integration + technical architecture",
+      "Partner co-sell (AWS, GCP, SI partners)"
+    ],
+    "key_achievements": [
+      "Supported $34M in closed ARR across 18 enterprise deals in FY 2024 — win rate 62% on qualified opportunities, $1.9M average deal size.",
+      "Built the company's first POV framework (success criteria, test plan, stakeholder map) adopted across 14 SEs and credited with reducing POV cycle time from 9 to 5 weeks.",
+      "Led the technical narrative on 3 flagship 7-figure deals including a $4.2M platform win against an entrenched competitor in financial services."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Voltline AI",
+    "role_title": "Principal Sales Engineer, Strategic Accounts",
+    "requirements": [
+      "7+ years of enterprise pre-sales experience, with $1M+ average deal size",
+      "Ability to lead technical strategy across 6-8 strategic accounts rather than a general territory",
+      "Deep technical fluency with modern data platforms (Snowflake, Databricks, or equivalent) and AI/ML use cases",
+      "Experience coaching newer SEs and influencing the SE playbook",
+      "Partnership with product and engineering on customer feedback loops"
+    ],
+    "culture_cues": [
+      "strategic-account motion — patient, multi-threaded",
+      "principal SEs set technical direction with the account team",
+      "high-autonomy, high-accountability culture"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Lead with the $34M ARR + 62% win rate — concrete evidence of pre-sales effectiveness — to establish credibility before the data/AI domain stretch.",
+    "body_points": [
+      "$34M supported + $1.9M average deal size exceeds the JD's $1M+ threshold cleanly; frame this as the pre-sales depth that ports to the strategic-account motion Voltline runs.",
+      "POV framework adoption across 14 SEs is direct proof of the 'influence the SE playbook' expectation — this is principal-SE impact, not senior-SE activity. The 9→5 week POV cycle reduction is measurable outcome data for the application.",
+      "$4.2M financial-services flagship demonstrates the 7-figure technical-narrative muscle; address the data-platform / AI use-case specificity honestly — cyber and data/AI share the same enterprise buying motion, and Snowflake + Databricks are already in the cyber integration stack, so there's real technical continuity."
+    ],
+    "closing_strategy": "Acknowledge the ML-specific use-case depth as the domain to build in the first 90 days. Close on the strategic-accounts appetite — the current role is territory-based and the strategic-accounts depth is exactly why this step makes sense, not just a title change."
+  }
+}
