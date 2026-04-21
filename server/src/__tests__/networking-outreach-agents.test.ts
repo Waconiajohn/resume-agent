@@ -201,8 +201,8 @@ describe('Networking Outreach — Agent Registration', () => {
       expect(writerConfig.capabilities).toContain('sequence_assembly');
     });
 
-    it('uses orchestrator model', () => {
-      expect(writerConfig.model).toBe('orchestrator');
+    it('uses primary model', () => {
+      expect(writerConfig.model).toBe('primary');
     });
 
     it('has 8 max rounds', () => {

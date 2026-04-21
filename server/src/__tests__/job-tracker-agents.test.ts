@@ -236,8 +236,8 @@ describe('Job Tracker — Agent Registration', () => {
       expect(writerConfig.capabilities).toContain('report_assembly');
     });
 
-    it('uses orchestrator model', () => {
-      expect(writerConfig.model).toBe('orchestrator');
+    it('uses primary model', () => {
+      expect(writerConfig.model).toBe('primary');
     });
 
     it('has 12 max rounds (higher than standard)', () => {

@@ -132,8 +132,8 @@ describe('Executive Bio Agent Registration', () => {
     expect(creators[0].identity.name).toBe('writer');
   });
 
-  it('writer model is orchestrator', () => {
-    expect(writerConfig.model).toBe('orchestrator');
+  it('writer model is primary', () => {
+    expect(writerConfig.model).toBe('primary');
   });
 });
 
