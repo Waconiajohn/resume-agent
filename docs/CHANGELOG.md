@@ -1,5 +1,36 @@
 # Changelog — Resume Agent
 
+## 2026-04-21 — Cover-letter rewire + review_letter primitive + comparison harness
+**Sprint:** LMS + CareerIQ Integration (infrastructure) | **Story:** Bring gpt-5.4-mini to non-v3 products (cover-letter trial)
+**Summary:** Executed the cover-letter portion of the gpt-5.4-mini plan end-to-end. Both writer tools route through the feature-scoped `coverLetterWriterLlm` with env-driven model IDs; `review_letter` now flows through `structuredLlmCall` for retry coverage; a fixture-based comparison harness with runner + aggregator is in place so the writer model can be swapped by env var without code changes.
+
+### Changes Made
+- `server/src/agents/cover-letter/writer/tools.ts` —
+  - Swapped imports from `llm` to `coverLetterWriterLlm` for both `write_letter` and `review_letter`.
+  - Model IDs are env-driven: `COVER_LETTER_WRITER_MODEL` overrides `MODEL_PRIMARY` for the writer; `COVER_LETTER_REVIEWER_MODEL` overrides `MODEL_MID` for the reviewer.
+  - `review_letter` migrated from bespoke `llm.chat` + `repairJSON` + manual extract to a single `structuredLlmCall<CoverLetterReview>` with a review-specific retry addendum. Graceful degradation preserved: `StructuredLlmCallError` (both-attempts-fail) triggers the same word-count fallback as the pre-migration `repairJSON`-null branch.
+- `server/src/agents/cover-letter/types.ts` — new `CoverLetterReviewSchema` (Zod). 4 required fields (total_score, passed, issues, criteria); `criteria` value-shape is `z.record(z.string(), z.unknown())` — strict enough to catch partial JSON, lenient enough for existing test fixtures with `criteria: {}`.
+- `server/src/__tests__/cover-letter-agents.test.ts` — added `mockLlmStream` hoisted alongside `mockLlmChat`, new `streamOf()` helper, added `coverLetterWriterLlm` to the `vi.mock` with both `chat` + `stream` members. `review_letter` tests flipped from `mockLlmChat.mockResolvedValue(...)` to `mockLlmStream.mockImplementation(streamOf(...))`. `write_letter` tests unchanged.
+- `server/scripts/cover-letter-comparison.mjs` — new. Per-variant runner: for each fixture under `test-fixtures/cover-letters/fixtures/` runs `write_letter` + `review_letter`, captures letter output, quality score, word count, per-tool timings, and provider/model metadata, writes per-fixture JSON to `results/<variant>/<slug>.json` plus a `_summary.json`.
+- `server/scripts/cover-letter-aggregate.mjs` — new. Reads two variants under `results/` and produces a markdown comparison: per-fixture delta table, per-criterion win/loss/tie counts across the 5 review dimensions, aggregate averages.
+- `server/test-fixtures/cover-letters/fixtures/example-banking-cto.json` — one synthetic fixture documenting the `{name, description, resume_data, jd_analysis, letter_plan}` schema.
+- `server/test-fixtures/cover-letters/README.md` — harness usage + target fixture diversity notes.
+- `.gitignore` — added `server/test-fixtures/cover-letters/results/` so per-run outputs don't get committed (may contain PII from real fixtures).
+
+### Decisions Made
+- **Harness runs one variant per process invocation** because `coverLetterWriterLlm` is built at module load time and cached. Flipping providers mid-process would require `vi.resetModules()`-style re-imports, which is wrong for a production script. The two-invocation pattern is documented in the README.
+- **Aggregator runs reviewer scoring "through each variant's own reviewer"**, not through a shared judge. This matches the current tool behavior (review_letter uses the configured reviewer model). The aggregator's notes flag this — a stricter A/B would route both variants' writer output through a single shared reviewer model. Out of scope for the initial harness.
+- **`review_letter` graceful degradation preserved**. The pre-migration behavior was: JSON parse fails → word-count fallback score, tool returns normally. The migration preserves that exactly for the `StructuredLlmCallError` case. Other errors (network, abort) still return `{error: 'Failed to review...'}`.
+- **No formal go/no-go gate codified.** Per the owner's direction (2026-04-21), we're not treating this as a gated trial — the harness is available to run, but merging the rewire isn't contingent on fixture results. Production path still defaults to Groq until the env var is set.
+
+### Known Issues
+- 8 pre-existing `plan_letter` test failures in `cover-letter-agents.test.ts` remain. These are unrelated to this work and are tracked in the triage doc (bucket C — missing `beforeEach` mock + one production guard). Not in scope here.
+
+### Next Steps
+- Drop 10 real fixtures into `server/test-fixtures/cover-letters/fixtures/` when ready.
+- Run the harness: `node --import tsx --env-file=.env scripts/cover-letter-comparison.mjs --variant=baseline`, then with env vars set for the trial, then `cover-letter-aggregate.mjs`.
+- If/when gpt-5.4-mini wins, set `COVER_LETTER_WRITER_PROVIDER=openai` in Railway environment to cut over — no code change required.
+
 ## 2026-04-21 — Foundation for cover-letter gpt-5.4-mini trial
 **Sprint:** LMS + CareerIQ Integration (infrastructure) | **Story:** Bring gpt-5.4-mini to non-v3 products (cover-letter trial)
 **Summary:** Scaffolded the machinery needed to run a per-product OpenAI + gpt-5.4-mini trial on the cover-letter writer, without rewiring any cover-letter code yet. The trial itself (rewire + 10-fixture harness + go/no-go) is queued pending soak of commits af84c4c0 / cb41f477.

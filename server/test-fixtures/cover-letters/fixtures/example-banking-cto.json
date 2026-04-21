@@ -1,0 +1,45 @@
+{
+  "name": "example-banking-cto",
+  "description": "Synthetic example — VP Engineering applying for CTO at a Fortune-500 bank. Use as a template for adding real fixtures.",
+  "resume_data": {
+    "name": "Jane Doe",
+    "current_title": "VP Engineering",
+    "key_skills": [
+      "Cloud Architecture",
+      "Team Leadership",
+      "P&L Ownership",
+      "Platform Engineering",
+      "Compliance & Audit"
+    ],
+    "key_achievements": [
+      "Scaled engineering org from 10 to 45 engineers over 4 years while holding attrition below 8%.",
+      "Delivered $2.4M in annualized cloud cost reductions via multi-region migration to AWS.",
+      "Led SOC 2 Type II certification and architected the compliance control set (42 controls)."
+    ]
+  },
+  "jd_analysis": {
+    "company_name": "Acme Bank",
+    "role_title": "Chief Technology Officer",
+    "requirements": [
+      "15+ years leading engineering at regulated financial institutions",
+      "Proven track record scaling engineering organizations through 3x growth",
+      "Deep expertise in cloud architecture, preferably AWS or multi-cloud",
+      "Experience owning the technology P&L at division level",
+      "Demonstrated ability to partner with the CISO on regulatory audits (OCC, FDIC, SOC 2)"
+    ],
+    "culture_cues": [
+      "risk-aware engineering culture",
+      "cross-functional partnership with risk & compliance",
+      "executive communication with the board"
+    ]
+  },
+  "letter_plan": {
+    "opening_hook": "Position the candidate as someone who has already done the hard part — scaling a regulated engineering org through explosive growth without sacrificing compliance posture.",
+    "body_points": [
+      "Scaled 10→45 engineers with low attrition — demonstrates the org-building maturity required for a Fortune-500 bank.",
+      "$2.4M cost reductions via cloud migration — ties the candidate's cloud expertise to the P&L ownership the JD demands.",
+      "SOC 2 Type II + 42-control set — directly addresses the compliance partnership requirement and the CISO-collaboration culture cue."
+    ],
+    "closing_strategy": "Acknowledge the specific regulatory stakes of a Fortune-500 bank CTO role (OCC, FDIC); position the candidate as someone who has operated in those environments rather than someone eager to learn them."
+  }
+}

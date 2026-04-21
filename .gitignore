@@ -39,3 +39,8 @@ server/test-fixtures/snapshots/
 server/test-fixtures/job-descriptions/raw/
 server/test-fixtures/job-descriptions/meta/
 server/test-fixtures/job-descriptions/extracted/
+
+# Cover-letter comparison harness — per-run outputs are regenerated on
+# demand and may contain PII from real fixtures. The fixtures directory
+# and README remain tracked.
+server/test-fixtures/cover-letters/results/
