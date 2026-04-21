@@ -440,11 +440,16 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
   );
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden bg-[var(--bg-0)]">
-      {/* ─── Fixed top strip ──────────────────────────────────────────
-          Header + stage progress + any error banner stay pinned while the
-          three columns below scroll independently. */}
-      <div className="mx-auto w-full max-w-7xl px-4 pt-6 pb-3 flex-shrink-0 space-y-4">
+    <div className="min-h-[calc(100vh-3.5rem)] flex flex-col bg-[var(--bg-0)]">
+      {/* ─── Top strip (flows with page scroll, not pinned) ──────────
+          Header + stage progress + any error banner. When the user
+          scrolls down, this strip scrolls off screen so the three
+          columns below get the full viewport. Earlier design kept
+          this pinned with independent per-column scroll; the 2026-04-20
+          pm production UX feedback preferred whole-page scroll so the
+          "Building your resume" card gets out of the way once the
+          pipeline is complete. */}
+      <div className="mx-auto w-full max-w-7xl px-4 pt-6 pb-3 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-[var(--bullet-confirm)]">
@@ -533,13 +538,15 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
         )}
       </div>
 
-      {/* ─── Scroll zone ──────────────────────────────────────────────
-          flex-1 + min-h-0 is mandatory so the inner grid's h-full shrinks
-          to fit the remaining viewport. Each of the three columns has its
-          own overflow-y-auto. */}
-      <div className="flex-1 min-h-0 w-full mx-auto max-w-7xl px-4 pb-4">
+      {/* ─── Content zone ──────────────────────────────────────────────
+          Flows with the page. Intake form: natural content height.
+          Results grid: three columns flow as a standard CSS grid — each
+          column sizes to its content, tallest column sets the row
+          height. Page scroll (on document.body) is how the user gets
+          past the top strip to see column content. */}
+      <div className="w-full mx-auto max-w-7xl px-4 pb-4">
         {showIntake && (
-          <div className="h-full overflow-y-auto space-y-4">
+          <div className="space-y-4">
             {persistence.lastSession && (
               <V3ResumeBanner
                 jdTitle={persistence.lastSession.jdTitle}
@@ -561,9 +568,9 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
         )}
 
         {showResults && (
-          <div className="grid lg:grid-cols-[320px_1fr_300px] gap-6 h-full">
+          <div className="grid lg:grid-cols-[320px_1fr_300px] gap-6">
             {/* Left: benchmark + strategy */}
-            <div className="overflow-y-auto h-full pr-1 space-y-4">
+            <div className="space-y-4">
               <V3StrategyPanel
                 benchmark={pipeline.benchmark}
                 strategy={pipeline.strategy}
@@ -576,9 +583,9 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
               />
             </div>
 
-            {/* Center: resume + promote (promote sits at the bottom of this
-                column's scroll — wrap-up action for the resume itself). */}
-            <div className="overflow-y-auto h-full pr-1 space-y-6">
+            {/* Center: resume + promote (promote sits at the bottom of the
+                column — wrap-up action for the resume itself). */}
+            <div className="space-y-6">
               <V3ResumeView
                 structured={pipeline.structured}
                 written={effectiveWritten}
@@ -612,7 +619,7 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
             </div>
 
             {/* Right: verify */}
-            <div className="overflow-y-auto h-full pr-1 space-y-4">
+            <div className="space-y-4">
               <V3VerifyPanel
                 verify={effectiveVerify}
                 isRunning={pipeline.isRunning}
