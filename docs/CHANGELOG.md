@@ -1,5 +1,38 @@
 # Changelog — Resume Agent
 
+## 2026-04-21 — Platform-wide switch to gpt-5.4-mini (LLM_PROVIDER=openai)
+**Sprint:** LMS + CareerIQ Integration (infrastructure) | **Story:** Platform OpenAI rollout
+**Summary:** gpt-5.4-mini is now the platform default for every agent that uses the global `llm` provider. Set `LLM_PROVIDER=openai` in Railway (already done — `OpenAI_API_KEY` already set) and every product except Resume V2 + v3 flips immediately. The per-product `coverLetterWriterLlm` + `COVER_LETTER_WRITER_*` env-var pattern from earlier in the session is reverted — it's unnecessary once the global provider flips.
+
+### Changes Made
+- `server/src/lib/model-constants.ts` —
+  - Added `OPENAI_MODEL_PRIMARY/MID/ORCHESTRATOR/LIGHT` constants (all default `gpt-5.4-mini`, per-tier env overrides available).
+  - Added `openai` branch to `selectModel()`; updated all `MODEL_*` exports + `MODEL_ORCHESTRATOR_COMPLEX` to pass the OpenAI variant through.
+  - Added `gpt-5.4-mini` + `gpt-5.4-nano` pricing entries to `MODEL_PRICING`.
+- `server/src/lib/llm.ts` —
+  - `buildProvider('openai')` now reads both `OPENAI_API_KEY` and `OpenAI_API_KEY` (matches v3 provider factory pattern; this repo's `.env` uses the mixed-case form).
+  - Removed the `coverLetterWriterLlm` export + its trial-scoping comment block.
+- `server/src/agents/cover-letter/writer/tools.ts` — reverted from `coverLetterWriterLlm` back to the global `llm`; dropped `COVER_LETTER_WRITER_MODEL` and `COVER_LETTER_REVIEWER_MODEL` env reads (no longer needed since the global provider is now gpt-5.4-mini). Kept the `structuredLlmCall` migration + `CoverLetterReviewSchema` — those are load-bearing for gpt-5.4-mini's stochastic schema failures.
+- `server/src/__tests__/cover-letter-agents.test.ts` — dropped `coverLetterWriterLlm` from the vi.mock; added `stream: mockLlmStream` to the `llm` mock (review_letter calls `llm.stream` via the primitive now).
+- `docs/cover-letter-gpt54mini-trial.md` — **deleted.** Superseded by the global flip.
+- `server/test-fixtures/cover-letters/README.md` — simplified; dropped references to `COVER_LETTER_*` env vars.
+
+### Decisions Made
+- **Global flip over per-product migration.** Owner's intent (2026-04-21) is "everything to gpt-5.4-mini"; the feature-scoped `coverLetterWriterLlm` pattern was the wrong scaffolding for that. One env var (`LLM_PROVIDER=openai`) now routes every non-v3, non-Resume-V2 LLM call through gpt-5.4-mini.
+- **Kept the structuredLlmCall migration in `review_letter`.** gpt-5.4-mini's stochastic boolean-for-number schema failures (the class that drove v3's Fix 5) apply to cover-letter review too. The primitive's retry coverage is the reason the review step doesn't hard-fail on that.
+- **Resume V2 writer stays on DeepSeek** via `writerLlm` / `RESUME_V2_WRITER_PROVIDER`. Owner has signaled Resume V2 may be retired; flipping it is out of scope.
+- **v3 already runs gpt-5.4-mini** via its own `server/src/v3/providers/factory.ts`. The global flip doesn't touch it.
+
+### Validation
+- Full 11-fixture comparison run (Groq baseline vs OpenAI gpt-5.4-mini):
+  - Groq: 11/11 letters contained leaked `<think>...</think>` reasoning tokens (Qwen3 32B behavior). Word counts 587-895 (target is 250-400). Avg review score 79.1.
+  - OpenAI: 11/11 clean letters. Word counts 301-357 (all in target range). Avg review score 87.2 (+8.1).
+  - Latency: 47s → 66s total (+40%).
+- Tests: 2535/2535 passing; `tsc --noEmit` clean on `app` + `server`.
+
+### Known Issues
+- Qwen3 32B leaks `<think>...</think>` reasoning tokens into the content field for every `llm.chat` call that uses a write-class prompt. **Only relevant if anyone flips `LLM_PROVIDER` back to `groq`** — with `openai` as the default this is a non-issue.
+
 ## 2026-04-21 — Clear 33 pre-existing test failures to restore 0-failure quality floor
 **Sprint:** LMS + CareerIQ Integration (infrastructure) | **Story:** Test-drift cleanup
 **Summary:** Triaged and fixed the 33 pre-existing server test failures that were noise in every run. Split into three commits (mock-factory fix → assertion swaps → drift). Final state: 2535/2535 passing, 0 failing. Quality floor per CLAUDE.md restored.
