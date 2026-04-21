@@ -1,5 +1,32 @@
 # Changelog — Resume Agent
 
+## 2026-04-21 — Clear 33 pre-existing test failures to restore 0-failure quality floor
+**Sprint:** LMS + CareerIQ Integration (infrastructure) | **Story:** Test-drift cleanup
+**Summary:** Triaged and fixed the 33 pre-existing server test failures that were noise in every run. Split into three commits (mock-factory fix → assertion swaps → drift). Final state: 2535/2535 passing, 0 failing. Quality floor per CLAUDE.md restored.
+
+### Changes Made
+Three commits (see git log):
+1. `test: add getModelForTier to agent-loop mock factories` — single mock-factory fix in `agent-loop-parallel.test.ts` + `sprint11-lifecycle-hooks.test.ts`. Unblocks 16 tests. The factories predated `getModelForTier`'s addition to `agent-loop.ts` and were throwing at import time.
+2. `test: writer-agent model tier is 'primary', not 'orchestrator'` — four identical assertion swaps (executive-bio, thank-you-note, job-tracker, networking-outreach). Production had deliberately bumped these writers to the primary tier; tests weren't updated.
+3. `test: clear remaining drift (plan_letter mock, validateAfterAgent warn, call signatures)` —
+   - `cover-letter-agents.test.ts` plan_letter block: added missing `beforeEach(mockLlmChat.mockResolvedValue(...))` with a plan that satisfies the assertion chain. 7 tests unblocked.
+   - `cover-letter/analyst/tools.ts`: added production guard — `plan_letter` now errors early when `requirement_matches` is missing from scratchpad. The tool's entire premise is match-selection; empty matches should not silently fall through to a generic plan.
+   - `interview-prep-agents.test.ts` + `linkedin-optimizer-agents.test.ts`: dropped tool-name assertions from `buildAgentMessage` tests per AGENT INTEGRITY MANDATE (messages provide context, not tool-call sequences). Assertions now check substance.
+   - `linkedin-optimizer-agents.test.ts`: `validateAfterAgent` for writer no longer throws on missing `final_report` — it warns (per mandate: throw only for critical pipeline dependencies). Test expectation updated to `not.toThrow()`.
+   - `ni-career-scraper.test.ts`: `searchJobsViaSerper` gained a 4th arg (`filters.max_days_old`, default 7). Test assertion updated.
+   - `profile-setup-route.test.ts`: `mockFrom` call count bumped from 1 to 3 with a comment explaining that the route added additional DB reads/audit writes and the test's real intent (synthesis-not-re-run) is covered by a separate assertion.
+
+### Decisions Made
+- **Most failures were bucket A (test drift) or bucket C (test infra).** None were real production bugs uncovered by the tests. The one production change (plan_letter's new match guard) is a defensive improvement, not a bug fix — it turns a silent fallback into a loud error at a contract boundary.
+- **Preferred updating assertions over re-asserting old contracts.** Several of the test-drift cases reflect the AGENT INTEGRITY MANDATE codified after the tests were written. Rather than resist the mandate (tool names in messages, throw-heavy validateAfterAgent), we brought the tests forward.
+- **Preserved the existing graceful-degradation path in `plan_letter`.** The new guard fires at precondition-violation, but the LLM-fallback branch (when the model returns non-JSON) is untouched. That branch is still the correct behavior for a transient model glitch.
+
+### Known Issues
+- None. 2535/2535 server tests passing; `tsc --noEmit` clean on both `app` and `server`.
+
+### Next Steps
+- Branch is ready to ship. No baseline noise left to filter through.
+
 ## 2026-04-21 — Cover-letter rewire + review_letter primitive + comparison harness
 **Sprint:** LMS + CareerIQ Integration (infrastructure) | **Story:** Bring gpt-5.4-mini to non-v3 products (cover-letter trial)
 **Summary:** Executed the cover-letter portion of the gpt-5.4-mini plan end-to-end. Both writer tools route through the feature-scoped `coverLetterWriterLlm` with env-driven model IDs; `review_letter` now flows through `structuredLlmCall` for retry coverage; a fixture-based comparison harness with runner + aggregator is in place so the writer model can be swapped by env var without code changes.

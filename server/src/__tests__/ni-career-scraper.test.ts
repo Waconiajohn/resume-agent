@@ -150,7 +150,9 @@ describe('scrapeCareerPages', () => {
     const result = await scrapeCareerPages([COMPANY_NO_ATS], ['VP'], 'user-1');
 
     expect(mockFetchFromATS).not.toHaveBeenCalled();
-    expect(mockSearchViaSerper).toHaveBeenCalledWith('Mystery Inc', ['VP'], undefined);
+    // scrapeCareerPages now passes filters.location + filters.max_days_old as
+    // trailing args. Default filters = { max_days_old: 7 }, so the 4th arg is 7.
+    expect(mockSearchViaSerper).toHaveBeenCalledWith('Mystery Inc', ['VP'], undefined, 7);
     expect(result.jobsFound).toBeGreaterThan(0);
   });
 

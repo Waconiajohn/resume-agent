@@ -321,12 +321,14 @@ describe('LinkedIn Optimizer ProductConfig', () => {
   it('buildAgentMessage returns content for writer', () => {
     const config = createLinkedInOptimizerProductConfig();
     const state = config.createInitialState('s', 'u', {});
-    const msg = config.buildAgentMessage('writer', state, {});
-    expect(msg).toContain('write_headline');
-    expect(msg).toContain('write_about');
-    expect(msg).toContain('write_experience_entries');
-    expect(msg).toContain('optimize_keywords');
-    expect(msg).toContain('assemble_report');
+    // buildAgentMessage is synchronous for this product; narrow the union.
+    const msg = config.buildAgentMessage('writer', state, {}) as string;
+    // Per the AGENT INTEGRITY MANDATE, writer messages provide context
+    // (goal + data + constraints) rather than enumerate a tool sequence.
+    // We verify substance rather than tool names.
+    expect(msg.length).toBeGreaterThan(0);
+    expect(msg).toMatch(/linkedin profile/i);
+    expect(msg).toMatch(/evidence/i);
   });
 
   it('buildAgentMessage returns empty string for unknown agent', () => {
@@ -356,10 +358,14 @@ describe('LinkedIn Optimizer ProductConfig', () => {
     expect(() => config.validateAfterAgent!('analyzer', state)).not.toThrow();
   });
 
-  it('validateAfterAgent throws if writer produces no final_report', () => {
+  it('validateAfterAgent does not throw when writer produces no final_report — it warns', () => {
+    // Per the AGENT INTEGRITY MANDATE, validateAfterAgent throws ONLY for
+    // critical pipeline dependencies. A missing final_report is not a hard
+    // failure — finalizeResult handles it by emitting an empty report
+    // rather than crashing. The production code logs a warning instead.
     const config = createLinkedInOptimizerProductConfig();
     const state = config.createInitialState('s', 'u', {});
-    expect(() => config.validateAfterAgent!('writer', state)).toThrow('final report');
+    expect(() => config.validateAfterAgent!('writer', state)).not.toThrow();
   });
 
   it('validateAfterAgent passes if writer produces final_report', () => {

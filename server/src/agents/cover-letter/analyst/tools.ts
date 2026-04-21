@@ -124,6 +124,13 @@ const planLetterTool: CoverLetterTool = {
     if (!jd || !resume) {
       return { error: 'Must call parse_resume_inputs and match_requirements first' };
     }
+    if (!matches || matches.length === 0) {
+      // match_requirements is a hard precondition — plan_letter's entire
+      // premise is "select the strongest match" and there's nothing to
+      // select when the scratchpad is empty. Error early rather than
+      // producing a generic non-evidence-grounded plan.
+      return { error: 'Must call match_requirements before plan_letter' };
+    }
 
     // Build full candidate evidence for the planner — include work history if available
     const resumeWithHistory = resume as typeof resume & {

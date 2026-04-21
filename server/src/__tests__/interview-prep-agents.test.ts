@@ -370,10 +370,15 @@ describe('Interview Prep ProductConfig', () => {
   it('buildAgentMessage returns content for writer', () => {
     const config = createInterviewPrepProductConfig();
     const state = config.createInitialState('s', 'u', {});
-    const msg = config.buildAgentMessage('writer', state, {});
-    expect(msg).toContain('write_section');
-    expect(msg).toContain('self_review_section');
-    expect(msg).toContain('build_career_story');
+    // buildAgentMessage is synchronous for this product; narrow the union.
+    const msg = config.buildAgentMessage('writer', state, {}) as string;
+    // Per the AGENT INTEGRITY MANDATE, the message provides context rather
+    // than enumerating tool names. We check that the writer is given its
+    // goal + the truth-bound constraint, plus one tool hint for the
+    // completion gate (assemble_report), not a tool-sequence script.
+    expect(msg.length).toBeGreaterThan(0);
+    expect(msg).toContain('interview preparation report');
+    expect(msg).toMatch(/resume/i);
     expect(msg).toContain('assemble_report');
   });
 

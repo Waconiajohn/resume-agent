@@ -502,6 +502,30 @@ describe('match_requirements tool execution', () => {
 describe('plan_letter tool execution', () => {
   const tool = analystTools.find((t) => t.name === 'plan_letter')!;
 
+  beforeEach(() => {
+    // plan_letter calls llm.chat() expecting JSON. Default to a realistic
+    // plan that satisfies the per-assertion checks in this block:
+    //  - opening_hook contains "strongest positioning" (not "Express enthusiasm")
+    //  - body_points[0] contains "engineering leadership"
+    //  - closing_strategy contains "Acme Corp"
+    //  - 3+ body_points so the cap-at-3 test can validate slicing
+    mockLlmChat.mockResolvedValue({
+      text: JSON.stringify({
+        opening_hook:
+          'The candidate\'s strongest positioning for Acme Corp comes from the $2.4M cost reduction work at their current employer.',
+        body_points: [
+          'Cloud Architecture experience maps directly to your engineering leadership requirement at Acme Corp.',
+          'Team Leadership scaling 10→45 engineers addresses your cloud architecture requirement.',
+          'P&L Ownership track record addresses your executive presence requirement.',
+          'Additional evidence point that would be dropped by a cap-at-3 slice.',
+          'Another additional point.',
+        ],
+        closing_strategy:
+          'I would welcome a conversation about how my background can drive results for Acme Corp.',
+      }),
+    });
+  });
+
   function makeCtxWithMatches() {
     const state = makeStateWithResumeData();
     const ctx = makeMockGenericContext<CoverLetterState, CoverLetterSSEEvent>(state);
