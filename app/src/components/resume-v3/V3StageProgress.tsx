@@ -14,8 +14,8 @@
  * complete=coral solid with checkmark, failed=red.
  */
 
-import { useEffect, useRef } from 'react';
-import { Check, AlertCircle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { V3Stage, V3StageStatus } from '@/hooks/useV3Pipeline';
 
@@ -121,6 +121,23 @@ export function V3StageProgress({ stageStatus, currentStage }: V3StageProgressPr
   const listRef = useRef<HTMLDivElement>(null);
   const lastActiveStageRef = useRef<V3Stage | null>(null);
 
+  const statuses = Object.values(stageStatus) as V3StageStatus[];
+  const allComplete = statuses.every((s) => s === 'complete');
+  const totalStarted = statuses.filter(
+    (s) => s === 'running' || s === 'complete' || s === 'failed',
+  ).length;
+
+  // Once the whole pipeline finishes, the "why this matters" card list
+  // stops being useful real estate — the user wants to read their resume,
+  // not the explanations. Collapse by default on complete; leave a
+  // "Show details" toggle so anyone who wants to re-read the reasoning
+  // can re-open it. While the pipeline is actively running, the list
+  // stays expanded (that's when the explanations are most valuable).
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  useEffect(() => {
+    if (allComplete) setDetailsOpen(false);
+  }, [allComplete]);
+
   // When a stage transitions from pending → running, scroll its card
   // into view inside the bounded list. Uses `block: 'nearest'` so a card
   // already in view doesn\u2019t jump, only off-screen cards are brought in.
@@ -128,6 +145,7 @@ export function V3StageProgress({ stageStatus, currentStage }: V3StageProgressPr
     if (!currentStage) return;
     if (lastActiveStageRef.current === currentStage) return;
     lastActiveStageRef.current = currentStage;
+    if (!detailsOpen) return;
     const host = listRef.current;
     if (!host) return;
     const el = host.querySelector<HTMLDivElement>(
@@ -136,11 +154,7 @@ export function V3StageProgress({ stageStatus, currentStage }: V3StageProgressPr
     if (el && typeof el.scrollIntoView === 'function') {
       el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-  }, [currentStage]);
-
-  const totalStarted = (
-    Object.values(stageStatus) as V3StageStatus[]
-  ).filter((s) => s === 'running' || s === 'complete' || s === 'failed').length;
+  }, [currentStage, detailsOpen]);
 
   return (
     <div className="w-full">
@@ -213,18 +227,45 @@ export function V3StageProgress({ stageStatus, currentStage }: V3StageProgressPr
         })}
       </div>
 
+      {/* Toggle row: only visible once the pipeline is fully complete,
+          since during a run the details card list is always expanded
+          (that's when the user most benefits from the explanations). */}
+      {allComplete && (
+        <button
+          type="button"
+          onClick={() => setDetailsOpen((v) => !v)}
+          className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors"
+          aria-expanded={detailsOpen}
+          aria-controls="v3-stage-details"
+        >
+          {detailsOpen ? (
+            <>
+              <ChevronUp className="h-3.5 w-3.5" />
+              Hide pipeline details
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-3.5 w-3.5" />
+              Show pipeline details
+            </>
+          )}
+        </button>
+      )}
+
       {/* Persistent list of "why this matters" cards. Stages that have
           started (running or complete) reveal the full paragraph and
           keep it visible for the rest of the run. Pending stages show a
-          compact header so the user can see what\u2019s still to come. The
-          region is bounded and scrollable so the top strip doesn\u2019t
+          compact header so the user can see what's still to come. The
+          region is bounded and scrollable so the top strip doesn't
           crowd the three-panel content below.
 
-          Readability over layout: 320px gives ~3 expanded cards visible
-          at once, and the auto-scroll hook keeps the active one in
-          view as the pipeline progresses. */}
+          Auto-collapsed on pipeline complete so the three-column view
+          has enough vertical room to be visible without page scroll.
+          User can re-open via the toggle above. */}
+      {detailsOpen && (
       <div
         ref={listRef}
+        id="v3-stage-details"
         role="list"
         aria-label="Pipeline stage explanations"
         aria-live="polite"
@@ -305,7 +346,7 @@ export function V3StageProgress({ stageStatus, currentStage }: V3StageProgressPr
                   : s.subDescription}
               </div>
               {hasStarted && (
-                <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--text-strong)]/90">
+                <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--text-strong)]">
                   {s.whyThisMatters}
                 </p>
               )}
@@ -313,6 +354,7 @@ export function V3StageProgress({ stageStatus, currentStage }: V3StageProgressPr
           );
         })}
       </div>
+      )}
     </div>
   );
 }
