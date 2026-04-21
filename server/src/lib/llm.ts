@@ -145,9 +145,12 @@ function buildProvider(name: string): LLMProvider {
   }
 
   if (name === 'openai') {
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Env var name in this repo's .env is `OpenAI_API_KEY` (mixed case); accept
+    // the standard `OPENAI_API_KEY` too for portability. Matches the v3
+    // provider factory pattern at server/src/v3/providers/factory.ts.
+    const apiKey = process.env.OPENAI_API_KEY ?? process.env.OpenAI_API_KEY;
     if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required when using openai provider');
+      throw new Error('OPENAI_API_KEY (or OpenAI_API_KEY) environment variable is required when using openai provider');
     }
     const baseUrl = process.env.OPENAI_BASE_URL;
     return new OpenAIProvider({ apiKey, ...(baseUrl && { baseUrl }) });

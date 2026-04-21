@@ -14,6 +14,15 @@ export const ACTIVE_PROVIDER =
   process.env.LLM_PROVIDER?.toLowerCase() ??
   (process.env.DEEPINFRA_API_KEY ? 'deepinfra' : process.env.DEEPSEEK_API_KEY ? 'deepseek' : process.env.ZAI_API_KEY ? 'zai' : 'anthropic');
 
+// ─── OpenAI model constants ──────────────────────────────────────────
+// 2026-04-21 — gpt-5.4-mini is the platform default across every tier.
+// Per-tier env overrides available if a single tier needs to float to a
+// different model (e.g. OPENAI_MODEL_LIGHT=gpt-5.4-nano for extraction).
+const OPENAI_MODEL_PRIMARY = process.env.OPENAI_MODEL_PRIMARY ?? 'gpt-5.4-mini';
+const OPENAI_MODEL_MID = process.env.OPENAI_MODEL_MID ?? 'gpt-5.4-mini';
+const OPENAI_MODEL_ORCHESTRATOR = process.env.OPENAI_MODEL_ORCHESTRATOR ?? 'gpt-5.4-mini';
+const OPENAI_MODEL_LIGHT = process.env.OPENAI_MODEL_LIGHT ?? 'gpt-5.4-mini';
+
 // ─── ZAI model constants ─────────────────────────────────────────────
 
 /** Quality writing — glm-4.7 ($0.60/$2.20 per M tokens) */
@@ -73,17 +82,19 @@ const DEEPINFRA_MODEL_LIGHT = process.env.DEEPINFRA_MODEL_LIGHT ?? 'deepseek-ai/
 function selectModel(
   zai: string, groq: string,
   deepseek?: string, deepinfra?: string, vertex?: string,
+  openai?: string,
 ): string {
+  if (ACTIVE_PROVIDER === 'openai') return openai ?? zai;
   if (ACTIVE_PROVIDER === 'deepinfra') return deepinfra ?? deepseek ?? zai;
   if (ACTIVE_PROVIDER === 'deepseek') return deepseek ?? zai;
   if (ACTIVE_PROVIDER === 'vertex') return vertex ?? 'deepseek-ai/deepseek-v3.2-maas';
   return ACTIVE_PROVIDER === 'groq' ? groq : zai;
 }
 
-export const MODEL_PRIMARY = selectModel(ZAI_MODEL_PRIMARY, GROQ_MODEL_PRIMARY, DEEPSEEK_MODEL_PRIMARY, DEEPINFRA_MODEL_PRIMARY);
-export const MODEL_MID = selectModel(ZAI_MODEL_MID, GROQ_MODEL_MID, DEEPSEEK_MODEL_MID, DEEPINFRA_MODEL_MID);
-export const MODEL_ORCHESTRATOR = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_ORCHESTRATOR, DEEPSEEK_MODEL_ORCHESTRATOR, DEEPINFRA_MODEL_ORCHESTRATOR);
-export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT, DEEPSEEK_MODEL_LIGHT, DEEPINFRA_MODEL_LIGHT);
+export const MODEL_PRIMARY = selectModel(ZAI_MODEL_PRIMARY, GROQ_MODEL_PRIMARY, DEEPSEEK_MODEL_PRIMARY, DEEPINFRA_MODEL_PRIMARY, undefined, OPENAI_MODEL_PRIMARY);
+export const MODEL_MID = selectModel(ZAI_MODEL_MID, GROQ_MODEL_MID, DEEPSEEK_MODEL_MID, DEEPINFRA_MODEL_MID, undefined, OPENAI_MODEL_MID);
+export const MODEL_ORCHESTRATOR = selectModel(ZAI_MODEL_ORCHESTRATOR, GROQ_MODEL_ORCHESTRATOR, DEEPSEEK_MODEL_ORCHESTRATOR, DEEPINFRA_MODEL_ORCHESTRATOR, undefined, OPENAI_MODEL_ORCHESTRATOR);
+export const MODEL_LIGHT = selectModel(ZAI_MODEL_LIGHT, GROQ_MODEL_LIGHT, DEEPSEEK_MODEL_LIGHT, DEEPINFRA_MODEL_LIGHT, undefined, OPENAI_MODEL_LIGHT);
 
 // ─── Feature-scoped model overrides ─────────────────────────────────
 // Resume V2 writing scored 7.0/10 with DeepSeek vs 5.2/10 with Groq.
@@ -123,6 +134,9 @@ export const MODEL_ORCHESTRATOR_COMPLEX = selectModel(
   ZAI_MODEL_ORCHESTRATOR,
   GROQ_MODEL_ORCHESTRATOR,
   DEEPSEEK_MODEL_ORCHESTRATOR,
+  undefined,
+  undefined,
+  OPENAI_MODEL_ORCHESTRATOR,
 );
 
 // ─── Model pricing (per million tokens) ──────────────────────────────
@@ -152,6 +166,9 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
   // Google Vertex AI (fastest — 207 tok/s output)
   'deepseek-ai/deepseek-v3.2': { input: 0.56, output: 1.68 },
   'mistral-saba-24b': { input: 0.79, output: 0.79 },
+  // OpenAI models — gpt-5.4-mini is the platform default (2026-04-21)
+  'gpt-5.4-mini': { input: 0.25, output: 2.00 },
+  'gpt-5.4-nano': { input: 0.05, output: 0.40 },
   // Anthropic models for reference
   'claude-sonnet-4-5-20250929': { input: 3.00, output: 15.00 },
   'claude-haiku-4-5-20251001': { input: 0.80, output: 4.00 },
