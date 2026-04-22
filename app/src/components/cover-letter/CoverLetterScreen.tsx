@@ -32,6 +32,16 @@ interface CoverLetterScreenProps {
   embedded?: boolean;
   backTarget?: string;
   backLabel?: string;
+  /**
+   * Approach C Phase 1.3 — when the screen is rendered inside
+   * /workspace/application/:applicationId/cover-letter, this prop is
+   * populated with the application ID. Gets passed to the backend so the
+   * generated cover letter is linked to the application (coach_sessions.
+   * job_application_id). Unset when the screen runs outside an application
+   * workspace context — in that case the cover letter is unscoped, same
+   * as today.
+   */
+  applicationId?: string;
 }
 
 type Phase = 'intake' | 'running' | 'letter_review' | 'complete' | 'error';
@@ -274,6 +284,7 @@ export function CoverLetterScreen({
   embedded = false,
   backTarget = buildResumeWorkspaceRoute(),
   backLabel,
+  applicationId,
 }: CoverLetterScreenProps) {
   const [phase, setPhase] = useState<Phase>('intake');
   const [intakeLoading, setIntakeLoading] = useState(false);
@@ -366,7 +377,14 @@ export function CoverLetterScreen({
           return;
         }
 
-        const ok = await startPipeline(sessionId, data.resumeText, data.jobDescription, data.companyName, data.tone);
+        const ok = await startPipeline(
+          sessionId,
+          data.resumeText,
+          data.jobDescription,
+          data.companyName,
+          data.tone,
+          applicationId,
+        );
         if (ok) {
           setPhase('running');
         }

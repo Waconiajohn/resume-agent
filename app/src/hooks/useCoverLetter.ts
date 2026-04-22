@@ -247,6 +247,13 @@ export function useCoverLetter(accessToken: string | null) {
       jobDescription: string,
       companyName: string,
       tone: 'formal' | 'conversational' | 'bold' = 'formal',
+      /**
+       * Approach C Phase 1.3 — when present, links the generated cover letter
+       * to the job_applications row with this ID so assets can be reopened
+       * from the application workspace. Optional; omitted when the screen
+       * runs outside an application scope.
+       */
+      applicationId?: string,
     ): Promise<boolean> => {
       if (statusRef.current !== 'idle') return false;
       if (!accessToken) return false;
@@ -278,6 +285,7 @@ export function useCoverLetter(accessToken: string | null) {
             job_description: jobDescription,
             company_name: companyName,
             tone,
+            ...(applicationId ? { job_application_id: applicationId } : {}),
           }),
         });
 

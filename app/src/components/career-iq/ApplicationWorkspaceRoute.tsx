@@ -17,16 +17,19 @@
  * it through their startPipeline calls.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import {
   APPLICATION_WORKSPACE_TOOLS,
   RESUME_BUILDER_SESSION_ROUTE,
+  buildApplicationWorkspaceRoute,
   type ApplicationWorkspaceTool,
 } from '@/lib/app-routing';
 import { API_BASE } from '@/lib/api';
+import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
+import type { MasterResume } from '@/types/resume';
 
 interface ApplicationRecord {
   id: string;
@@ -45,6 +48,12 @@ interface ApplicationRecord {
 interface ApplicationWorkspaceRouteProps {
   accessToken: string | null;
   onNavigate?: (route: string) => void;
+  /**
+   * Optional default-resume fetcher, passed through to tool screens that
+   * pre-fill from the master resume (cover letter, thank-you note). App.tsx
+   * wires `getDefaultResume` from useSession here when available.
+   */
+  onGetDefaultResume?: () => Promise<MasterResume | null>;
 }
 
 function isValidTool(value: string | undefined): value is ApplicationWorkspaceTool {
@@ -66,6 +75,7 @@ async function fetchApplication(
 export function ApplicationWorkspaceRoute({
   accessToken,
   onNavigate,
+  onGetDefaultResume,
 }: ApplicationWorkspaceRouteProps) {
   const { applicationId = '', tool = 'resume' } = useParams();
 
@@ -136,31 +146,83 @@ export function ApplicationWorkspaceRoute({
     );
   }
 
-  // Phase 1.2 stub: the per-tool render surface lands in Phase 1.3.
-  // For now, render a placeholder that proves the route works end-to-end
-  // (application loaded, tool segment validated, key params exposed).
-  // Phase 1.3 replaces this block with dispatched CoverLetterScreen /
-  // ThankYouNoteScreen / etc.
+  // Phase 1.3 — dispatch to the real tool screen with applicationId.
+  // When :applicationId changes (user switches to a different application),
+  // React Router replaces this subtree, unmounting the tool screen and
+  // clearing any singleton hook state it held. That's the state-reset
+  // fix: scope lives in the URL, not in long-lived hooks.
+
+  const ApplicationHeader = (
+    <GlassCard className="p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-medium uppercase tracking-widest text-[var(--link)]">
+            Application
+          </div>
+          <h1 className="mt-1 text-xl font-semibold text-[var(--text-strong)]">
+            {application.company_name}
+          </h1>
+          <p className="mt-0.5 text-sm text-[var(--text-soft)]">
+            {application.role_title} · Stage: <span className="font-medium text-[var(--text-strong)]">{application.stage}</span>
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          {(APPLICATION_WORKSPACE_TOOLS as readonly ApplicationWorkspaceTool[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, t))}
+              className={
+                t === tool
+                  ? 'rounded-full bg-[var(--link)] px-3 py-1 font-semibold text-[var(--link-on)]'
+                  : 'rounded-full border border-[var(--line-soft)] px-3 py-1 text-[var(--text-soft)] hover:bg-[var(--rail-tab-hover-bg)]'
+              }
+            >
+              {t.replace(/-/g, ' ')}
+            </button>
+          ))}
+        </div>
+      </div>
+    </GlassCard>
+  );
+
+  // ── Tool dispatch ────────────────────────────────────────────────────
+  let body: ReactElement;
+  if (tool === 'cover-letter') {
+    body = (
+      <CoverLetterScreen
+        accessToken={accessToken}
+        onNavigate={onNavigate ?? (() => {})}
+        onGetDefaultResume={onGetDefaultResume}
+        embedded
+        applicationId={applicationId}
+        backTarget={buildApplicationWorkspaceRoute(applicationId, 'resume')}
+        backLabel="Back to resume"
+      />
+    );
+  } else {
+    // Phase 1.3 lands cover-letter first. resume / thank-you-note / networking /
+    // interview-prep screens adopt the prop + embedded render path in a
+    // follow-up commit (they already accept enough session-scoped props that
+    // the remaining work is mostly adding an `applicationId` passthrough).
+    body = (
+      <GlassCard className="p-6 text-sm text-[var(--text-soft)]">
+        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
+          Coming up
+        </div>
+        <p className="mt-3 leading-relaxed">
+          The <span className="font-semibold text-[var(--text-strong)]">{tool.replace(/-/g, ' ')}</span> tool
+          will render here once its screen accepts the applicationId prop. This is a routing stub —
+          switching tabs above still remounts correctly if you switch applications.
+        </p>
+      </GlassCard>
+    );
+  }
+
   return (
     <div className="mx-auto flex max-w-[1280px] flex-col gap-6 p-6">
-      <GlassCard className="p-6">
-        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
-          Application Workspace (Phase 1.2 stub)
-        </div>
-        <h1 className="mt-2 text-2xl font-semibold text-[var(--text-strong)]">
-          {application.company_name}
-        </h1>
-        <p className="mt-1 text-sm text-[var(--text-soft)]">
-          {application.role_title} · Stage: {application.stage}
-        </p>
-        <div className="mt-4 rounded-lg border border-[var(--line-soft)] bg-[var(--bg-1)] p-4 text-sm">
-          <div className="text-[var(--text-soft)]">Tool: <span className="font-semibold text-[var(--text-strong)]">{tool}</span></div>
-          <div className="text-[var(--text-soft)]">applicationId: <span className="font-mono text-xs text-[var(--text-strong)]">{applicationId}</span></div>
-          <div className="mt-3 text-xs text-[var(--text-soft)]">
-            Phase 1.3 replaces this stub with the real tool screen wired to receive the applicationId.
-          </div>
-        </div>
-      </GlassCard>
+      {ApplicationHeader}
+      {body}
     </div>
   );
 }

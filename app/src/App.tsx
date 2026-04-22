@@ -743,6 +743,7 @@ export default function App() {
                   <ApplicationWorkspaceRoute
                     accessToken={accessToken}
                     onNavigate={navigateTo}
+                    onGetDefaultResume={getDefaultResume}
                   />
                 )}
               />
@@ -752,6 +753,7 @@ export default function App() {
                   <ApplicationWorkspaceRoute
                     accessToken={accessToken}
                     onNavigate={navigateTo}
+                    onGetDefaultResume={getDefaultResume}
                   />
                 )}
               />
