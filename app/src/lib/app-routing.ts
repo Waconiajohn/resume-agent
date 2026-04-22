@@ -61,6 +61,75 @@ export function buildResumeWorkspaceRoute(
   });
 }
 
+/**
+ * Approach C Phase 1.2 — application-scoped workspace URLs.
+ *
+ * Canonical future route shape:
+ *   /workspace/application/:applicationId/:tool
+ *
+ * where :tool is one of: 'resume', 'cover-letter', 'thank-you-note',
+ * 'networking', 'interview-prep'.
+ *
+ * Using the applicationId as a URL path segment (rather than a query
+ * param) means React Router remounts child components when the user
+ * switches to a different application, which clears singleton hook
+ * state as a side effect. That solves the state-reset bug
+ * (state-reset-and-export-plan.md) at the routing layer.
+ */
+export const APPLICATION_WORKSPACE_TOOLS = [
+  'resume',
+  'cover-letter',
+  'thank-you-note',
+  'networking',
+  'interview-prep',
+] as const;
+
+export type ApplicationWorkspaceTool = (typeof APPLICATION_WORKSPACE_TOOLS)[number];
+
+export function buildApplicationWorkspaceRoute(
+  applicationId: string,
+  tool: ApplicationWorkspaceTool = 'resume',
+  params?: Record<string, string | number | boolean | null | undefined>,
+): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value === undefined || value === null || value === '') continue;
+    search.set(key, String(value));
+  }
+  const query = search.toString();
+  const base = `/workspace/application/${encodeURIComponent(applicationId)}/${tool}`;
+  return query ? `${base}?${query}` : base;
+}
+
+/**
+ * Extract the applicationId from a workspace-application pathname.
+ * Returns undefined if the URL doesn't match the application-scoped shape.
+ */
+export function getApplicationIdFromPathname(pathname: string): string | undefined {
+  const match = pathname.match(/^\/workspace\/application\/([^/]+)(?:\/|$)/);
+  if (!match) return undefined;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Extract the tool segment from a workspace-application pathname.
+ * Returns undefined if the URL doesn't include one or doesn't match.
+ */
+export function getApplicationToolFromPathname(
+  pathname: string,
+): ApplicationWorkspaceTool | undefined {
+  const match = pathname.match(/^\/workspace\/application\/[^/]+\/([^/?]+)/);
+  if (!match) return undefined;
+  const raw = match[1];
+  return (APPLICATION_WORKSPACE_TOOLS as readonly string[]).includes(raw)
+    ? (raw as ApplicationWorkspaceTool)
+    : undefined;
+}
+
 export function getAppView(pathname: string): AppView {
   if (pathname === '/' || pathname === '/sales') return 'sales';
   if (pathname === '/coach') return 'coach';

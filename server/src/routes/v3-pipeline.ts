@@ -50,6 +50,11 @@ const runSchema = z.object({
   job_description: z.string().min(50).max(50_000),
   jd_title: z.string().max(300).optional(),
   jd_company: z.string().max(200).optional(),
+  // Approach C Phase 1.1 — optional link to the job application this
+  // resume generation belongs to. Persisted on the coach_sessions row
+  // created for billing so the output can be reopened from the job
+  // workspace view.
+  job_application_id: z.string().uuid().optional(),
 }).refine(
   (d) => (d.use_master === true) || (typeof d.resume_text === 'string' && d.resume_text.length >= 50),
   { message: 'Either resume_text (min 50 chars) or use_master=true is required.' },
@@ -285,6 +290,11 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
   // for admin Stats + user_usage billing aggregation; we need a row per run
   // so v3 shows up there. Deliberately minimal — no tailored_sections payload,
   // no SSE subscribe dance; just a lightweight audit trail.
+  //
+  // Approach C Phase 1.1 — when the caller passes job_application_id, persist
+  // it on this session row so the v3 output can be reopened from the job
+  // workspace view. Null is allowed and keeps the session unscoped.
+  const jobApplicationId = parsed.data.job_application_id ?? null;
   const { data: session, error: sessionError } = await supabaseAdmin
     .from('coach_sessions')
     .insert({
@@ -294,6 +304,7 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
       pipeline_stage: 'extract',
       llm_provider: 'openai', // hybrid config; v3 strong-reasoning + deep-writer are OpenAI
       llm_model: 'gpt-5.4-mini',
+      ...(jobApplicationId ? { job_application_id: jobApplicationId } : {}),
     })
     .select('id')
     .single();

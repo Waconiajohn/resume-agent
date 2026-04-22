@@ -26,6 +26,10 @@ const startSchema = z.object({
   job_description: z.string().min(1).max(50_000),
   company_name: z.string().min(1).max(200),
   tone: z.enum(['formal', 'conversational', 'bold']).optional().default('formal'),
+  // Approach C Phase 1.1 — optional link to the job application this cover
+  // letter belongs to. When provided, persisted on coach_sessions so the
+  // assets can be reopened from the job workspace view.
+  job_application_id: z.string().uuid().optional(),
 });
 
 export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLetterSSEEvent>({
@@ -36,17 +40,21 @@ export const coverLetterRoutes = createProductRoutes<CoverLetterState, CoverLett
   onBeforeStart: async (input, _c, _session) => {
     const sessionId = input.session_id as string;
     const companyName = typeof input.company_name === 'string' ? input.company_name : '';
+    const jobApplicationId = typeof input.job_application_id === 'string' ? input.job_application_id : null;
     const { error } = await supabaseAdmin
       .from('coach_sessions')
       .update({
         product_type: 'cover_letter',
         last_panel_data: { product_type: 'cover_letter', company_name: companyName },
+        // Approach C Phase 1.1 — attach to a job application if the caller
+        // provided one. Null is allowed and leaves the session unscoped.
+        ...(jobApplicationId ? { job_application_id: jobApplicationId } : {}),
       })
       .eq('id', sessionId);
     if (error) {
       logger.warn(
         { session_id: sessionId, error: error.message },
-        'Cover letter: failed to persist company_name to session (continuing)',
+        'Cover letter: failed to persist session metadata (continuing)',
       );
     }
   },

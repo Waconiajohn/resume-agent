@@ -17,6 +17,7 @@ import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { CareerProfileProvider } from '@/components/career-iq/CareerProfileContext';
 import { WorkspaceLayout } from '@/components/career-iq/WorkspaceLayout';
 import { JobWorkspaceRoute } from '@/components/career-iq/JobWorkspaceRoute';
+import { ApplicationWorkspaceRoute } from '@/components/career-iq/ApplicationWorkspaceRoute';
 import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ResumeV2VisualHarness } from '@/components/resume-v2/dev/ResumeV2VisualHarness';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
@@ -727,6 +728,30 @@ export default function App() {
                     onNavigate={navigateTo}
                     onGetSessionResume={getSessionResume}
                     onGetSessionCoverLetter={getSessionCoverLetter}
+                  />
+                )}
+              />
+              {/* Approach C Phase 1.2 — application-scoped workspace URLs.
+                  /workspace/application/:applicationId/:tool where tool is
+                  resume | cover-letter | thank-you-note | networking |
+                  interview-prep. React Router remounts children when
+                  :applicationId changes, which clears singleton hook state
+                  (fixes the state-reset bug as a side effect). */}
+              <Route
+                path="/workspace/application/:applicationId/:tool"
+                element={(
+                  <ApplicationWorkspaceRoute
+                    accessToken={accessToken}
+                    onNavigate={navigateTo}
+                  />
+                )}
+              />
+              <Route
+                path="/workspace/application/:applicationId"
+                element={(
+                  <ApplicationWorkspaceRoute
+                    accessToken={accessToken}
+                    onNavigate={navigateTo}
                   />
                 )}
               />
