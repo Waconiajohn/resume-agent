@@ -15,6 +15,7 @@ import {
   BriefcaseBusiness,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { DashboardState } from './useWhyMeStory';
 import type { ExposedWorkspaceRoom, WorkspaceRoom } from './workspaceRoomAccess';
 
@@ -71,6 +72,10 @@ const ROOM_TOUR_TARGETS: Partial<Record<CareerIQRoom, string>> = {
 export function Sidebar({ activeRoom, onNavigate, onNavigateRoute, dashboardState, defaultCollapsed }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed ?? false);
   const isLocked = dashboardState === 'new-user';
+  const location = useLocation();
+  const isApplicationsActive =
+    location.pathname === '/workspace/applications'
+    || location.pathname.startsWith('/workspace/application/');
 
   useEffect(() => {
     if (defaultCollapsed !== undefined) {
@@ -172,16 +177,20 @@ export function Sidebar({ activeRoom, onNavigate, onNavigateRoute, dashboardStat
 
         {/* My Applications — Approach C entry point. Uses onNavigateRoute
             (not the room system) because application-scoped URLs live under
-            /workspace/application/:id and aren't a kanban room. */}
+            /workspace/application/:id and aren't a kanban room. Highlights
+            when the user is inside either the list or any application. */}
         <div className={collapsed ? 'mt-2' : 'mt-2 border-t border-[var(--line-soft)] pt-3'}>
           <button
             type="button"
             onClick={() => onNavigateRoute?.('/workspace/applications')}
             className={cn(
               'flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors',
-              'text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]',
+              isApplicationsActive
+                ? 'bg-[var(--rail-tab-active-bg)] text-[var(--text-strong)]'
+                : 'text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]',
             )}
             title="My applications"
+            aria-current={isApplicationsActive ? 'page' : undefined}
           >
             <BriefcaseBusiness size={18} className="flex-shrink-0" />
             {!collapsed && (

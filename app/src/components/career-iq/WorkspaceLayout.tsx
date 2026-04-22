@@ -26,6 +26,16 @@ export function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const getActiveRoom = (): CareerIQRoom => {
     if (location.pathname === '/profile-setup') return 'career-profile';
     if (location.pathname.startsWith('/resume-builder')) return 'resume';
+    // Approach C Sprint B2 — inside /workspace/applications or
+    // /workspace/application/:id/*, none of the kanban rooms is "active."
+    // Return 'dashboard' so no room button lights up; the dedicated My
+    // Applications nav handles its own highlight (see Sidebar.tsx).
+    if (
+      location.pathname === '/workspace/applications'
+      || location.pathname.startsWith('/workspace/application/')
+    ) {
+      return 'dashboard';
+    }
     const params = new URLSearchParams(location.search);
     const room = params.get('room');
     if (

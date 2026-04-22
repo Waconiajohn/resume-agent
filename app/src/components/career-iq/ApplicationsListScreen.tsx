@@ -102,7 +102,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
   }
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-6 p-6">
+    <div className="mx-auto flex h-full max-w-[1280px] flex-col gap-6 overflow-y-auto p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-widest text-[var(--link)]">

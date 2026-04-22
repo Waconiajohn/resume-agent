@@ -733,35 +733,48 @@ export default function App() {
                 )}
               />
               {/* Approach C Phase 2.1 — My Applications list.
-                  Entry point to the application-scoped workspace. */}
+                  Entry point to the application-scoped workspace.
+                  Sprint B2 — wrapped in WorkspaceLayout so the global sidebar
+                  stays visible; users get consistent nav from any screen. */}
               <Route
                 path="/workspace/applications"
-                element={<ApplicationsListScreen onNavigate={navigateTo} />}
+                element={(
+                  <WorkspaceLayout>
+                    <ApplicationsListScreen onNavigate={navigateTo} />
+                  </WorkspaceLayout>
+                )}
               />
               {/* Approach C Phase 1.2 — application-scoped workspace URLs.
                   /workspace/application/:applicationId/:tool where tool is
                   resume | cover-letter | thank-you-note | networking |
                   interview-prep. React Router remounts children when
                   :applicationId changes, which clears singleton hook state
-                  (fixes the state-reset bug as a side effect). */}
+                  (fixes the state-reset bug as a side effect).
+                  Sprint B2 — wrapped in WorkspaceLayout so the global sidebar
+                  is still reachable from inside a tool, not just via the
+                  browser back button. */}
               <Route
                 path="/workspace/application/:applicationId/:tool"
                 element={(
-                  <ApplicationWorkspaceRoute
-                    accessToken={accessToken}
-                    onNavigate={navigateTo}
-                    onGetDefaultResume={getDefaultResume}
-                  />
+                  <WorkspaceLayout>
+                    <ApplicationWorkspaceRoute
+                      accessToken={accessToken}
+                      onNavigate={navigateTo}
+                      onGetDefaultResume={getDefaultResume}
+                    />
+                  </WorkspaceLayout>
                 )}
               />
               <Route
                 path="/workspace/application/:applicationId"
                 element={(
-                  <ApplicationWorkspaceRoute
-                    accessToken={accessToken}
-                    onNavigate={navigateTo}
-                    onGetDefaultResume={getDefaultResume}
-                  />
+                  <WorkspaceLayout>
+                    <ApplicationWorkspaceRoute
+                      accessToken={accessToken}
+                      onNavigate={navigateTo}
+                      onGetDefaultResume={getDefaultResume}
+                    />
+                  </WorkspaceLayout>
                 )}
               />
               <Route path="/pricing" element={<Navigate to="/billing" replace />} />

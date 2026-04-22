@@ -19,6 +19,7 @@
 
 import { useEffect, useState, type ReactElement } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import {
@@ -258,7 +259,32 @@ export function ApplicationWorkspaceRoute({
   }
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-6 p-6">
+    <div className="mx-auto flex h-full max-w-[1280px] flex-col gap-6 overflow-y-auto p-6">
+      {/* Sprint B6 — breadcrumb. Matches the pattern rendered by room
+          screens (Workspace > Section) but adds the application's company
+          name and active tool for a full trail. Workspace and My
+          Applications are clickable back-links. */}
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
+        <button
+          type="button"
+          className="hover:text-[var(--text-strong)]"
+          onClick={() => onNavigate?.('/workspace')}
+        >
+          Workspace
+        </button>
+        <ChevronRight className="h-3 w-3" aria-hidden="true" />
+        <button
+          type="button"
+          className="hover:text-[var(--text-strong)]"
+          onClick={() => onNavigate?.('/workspace/applications')}
+        >
+          My Applications
+        </button>
+        <ChevronRight className="h-3 w-3" aria-hidden="true" />
+        <span className="text-[var(--text-strong)]">{application.company_name}</span>
+        <ChevronRight className="h-3 w-3" aria-hidden="true" />
+        <span className="text-[var(--text-strong)]">{tool.replace(/-/g, ' ')}</span>
+      </nav>
       {ApplicationHeader}
       {body}
     </div>

@@ -538,6 +538,7 @@ export function CareerIQScreen({
       <Sidebar
         activeRoom={activeRoom}
         onNavigate={handleRoomNavigate}
+        onNavigateRoute={onNavigate}
         dashboardState={dashboardState}
       />
 
