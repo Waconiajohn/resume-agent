@@ -99,6 +99,12 @@ const listQuerySchema = z.object({
   sort_order: z.enum(['asc', 'desc']).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
   offset: z.coerce.number().int().min(0).optional(),
+  /**
+   * Sprint B4 — archived filter. "active" (default) hides rows where
+   * archived_at IS NOT NULL; "archived" shows only those; "all" returns
+   * everything. Default matches pre-B4 list semantics.
+   */
+  archived: z.enum(['active', 'archived', 'all']).optional(),
 });
 
 // ─── Wire-format mappers ─────────────────────────────────────────────────
@@ -172,12 +178,21 @@ jobApplicationsRoutes.get('/', rateLimitMiddleware(60, 60_000), async (c) => {
     return c.json({ error: 'Invalid query', details: parsed.error.flatten().fieldErrors }, 400);
   }
 
-  const { stage, search, sort_by, sort_order, limit, offset } = parsed.data;
+  const { stage, search, sort_by, sort_order, limit, offset, archived } = parsed.data;
 
   let query = supabaseAdmin
     .from('job_applications')
     .select('*')
     .eq('user_id', user.id);
+
+  // Sprint B4 — default filter hides archived rows. Callers ask for
+  // 'archived' to see only archived, or 'all' to see both.
+  const archivedFilter = archived ?? 'active';
+  if (archivedFilter === 'active') {
+    query = query.is('archived_at', null);
+  } else if (archivedFilter === 'archived') {
+    query = query.not('archived_at', 'is', null);
+  }
 
   if (stage) {
     query = query.eq('stage', stage);
@@ -287,7 +302,55 @@ jobApplicationsRoutes.patch('/:id', rateLimitMiddleware(30, 60_000), async (c) =
   return c.json(rowToWireFormat(data as Record<string, unknown>));
 });
 
-// ─── DELETE /job-applications/:id — Delete ───────────────────────────────
+// ─── POST /job-applications/:id/archive — Soft archive ──────────────────
+// Sprint B4. Sets archived_at = now(). Row stays in the database; listing
+// with ?archived=active (the default) filters it out.
+
+jobApplicationsRoutes.post('/:id/archive', rateLimitMiddleware(30, 60_000), async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id') ?? '';
+
+  const { data, error } = await supabaseAdmin
+    .from('job_applications')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id, id }, 'job-applications: archive failed');
+    return c.json({ error: 'Failed to archive application' }, 500);
+  }
+  if (!data) return c.json({ error: 'Application not found' }, 404);
+
+  return c.json(rowToWireFormat(data as Record<string, unknown>));
+});
+
+// ─── POST /job-applications/:id/restore — Undo archive ──────────────────
+
+jobApplicationsRoutes.post('/:id/restore', rateLimitMiddleware(30, 60_000), async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id') ?? '';
+
+  const { data, error } = await supabaseAdmin
+    .from('job_applications')
+    .update({ archived_at: null })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    logger.error({ error: error.message, userId: user.id, id }, 'job-applications: restore failed');
+    return c.json({ error: 'Failed to restore application' }, 500);
+  }
+  if (!data) return c.json({ error: 'Application not found' }, 404);
+
+  return c.json(rowToWireFormat(data as Record<string, unknown>));
+});
+
+// ─── DELETE /job-applications/:id — Hard delete ─────────────────────────
 
 jobApplicationsRoutes.delete('/:id', rateLimitMiddleware(10, 60_000), async (c) => {
   const user = c.get('user');

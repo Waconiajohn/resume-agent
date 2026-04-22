@@ -43,9 +43,14 @@ export interface JobApplication {
   notes?: string | null;
   score?: number | null;
   stage_history?: Array<{ stage: string; at: string; from?: string; note?: string }>;
+  /** Sprint B4 — null = active, non-null = archived. */
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
 }
+
+/** Sprint B4 — archived filter for the list endpoint. */
+export type JobApplicationArchivedFilter = 'active' | 'archived' | 'all';
 
 export interface NewJobApplicationInput {
   role_title: string;
@@ -61,7 +66,8 @@ interface ListResponse {
   count: number;
 }
 
-export function useJobApplications() {
+export function useJobApplications(options?: { archived?: JobApplicationArchivedFilter }) {
+  const archivedFilter = options?.archived ?? 'active';
   const { session } = useAuth();
   const accessToken = session?.access_token ?? null;
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -77,7 +83,12 @@ export function useJobApplications() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/job-applications?sort_by=updated_at&sort_order=desc`, {
+      const params = new URLSearchParams({
+        sort_by: 'updated_at',
+        sort_order: 'desc',
+        archived: archivedFilter,
+      });
+      const res = await fetch(`${API_BASE}/job-applications?${params.toString()}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) {
@@ -108,7 +119,67 @@ export function useJobApplications() {
     } finally {
       if (id === requestIdRef.current) setLoading(false);
     }
-  }, [accessToken]);
+  }, [accessToken, archivedFilter]);
+
+  const archiveApplication = useCallback(
+    async (id: string): Promise<JobApplication | null> => {
+      if (!accessToken) return null;
+      try {
+        const res = await fetch(`${API_BASE}/job-applications/${id}/archive`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) {
+          setError(`Failed to archive application (HTTP ${res.status})`);
+          return null;
+        }
+        const archived = (await res.json()) as JobApplication;
+        // Optimistic local update: drop from active list if we're filtering
+        // to active; add to archived list if we're filtering to archived.
+        if (archivedFilter === 'active') {
+          setApplications((prev) => prev.filter((a) => a.id !== id));
+        } else if (archivedFilter === 'archived') {
+          setApplications((prev) => [archived, ...prev.filter((a) => a.id !== id)]);
+        } else {
+          setApplications((prev) => prev.map((a) => (a.id === id ? archived : a)));
+        }
+        return archived;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to archive application');
+        return null;
+      }
+    },
+    [accessToken, archivedFilter],
+  );
+
+  const restoreApplication = useCallback(
+    async (id: string): Promise<JobApplication | null> => {
+      if (!accessToken) return null;
+      try {
+        const res = await fetch(`${API_BASE}/job-applications/${id}/restore`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) {
+          setError(`Failed to restore application (HTTP ${res.status})`);
+          return null;
+        }
+        const restored = (await res.json()) as JobApplication;
+        if (archivedFilter === 'archived') {
+          setApplications((prev) => prev.filter((a) => a.id !== id));
+        } else if (archivedFilter === 'active') {
+          setApplications((prev) => [restored, ...prev.filter((a) => a.id !== id)]);
+        } else {
+          setApplications((prev) => prev.map((a) => (a.id === id ? restored : a)));
+        }
+        return restored;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to restore application');
+        return null;
+      }
+    },
+    [accessToken, archivedFilter],
+  );
 
   const createApplication = useCallback(
     async (input: NewJobApplicationInput): Promise<JobApplication | null> => {
@@ -191,5 +262,7 @@ export function useJobApplications() {
     fetchApplications,
     createApplication,
     updateApplication,
+    archiveApplication,
+    restoreApplication,
   };
 }

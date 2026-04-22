@@ -12,10 +12,10 @@
  */
 
 import { useState, type FormEvent } from 'react';
-import { Plus, ArrowRight, Briefcase } from 'lucide-react';
+import { Plus, ArrowRight, Briefcase, Archive, Undo2 } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { useJobApplications, type JobApplicationStage } from '@/hooks/useJobApplications';
+import { useJobApplications, type JobApplicationStage, type JobApplicationArchivedFilter } from '@/hooks/useJobApplications';
 import { buildApplicationWorkspaceRoute } from '@/lib/app-routing';
 
 interface ApplicationsListScreenProps {
@@ -60,7 +60,16 @@ function formatRelative(iso: string): string {
 }
 
 export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenProps) {
-  const { applications, groupedByStage, loading, error, createApplication } = useJobApplications();
+  const [archivedFilter, setArchivedFilter] = useState<JobApplicationArchivedFilter>('active');
+  const {
+    applications,
+    groupedByStage,
+    loading,
+    error,
+    createApplication,
+    archiveApplication,
+    restoreApplication,
+  } = useJobApplications({ archived: archivedFilter });
   const [formOpen, setFormOpen] = useState(false);
   const [roleTitle, setRoleTitle] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -115,14 +124,41 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
             Each application groups the resume, cover letter, interview prep, networking outreach, and thank-you notes you create for that specific role.
           </p>
         </div>
-        <GlassButton
-          variant={formOpen ? 'ghost' : 'primary'}
-          onClick={() => setFormOpen((v) => !v)}
-          className="shrink-0"
-        >
-          <Plus size={14} className="mr-1.5" />
-          {formOpen ? 'Cancel' : 'New application'}
-        </GlassButton>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {/* Sprint B4 — active/archived toggle. Archived applications stay
+              in the database; users restore from the archived view. */}
+          <div className="inline-flex rounded-full border border-[var(--line-soft)] p-0.5 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setArchivedFilter('active')}
+              className={
+                archivedFilter === 'active'
+                  ? 'rounded-full bg-[var(--link)] px-3 py-1 font-semibold text-[var(--link-on)]'
+                  : 'rounded-full px-3 py-1 text-[var(--text-soft)] hover:text-[var(--text-strong)]'
+              }
+            >
+              Active
+            </button>
+            <button
+              type="button"
+              onClick={() => setArchivedFilter('archived')}
+              className={
+                archivedFilter === 'archived'
+                  ? 'rounded-full bg-[var(--link)] px-3 py-1 font-semibold text-[var(--link-on)]'
+                  : 'rounded-full px-3 py-1 text-[var(--text-soft)] hover:text-[var(--text-strong)]'
+              }
+            >
+              Archived
+            </button>
+          </div>
+          <GlassButton
+            variant={formOpen ? 'ghost' : 'primary'}
+            onClick={() => setFormOpen((v) => !v)}
+          >
+            <Plus size={14} className="mr-1.5" />
+            {formOpen ? 'Cancel' : 'New application'}
+          </GlassButton>
+        </div>
       </div>
 
       {formOpen && (
@@ -220,29 +256,57 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
                   </h2>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {items.map((app) => (
-                    <button
-                      key={app.id}
-                      type="button"
-                      onClick={() => onNavigate?.(buildApplicationWorkspaceRoute(app.id, 'resume'))}
-                      className="group flex flex-col gap-2 rounded-2xl border border-[var(--line-soft)] bg-[var(--bg-1)] p-4 text-left transition-all duration-150 hover:border-[var(--link)]/40 hover:bg-[var(--rail-tab-hover-bg)]"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-[var(--text-strong)]">{app.company_name}</span>
-                        <span className="text-[11px] text-[var(--text-muted)]">{formatRelative(app.updated_at)}</span>
-                      </div>
-                      <div className="text-sm text-[var(--text-soft)]">{app.role_title}</div>
-                      {app.next_action && (
-                        <div className="mt-1 rounded-lg bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] text-[var(--text-soft)]">
-                          Next: {app.next_action}
+                  {items.map((app) => {
+                    const isArchived = Boolean(app.archived_at);
+                    const handleOpen = () => onNavigate?.(buildApplicationWorkspaceRoute(app.id, 'resume'));
+                    const handleArchiveToggle = (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      if (isArchived) void restoreApplication(app.id);
+                      else void archiveApplication(app.id);
+                    };
+                    return (
+                      <div
+                        key={app.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={handleOpen}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleOpen();
+                          }
+                        }}
+                        className="group relative flex cursor-pointer flex-col gap-2 rounded-2xl border border-[var(--line-soft)] bg-[var(--bg-1)] p-4 text-left transition-all duration-150 hover:border-[var(--link)]/40 hover:bg-[var(--rail-tab-hover-bg)]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-[var(--text-strong)]">{app.company_name}</span>
+                          <span className="text-[11px] text-[var(--text-muted)]">{formatRelative(app.updated_at)}</span>
                         </div>
-                      )}
-                      <div className="mt-auto flex items-center justify-end gap-1 pt-1 text-[12px] text-[var(--link)] opacity-0 transition-opacity group-hover:opacity-100">
-                        Open
-                        <ArrowRight size={12} />
+                        <div className="text-sm text-[var(--text-soft)]">{app.role_title}</div>
+                        {app.next_action && (
+                          <div className="mt-1 rounded-lg bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] text-[var(--text-soft)]">
+                            Next: {app.next_action}
+                          </div>
+                        )}
+                        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleArchiveToggle}
+                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-[var(--text-muted)] opacity-0 transition-opacity hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)] group-hover:opacity-100"
+                            aria-label={isArchived ? 'Restore application' : 'Archive application'}
+                            title={isArchived ? 'Restore' : 'Archive'}
+                          >
+                            {isArchived ? <Undo2 size={12} /> : <Archive size={12} />}
+                            {isArchived ? 'Restore' : 'Archive'}
+                          </button>
+                          <span className="inline-flex items-center gap-1 text-[12px] text-[var(--link)] opacity-0 transition-opacity group-hover:opacity-100">
+                            Open
+                            <ArrowRight size={12} />
+                          </span>
+                        </div>
                       </div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             );

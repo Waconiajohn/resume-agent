@@ -245,12 +245,17 @@ describe('useWhyMeStory', () => {
 // ---------------------------------------------------------------------------
 
 import { Sidebar } from '../../components/career-iq/Sidebar';
+import { MemoryRouter } from 'react-router-dom';
+
+/** Sidebar depends on useLocation (Sprint B1/B2) — tests must render inside a Router. */
+const renderSidebar = (ui: React.ReactElement) =>
+  render(<MemoryRouter>{ui}</MemoryRouter>);
 
 describe('Sidebar', () => {
   afterEach(() => cleanup());
 
   it('renders all room labels', () => {
-    render(
+    renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     expect(screen.getByText('Home')).toBeInTheDocument();
@@ -262,7 +267,7 @@ describe('Sidebar', () => {
   });
 
   it('keeps core rooms available when dashboardState is new-user', () => {
-    render(
+    renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
     );
     const resumeButton = screen.getByText('Resume Builder').closest('button');
@@ -274,7 +279,7 @@ describe('Sidebar', () => {
   });
 
   it('does not show lock state on core rooms when dashboardState is new-user', () => {
-    render(
+    renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
     );
     const resumeButton = screen.getByText('Resume Builder').closest('button');
@@ -283,7 +288,7 @@ describe('Sidebar', () => {
   });
 
   it('enables all rooms when dashboardState is refining', () => {
-    render(
+    renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="refining" />,
     );
     const resumeButton = screen.getByText('Resume Builder').closest('button');
@@ -293,7 +298,7 @@ describe('Sidebar', () => {
   });
 
   it('highlights active room', () => {
-    render(
+    renderSidebar(
       <Sidebar activeRoom="resume" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     const resumeButton = screen.getByText('Resume Builder').closest('button');
@@ -302,7 +307,7 @@ describe('Sidebar', () => {
 
   it('calls onNavigate when a non-gated room is clicked', () => {
     const onNavigate = vi.fn();
-    render(
+    renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={onNavigate} dashboardState="strong" />,
     );
     fireEvent.click(screen.getByText('Resume Builder'));
@@ -311,7 +316,7 @@ describe('Sidebar', () => {
 
   it('still allows navigation to Resume Builder when dashboardState is new-user', () => {
     const onNavigate = vi.fn();
-    render(
+    renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={onNavigate} dashboardState="new-user" />,
     );
     fireEvent.click(screen.getByText('Resume Builder'));
