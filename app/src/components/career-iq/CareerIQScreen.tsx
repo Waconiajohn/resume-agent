@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Sidebar, type CareerIQRoom } from './Sidebar';
 import { OnboardingTour } from '@/components/OnboardingTour';
@@ -138,12 +138,20 @@ export function CareerIQScreen({
     }
   }, [initialRoom]);
 
+  // Sprint C3 — fire check-stalls once per CareerIQScreen mount, not every
+  // time the callback reference changes. useMomentum returns a fresh
+  // useCallback each render, so the previous dependency list re-ran this
+  // effect on every render and burned the server's 3/5min rate budget.
+  const stallsCheckedRef = useRef(false);
   useEffect(() => {
+    if (stallsCheckedRef.current) return;
+    stallsCheckedRef.current = true;
     const timer = setTimeout(() => {
       void checkStalls();
     }, 2000);
     return () => clearTimeout(timer);
-  }, [checkStalls]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

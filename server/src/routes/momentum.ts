@@ -371,7 +371,11 @@ momentumRoutes.patch(
 
 momentumRoutes.post(
   '/check-stalls',
-  rateLimitMiddleware(3, 300_000),
+  // Sprint C3 — bumped from 3/5min to 15/5min. The client fires this as a
+  // dashboard-mount heartbeat; 3/5min was tight enough that normal tab
+  // churn (sign-in → reload → navigate → back) surfaced 429 and the Daily
+  // Ops nudges went stale from the user's point of view.
+  rateLimitMiddleware(15, 300_000),
   async (c) => {
     const user = c.get('user');
 

@@ -141,11 +141,11 @@ thankYouNoteRoutes.get('/reports/latest', rateLimitMiddleware(30, 60_000), async
     logger.error({ error: error.message, userId: user.id }, 'GET /thank-you-note/reports/latest: query failed');
     return c.json({ error: 'Failed to fetch report' }, 500);
   }
-  if (!data) {
-    return c.json({ error: 'No reports found' }, 404);
-  }
-
-  return c.json({ report: data });
+  // Sprint C1 — "no reports yet" is a cache-miss, not an error. Returning
+  // 200 { report: null } keeps the browser network panel clean and matches
+  // how v3-pipeline/sessions/latest handles the empty case. usePriorResult
+  // already interprets a null report as "no prior result."
+  return c.json({ report: data ?? null });
 });
 
 thankYouNoteRoutes.get('/reports/session/:sessionId', rateLimitMiddleware(30, 60_000), async (c) => {

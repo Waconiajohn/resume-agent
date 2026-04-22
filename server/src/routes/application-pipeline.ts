@@ -147,6 +147,44 @@ applicationPipelineRoutes.get(
   },
 );
 
+// ─── GET /applications/due-actions — Upcoming actions (Daily Ops) ─────────────
+// Sprint C2 — registered BEFORE /:id because Hono matches in registration
+// order. Previously /:id caught /due-actions first (looking up a row with
+// id="due-actions"), returned 404, and the Daily Ops panel went silent.
+
+applicationPipelineRoutes.get(
+  '/due-actions',
+  rateLimitMiddleware(60, 60_000),
+  async (c) => {
+    const user = c.get('user');
+    const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams);
+    const daysParsed = z.coerce.number().int().min(1).max(90).optional().safeParse(rawQuery.days);
+    if (!daysParsed.success) {
+      return c.json({ error: 'Invalid days parameter', details: daysParsed.error.flatten() }, 400);
+    }
+    const days = daysParsed.data ?? 7;
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + days);
+
+    const { data, error } = await supabaseAdmin
+      .from('application_pipeline')
+      .select('*')
+      .eq('user_id', user.id)
+      .not('next_action_due', 'is', null)
+      .lte('next_action_due', dueDate.toISOString())
+      .not('stage', 'in', '(closed_won,closed_lost)')
+      .order('next_action_due', { ascending: true });
+
+    if (error) {
+      logger.error({ error: error.message, userId: user.id }, 'application-pipeline: due actions failed');
+      return c.json({ error: 'Failed to fetch due actions' }, 500);
+    }
+
+    return c.json({ actions: data ?? [], count: data?.length ?? 0 });
+  },
+);
+
 // ─── GET /applications/:id — Get single ───────────────────────────────────────
 
 applicationPipelineRoutes.get(
@@ -268,37 +306,3 @@ applicationPipelineRoutes.delete(
   },
 );
 
-// ─── GET /applications/due-actions — Upcoming actions (Daily Ops) ─────────────
-
-applicationPipelineRoutes.get(
-  '/due-actions',
-  rateLimitMiddleware(60, 60_000),
-  async (c) => {
-    const user = c.get('user');
-    const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams);
-    const daysParsed = z.coerce.number().int().min(1).max(90).optional().safeParse(rawQuery.days);
-    if (!daysParsed.success) {
-      return c.json({ error: 'Invalid days parameter', details: daysParsed.error.flatten() }, 400);
-    }
-    const days = daysParsed.data ?? 7;
-
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + days);
-
-    const { data, error } = await supabaseAdmin
-      .from('application_pipeline')
-      .select('*')
-      .eq('user_id', user.id)
-      .not('next_action_due', 'is', null)
-      .lte('next_action_due', dueDate.toISOString())
-      .not('stage', 'in', '(closed_won,closed_lost)')
-      .order('next_action_due', { ascending: true });
-
-    if (error) {
-      logger.error({ error: error.message, userId: user.id }, 'application-pipeline: due actions failed');
-      return c.json({ error: 'Failed to fetch due actions' }, 500);
-    }
-
-    return c.json({ actions: data ?? [], count: data?.length ?? 0 });
-  },
-);

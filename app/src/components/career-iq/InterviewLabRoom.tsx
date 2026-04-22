@@ -543,7 +543,9 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
         <div className="text-center py-6">
           <Mic size={24} className="text-[var(--text-soft)] mx-auto mb-2" />
           <p className="text-[13px] text-[var(--text-soft)]">No interviews scheduled</p>
-          <p className="text-[13px] text-[var(--text-soft)] mt-1">Move a pipeline card to "Interviewing" or add one manually</p>
+          <p className="text-[13px] text-[var(--text-soft)] mt-1">
+            Open an application from My Applications, or move a pipeline card into the Interviewing stage.
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -1669,7 +1671,26 @@ export function InterviewLabRoom({
                     round: 'From pipeline',
                     jobApplicationId: card.id,
                   }))
-                : []
+                : activeCompany && activeRole
+                  ? [
+                      // Sprint C4/C5 — synthesize an entry from the parent
+                      // application so users can generate prep inside an
+                      // application workspace without first having to schedule
+                      // an interview on the pipeline. Closes the "add manually"
+                      // gap by making prep available the moment an application
+                      // exists.
+                      {
+                        id: activeJobApplicationId ?? `draft-${activeCompany}-${activeRole}`,
+                        company: activeCompany,
+                        role: activeRole,
+                        date: 'TBD',
+                        time: 'TBD',
+                        type: 'video' as const,
+                        round: 'Application draft',
+                        jobApplicationId: activeJobApplicationId,
+                      },
+                    ]
+                  : []
             }
             onGeneratePrep={handleGeneratePrep}
           />
