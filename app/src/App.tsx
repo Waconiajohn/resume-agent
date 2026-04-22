@@ -18,6 +18,7 @@ import { CareerProfileProvider } from '@/components/career-iq/CareerProfileConte
 import { WorkspaceLayout } from '@/components/career-iq/WorkspaceLayout';
 import { JobWorkspaceRoute } from '@/components/career-iq/JobWorkspaceRoute';
 import { ApplicationWorkspaceRoute } from '@/components/career-iq/ApplicationWorkspaceRoute';
+import { ApplicationsListScreen } from '@/components/career-iq/ApplicationsListScreen';
 import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ResumeV2VisualHarness } from '@/components/resume-v2/dev/ResumeV2VisualHarness';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
@@ -730,6 +731,12 @@ export default function App() {
                     onGetSessionCoverLetter={getSessionCoverLetter}
                   />
                 )}
+              />
+              {/* Approach C Phase 2.1 — My Applications list.
+                  Entry point to the application-scoped workspace. */}
+              <Route
+                path="/workspace/applications"
+                element={<ApplicationsListScreen onNavigate={navigateTo} />}
               />
               {/* Approach C Phase 1.2 — application-scoped workspace URLs.
                   /workspace/application/:applicationId/:tool where tool is
