@@ -12,6 +12,7 @@ import {
   Users,
   GraduationCap,
   ClipboardCheck,
+  BriefcaseBusiness,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { DashboardState } from './useWhyMeStory';
@@ -169,8 +170,28 @@ export function Sidebar({ activeRoom, onNavigate, onNavigateRoute, dashboardStat
           </div>
         ))}
 
+        {/* My Applications — Approach C entry point. Uses onNavigateRoute
+            (not the room system) because application-scoped URLs live under
+            /workspace/application/:id and aren't a kanban room. */}
+        <div className={collapsed ? 'mt-2' : 'mt-2 border-t border-[var(--line-soft)] pt-3'}>
+          <button
+            type="button"
+            onClick={() => onNavigateRoute?.('/workspace/applications')}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors',
+              'text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]',
+            )}
+            title="My applications"
+          >
+            <BriefcaseBusiness size={18} className="flex-shrink-0" />
+            {!collapsed && (
+              <span className="text-[13px] font-medium leading-tight">My Applications</span>
+            )}
+          </button>
+        </div>
+
         {/* Career Assessment link */}
-        <div className={collapsed ? 'mb-1 mt-2' : 'mb-4 mt-2 border-t border-[var(--line-soft)] pt-3'}>
+        <div className={collapsed ? 'mb-1 mt-2' : 'mb-4 mt-2'}>
           <button
             type="button"
             onClick={() => onNavigateRoute?.('/profile-setup')}
