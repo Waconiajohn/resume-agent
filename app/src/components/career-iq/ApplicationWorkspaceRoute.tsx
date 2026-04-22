@@ -17,9 +17,9 @@
  * it through their startPipeline calls.
  */
 
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import {
@@ -34,6 +34,7 @@ import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
 import { NetworkingHubRoom } from '@/components/career-iq/NetworkingHubRoom';
 import { InterviewLabRoom } from '@/components/career-iq/InterviewLabRoom';
+import { useJobApplications } from '@/hooks/useJobApplications';
 import type { MasterResume } from '@/types/resume';
 
 interface ApplicationRecord {
@@ -164,9 +165,10 @@ export function ApplicationWorkspaceRoute({
           <div className="text-[11px] font-medium uppercase tracking-widest text-[var(--link)]">
             Application
           </div>
-          <h1 className="mt-1 text-xl font-semibold text-[var(--text-strong)]">
-            {application.company_name}
-          </h1>
+          <ApplicationSwitcher
+            current={application}
+            onNavigate={onNavigate}
+          />
           <p className="mt-0.5 text-sm text-[var(--text-soft)]">
             {application.role_title} · Stage: <span className="font-medium text-[var(--text-strong)]">{application.stage}</span>
           </p>
@@ -287,6 +289,107 @@ export function ApplicationWorkspaceRoute({
       </nav>
       {ApplicationHeader}
       {body}
+    </div>
+  );
+}
+
+// ─── ApplicationSwitcher ───────────────────────────────────────────────
+// Sprint B3 — the application's company name in the header doubles as a
+// dropdown: click to see other recent applications + a shortcut to the full
+// list. Lets a user hop between applications without round-tripping through
+// the list screen.
+
+interface ApplicationSwitcherProps {
+  current: ApplicationRecord;
+  onNavigate?: (route: string) => void;
+}
+
+function ApplicationSwitcher({ current, onNavigate }: ApplicationSwitcherProps) {
+  const { applications } = useJobApplications();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Show the most-recently-updated applications other than the current one.
+  const others = useMemo(
+    () =>
+      applications
+        .filter((app) => app.id !== current.id)
+        .slice(0, 6),
+    [applications, current.id],
+  );
+
+  // Click-outside / Escape to close.
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative inline-block" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mt-1 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-xl font-semibold text-[var(--text-strong)] hover:bg-[var(--accent-muted)]"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {current.company_name}
+        <ChevronDown className="h-4 w-4 text-[var(--text-muted)]" />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)] shadow-lg"
+        >
+          {others.length > 0 && (
+            <div className="border-b border-[var(--line-soft)] py-1">
+              <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-soft)]">
+                Switch application
+              </div>
+              {others.map((app) => (
+                <button
+                  key={app.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    onNavigate?.(buildApplicationWorkspaceRoute(app.id, 'resume'));
+                  }}
+                  className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-[var(--rail-tab-hover-bg)]"
+                >
+                  <span className="text-sm text-[var(--text-strong)]">{app.company_name}</span>
+                  <span className="text-[11px] text-[var(--text-soft)]">{app.role_title}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onNavigate?.('/workspace/applications');
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--text-muted)] hover:bg-[var(--rail-tab-hover-bg)] hover:text-[var(--text-strong)]"
+          >
+            <Plus className="h-4 w-4" />
+            New application · View all
+          </button>
+        </div>
+      )}
     </div>
   );
 }
