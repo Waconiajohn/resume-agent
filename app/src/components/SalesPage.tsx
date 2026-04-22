@@ -63,7 +63,9 @@ function Hero() {
           and position you as the benchmark candidate.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <a href="/workspace">
+          {/* Sprint E4 — Get started CTAs open the signup tab; Sign In in the
+              header keeps the default sign-in view. */}
+          <a href="/workspace?auth=signup">
             <GlassButton>
               Get started free
             </GlassButton>
@@ -570,7 +572,7 @@ function CTASection() {
             Create your free account and build a resume that lands interviews
           </p>
           <div className="mt-8">
-            <a href="/workspace">
+            <a href="/workspace?auth=signup">
               <GlassButton>
                 Get Started
               </GlassButton>

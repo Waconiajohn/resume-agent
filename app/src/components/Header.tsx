@@ -193,6 +193,15 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                       <CreditCard className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
                       Billing &amp; plan
                     </button>
+                    {/* Sprint E5 — Settings / Help entry point. */}
+                    <button
+                      role="menuitem"
+                      onClick={() => { setUserMenuOpen(false); onNavigate?.('/settings'); }}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                    >
+                      <Settings2 className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
+                      Settings &amp; help
+                    </button>
                     <button
                       role="menuitem"
                       onClick={() => { setUserMenuOpen(false); onSignOut(); }}

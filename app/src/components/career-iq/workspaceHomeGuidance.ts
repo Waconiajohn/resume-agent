@@ -31,12 +31,22 @@ export function deriveWorkspaceHomeGuidance(params: {
   hasResumeSessions: boolean;
   sessionCount: number;
   coachRecommendation?: CoachRecommendation | null;
+  /**
+   * Sprint E3 — whether the user has a v3 knowledge base or any legacy
+   * master resume. When true, we treat the "new-user" dashboard state
+   * (empty Why Me positioning) as "existing user who hasn't completed
+   * positioning" rather than "brand-new signup." That avoids the audit
+   * finding where returning users saw "Upload your resume" dominating
+   * their dashboard even though they already had one.
+   */
+  hasMasterResume?: boolean;
 }): WorkspaceHomeGuidance {
   const {
     dashboardState,
     hasResumeSessions,
     sessionCount,
     coachRecommendation = null,
+    hasMasterResume = false,
   } = params;
 
   const coachRoom = normalizeCoachRoom(coachRecommendation);
@@ -46,6 +56,18 @@ export function deriveWorkspaceHomeGuidance(params: {
     coachRecommendation?.urgency !== 'when_ready';
 
   if (dashboardState === 'new-user') {
+    if (hasMasterResume) {
+      return {
+        eyebrow: 'Next step',
+        title: 'Sharpen your Why Me story',
+        description:
+          'Your resume is loaded. Answer three positioning questions and every tool starts leaning on your strongest angles, not just your titles.',
+        mobileInsight:
+          'Your resume is loaded. Answer three positioning questions to sharpen every tool.',
+        primary: { label: 'Refine positioning', room: 'career-profile' },
+        secondary: { label: 'Tailor a resume', room: 'resume' },
+      };
+    }
     return {
       eyebrow: 'Start here',
       title: 'Complete your Career Assessment',

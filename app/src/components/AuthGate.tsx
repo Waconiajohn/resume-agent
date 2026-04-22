@@ -5,6 +5,18 @@ import { GlassInput } from './GlassInput';
 import { Briefcase, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+/**
+ * Sprint E4 — initial view preference. Sales page "Get started free" links
+ * include `?auth=signup` so the gate opens on the signup tab; "Sign In" links
+ * do not. Returns 'sign_up' when the URL advertises signup, otherwise
+ * 'sign_in' (the pre-E4 default).
+ */
+function initialViewFromUrl(): AuthView {
+  if (typeof window === 'undefined') return 'sign_in';
+  const params = new URLSearchParams(window.location.search);
+  return params.get('auth') === 'signup' ? 'sign_up' : 'sign_in';
+}
+
 interface AuthGateProps {
   onSignIn: (email: string, password: string) => Promise<{ error: unknown }>;
   onSignUp: (email: string, password: string, metadata?: { firstName: string; lastName: string; phone?: string }) => Promise<{ error: unknown }>;
@@ -19,7 +31,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
-  const [view, setView] = useState<AuthView>('sign_in');
+  const [view, setView] = useState<AuthView>(initialViewFromUrl);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);

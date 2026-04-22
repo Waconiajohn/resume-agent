@@ -11,6 +11,7 @@ import { MobileBriefing } from './MobileBriefing';
 import { useMediaQuery } from './useMediaQuery';
 import { useMomentum } from '@/hooks/useMomentum';
 import { useCoachRecommendation } from '@/hooks/useCoachRecommendation';
+import { useV3Master } from '@/hooks/useV3Master';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { supabase } from '@/lib/supabase';
 import { hydrateV2SessionLoad, type LoadSessionResponseBody } from '@/lib/resume-v2-session-load';
@@ -115,6 +116,11 @@ export function CareerIQScreen({
   const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
   const { nudges, dismissNudge, checkStalls } = useMomentum();
   const { recommendation: coachRec, refresh: refreshCoachRec } = useCoachRecommendation();
+  // Sprint E3 — lets the dashboard hero render the "returning user" variant
+  // when the user already has a knowledge base but hasn't finished the Why
+  // Me positioning interview.
+  const v3Master = useV3Master(accessToken);
+  const hasMasterResume = Boolean(v3Master.summary) || resumes.some((r) => r.is_default);
   const [lmsAgentDataSources, setLmsAgentDataSources] = useState<AgentDataSources>({});
   const workspaceLaunchContext = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -368,6 +374,7 @@ export function CareerIQScreen({
           onNavigateRoom={handleRoomNavigate}
           onRefineWhyMe={openCareerProfile}
           hasResumeSessions={sessions.length > 0}
+          hasMasterResume={hasMasterResume}
           sessionCount={sessions.length}
           recentSession={sessions.length > 0 ? sessions.reduce((a, b) => (a.updated_at >= b.updated_at ? a : b)) : null}
           onResumeSession={onResumeSession}

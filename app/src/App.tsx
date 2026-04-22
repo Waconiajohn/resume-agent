@@ -11,6 +11,7 @@ import { AuthGate } from '@/components/AuthGate';
 import { CoachScreen } from '@/components/CoachScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SalesPage } from '@/components/SalesPage';
+import { SettingsPage } from '@/components/SettingsPage';
 import { BillingDashboard } from '@/components/BillingDashboard';
 import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
@@ -782,6 +783,19 @@ export default function App() {
               />
               <Route path="/pricing" element={<Navigate to="/billing" replace />} />
               <Route path="/billing" element={<BillingDashboard accessToken={accessToken} />} />
+              {/* Sprint E5 — Settings / Help page. */}
+              <Route
+                path="/settings"
+                element={(
+                  <WorkspaceLayout>
+                    <SettingsPage
+                      user={user}
+                      onNavigate={navigateTo}
+                      onSignOut={handleSignOut}
+                    />
+                  </WorkspaceLayout>
+                )}
+              />
               <Route
                 path="/affiliate"
                 element={<AffiliateDashboard accessToken={accessToken} onNavigate={navigateTo} />}

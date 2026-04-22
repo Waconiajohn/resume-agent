@@ -22,6 +22,12 @@ interface DashboardHomeProps {
   onNavigateRoom?: (room: CareerIQRoom) => void;
   onRefineWhyMe?: () => void;
   hasResumeSessions?: boolean;
+  /**
+   * Sprint E3 — true when the user has a v3 knowledge base or any legacy
+   * master resume. Softens the dashboard hero for returning users who
+   * haven't yet completed the Why Me positioning interview.
+   */
+  hasMasterResume?: boolean;
   sessionCount?: number;
   recentSession?: RecentSession | null;
   onResumeSession?: (sessionId: string) => void;
@@ -107,6 +113,7 @@ function saveDismissed(dismissed: Record<string, boolean>) {
 
 function HomeGuideCard({
   hasResumeSessions,
+  hasMasterResume = false,
   sessionCount,
   dashboardState,
   coachRecommendation,
@@ -115,6 +122,8 @@ function HomeGuideCard({
   onNavigateRoute,
 }: {
   hasResumeSessions: boolean;
+  /** Sprint E3 — drives the "returning user" variant of the hero. */
+  hasMasterResume?: boolean;
   sessionCount: number;
   dashboardState: DashboardState;
   coachRecommendation?: CoachRecommendation | null;
@@ -127,6 +136,7 @@ function HomeGuideCard({
     hasResumeSessions,
     sessionCount,
     coachRecommendation,
+    hasMasterResume,
   });
 
   const secondaryAction = guidance.secondary;
@@ -257,6 +267,7 @@ export function DashboardHome({
   onNavigateRoom,
   onRefineWhyMe,
   hasResumeSessions = false,
+  hasMasterResume = false,
   sessionCount = 0,
   recentSession,
   onResumeSession,
@@ -283,6 +294,7 @@ export function DashboardHome({
       )}
       <HomeGuideCard
         hasResumeSessions={hasResumeSessions}
+        hasMasterResume={hasMasterResume}
         sessionCount={sessionCount}
         dashboardState={dashboardState}
         coachRecommendation={coachRecommendation}
