@@ -32,6 +32,7 @@ import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
 import { NetworkingHubRoom } from '@/components/career-iq/NetworkingHubRoom';
+import { InterviewLabRoom } from '@/components/career-iq/InterviewLabRoom';
 import type { MasterResume } from '@/types/resume';
 
 interface ApplicationRecord {
@@ -226,21 +227,18 @@ export function ApplicationWorkspaceRoute({
       />
     );
   } else {
-    // Phase 1.3 lands cover-letter first. resume / thank-you-note / networking /
-    // interview-prep screens adopt the prop + embedded render path in a
-    // follow-up commit (they already accept enough session-scoped props that
-    // the remaining work is mostly adding an `applicationId` passthrough).
+    // `tool` narrows to 'interview-prep' here (the only remaining case in
+    // APPLICATION_WORKSPACE_TOOLS). InterviewLabRoom already accepts all
+    // three props; pre-fill company + role from the application record
+    // so the Interview form can skip a step. Key forces remount on
+    // application switch.
     body = (
-      <GlassCard className="p-6 text-sm text-[var(--text-soft)]">
-        <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
-          Coming up
-        </div>
-        <p className="mt-3 leading-relaxed">
-          The <span className="font-semibold text-[var(--text-strong)]">{tool.replace(/-/g, ' ')}</span> tool
-          will render here once its screen accepts the applicationId prop. This is a routing stub —
-          switching tabs above still remounts correctly if you switch applications.
-        </p>
-      </GlassCard>
+      <InterviewLabRoom
+        key={applicationId}
+        initialJobApplicationId={applicationId}
+        initialCompany={application.company_name}
+        initialRole={application.role_title}
+      />
     );
   }
 
