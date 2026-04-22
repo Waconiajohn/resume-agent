@@ -1,7 +1,7 @@
 import { BriefcaseBusiness, Clock3, ExternalLink, FileText, Loader2, Mail, Mic, Sparkles, X } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline';
+import type { Application, PipelineStage } from '@/hooks/useJobApplications';
 import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 import type { SessionJobRecord } from '@/lib/job-workspace';
 import {

@@ -9,7 +9,7 @@ import { Briefcase, Loader2 } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { PipelineColumn } from './PipelineColumn';
 import { OpportunityCard } from './OpportunityCard';
-import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline';
+import type { Application, PipelineStage } from '@/hooks/useJobApplications';
 
 const PIPELINE_STAGES: { key: PipelineStage; label: string; color: string }[] = [
   { key: 'saved', label: 'Shortlist', color: 'text-[var(--text-soft)]' },

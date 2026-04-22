@@ -1,6 +1,6 @@
 import { useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
-import type { PipelineStage } from '@/hooks/useApplicationPipeline';
+import type { PipelineStage } from '@/hooks/useJobApplications';
 
 const STAGE_DOT: Record<PipelineStage, string> = {
   saved: 'bg-[var(--accent-muted)]',

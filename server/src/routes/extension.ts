@@ -166,10 +166,14 @@ extensionRoutes.get(
 
     const normalizedUrl = normalizeJobUrl(parsed.data.job_url);
 
-    // Primary path: job_applications → coach_sessions → session_workflow_artifacts
+    // Phase 3 — single path via job_applications. DB columns are `title`
+    // and `company`; the previous code selected nonexistent `job_title`
+    // and `company_name` and fell through to application_pipeline, which
+    // has now been dropped. resume_version_id lives on job_applications
+    // already and covers the extension's "resume exists for this URL" path.
     const { data: jobApp } = await supabaseAdmin
       .from('job_applications')
-      .select('id, job_title, company_name')
+      .select('id, title, company, resume_version_id')
       .eq('normalized_url', normalizedUrl)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -202,30 +206,22 @@ extensionRoutes.get(
             return c.json({
               resume,
               status: 'ready',
-              job_title: jobApp.job_title ?? null,
-              company_name: jobApp.company_name ?? null,
+              job_title: jobApp.title ?? null,
+              company_name: jobApp.company ?? null,
             });
           }
         }
       }
-    }
 
-    // Fallback path: application_pipeline
-    const { data: pipelineRow } = await supabaseAdmin
-      .from('application_pipeline')
-      .select('id, role_title, company_name, resume_version_id')
-      .eq('normalized_url', normalizedUrl)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (pipelineRow?.resume_version_id) {
-      return c.json({
-        resume: null,
-        status: 'ready',
-        job_title: pipelineRow.role_title ?? null,
-        company_name: pipelineRow.company_name ?? null,
-        resume_version_id: pipelineRow.resume_version_id,
-      });
+      if (jobApp.resume_version_id) {
+        return c.json({
+          resume: null,
+          status: 'ready',
+          job_title: jobApp.title ?? null,
+          company_name: jobApp.company ?? null,
+          resume_version_id: jobApp.resume_version_id,
+        });
+      }
     }
 
     return c.json({ resume: null, status: 'not_found' });
@@ -248,11 +244,12 @@ extensionRoutes.post(
 
     const normalizedUrl = normalizeJobUrl(parsed.data.job_url);
 
-    // ── Primary path: job_applications → coach_sessions → session_workflow_artifacts ──
-
+    // Phase 3 — single path via job_applications. DB columns are `title`
+    // and `company`. resume_version_id lives on the same row; no need for
+    // a fallback to the dropped application_pipeline table.
     const { data: jobApp } = await supabaseAdmin
       .from('job_applications')
-      .select('id, job_title, company_name')
+      .select('id, title, company, resume_version_id')
       .eq('normalized_url', normalizedUrl)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -285,31 +282,22 @@ extensionRoutes.post(
             return c.json({
               resume,
               status: 'ready',
-              job_title: jobApp.job_title ?? null,
-              company_name: jobApp.company_name ?? null,
+              job_title: jobApp.title ?? null,
+              company_name: jobApp.company ?? null,
             });
           }
         }
       }
-    }
 
-    // ── Fallback path: application_pipeline ──────────────────────────────────
-
-    const { data: pipelineRow } = await supabaseAdmin
-      .from('application_pipeline')
-      .select('id, role_title, company_name, resume_version_id')
-      .eq('normalized_url', normalizedUrl)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (pipelineRow?.resume_version_id) {
-      return c.json({
-        resume: null,
-        status: 'ready',
-        job_title: pipelineRow.role_title ?? null,
-        company_name: pipelineRow.company_name ?? null,
-        resume_version_id: pipelineRow.resume_version_id,
-      });
+      if (jobApp.resume_version_id) {
+        return c.json({
+          resume: null,
+          status: 'ready',
+          job_title: jobApp.title ?? null,
+          company_name: jobApp.company ?? null,
+          resume_version_id: jobApp.resume_version_id,
+        });
+      }
     }
 
     return c.json({ resume: null, status: 'not_found' });
@@ -331,20 +319,26 @@ extensionRoutes.post(
     }
 
     const normalizedUrl = normalizeJobUrl(parsed.data.job_url);
-    const platform = detectPlatform(parsed.data.job_url);
+    // Phase 3 — extension-discovered jobs now upsert into job_applications.
+    // platform isn't a column on job_applications (it was application_pipeline-
+    // specific); we drop it. job_applications requires `company` and
+    // `jd_text` NOT NULL, so we seed empty strings — extension-discovered
+    // rows start as placeholders that the user fleshes out later.
+    void detectPlatform;
 
     const { data, error } = await supabaseAdmin
-      .from('application_pipeline')
+      .from('job_applications')
       .upsert(
         {
           user_id: user.id,
-          role_title: parsed.data.page_title ?? null,
+          title: parsed.data.page_title ?? '',
+          company: '',
+          jd_text: '',
           url: normalizedUrl,
           normalized_url: normalizedUrl,
           source: 'extension',
           stage: 'saved',
           discovered_via: 'extension',
-          platform,
         },
         { onConflict: 'user_id,normalized_url', ignoreDuplicates: true },
       )
@@ -376,8 +370,10 @@ extensionRoutes.post(
 
     const normalizedUrl = normalizeJobUrl(parsed.data.job_url);
 
+    // Phase 3 — writes to job_applications. applied_via + stage='applied'
+    // are both supported columns.
     const { data, error } = await supabaseAdmin
-      .from('application_pipeline')
+      .from('job_applications')
       .update({ stage: 'applied', applied_via: 'extension' })
       .eq('normalized_url', normalizedUrl)
       .eq('user_id', user.id)

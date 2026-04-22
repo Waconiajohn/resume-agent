@@ -175,7 +175,9 @@ describe('POST /resume-lookup', () => {
   });
 
   it('returns resume via job_applications → coach_sessions → artifacts chain', async () => {
-    const jobApp = { id: 'japp-1', job_title: 'Staff Engineer', company_name: 'Acme Corp' };
+    // Phase 3 — DB columns are `title` and `company` (not `job_title` /
+    // `company_name`). The handler maps them to wire-format.
+    const jobApp = { id: 'japp-1', title: 'Staff Engineer', company: 'Acme Corp', resume_version_id: null };
     const session = { id: 'sess-1' };
     const artifact = { payload: { resume: { sections: ['summary'] } } };
 
@@ -198,13 +200,16 @@ describe('POST /resume-lookup', () => {
     expect(body.resume).toEqual({ sections: ['summary'] });
   });
 
-  it('returns resume_version_id via application_pipeline fallback when no job_application found', async () => {
-    const pipelineRow = { id: 'pipe-1', role_title: 'VP Eng', company_name: 'Beta Inc', resume_version_id: 'rv-123' };
+  it('returns resume_version_id from job_applications.resume_version_id when no artifact', async () => {
+    // Phase 3 — resume_version_id lives on job_applications directly; no
+    // application_pipeline fallback (that table was dropped).
+    const jobApp = { id: 'japp-1', title: 'VP Eng', company: 'Beta Inc', resume_version_id: 'rv-123' };
 
-    // job_applications → not found, application_pipeline → found
+    // Queue: job_applications only — no session, no artifact needed since
+    // resume_version_id is set on the row itself.
     mockFrom
-      .mockReturnValueOnce(buildMaybeChain({ data: null, error: null }))
-      .mockReturnValueOnce(buildMaybeChain({ data: pipelineRow, error: null }));
+      .mockReturnValueOnce(buildMaybeChain({ data: jobApp, error: null }))
+      .mockReturnValueOnce(buildMaybeChain({ data: null, error: null })); // no session
 
     const res = await app.request('/api/extension/resume-lookup', {
       method: 'POST',
@@ -243,16 +248,17 @@ describe('POST /resume-lookup', () => {
     expect(res.status).toBe(400);
   });
 
-  it('falls back to application_pipeline when session found but no artifact', async () => {
-    const jobApp = { id: 'japp-2', job_title: 'CTO', company_name: 'Gamma LLC' };
+  it('returns not_found when session found but no artifact AND no resume_version_id', async () => {
+    // Phase 3 — application_pipeline fallback is gone; if we find the row
+    // but neither the artifact nor resume_version_id are set, it's just
+    // "not found."
+    const jobApp = { id: 'japp-2', title: 'CTO', company: 'Gamma LLC', resume_version_id: null };
     const session = { id: 'sess-2' };
-    const pipelineRow = { id: 'pipe-2', role_title: 'CTO', company_name: 'Gamma LLC', resume_version_id: null };
 
     mockFrom
       .mockReturnValueOnce(buildMaybeChain({ data: jobApp, error: null }))
       .mockReturnValueOnce(buildMaybeChain({ data: session, error: null }))
-      .mockReturnValueOnce(buildMaybeChain({ data: null, error: null })) // no artifact
-      .mockReturnValueOnce(buildMaybeChain({ data: pipelineRow, error: null }));
+      .mockReturnValueOnce(buildMaybeChain({ data: null, error: null })); // no artifact
 
     const res = await app.request('/api/extension/resume-lookup', {
       method: 'POST',
@@ -262,18 +268,18 @@ describe('POST /resume-lookup', () => {
 
     expect(res.status).toBe(200);
     const body = await res.json() as { status: string };
-    // No resume_version_id → not_found
     expect(body.status).toBe('not_found');
   });
 
-  it('falls back to application_pipeline when job_application found but no session', async () => {
-    const jobApp = { id: 'japp-3', job_title: 'Dir Eng', company_name: 'Delta Co' };
-    const pipelineRow = { id: 'pipe-3', role_title: 'Dir Eng', company_name: 'Delta Co', resume_version_id: 'rv-456' };
+  it('returns resume_version_id from job_applications when no session exists', async () => {
+    // Phase 3 — if job_applications row has resume_version_id set but no
+    // coach_session yet, we still return the version id. No
+    // application_pipeline lookup needed.
+    const jobApp = { id: 'japp-3', title: 'Dir Eng', company: 'Delta Co', resume_version_id: 'rv-456' };
 
     mockFrom
       .mockReturnValueOnce(buildMaybeChain({ data: jobApp, error: null }))
-      .mockReturnValueOnce(buildMaybeChain({ data: null, error: null })) // no session
-      .mockReturnValueOnce(buildMaybeChain({ data: pipelineRow, error: null }));
+      .mockReturnValueOnce(buildMaybeChain({ data: null, error: null })); // no session
 
     const res = await app.request('/api/extension/resume-lookup', {
       method: 'POST',

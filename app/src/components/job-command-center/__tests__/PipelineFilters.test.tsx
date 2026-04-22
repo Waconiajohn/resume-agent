@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { PipelineFilters } from '../PipelineFilters';
-import type { PipelineStage } from '@/hooks/useApplicationPipeline';
+import type { PipelineStage } from '@/hooks/useJobApplications';
 
 vi.mock('@/lib/utils', () => ({
   cn: (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(' '),

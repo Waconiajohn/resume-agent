@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { DailyOpsSection } from '../DailyOpsSection';
 import type { DailyOpsData } from '@/hooks/useDailyOps';
-import type { Application, DueAction } from '@/hooks/useApplicationPipeline';
+import type { Application, DueAction } from '@/hooks/useJobApplications';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 

@@ -36,7 +36,7 @@ vi.mock('@/hooks/useRuleOfFour', () => ({
 
 import { RuleOfFourCoachingBar } from '../RuleOfFourCoachingBar';
 import type { RuleOfFourGroup } from '@/hooks/useRuleOfFour';
-import type { Application } from '@/hooks/useApplicationPipeline';
+import type { Application } from '@/hooks/useJobApplications';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 

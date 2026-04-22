@@ -27,7 +27,6 @@ import { networkingContacts } from './routes/networking-contacts.js';
 import { jobFinderRoutes } from './routes/job-finder.js';
 import { linkedInContentRoutes } from './routes/linkedin-content.js';
 import { linkedInEditorRoutes } from './routes/linkedin-editor.js';
-import { applicationPipelineRoutes } from './routes/application-pipeline.js';
 import { jobApplicationsRoutes } from './routes/job-applications.js';
 import { mockInterviewRoutes } from './routes/mock-interview.js';
 import { negotiationSimulationRoutes } from './routes/negotiation-simulation.js';
@@ -334,7 +333,8 @@ app.route('/api/networking', networkingContacts);
 app.route('/api/job-finder', jobFinderRoutes);
 app.route('/api/linkedin-content', linkedInContentRoutes);
 app.route('/api/linkedin-editor', linkedInEditorRoutes);
-app.route('/api/applications', applicationPipelineRoutes);
+// Phase 3 — /api/applications (applicationPipelineRoutes) was dropped with
+// the application_pipeline table. All consumers now use /api/job-applications.
 app.route('/api/job-applications', jobApplicationsRoutes);
 app.route('/api/mock-interview', mockInterviewRoutes);
 app.route('/api/negotiation-simulation', negotiationSimulationRoutes);

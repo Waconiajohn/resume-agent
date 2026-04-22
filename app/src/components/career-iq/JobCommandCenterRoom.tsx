@@ -22,7 +22,7 @@ import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useJobFinder, type RankedMatch, type JobEvaluation } from '@/hooks/useJobFinder';
-import { useApplicationPipeline, type PipelineStage } from '@/hooks/useApplicationPipeline';
+import { useApplicationPipeline, type PipelineStage } from '@/hooks/useJobApplications';
 import { useRadarSearch } from '@/hooks/useRadarSearch';
 import type { RadarJob } from '@/hooks/useRadarSearch';
 import { useDailyOps } from '@/hooks/useDailyOps';
@@ -527,9 +527,6 @@ export function JobCommandCenterRoom({
         source: data.source ?? 'manual',
         url: data.url,
         notes: data.notes,
-        stage_history: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       });
     },
     [pipeline],
@@ -576,9 +573,6 @@ export function JobCommandCenterRoom({
         source: job.source ?? 'radar',
         url: job.apply_url ?? undefined,
         location: job.location ?? undefined,
-        stage_history: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       });
       radar.dismissJob(job.external_id);
     },

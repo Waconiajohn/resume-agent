@@ -5,7 +5,7 @@ import { GlassButton } from '@/components/GlassButton';
 import { SessionHistoryTab } from '@/components/dashboard/SessionHistoryTab';
 import { MasterResumeTab } from '@/components/dashboard/MasterResumeTab';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
-import { useApplicationPipeline } from '@/hooks/useApplicationPipeline';
+import { useApplicationPipeline } from '@/hooks/useJobApplications';
 import { useV3Master } from '@/hooks/useV3Master';
 import { buildResumeWorkspaceRoute } from '@/lib/app-routing';
 import type { CoachSession } from '@/types/session';

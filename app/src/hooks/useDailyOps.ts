@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Application, DueAction } from '@/hooks/useApplicationPipeline';
+import type { Application, DueAction } from '@/hooks/useJobApplications';
 
 export interface DailyOpsData {
   dueActions: DueAction[];

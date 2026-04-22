@@ -9,7 +9,7 @@ import { SessionCoverLetterModal } from '@/components/dashboard/SessionCoverLett
 import { JobWorkspaceView } from '@/components/dashboard/JobWorkspaceView';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
-import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline';
+import type { Application, PipelineStage } from '@/hooks/useJobApplications';
 import {
   buildJobRecords,
   buildWorkspaceRoomRoute,

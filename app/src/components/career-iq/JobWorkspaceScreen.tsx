@@ -6,7 +6,7 @@ import { SessionResumeModal } from '@/components/dashboard/SessionResumeModal';
 import { SessionCoverLetterModal } from '@/components/dashboard/SessionCoverLetterModal';
 import { JobWorkspaceView } from '@/components/dashboard/JobWorkspaceView';
 import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
-import { useApplicationPipeline, type PipelineStage } from '@/hooks/useApplicationPipeline';
+import { useApplicationPipeline, type PipelineStage } from '@/hooks/useJobApplications';
 import {
   buildJobRecords,
   isWorkspaceProductType,

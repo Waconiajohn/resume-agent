@@ -23,14 +23,20 @@ let mockContactsLoading = false;
 let mockPipelineError: string | null = null;
 let mockContactsError: string | null = null;
 
-vi.mock('@/hooks/useApplicationPipeline', () => ({
-  useApplicationPipeline: () => ({
+// Phase 3 — useApplicationPipeline is now re-exported from useJobApplications.
+// Mock path updated; both exported names wired to the same stub.
+vi.mock('@/hooks/useJobApplications', () => {
+  const stub = () => ({
     applications: mockApplications,
     loading: mockPipelineLoading,
     error: mockPipelineError,
     fetchApplications: mockFetchApplications,
-  }),
-}));
+  });
+  return {
+    useApplicationPipeline: stub,
+    useJobApplications: stub,
+  };
+});
 
 vi.mock('@/hooks/useNetworkingContacts', () => ({
   useNetworkingContacts: () => ({

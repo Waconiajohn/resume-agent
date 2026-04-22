@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useDailyOps } from '../useDailyOps';
-import type { Application, DueAction } from '@/hooks/useApplicationPipeline';
+import type { Application, DueAction } from '@/hooks/useJobApplications';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 

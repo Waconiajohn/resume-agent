@@ -4,7 +4,7 @@ import { Building2, ChevronDown, Mic, DollarSign, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { ScoreBadge } from './ScoreBadge';
-import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline';
+import type { Application, PipelineStage } from '@/hooks/useJobApplications';
 
 const ALL_STAGES: { key: PipelineStage; label: string }[] = [
   { key: 'saved', label: 'Shortlist' },

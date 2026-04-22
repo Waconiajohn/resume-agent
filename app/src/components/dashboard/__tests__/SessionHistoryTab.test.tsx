@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { SessionHistoryTab } from '../SessionHistoryTab';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume } from '@/types/resume';
-import type { Application } from '@/hooks/useApplicationPipeline';
+import type { Application } from '@/hooks/useJobApplications';
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {

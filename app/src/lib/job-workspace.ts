@@ -1,4 +1,4 @@
-import type { Application, PipelineStage } from '@/hooks/useApplicationPipeline';
+import type { Application, PipelineStage } from '@/hooks/useJobApplications';
 import type { CoachSession } from '@/types/session';
 
 export interface SessionJobRecord {

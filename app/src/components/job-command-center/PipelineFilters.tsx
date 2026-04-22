@@ -1,6 +1,6 @@
 import { Search, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { PipelineStage } from '@/hooks/useApplicationPipeline';
+import type { PipelineStage } from '@/hooks/useJobApplications';
 
 const FILTER_STAGES: { key: PipelineStage | 'all'; label: string }[] = [
   { key: 'all', label: 'All' },

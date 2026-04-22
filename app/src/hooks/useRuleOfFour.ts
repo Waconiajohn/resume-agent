@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useEffect } from 'react';
-import { useApplicationPipeline, type Application } from '@/hooks/useApplicationPipeline';
+import { useApplicationPipeline, type Application } from '@/hooks/useJobApplications';
 import { useNetworkingContacts, type NetworkingContact, type CreateContactData } from '@/hooks/useNetworkingContacts';
 
 export type ContactRole = 'hiring_manager' | 'team_leader' | 'peer' | 'hr_recruiter';

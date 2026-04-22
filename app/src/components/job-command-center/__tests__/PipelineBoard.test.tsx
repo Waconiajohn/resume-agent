@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { PipelineBoard } from '../PipelineBoard';
-import type { Application } from '@/hooks/useApplicationPipeline';
+import type { Application } from '@/hooks/useJobApplications';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
