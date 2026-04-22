@@ -293,6 +293,12 @@ export interface StartV3PipelineInput {
   jobDescription: string;
   jdTitle?: string;
   jdCompany?: string;
+  /**
+   * Approach C Phase 1.3 — links this resume-generation run to a
+   * job_applications row. When present, persisted on the coach_sessions
+   * row created by the server in /api/v3-pipeline/run.
+   */
+  applicationId?: string;
 }
 
 export interface V3MasterSummary {
@@ -394,6 +400,10 @@ export function useV3Pipeline(accessToken: string | null) {
             job_description: input.jobDescription,
             jd_title: input.jdTitle,
             jd_company: input.jdCompany,
+            // Approach C Phase 1.3 — when present, v3-pipeline route persists
+            // this on the coach_sessions row it creates so the run is linked
+            // to the application. Null/undefined = unscoped run, current behavior.
+            ...(input.applicationId ? { job_application_id: input.applicationId } : {}),
           }),
           signal: controller.signal,
         });

@@ -29,6 +29,7 @@ import {
 } from '@/lib/app-routing';
 import { API_BASE } from '@/lib/api';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
+import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import type { MasterResume } from '@/types/resume';
 
 interface ApplicationRecord {
@@ -188,7 +189,9 @@ export function ApplicationWorkspaceRoute({
 
   // ── Tool dispatch ────────────────────────────────────────────────────
   let body: ReactElement;
-  if (tool === 'cover-letter') {
+  if (tool === 'resume') {
+    body = <V3PipelineScreen accessToken={accessToken} applicationId={applicationId} />;
+  } else if (tool === 'cover-letter') {
     body = (
       <CoverLetterScreen
         accessToken={accessToken}

@@ -43,6 +43,14 @@ import { V3ResumeBanner } from './V3ResumeBanner';
 interface V3PipelineScreenProps {
   accessToken: string | null;
   initialResumeText?: string;
+  /**
+   * Approach C Phase 1.3 — when rendered inside the application workspace
+   * (/workspace/application/:id/resume), this is the application ID. Passed
+   * through to the v3 pipeline start call so the resume generation is
+   * linked to the application (coach_sessions.job_application_id). Unset
+   * when the screen renders outside an application scope.
+   */
+  applicationId?: string;
 }
 
 /**
@@ -99,7 +107,7 @@ function applyPatchToWritten(
   return null;
 }
 
-export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineScreenProps) {
+export function V3PipelineScreen({ accessToken, initialResumeText, applicationId }: V3PipelineScreenProps) {
   const pipeline = useV3Pipeline(accessToken);
   const master = useV3Master(accessToken);
   const { user } = useAuth();
@@ -189,7 +197,11 @@ export function V3PipelineScreen({ accessToken, initialResumeText }: V3PipelineS
     // no longer the "last" session. Server-side retains its row; only the
     // banner + localStorage pointer gets cleared.
     persistence.clear();
-    void pipeline.start(input);
+    // Approach C Phase 1.3 — attach the application scope to every run
+    // started from this screen when we're rendered under
+    // /workspace/application/:id/resume. Intake form doesn't need to know
+    // about the application; it's the screen's responsibility.
+    void pipeline.start({ ...input, applicationId });
   };
 
   const handleReset = () => {
