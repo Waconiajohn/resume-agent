@@ -31,6 +31,7 @@ import { API_BASE } from '@/lib/api';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
+import { NetworkingHubRoom } from '@/components/career-iq/NetworkingHubRoom';
 import type { MasterResume } from '@/types/resume';
 
 interface ApplicationRecord {
@@ -215,6 +216,13 @@ export function ApplicationWorkspaceRoute({
         initialJobApplicationId={applicationId}
         initialCompany={application.company_name}
         initialRole={application.role_title}
+      />
+    );
+  } else if (tool === 'networking') {
+    body = (
+      <NetworkingHubRoom
+        key={applicationId}
+        initialJobApplicationId={applicationId}
       />
     );
   } else {

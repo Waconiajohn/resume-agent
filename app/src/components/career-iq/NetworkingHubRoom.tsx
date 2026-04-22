@@ -1043,9 +1043,18 @@ function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
 interface NetworkingHubRoomProps {
   /** Pre-fill the outreach generator with this context when the room mounts */
   initialPrefill?: OutreachPrefill;
+  /**
+   * Approach C Phase 1.3 — when present, this is the application ID the
+   * room was opened inside (/workspace/application/:id/networking). New
+   * contacts created from this instance are auto-linked to that
+   * application via the `application_id` wire-field (maps to the canonical
+   * job_applications(id) FK on the server side). Existing contact lookups
+   * are not filtered by this value — the full contact list still renders.
+   */
+  initialJobApplicationId?: string;
 }
 
-export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {}) {
+export function NetworkingHubRoom({ initialPrefill, initialJobApplicationId }: NetworkingHubRoomProps = {}) {
   const ruleOfFour = useRuleOfFour();
   const networkingContacts = useNetworkingContacts();
 
@@ -1109,16 +1118,24 @@ export function NetworkingHubRoom({ initialPrefill }: NetworkingHubRoomProps = {
   );
 
   const handleAddRecruiter = useCallback(() => {
-    setContactModalDefaults({ relationship_type: 'recruiter' });
+    setContactModalDefaults({
+      relationship_type: 'recruiter',
+      // Approach C Phase 1.3 — default new contacts created inside an
+      // application workspace to that application. User can still clear it
+      // in the modal; this just removes the friction of re-typing it.
+      ...(initialJobApplicationId ? { application_id: initialJobApplicationId } : {}),
+    });
     setContactModalTitle('Add Recruiter');
     setShowContactModal(true);
-  }, []);
+  }, [initialJobApplicationId]);
 
   const handleAddGenericContact = useCallback(() => {
-    setContactModalDefaults({});
+    setContactModalDefaults({
+      ...(initialJobApplicationId ? { application_id: initialJobApplicationId } : {}),
+    });
     setContactModalTitle('Add Contact');
     setShowContactModal(true);
-  }, []);
+  }, [initialJobApplicationId]);
 
   // NH1-3: Import contacts from Network Intelligence
   const handleNIImport = useCallback(async () => {

@@ -31,6 +31,23 @@ networkingContacts.use('*', async (c, next) => {
   await next();
 });
 
+// ─── Wire-format mapper ──────────────────────────────────────────────────────
+//
+// The frontend (useNetworkingContacts, NetworkingHubRoom, etc.) calls the
+// link to a job application `application_id` for historical reasons (the
+// never-applied 20260308310000 migration would have named it that, FK'ing
+// application_pipeline). Approach C (2026-04-21) consolidates onto
+// job_applications and names the DB column `job_application_id`.
+//
+// This mapper keeps the frontend's API shape stable while writing to the
+// canonical column. When Phase 3 cleanup runs, the frontend can rename in
+// lockstep and this mapper disappears.
+function rowToWireFormat(row: Record<string, unknown>): Record<string, unknown> {
+  if (!row) return row;
+  const { job_application_id, ...rest } = row;
+  return { ...rest, application_id: job_application_id ?? null };
+}
+
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const RELATIONSHIP_TYPES = ['recruiter', 'hiring_manager', 'peer', 'referral', 'mentor', 'other'] as const;
@@ -107,7 +124,12 @@ networkingContacts.post(
           tags: data.tags ?? [],
           notes: data.notes ?? null,
           next_followup_at: data.next_followup_at ?? null,
-          application_id: data.application_id ?? null,
+          // Approach C (2026-04-22) — canonical column is job_application_id
+          // on networking_contacts, FK'ing job_applications(id). The legacy
+          // `application_id` column (from the never-applied 20260308310000
+          // migration) would have pointed at application_pipeline — we skip
+          // that and write straight to the consolidated parent.
+          job_application_id: data.application_id ?? null,
           contact_role: data.contact_role ?? null,
         })
         .select('*')
@@ -118,7 +140,7 @@ networkingContacts.post(
         return c.json({ error: 'Failed to create contact' }, 500);
       }
 
-      return c.json({ contact }, 201);
+      return c.json({ contact: rowToWireFormat(contact as Record<string, unknown>) }, 201);
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },
@@ -186,7 +208,10 @@ networkingContacts.get(
         return c.json({ error: 'Failed to fetch contacts' }, 500);
       }
 
-      return c.json({ contacts: contacts ?? [], count: count ?? 0 });
+      return c.json({
+        contacts: (contacts ?? []).map((row) => rowToWireFormat(row as Record<string, unknown>)),
+        count: count ?? 0,
+      });
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },
@@ -232,7 +257,10 @@ networkingContacts.get(
         );
       }
 
-      return c.json({ contact, touchpoints: touchpoints ?? [] });
+      return c.json({
+        contact: rowToWireFormat(contact as Record<string, unknown>),
+        touchpoints: touchpoints ?? [],
+      });
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },
@@ -288,7 +316,7 @@ networkingContacts.patch(
       if (d.tags !== undefined) updateData.tags = d.tags;
       if (d.notes !== undefined) updateData.notes = d.notes;
       if (d.next_followup_at !== undefined) updateData.next_followup_at = d.next_followup_at;
-      if (d.application_id !== undefined) updateData.application_id = d.application_id;
+      if (d.application_id !== undefined) updateData.job_application_id = d.application_id;
       if (d.contact_role !== undefined) updateData.contact_role = d.contact_role;
 
       const { data: contact, error } = await supabaseAdmin
@@ -304,7 +332,7 @@ networkingContacts.patch(
         return c.json({ error: 'Failed to update contact' }, 500);
       }
 
-      return c.json({ contact });
+      return c.json({ contact: rowToWireFormat(contact as Record<string, unknown>) });
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },
@@ -494,7 +522,10 @@ networkingContacts.get(
         return c.json({ error: 'Failed to fetch follow-ups' }, 500);
       }
 
-      return c.json({ contacts: contacts ?? [], days_ahead: days });
+      return c.json({
+        contacts: (contacts ?? []).map((row) => rowToWireFormat(row as Record<string, unknown>)),
+        days_ahead: days,
+      });
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },
@@ -528,7 +559,10 @@ networkingContacts.get(
         return c.json({ error: 'Failed to fetch overdue contacts' }, 500);
       }
 
-      return c.json({ contacts: contacts ?? [], count: contacts?.length ?? 0 });
+      return c.json({
+        contacts: (contacts ?? []).map((row) => rowToWireFormat(row as Record<string, unknown>)),
+        count: contacts?.length ?? 0,
+      });
     } catch (err) {
       logger.error(
         { error: err instanceof Error ? err.message : String(err), userId: user.id },
