@@ -30,6 +30,7 @@ import {
 import { API_BASE } from '@/lib/api';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
+import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
 import type { MasterResume } from '@/types/resume';
 
 interface ApplicationRecord {
@@ -201,6 +202,19 @@ export function ApplicationWorkspaceRoute({
         applicationId={applicationId}
         backTarget={buildApplicationWorkspaceRoute(applicationId, 'resume')}
         backLabel="Back to resume"
+      />
+    );
+  } else if (tool === 'thank-you-note') {
+    // ThankYouNoteRoom already accepts initialJobApplicationId; bonus:
+    // pre-fill company + role from the application so the user doesn't
+    // have to retype them. Key on applicationId forces a full remount
+    // when the user switches applications within the thank-you tool.
+    body = (
+      <ThankYouNoteRoom
+        key={applicationId}
+        initialJobApplicationId={applicationId}
+        initialCompany={application.company_name}
+        initialRole={application.role_title}
       />
     );
   } else {
