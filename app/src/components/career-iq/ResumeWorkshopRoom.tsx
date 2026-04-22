@@ -6,6 +6,7 @@ import { SessionHistoryTab } from '@/components/dashboard/SessionHistoryTab';
 import { MasterResumeTab } from '@/components/dashboard/MasterResumeTab';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { useApplicationPipeline } from '@/hooks/useApplicationPipeline';
+import { useV3Master } from '@/hooks/useV3Master';
 import { buildResumeWorkspaceRoute } from '@/lib/app-routing';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
@@ -69,6 +70,26 @@ export function ResumeWorkshopRoom({
   const applicationPipeline = useApplicationPipeline();
   const { applications: jobApplications, moveToStage, fetchApplications } = applicationPipeline;
   const defaultResume = useMemo(() => resumes.find((item) => item.is_default), [resumes]);
+  // Sprint B5 — the v3 pipeline keeps its own master (the "knowledge base")
+  // at /api/v3-pipeline/master, which is what the resume intake form reads.
+  // Before this fix the landing only checked the legacy v2 master_resumes
+  // table for is_default=true and said "Missing" even when a v3 knowledge
+  // base existed. Show the v3 master when the legacy default is absent.
+  const v3Master = useV3Master(accessToken);
+  const masterLabel = defaultResume
+    ? `v${defaultResume.version}`
+    : v3Master.summary
+      ? `v${v3Master.summary.version}`
+      : v3Master.loading
+        ? '…'
+        : 'Missing';
+  const masterDetail = defaultResume
+    ? `Default version: v${defaultResume.version}`
+    : v3Master.summary
+      ? `Knowledge base v${v3Master.summary.version} · ${v3Master.summary.positionCount ?? 0} positions`
+      : v3Master.loading
+        ? 'Loading…'
+        : 'No default master resume yet';
   const tailoredCount = sessions.filter((session) => {
     const type = session.product_type ?? 'resume';
     return type === 'resume' || type === 'resume_v2' || type === 'cover_letter';
@@ -133,7 +154,7 @@ export function ResumeWorkshopRoom({
               </div>
               <div className="room-meta-item">
                 Master Resume
-                <strong>{defaultResume ? `v${defaultResume.version}` : 'Missing'}</strong>
+                <strong>{masterLabel}</strong>
               </div>
             </div>
           </div>
@@ -157,7 +178,7 @@ export function ResumeWorkshopRoom({
             eyebrow="Reusable Base"
             title="Master Resume"
             description="Maintain the long-term source resume you promote strong edits into after a role-specific run proves worth keeping."
-            meta={defaultResume ? `Default version: v${defaultResume.version}` : 'No default master resume yet'}
+            meta={masterDetail}
             icon={LibraryBig}
             actionLabel="Open Master Resume"
             onAction={openMasterResume}
