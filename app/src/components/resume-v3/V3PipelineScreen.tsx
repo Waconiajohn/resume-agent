@@ -39,6 +39,7 @@ import { V3ResumeView } from './V3ResumeView';
 import { V3VerifyPanel } from './V3VerifyPanel';
 import { V3PromotePanel } from './V3PromotePanel';
 import { V3ResumeBanner } from './V3ResumeBanner';
+import { V3ExportBar } from './V3ExportBar';
 
 interface V3PipelineScreenProps {
   accessToken: string | null;
@@ -626,6 +627,15 @@ export function V3PipelineScreen({ accessToken, initialResumeText, applicationId
                 }
                 summaryPending={regen.summaryPending}
               />
+              {pipeline.isComplete && !pipeline.error && pipeline.written && pipeline.structured && (
+                <V3ExportBar
+                  structured={pipeline.structured}
+                  written={editedWritten ?? pipeline.written}
+                  companyName={runJdCompany ?? undefined}
+                  jobTitle={runJdTitle ?? undefined}
+                  sessionId={sessionId}
+                />
+              )}
               {pipeline.isComplete && !pipeline.error && pipeline.written && sessionId && (
                 <V3PromotePanel
                   accessToken={accessToken}

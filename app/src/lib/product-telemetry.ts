@@ -65,12 +65,23 @@ export interface ProductTelemetryPayloadMap {
   };
   export_attempted: {
     format: string;
-    has_completed_final_review: boolean;
-    is_final_review_stale: boolean;
-    unresolved_critical_count: number;
-    unresolved_hard_gap_count: number;
-    queue_needs_attention_count: number;
-    queue_partial_count: number;
+    /**
+     * When set, identifies which product emitted the event (e.g. "resume_v3").
+     * Absent for legacy v2 emissions — readers should treat missing as "v2".
+     */
+    product?: string;
+    /** Template id chosen at export time. Optional for copy/TXT. */
+    template?: string;
+    /** coach_sessions id — optional link back to the run. */
+    session_id?: string;
+    // v2-only fields. All optional because v3 has no queue or final-review
+    // gating. v2 sites should still emit these for continuity.
+    has_completed_final_review?: boolean;
+    is_final_review_stale?: boolean;
+    unresolved_critical_count?: number;
+    unresolved_hard_gap_count?: number;
+    queue_needs_attention_count?: number;
+    queue_partial_count?: number;
     health_score?: number;
   };
   job_board_search_run: {
