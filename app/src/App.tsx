@@ -23,6 +23,7 @@ import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ResumeV2VisualHarness } from '@/components/resume-v2/dev/ResumeV2VisualHarness';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { ToastProvider } from '@/components/Toast';
+import { ApiErrorToaster } from '@/components/ApiErrorToaster';
 import { TermsOfService } from '@/components/legal/TermsOfService';
 import { PrivacyPolicy } from '@/components/legal/PrivacyPolicy';
 import { Contact } from '@/components/legal/Contact';
@@ -572,6 +573,8 @@ export default function App() {
 
   return (
     <ToastProvider>
+      {/* Sprint C7 — subscribes to apiFetch error events and emits toasts. */}
+      <ApiErrorToaster />
       <CareerProfileProvider>
         <ErrorBoundary key={`${currentSession?.id ?? 'no-session'}:${location.pathname}${location.search}`}>
           <a
