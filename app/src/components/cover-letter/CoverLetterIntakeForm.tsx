@@ -20,6 +20,13 @@ interface CoverLetterIntakeFormProps {
   resumeLoading?: boolean;
   backLabel?: string;
   embedded?: boolean;
+  /**
+   * Approach C Sprint A — when rendered inside an application workspace,
+   * the parent passes the application's company_name and jd_text so the
+   * form prefills instead of asking the user to retype. Both optional.
+   */
+  initialCompanyName?: string;
+  initialJobDescription?: string;
 }
 
 export type CoverLetterTone = 'formal' | 'conversational' | 'bold';
@@ -61,10 +68,12 @@ export function CoverLetterIntakeForm({
   resumeLoading = false,
   backLabel = 'Back to Tools',
   embedded = false,
+  initialCompanyName,
+  initialJobDescription,
 }: CoverLetterIntakeFormProps) {
   const [resumeText, setResumeText] = useState(defaultResumeText ?? '');
-  const [jobDescription, setJobDescription] = useState('');
-  const [companyName, setCompanyName] = useState('');
+  const [jobDescription, setJobDescription] = useState(initialJobDescription ?? '');
+  const [companyName, setCompanyName] = useState(initialCompanyName ?? '');
   const [tone, setTone] = useState<CoverLetterTone>('formal');
 
   // Sync pre-filled text when it arrives asynchronously (e.g. after API fetch completes)

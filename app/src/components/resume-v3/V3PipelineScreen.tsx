@@ -52,6 +52,15 @@ interface V3PipelineScreenProps {
    * when the screen renders outside an application scope.
    */
   applicationId?: string;
+  /**
+   * Approach C Sprint A — initial values threaded from the parent application
+   * (company / role / stored JD text) so the intake form prefills instead of
+   * asking the user to retype what they already entered at app creation.
+   * All optional; missing values just render as empty fields.
+   */
+  initialJobDescription?: string;
+  initialJdTitle?: string;
+  initialJdCompany?: string;
 }
 
 /**
@@ -108,7 +117,14 @@ function applyPatchToWritten(
   return null;
 }
 
-export function V3PipelineScreen({ accessToken, initialResumeText, applicationId }: V3PipelineScreenProps) {
+export function V3PipelineScreen({
+  accessToken,
+  initialResumeText,
+  applicationId,
+  initialJobDescription,
+  initialJdTitle,
+  initialJdCompany,
+}: V3PipelineScreenProps) {
   const pipeline = useV3Pipeline(accessToken);
   const master = useV3Master(accessToken);
   const { user } = useAuth();
@@ -584,6 +600,9 @@ export function V3PipelineScreen({ accessToken, initialResumeText, applicationId
               master={master.summary}
               accessToken={accessToken}
               initialJobUrl={initialJobUrl}
+              initialJobDescription={initialJobDescription}
+              initialJdTitle={initialJdTitle}
+              initialJdCompany={initialJdCompany}
             />
           </div>
         )}

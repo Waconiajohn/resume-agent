@@ -42,6 +42,13 @@ interface CoverLetterScreenProps {
    * as today.
    */
   applicationId?: string;
+  /**
+   * Approach C Sprint A — when rendered inside an application workspace, the
+   * parent threads company name and JD text from the application record so
+   * the intake form prefills instead of asking the user to retype.
+   */
+  initialCompanyName?: string;
+  initialJobDescription?: string;
 }
 
 type Phase = 'intake' | 'running' | 'letter_review' | 'complete' | 'error';
@@ -285,6 +292,8 @@ export function CoverLetterScreen({
   backTarget = buildResumeWorkspaceRoute(),
   backLabel,
   applicationId,
+  initialCompanyName,
+  initialJobDescription,
 }: CoverLetterScreenProps) {
   const [phase, setPhase] = useState<Phase>('intake');
   const [intakeLoading, setIntakeLoading] = useState(false);
@@ -436,6 +445,8 @@ export function CoverLetterScreen({
         resumeLoading={resumeLoading}
         backLabel={resolvedBackLabel}
         embedded={embedded}
+        initialCompanyName={initialCompanyName}
+        initialJobDescription={initialJobDescription}
       />
     );
   }

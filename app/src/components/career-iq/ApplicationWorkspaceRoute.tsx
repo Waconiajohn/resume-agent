@@ -191,9 +191,21 @@ export function ApplicationWorkspaceRoute({
   );
 
   // ── Tool dispatch ────────────────────────────────────────────────────
+  // Approach C Sprint A — pass the application's stored values (role, company,
+  // JD) through to every tool that accepts them so the user doesn't retype
+  // what they entered at app creation. Each tool's own `initial*` props are
+  // optional; missing values degrade to empty-form behavior.
   let body: ReactElement;
   if (tool === 'resume') {
-    body = <V3PipelineScreen accessToken={accessToken} applicationId={applicationId} />;
+    body = (
+      <V3PipelineScreen
+        accessToken={accessToken}
+        applicationId={applicationId}
+        initialJobDescription={application.jd_text}
+        initialJdTitle={application.role_title}
+        initialJdCompany={application.company_name}
+      />
+    );
   } else if (tool === 'cover-letter') {
     body = (
       <CoverLetterScreen
@@ -202,6 +214,8 @@ export function ApplicationWorkspaceRoute({
         onGetDefaultResume={onGetDefaultResume}
         embedded
         applicationId={applicationId}
+        initialCompanyName={application.company_name}
+        initialJobDescription={application.jd_text}
         backTarget={buildApplicationWorkspaceRoute(applicationId, 'resume')}
         backLabel="Back to resume"
       />
@@ -224,6 +238,7 @@ export function ApplicationWorkspaceRoute({
       <NetworkingHubRoom
         key={applicationId}
         initialJobApplicationId={applicationId}
+        initialTargetCompany={application.company_name}
       />
     );
   } else {

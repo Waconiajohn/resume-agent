@@ -46,6 +46,15 @@ interface V3IntakeFormProps {
    * navigates to /resume-builder/session?jdUrl=<encoded-url>.
    */
   initialJobUrl?: string;
+  /**
+   * Approach C — when the form is rendered inside an application workspace,
+   * these prefill the JD textarea, job-title, and company fields from the
+   * parent application so the user doesn't retype. All three are optional;
+   * missing values fall back to empty strings.
+   */
+  initialJobDescription?: string;
+  initialJdTitle?: string;
+  initialJdCompany?: string;
 }
 
 function formatRelativeDate(iso: string): string {
@@ -72,11 +81,14 @@ export function V3IntakeForm({
   master,
   accessToken,
   initialJobUrl,
+  initialJobDescription,
+  initialJdTitle,
+  initialJdCompany,
 }: V3IntakeFormProps) {
   const [resumeText, setResumeText] = useState(initialResumeText ?? '');
-  const [jobDescription, setJobDescription] = useState('');
-  const [jdTitle, setJdTitle] = useState('');
-  const [jdCompany, setJdCompany] = useState('');
+  const [jobDescription, setJobDescription] = useState(initialJobDescription ?? '');
+  const [jdTitle, setJdTitle] = useState(initialJdTitle ?? '');
+  const [jdCompany, setJdCompany] = useState(initialJdCompany ?? '');
   // When the user has a master, they can toggle between using it (empty
   // resumeText + master-sourced run) or overriding (paste a different one).
   const [overridingMaster, setOverridingMaster] = useState(false);

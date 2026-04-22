@@ -758,13 +758,21 @@ function SequenceReviewGate({ data, onRespond }: SequenceReviewGateProps) {
 interface OutreachGeneratorProps {
   prefill?: OutreachPrefill | null;
   onReady?: (outreach: ReturnType<typeof useNetworkingOutreach>) => void;
+  /**
+   * Approach C Sprint A — initial target-company value drawn from the parent
+   * application's company_name. Seeds the company field without going through
+   * the full prefill mechanism (which requires name + title too). Overridden
+   * by `prefill.company` when the user explicitly picks a contact to generate
+   * outreach for.
+   */
+  initialTargetCompany?: string;
 }
 
-function OutreachGenerator({ prefill, onReady }: OutreachGeneratorProps) {
+function OutreachGenerator({ prefill, onReady, initialTargetCompany }: OutreachGeneratorProps) {
   const outreach = useNetworkingOutreach();
   const [targetName, setTargetName] = useState(prefill?.name ?? '');
   const [targetTitle, setTargetTitle] = useState(prefill?.title ?? '');
-  const [targetCompany, setTargetCompany] = useState(prefill?.company ?? '');
+  const [targetCompany, setTargetCompany] = useState(prefill?.company ?? initialTargetCompany ?? '');
   const [targetLinkedIn, setTargetLinkedIn] = useState('');
   const [contextNotes, setContextNotes] = useState('');
   const [resumeText, setResumeText] = useState('');
@@ -1052,9 +1060,16 @@ interface NetworkingHubRoomProps {
    * are not filtered by this value — the full contact list still renders.
    */
   initialJobApplicationId?: string;
+  /**
+   * Approach C Sprint A — initial target-company value drawn from the parent
+   * application's company_name. Pre-fills the Outreach Generator's company
+   * field so the user doesn't retype. Separate from initialPrefill because
+   * we only have the company name at app-creation, not a full contact record.
+   */
+  initialTargetCompany?: string;
 }
 
-export function NetworkingHubRoom({ initialPrefill, initialJobApplicationId }: NetworkingHubRoomProps = {}) {
+export function NetworkingHubRoom({ initialPrefill, initialJobApplicationId, initialTargetCompany }: NetworkingHubRoomProps = {}) {
   const ruleOfFour = useRuleOfFour();
   const networkingContacts = useNetworkingContacts();
 
@@ -1308,6 +1323,7 @@ export function NetworkingHubRoom({ initialPrefill, initialJobApplicationId }: N
         <OutreachGenerator
           prefill={outreachPrefill}
           onReady={setOutreachState}
+          initialTargetCompany={initialTargetCompany}
         />
       </div>
 
