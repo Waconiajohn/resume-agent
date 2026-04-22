@@ -23,7 +23,9 @@ import {
 import { exportCarouselPdf } from '@/lib/export-carousel-pdf';
 import type { CarouselSlide } from '@/lib/export-carousel-pdf';
 import { cn } from '@/lib/utils';
-import { useState, useCallback } from 'react';
+import { extractResumeTextFromUpload } from '@/lib/resume-upload';
+import { useRef, useState, useCallback } from 'react';
+import { Upload } from 'lucide-react';
 import { useLinkedInOptimizer } from '@/hooks/useLinkedInOptimizer';
 import { useLinkedInContent } from '@/hooks/useLinkedInContent';
 import { useLinkedInEditor } from '@/hooks/useLinkedInEditor';
@@ -1668,6 +1670,27 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
   const [activeTab, setActiveTab] = useState<StudioTab>('profile');
   const [inputError, setInputError] = useState<string | null>(null);
 
+  // Sprint D6 — parity with /profile-setup. Users on the LinkedIn room can
+  // upload a LinkedIn PDF export instead of retyping their headline / about /
+  // experience.
+  const linkedInFileRef = useRef<HTMLInputElement | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const handleLinkedInPdfUpload = useCallback(async (file: File) => {
+    setUploadError(null);
+    try {
+      const text = await extractResumeTextFromUpload(file);
+      // Use the full extracted text as the About field. Headline extraction
+      // from LinkedIn PDFs is unreliable (first-line vs. tagline); the user
+      // can tidy it up. We do NOT overwrite the headline if it is already
+      // filled.
+      linkedInProfile.updateField('about', text);
+      setUploadedFileName(file.name);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Could not read file');
+    }
+  }, [linkedInProfile]);
+
   const handleWritePostFromCalendar = useCallback(() => {
     setActiveTab('content');
   }, []);
@@ -1788,6 +1811,37 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               </p>
 
               <div className="space-y-4">
+                {/* Sprint D6 — upload LinkedIn PDF export; fills the About
+                    field directly. Parity with the Career Assessment intake. */}
+                <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-[var(--line-soft)]">
+                  <button
+                    type="button"
+                    onClick={() => linkedInFileRef.current?.click()}
+                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-0)] px-3 py-1.5 text-xs text-[var(--text-muted)] hover:border-[var(--link)] hover:text-[var(--text-strong)] transition-colors"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload LinkedIn PDF
+                  </button>
+                  {uploadedFileName && (
+                    <span className="text-xs text-[var(--text-soft)] truncate max-w-[280px]">
+                      Loaded: {uploadedFileName}
+                    </span>
+                  )}
+                  {uploadError && (
+                    <span className="text-xs text-[var(--badge-red-text)]">{uploadError}</span>
+                  )}
+                  <input
+                    ref={linkedInFileRef}
+                    type="file"
+                    accept=".pdf,.txt,.docx"
+                    className="sr-only"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) await handleLinkedInPdfUpload(file);
+                    }}
+                    aria-label="Upload LinkedIn profile file"
+                  />
+                </div>
                 <div>
                   <label className="block text-xs font-medium text-[var(--text-soft)] uppercase tracking-wide mb-1">
                     Current Headline

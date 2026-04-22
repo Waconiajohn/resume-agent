@@ -1243,13 +1243,14 @@ export function NetworkingHubRoom({ initialPrefill, initialJobApplicationId, ini
             variant="ghost"
             onClick={handleNIImport}
             disabled={niImportStatus === 'loading'}
+            title="Import contacts discovered through Smart Referrals (Networking Intelligence)"
           >
             {niImportStatus === 'loading' ? (
               <Loader2 size={14} className="animate-spin" />
             ) : (
               <Users size={14} />
             )}
-            Import from NI
+            Import from Smart Referrals
           </GlassButton>
           <GlassButton onClick={handleAddGenericContact}>
             <Plus size={14} />

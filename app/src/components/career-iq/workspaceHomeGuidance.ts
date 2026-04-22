@@ -81,6 +81,7 @@ export function deriveWorkspaceHomeGuidance(params: {
       networking: 'Open Network Job Search',
       interview: 'Open Interview Prep',
       learning: 'Open Learning',
+      'executive-bio': 'Open Executive Bio',
     };
 
     return {

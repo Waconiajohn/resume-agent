@@ -45,6 +45,8 @@ export function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       || room === 'jobs'
       || room === 'interview'
       || room === 'networking'
+      || room === 'learning'
+      || room === 'executive-bio'
     ) {
       return room;
     }

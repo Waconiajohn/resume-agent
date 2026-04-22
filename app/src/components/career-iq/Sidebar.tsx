@@ -13,6 +13,7 @@ import {
   GraduationCap,
   ClipboardCheck,
   BriefcaseBusiness,
+  BookOpen,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -56,6 +57,7 @@ const ROOM_GROUPS: RoomGroup[] = [
     label: 'Resources',
     rooms: [
       { id: 'learning', label: 'Learning', icon: GraduationCap, description: '8 courses personalized with your data', gated: false },
+      { id: 'executive-bio', label: 'Executive Bio', icon: BookOpen, description: 'Long-form bio for speaking bios, about pages, and board intros', gated: false },
     ],
   },
 ];

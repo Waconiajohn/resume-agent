@@ -1147,8 +1147,8 @@ const LAB_SECTION_COPY: Record<InterviewLabSection, { label: string; description
     description: 'Create the 30-60-90 plan and other interview leave-behinds when they will help you stand out.',
   },
   follow_up: {
-    label: 'Follow-up',
-    description: 'Debrief, thank-you notes, follow-up emails, and negotiation prep — all in one place after the interview.',
+    label: 'Follow-up & Negotiate',
+    description: 'Debrief, thank-you notes, follow-up emails, and salary negotiation prep — everything you need after the interview.',
   },
 };
 
@@ -1158,7 +1158,7 @@ const LAB_SEQUENCE_COPY: Record<InterviewLabSection, string> = {
   prep: 'Research the role and build the interview brief.',
   practice: 'Pressure-test your positioning out loud before the conversation.',
   documents: 'Create leave-behinds that reinforce the same story.',
-  follow_up: 'Debrief quickly, then send the right follow-up while the signal is fresh.',
+  follow_up: 'Debrief, send the right follow-up, and prep for the salary conversation.',
 };
 
 const FOLLOW_UP_TOOL_COPY: Array<{

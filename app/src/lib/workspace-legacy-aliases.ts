@@ -2,7 +2,8 @@ export const LEGACY_WORKSPACE_ALIASES = {
   'content-calendar': { room: 'linkedin' },
   'thank-you-note': { room: 'interview', focus: 'thank-you' },
   'case-study': { room: 'career-profile', focus: 'case-study' },
-  'executive-bio': { room: 'career-profile', focus: 'bio' },
+  // Sprint D1 — executive-bio is now a first-class room; alias removed so
+  // `?room=executive-bio` resolves to itself.
   'network-intelligence': { room: 'networking' },
   'personal-brand': { room: 'career-profile' },
   'ninety-day-plan': { room: 'interview', focus: 'plan' },

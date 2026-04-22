@@ -36,6 +36,11 @@ interface ToneOption {
   label: string;
   description: string;
   icon: React.ElementType;
+  /**
+   * Sprint D4 — one-sentence preview of the voice this tone produces. Shown
+   * on hover so users can feel the difference before they pick one.
+   */
+  sample: string;
 }
 
 const TONE_OPTIONS: ToneOption[] = [
@@ -44,18 +49,24 @@ const TONE_OPTIONS: ToneOption[] = [
     label: 'Formal',
     description: 'Executive gravitas, structured language',
     icon: Briefcase,
+    sample:
+      '"I am writing to express my interest in the Director of Operations role. Over the past decade I have scaled supply-chain teams through three acquisitions and cut unit cost 22%."',
   },
   {
     id: 'conversational',
     label: 'Conversational',
     description: 'Warm, direct, human voice',
     icon: MessageSquare,
+    sample:
+      '"When I saw the Director of Operations role I had to write. Your turnaround story sounds a lot like the one I ran at Acme — here is what I think I would bring."',
   },
   {
     id: 'bold',
     label: 'Bold',
     description: 'High-conviction, declarative positioning',
     icon: Zap,
+    sample:
+      '"Your next Director of Operations should not be another steward — it should be someone who has already rebuilt a stalled supply chain under fire. That person is me."',
   },
 ];
 
@@ -219,6 +230,14 @@ export function CoverLetterIntakeForm({
                     </button>
                   );
                 })}
+              </div>
+              {/* Sprint D4 — sample of the selected tone so the user hears
+                  the difference before they generate anything. */}
+              <div
+                className="mt-2 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)]/60 px-3 py-2 text-[12px] italic leading-relaxed text-[var(--text-soft)]"
+                aria-live="polite"
+              >
+                {TONE_OPTIONS.find((t) => t.id === tone)?.sample}
               </div>
             </div>
 
