@@ -25,6 +25,8 @@ import { ResumeV2VisualHarness } from '@/components/resume-v2/dev/ResumeV2Visual
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { ToastProvider } from '@/components/Toast';
 import { ApiErrorToaster } from '@/components/ApiErrorToaster';
+import { SessionExpiryToaster } from '@/components/SessionExpiryToaster';
+import { EmailVerificationBanner } from '@/components/EmailVerificationBanner';
 import { TermsOfService } from '@/components/legal/TermsOfService';
 import { PrivacyPolicy } from '@/components/legal/PrivacyPolicy';
 import { Contact } from '@/components/legal/Contact';
@@ -576,6 +578,10 @@ export default function App() {
     <ToastProvider>
       {/* Sprint C7 — subscribes to apiFetch error events and emits toasts. */}
       <ApiErrorToaster />
+      {/* Sprint E2 — session-expiry toast when auth silently drops. */}
+      <SessionExpiryToaster />
+      {/* Sprint E1 — nags users who haven't confirmed their email. */}
+      <EmailVerificationBanner user={user} />
       <CareerProfileProvider>
         <ErrorBoundary key={`${currentSession?.id ?? 'no-session'}:${location.pathname}${location.search}`}>
           <a

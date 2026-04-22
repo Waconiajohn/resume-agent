@@ -285,7 +285,9 @@ export function ApplicationWorkspaceRoute({
         <ChevronRight className="h-3 w-3" aria-hidden="true" />
         <span className="text-[var(--text-strong)]">{application.company_name}</span>
         <ChevronRight className="h-3 w-3" aria-hidden="true" />
-        <span className="text-[var(--text-strong)]">{tool.replace(/-/g, ' ')}</span>
+        <span className="text-[var(--text-strong)]" aria-current="page">
+          {tool.replace(/-/g, ' ')}
+        </span>
       </nav>
       {ApplicationHeader}
       {body}

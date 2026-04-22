@@ -276,7 +276,8 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
                             handleOpen();
                           }
                         }}
-                        className="group relative flex cursor-pointer flex-col gap-2 rounded-2xl border border-[var(--line-soft)] bg-[var(--bg-1)] p-4 text-left transition-all duration-150 hover:border-[var(--link)]/40 hover:bg-[var(--rail-tab-hover-bg)]"
+                        aria-label={`Open application: ${app.role_title} at ${app.company_name}`}
+                        className="group relative flex cursor-pointer flex-col gap-2 rounded-2xl border border-[var(--line-soft)] bg-[var(--bg-1)] p-4 text-left transition-all duration-150 hover:border-[var(--link)]/40 hover:bg-[var(--rail-tab-hover-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/60"
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-semibold text-[var(--text-strong)]">{app.company_name}</span>
