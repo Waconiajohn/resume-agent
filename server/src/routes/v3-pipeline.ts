@@ -443,17 +443,33 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
 // Returns the user's most recent completed v3 run so the frontend can
 // rehydrate on page refresh / new device. Scoped to the partial index
 // `idx_coach_sessions_user_v3_latest`.
+//
+// Optional `?application_id=<uuid>` filter — Approach C Sprint A. When the
+// banner renders inside /workspace/application/:id/resume it must show the
+// prior run FOR THAT APPLICATION, not the user's global most-recent run
+// (which would almost always belong to a different application and mislead
+// the user into resuming the wrong work). Absent the filter, behavior is
+// unchanged — we return the user's global latest.
 v3Pipeline.get('/sessions/latest', authMiddleware, async (c) => {
   const user = c.get('user');
+  const rawApplicationId = new URL(c.req.url).searchParams.get('application_id');
+  const applicationId =
+    rawApplicationId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawApplicationId)
+      ? rawApplicationId
+      : null;
   try {
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('coach_sessions')
       .select(
         'id, updated_at, v3_pipeline_output, v3_jd_text, v3_jd_title, v3_jd_company, v3_resume_source, v3_edited_written',
       )
       .eq('user_id', user.id)
       .eq('product_type', 'resume_v3')
-      .not('v3_pipeline_output', 'is', null)
+      .not('v3_pipeline_output', 'is', null);
+    if (applicationId) {
+      query = query.eq('job_application_id', applicationId);
+    }
+    const { data, error } = await query
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();

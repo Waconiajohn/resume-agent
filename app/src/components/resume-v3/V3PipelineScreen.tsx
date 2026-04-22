@@ -181,6 +181,7 @@ export function V3PipelineScreen({
     editedWritten,
     jdTitle: runJdTitle,
     jdCompany: runJdCompany,
+    applicationId,
   });
 
   // sessionId comes from the backend's pipeline_complete event and is the

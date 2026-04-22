@@ -61,14 +61,19 @@ interface CacheEntry extends V3SessionSnapshot {
   version: 1;
 }
 
-function storageKey(userId: string): string {
-  return `resume-v3-last-session-${userId}`;
+function storageKey(userId: string, applicationId?: string | null): string {
+  // Approach C Sprint A — when inside an application workspace, scope the
+  // cache key by applicationId so each application has its own "last run"
+  // slot. Outside an application the key is just user-scoped, same as before.
+  return applicationId
+    ? `resume-v3-last-session-${userId}-app-${applicationId}`
+    : `resume-v3-last-session-${userId}`;
 }
 
-function readCache(userId: string): V3SessionSnapshot | null {
+function readCache(userId: string, applicationId?: string | null): V3SessionSnapshot | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(storageKey(userId));
+    const raw = window.localStorage.getItem(storageKey(userId, applicationId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CacheEntry;
     if (parsed.version !== 1) return null;
@@ -81,20 +86,24 @@ function readCache(userId: string): V3SessionSnapshot | null {
   }
 }
 
-function writeCache(userId: string, snapshot: V3SessionSnapshot): void {
+function writeCache(
+  userId: string,
+  snapshot: V3SessionSnapshot,
+  applicationId?: string | null,
+): void {
   if (typeof window === 'undefined') return;
   try {
     const entry: CacheEntry = { ...snapshot, version: 1 };
-    window.localStorage.setItem(storageKey(userId), JSON.stringify(entry));
+    window.localStorage.setItem(storageKey(userId, applicationId), JSON.stringify(entry));
   } catch {
     // Quota exceeded or storage disabled — server is still authoritative.
   }
 }
 
-function clearCache(userId: string): void {
+function clearCache(userId: string, applicationId?: string | null): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.removeItem(storageKey(userId));
+    window.localStorage.removeItem(storageKey(userId, applicationId));
   } catch {
     // ignored
   }
@@ -120,6 +129,13 @@ interface UseV3SessionPersistenceArgs {
   /** Metadata captured at submit time so the banner can label the run. */
   jdTitle?: string | null;
   jdCompany?: string | null;
+  /**
+   * Approach C Sprint A — when set, scopes both the localStorage cache and
+   * the server latest-session lookup to this application. The banner for an
+   * application workspace must only show prior runs FOR THAT APPLICATION so
+   * the user isn't tempted to resume work from a different company / role.
+   */
+  applicationId?: string | null;
 }
 
 export interface UseV3SessionPersistenceResult {
@@ -147,6 +163,7 @@ export function useV3SessionPersistence({
   editedWritten,
   jdTitle,
   jdCompany,
+  applicationId,
 }: UseV3SessionPersistenceArgs): UseV3SessionPersistenceResult {
   const [lastSession, setLastSession] = useState<V3SessionSnapshot | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -168,7 +185,7 @@ export function useV3SessionPersistence({
         return;
       }
 
-      const cached = readCache(userId);
+      const cached = readCache(userId, applicationId);
       if (cached) {
         if (!cancelled) {
           setLastSession(cached);
@@ -186,7 +203,8 @@ export function useV3SessionPersistence({
       }
 
       try {
-        const res = await fetch(`${API_BASE}/v3-pipeline/sessions/latest`, {
+        const qs = applicationId ? `?application_id=${encodeURIComponent(applicationId)}` : '';
+        const res = await fetch(`${API_BASE}/v3-pipeline/sessions/latest${qs}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!res.ok) {
@@ -252,7 +270,7 @@ export function useV3SessionPersistence({
     return () => {
       cancelled = true;
     };
-  }, [userId, accessToken]);
+  }, [userId, accessToken, applicationId]);
 
   // ─── localStorage write on completion / edits ─────────────────────────
   useEffect(() => {
@@ -284,7 +302,7 @@ export function useV3SessionPersistence({
         jdCompany: jdCompany ?? null,
         savedAt: Date.now(),
       };
-      writeCache(userId, snapshot);
+      writeCache(userId, snapshot, applicationId);
     }, LOCALSTORAGE_WRITE_DEBOUNCE_MS);
 
     return () => {
@@ -307,6 +325,7 @@ export function useV3SessionPersistence({
     editedWritten,
     jdTitle,
     jdCompany,
+    applicationId,
   ]);
 
   // ─── Server-side edit persistence (PATCH /sessions/:id/edits) ─────────
@@ -350,10 +369,10 @@ export function useV3SessionPersistence({
   }, [accessToken, pipeline.isComplete, pipeline.sessionId, editedWritten]);
 
   const clear = useCallback(() => {
-    if (userId) clearCache(userId);
+    if (userId) clearCache(userId, applicationId);
     lastPostedEditsRef.current = null;
     setLastSession(null);
-  }, [userId]);
+  }, [userId, applicationId]);
 
   const acknowledge = useCallback(() => {
     setLastSession(null);
