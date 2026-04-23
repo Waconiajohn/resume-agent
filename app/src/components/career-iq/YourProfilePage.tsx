@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { EducationStrip } from '@/components/shared/EducationStrip';
 import { cn } from '@/lib/utils';
 import { WhyMeStoryCard } from './WhyMeStoryCard';
 import { WhyMeEngine } from './WhyMeEngine';
@@ -658,7 +659,26 @@ export function YourProfilePage({
         </button>
       </div>
 
+      <EducationStrip
+        screenId="career-vault"
+        title="Career Vault"
+        whatThisIs="Your Career Vault is the foundation every application draws from — your positioning, career evidence, and LinkedIn brand in one place."
+        whyItMatters="Benchmark candidates build this once and refine it over time, so every tailored resume and cover letter stays consistent."
+        whatWeDo="We analyze what you upload and generate drafts across all three sections."
+        whatYouDo="You review, refine, and decide which parts are ready."
+        defaultExpanded
+      />
+
       {/* Section A — Why-Me Story */}
+      <EducationStrip
+        screenId="why-me"
+        title="Why-Me"
+        whatThisIs="Your Why-Me is the 30-second answer to why someone should hire you, not another qualified candidate."
+        whyItMatters="Benchmark candidates have a crisp Why-Me — without one, you blend in with everyone else."
+        whatWeDo="We draft yours from your career evidence and LinkedIn profile."
+        whatYouDo="You refine the narrative until it sounds like you."
+        defaultExpanded={false}
+      />
       {hasStarted ? (
         // WhyMeStoryCard renders its own GlassCard
         <div>
@@ -711,6 +731,15 @@ export function YourProfilePage({
       />
 
       {/* Section C — LinkedIn Profile */}
+      <EducationStrip
+        screenId="benchmark-linkedin-brand"
+        title="Benchmark LinkedIn Brand"
+        whatThisIs="Your LinkedIn profile is often the first thing a recruiter or hiring manager sees."
+        whyItMatters="Benchmark candidates pass the five-second test — a glance at their profile makes the reader want to keep reading."
+        whatWeDo="We audit your current profile against that test and flag what to improve."
+        whatYouDo="You update your profile and build a content presence that reinforces your positioning."
+        defaultExpanded={false}
+      />
       <LinkedInSection />
 
       {/* Story Bank */}

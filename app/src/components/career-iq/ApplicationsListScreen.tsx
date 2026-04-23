@@ -18,6 +18,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { useJobApplications, type JobApplicationStage, type JobApplicationArchivedFilter } from '@/hooks/useJobApplications';
 import { buildApplicationWorkspaceRoute } from '@/lib/app-routing';
+import { EducationStrip } from '@/components/shared/EducationStrip';
 
 interface ApplicationsListScreenProps {
   onNavigate?: (route: string) => void;
@@ -224,6 +225,18 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
           </GlassButton>
         </div>
       </div>
+
+      {formOpen && (
+        <EducationStrip
+          screenId="new-application"
+          title="New Application"
+          whatThisIs="A new application kicks off a complete job pursuit — tailored resume, cover letter, interview prep, and follow-up — all scoped to one specific role."
+          whyItMatters="Benchmark candidates treat each application as its own project so nothing gets mixed up between roles."
+          whatWeDo="We use your Career Vault and the job description to generate every artifact."
+          whatYouDo="You review, adjust, and apply."
+          defaultExpanded
+        />
+      )}
 
       {formOpen && (
         <GlassCard className="p-5">

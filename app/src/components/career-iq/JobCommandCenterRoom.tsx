@@ -36,6 +36,7 @@ import { BooleanSearchPanel } from '@/components/job-command-center/BooleanSearc
 import { formatJobAgeLabel } from '@/components/job-command-center/job-age';
 import { useLatestMasterResumeText } from './useLatestMasterResumeText';
 import { SmartReferralsRoom } from './SmartReferralsRoom';
+import { EducationStrip } from '@/components/shared/EducationStrip';
 
 import type { CareerIQRoom } from './Sidebar';
 
@@ -577,7 +578,18 @@ export function JobCommandCenterRoom({
 
       {/* Insider Jobs mode — display:none preserves state */}
       <div style={{ display: activeMode === 'insider-jobs' ? undefined : 'none' }}>
-        <SmartReferralsRoom onNavigate={onNavigate} />
+        <div className="flex flex-col gap-4">
+          <EducationStrip
+            screenId="insider-jobs"
+            title="Insider Jobs"
+            whatThisIs="Insider Jobs surfaces roles at companies where you already have a first-degree connection."
+            whyItMatters="A warm introduction gets your application read; a cold application often doesn't."
+            whatWeDo="We filter open roles by the companies in your network and rank them by the strength of your connection."
+            whatYouDo="You prioritize the warmest opportunities and reach out before applying."
+            defaultExpanded
+          />
+          <SmartReferralsRoom onNavigate={onNavigate} />
+        </div>
       </div>
 
       {/* Broad Search mode — display:none preserves state */}
