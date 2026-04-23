@@ -86,6 +86,8 @@ const createJobApplicationSchema = z.object({
   resume_version_id: z.string().uuid().optional(),
   notes: z.string().max(10_000).optional(),
   score: z.number().int().min(0).max(100).optional(),
+  // Phase 2.3b — Interview Prep toggle. NULL defers to stage-derived default.
+  interview_prep_enabled: z.boolean().nullable().optional(),
 });
 
 const updateJobApplicationSchema = createJobApplicationSchema.partial().extend({
