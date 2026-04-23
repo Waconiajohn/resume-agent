@@ -215,7 +215,7 @@ describe('NetworkingHubRoom — rendering', () => {
   it('renders Contacts & Outreach heading or title', () => {
     render(<NetworkingHubRoom />);
     const heading = screen.queryByText(/Contacts & Outreach/i) ||
-      screen.queryByText(/Smart Referrals turns your network into real outreach/i);
+      screen.queryByText(/Insider Jobs turns your network into real outreach/i);
     expect(heading).toBeTruthy();
   });
 });

@@ -1230,7 +1230,7 @@ export function NetworkingHubRoom({ initialPrefill, initialJobApplicationId, ini
         <div className="flex-1">
           <h1 className="text-lg font-semibold text-[var(--text-strong)]">Contacts &amp; Outreach</h1>
           <p className="text-[13px] text-[var(--text-soft)]">
-            Smart Referrals turns your network into real outreach. For every application, the Rule
+            Insider Jobs turns your network into real outreach. For every application, the Rule
             of Four helps you get past the queue and in front of decision-makers.
           </p>
           <ContextLoadedBadge
@@ -1243,14 +1243,14 @@ export function NetworkingHubRoom({ initialPrefill, initialJobApplicationId, ini
             variant="ghost"
             onClick={handleNIImport}
             disabled={niImportStatus === 'loading'}
-            title="Import contacts discovered through Smart Referrals (Networking Intelligence)"
+            title="Import contacts discovered through Insider Jobs (Networking Intelligence)"
           >
             {niImportStatus === 'loading' ? (
               <Loader2 size={14} className="animate-spin" />
             ) : (
               <Users size={14} />
             )}
-            Import from Smart Referrals
+            Import from Insider Jobs
           </GlassButton>
           <GlassButton onClick={handleAddGenericContact}>
             <Plus size={14} />

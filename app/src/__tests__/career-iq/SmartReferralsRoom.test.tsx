@@ -104,7 +104,7 @@ describe('SmartReferralsRoom', () => {
 
     render(<SmartReferralsRoom />);
 
-    expect(screen.getByText('Smart Referrals')).toBeInTheDocument();
+    expect(screen.getByText('Insider Jobs')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Network path' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bonus path' })).toBeInTheDocument();
     expect(screen.getByText(/You need an active session/i)).toBeInTheDocument();

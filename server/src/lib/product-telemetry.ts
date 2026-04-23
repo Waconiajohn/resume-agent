@@ -79,7 +79,7 @@ const FUNNEL_STEPS: Array<{
   },
   {
     id: 'smart_referrals_used',
-    label: 'Smart Referrals Used',
+    label: 'Insider Jobs Used',
     eventNames: ['smart_referrals_path_selected', 'smart_referrals_matches_opened'],
   },
   {
@@ -269,7 +269,7 @@ export function buildProductTelemetrySummary(rows: ProductTelemetryRow[], days: 
     ),
     buildRatioMetric(
       'smart_referrals_to_outreach',
-      'Smart Referrals -> Outreach',
+      'Insider Jobs -> Outreach',
       usersByStep.outreach_started ?? 0,
       usersByStep.smart_referrals_used ?? 0,
       'Are referral paths making it all the way into outreach work?',
@@ -277,7 +277,7 @@ export function buildProductTelemetrySummary(rows: ProductTelemetryRow[], days: 
     ),
     buildRatioMetric(
       'smart_referrals_network_share',
-      'Smart Referrals Network Path Share',
+      'Insider Jobs Network Path Share',
       networkSelections,
       totalPathSelections,
       'The network path is the stronger default and should usually lead the room.',

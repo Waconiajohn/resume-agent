@@ -72,7 +72,7 @@ describe('AdminDashboard', () => {
             },
             {
               id: 'smart_referrals_network_share',
-              label: 'Smart Referrals Network Path Share',
+              label: 'Insider Jobs Network Path Share',
               numerator: 3,
               denominator: 4,
               rate_pct: 75,

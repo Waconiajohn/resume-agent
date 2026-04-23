@@ -414,7 +414,7 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
   return (
     <div className="p-6 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-bold text-[var(--text-strong)]">Smart Referrals</h2>
+        <h2 className="text-xl font-bold text-[var(--text-strong)]">Insider Jobs</h2>
         <div className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-1">
           <button
             type="button"

@@ -622,7 +622,7 @@ export function JobCommandCenterRoom({
           <div className="eyebrow-label">Job Search</div>
           <h1 className="room-title">One job board, one shortlist, one board for your applications</h1>
           <p className="room-subtitle">
-            Search public jobs here, save the best few to your shortlist, and work the real opportunities on the Board. The first-degree-connection company scans stay separate in Smart Referrals.
+            Search public jobs here, save the best few to your shortlist, and work the real opportunities on the Board. The first-degree-connection company scans stay separate in Insider Jobs.
           </p>
         </div>
       </div>

@@ -468,7 +468,7 @@ describe('NetworkingHubRoom', () => {
 
   it('renders the Rule of Four tagline', () => {
     render(<NetworkingHubRoom />);
-    expect(screen.getByText(/Smart Referrals turns your network into real outreach/)).toBeInTheDocument();
+    expect(screen.getByText(/Insider Jobs turns your network into real outreach/)).toBeInTheDocument();
   });
 
   it('renders the Add Contact button', () => {

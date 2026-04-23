@@ -515,7 +515,7 @@ export function AdminDashboard() {
             accent="green"
           />
           <StatCard
-            label="Smart Referrals"
+            label="Insider Jobs"
             value={funnel.event_counts.smart_referrals_path_selected ?? 0}
             accent="blue"
           />
@@ -662,7 +662,7 @@ export function AdminDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <GlassCard className="p-4">
-            <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-3">Smart Referrals Paths</p>
+            <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider mb-3">Insider Jobs Paths</p>
             <div className="space-y-1.5 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[var(--text-muted)]">Network</span>
