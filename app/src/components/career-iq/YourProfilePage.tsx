@@ -1,16 +1,21 @@
 /**
  * YourProfilePage — renders at the "Career Vault" sidebar destination.
  *
- * Unified identity page consolidating all "who you are" data:
- *   Section A — Why-Me Story (positioning backbone)
- *   Section B — Career Evidence (source of truth)
- *   Section C — Brand & Benchmark Assets (bio + case studies)
- *   Section D — LinkedIn Profile (public-facing summary)
- *   Section E — Proof Library (aggregated read-only + manual entry)
+ * Phase 3 — three explicit sections matching the product model:
+ *   Section 1 — Positioning
+ *     Why-Me Story today. Future surfaces: Why-Not-Me, target industries /
+ *     ideal companies / target roles.
+ *   Section 2 — Career Evidence
+ *     Resume summary (ResumeSection) + Story Bank (STAR+R stories reused
+ *     across Interview Prep). Future surface: Signature Accomplishments as
+ *     a first-class managed list.
+ *   Section 3 — Benchmark LinkedIn Brand
+ *     LinkedIn headline + About storage (LinkedInSection). Future surfaces:
+ *     five-second LinkedIn test audit, blogging / carousels.
  *
- * Phase 3 will restructure this into the three Career Vault sections
- * (Positioning / Career Evidence / Benchmark LinkedIn Brand). Phase 1
- * is a pure label rename — structure preserved.
+ * Each section's layout + education strip renders directly in this file's
+ * return tree. Sub-components (ResumeSection, LinkedInSection,
+ * StoryBankSection) are inline helpers below.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -69,7 +74,7 @@ function SectionHeader({
   );
 }
 
-// ─── Section A — Career Evidence ────────────────────────────────────────────────
+// ─── ResumeSection (Career Evidence inner card) ───────────────────────────────
 
 interface ResumeSectionProps {
   onGetDefaultResume?: () => Promise<MasterResume | null>;
@@ -231,7 +236,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   );
 }
 
-// ─── Section C — LinkedIn Profile ─────────────────────────────────────────────
+// ─── LinkedInSection (Benchmark LinkedIn Brand inner card) ────────────────────
 
 function LinkedInSection() {
   const { profile, updateField, save, loading, saving, error, hasContent } = useLinkedInProfile();
@@ -669,81 +674,102 @@ export function YourProfilePage({
         defaultExpanded
       />
 
-      {/* Section A — Why-Me Story */}
-      <EducationStrip
-        screenId="why-me"
-        title="Why-Me"
-        whatThisIs="Your Why-Me is the 30-second answer to why someone should hire you, not another qualified candidate."
-        whyItMatters="Benchmark candidates have a crisp Why-Me — without one, you blend in with everyone else."
-        whatWeDo="We draft yours from your career evidence and LinkedIn profile."
-        whatYouDo="You refine the narrative until it sounds like you."
-        defaultExpanded={false}
-      />
-      {hasStarted ? (
-        // WhyMeStoryCard renders its own GlassCard
-        <div>
-          <div className="mb-3 flex items-center justify-between gap-2 px-1">
-            <div className="flex items-center gap-2">
-              <div className="rounded-lg bg-[var(--link)]/12 p-2">
-                <BookOpen size={16} className="text-[var(--link)]" />
+      {/* ─── Section 1 — Positioning ────────────────────────────────────── */}
+      <section className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6">
+        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Positioning</h2>
+
+        <EducationStrip
+          screenId="why-me"
+          title="Why-Me"
+          whatThisIs="Your Why-Me is the 30-second answer to why someone should hire you, not another qualified candidate."
+          whyItMatters="Benchmark candidates have a crisp Why-Me — without one, you blend in with everyone else."
+          whatWeDo="We draft yours from your career evidence and LinkedIn profile."
+          whatYouDo="You refine the narrative until it sounds like you."
+          defaultExpanded={false}
+        />
+
+        {hasStarted ? (
+          // WhyMeStoryCard renders its own GlassCard
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-[var(--link)]/12 p-2">
+                  <BookOpen size={16} className="text-[var(--link)]" />
+                </div>
+                <div>
+                  <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Positioning</div>
+                  <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
+                    Your Why-Me Story
+                  </h2>
+                </div>
               </div>
-              <div>
-                <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Positioning</div>
-                <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
-                  Your Why-Me Story
-                </h2>
-              </div>
+              {whyMeSaved && (
+                <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)]">
+                  <CheckCircle2 size={13} />
+                  Saved
+                </div>
+              )}
             </div>
-            {whyMeSaved && (
-              <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)]">
-                <CheckCircle2 size={13} />
-                Saved
-              </div>
-            )}
+            <WhyMeStoryCard />
           </div>
-          <WhyMeStoryCard />
-        </div>
-      ) : (
-        <GlassCard className="p-6">
-          <div className="flex items-center justify-between gap-4">
-            <SectionHeader icon={BookOpen} label="Positioning" title="Your Why-Me Story" />
-            {whyMeSaved && (
-              <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)] shrink-0">
-                <CheckCircle2 size={13} />
-                Saved
-              </div>
-            )}
-          </div>
-          <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-            Three answers that define how Resume Builder, LinkedIn, Interview Prep, and every other
-            tool frames your positioning. This is the most important section on this page.
-          </p>
-          <div className="mt-5">
-            <WhyMeEngine story={story} signals={signals} onUpdate={updateField} />
-          </div>
-        </GlassCard>
-      )}
+        ) : (
+          <GlassCard className="p-6">
+            <div className="flex items-center justify-between gap-4">
+              <SectionHeader icon={BookOpen} label="Positioning" title="Your Why-Me Story" />
+              {whyMeSaved && (
+                <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)] shrink-0">
+                  <CheckCircle2 size={13} />
+                  Saved
+                </div>
+              )}
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
+              Three answers that define how Resume Builder, LinkedIn, Interview Prep, and every other
+              tool frames your positioning. This is the most important section on this page.
+            </p>
+            <div className="mt-5">
+              <WhyMeEngine story={story} signals={signals} onUpdate={updateField} />
+            </div>
+          </GlassCard>
+        )}
 
-      {/* Section B — Career Evidence */}
-      <ResumeSection
-        onGetDefaultResume={onGetDefaultResume}
-        onNavigateResume={onNavigateResume}
-      />
+        {/* TODO: Surface Why-Not-Me here when built. See product model — Career Vault / Positioning section. */}
+        {/* TODO: Surface Target Industries / Ideal Companies / Target Roles here when built. See product model — Career Vault / Positioning section. */}
+      </section>
 
-      {/* Section C — LinkedIn Profile */}
-      <EducationStrip
-        screenId="benchmark-linkedin-brand"
-        title="Benchmark LinkedIn Brand"
-        whatThisIs="Your LinkedIn profile is often the first thing a recruiter or hiring manager sees."
-        whyItMatters="Benchmark candidates pass the five-second test — a glance at their profile makes the reader want to keep reading."
-        whatWeDo="We audit your current profile against that test and flag what to improve."
-        whatYouDo="You update your profile and build a content presence that reinforces your positioning."
-        defaultExpanded={false}
-      />
-      <LinkedInSection />
+      {/* ─── Section 2 — Career Evidence ────────────────────────────────── */}
+      <section className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6">
+        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Career Evidence</h2>
 
-      {/* Story Bank */}
-      <StoryBankSection />
+        <ResumeSection
+          onGetDefaultResume={onGetDefaultResume}
+          onNavigateResume={onNavigateResume}
+        />
+
+        <StoryBankSection />
+
+        {/* TODO: Surface Signature Accomplishments as a first-class managed list here when built. See product model — Career Vault / Career Evidence section. */}
+      </section>
+
+      {/* ─── Section 3 — Benchmark LinkedIn Brand ────────────────────────── */}
+      <section className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6">
+        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Benchmark LinkedIn Brand</h2>
+
+        <EducationStrip
+          screenId="benchmark-linkedin-brand"
+          title="Benchmark LinkedIn Brand"
+          whatThisIs="Your LinkedIn profile is often the first thing a recruiter or hiring manager sees."
+          whyItMatters="Benchmark candidates pass the five-second test — a glance at their profile makes the reader want to keep reading."
+          whatWeDo="We audit your current profile against that test and flag what to improve."
+          whatYouDo="You update your profile and build a content presence that reinforces your positioning."
+          defaultExpanded={false}
+        />
+
+        <LinkedInSection />
+
+        {/* TODO: Surface the five-second LinkedIn test audit here when built. See product model — Career Vault / Benchmark LinkedIn Brand section. */}
+        {/* TODO: Surface Blogging / carousels here when built. See product model — Career Vault / Benchmark LinkedIn Brand section. */}
+      </section>
     </div>
   );
 }
