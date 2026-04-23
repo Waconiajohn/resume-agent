@@ -11,6 +11,7 @@ import { MobileBriefing } from './MobileBriefing';
 import { useMediaQuery } from './useMediaQuery';
 import { useMomentum } from '@/hooks/useMomentum';
 import { useCoachRecommendation } from '@/hooks/useCoachRecommendation';
+import { useJobApplications } from '@/hooks/useJobApplications';
 import { useV3Master } from '@/hooks/useV3Master';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { supabase } from '@/lib/supabase';
@@ -115,8 +116,9 @@ export function CareerIQScreen({
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [pipelineInterviews, setPipelineInterviews] = useState<PipelineInterviewCard[]>([]);
   const [coverLetterSessions, setCoverLetterSessions] = useState<CoverLetterSession[]>([]);
-  const { nudges, dismissNudge, checkStalls } = useMomentum();
+  const { checkStalls } = useMomentum();
   const { recommendation: coachRec, refresh: refreshCoachRec } = useCoachRecommendation();
+  const { applications } = useJobApplications();
   // Sprint E3 — lets the dashboard hero render the "returning user" variant
   // when the user already has a knowledge base but hasn't finished the Why
   // Me positioning interview.
@@ -350,18 +352,12 @@ export function CareerIQScreen({
     if (activeRoom === 'dashboard') {
       return (
         <DashboardHome
-          signals={signals}
           dashboardState={dashboardState}
           onNavigateRoom={handleRoomNavigate}
           onRefineWhyMe={openCareerProfile}
-          hasResumeSessions={sessions.length > 0}
           hasMasterResume={hasMasterResume}
-          sessionCount={sessions.length}
-          recentSession={sessions.length > 0 ? sessions.reduce((a, b) => (a.updated_at >= b.updated_at ? a : b)) : null}
-          onResumeSession={onResumeSession}
-          nudges={nudges}
-          onDismissNudge={dismissNudge}
-          coachRecommendation={coachRec}
+          sessions={sessions}
+          applications={applications}
           onNavigateRoute={onNavigate}
         />
       );

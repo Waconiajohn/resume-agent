@@ -279,21 +279,11 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getByRole('button', { name: 'Shortlist' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('does not show synthetic pipeline counts when no real pipeline data exists', async () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(getJobTabButton(/^Board$/i));
-
-    await waitFor(() => expect(screen.getByText('0 active')).toBeInTheDocument());
-    expect(screen.queryByText('8 active')).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/No active applications yet\. Save strong roles from the Job Board/i),
-    ).toBeInTheDocument();
-  });
-
   it('renders kanban stage columns', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     fireEvent.click(getJobTabButton(/^Board$/i));
-    // Use getAllByText because stage names appear in multiple places (kanban + PipelineSummary)
+    // Stage names may appear in more than one place within the kanban
+    // (column header + cards), so use getAllByText for robustness.
     expect(screen.getAllByText('Shortlist').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Applied').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Interviewing').length).toBeGreaterThan(0);

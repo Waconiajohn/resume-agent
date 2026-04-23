@@ -41,7 +41,6 @@ import { BooleanSearchPanel } from '@/components/job-command-center/BooleanSearc
 import { formatJobAgeLabel } from '@/components/job-command-center/job-age';
 import { useLatestMasterResumeText } from './useLatestMasterResumeText';
 
-import { PipelineSummary } from './PipelineSummary';
 import type { CareerIQRoom } from './Sidebar';
 
 interface JobCommandCenterRoomProps {
@@ -679,8 +678,6 @@ export function JobCommandCenterRoom({
               onNavigate(`/workspace?${params.toString()}`);
             }}
           />
-
-          <PipelineSummary />
         </div>
       </div>
 
