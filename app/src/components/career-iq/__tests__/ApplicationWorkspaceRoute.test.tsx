@@ -34,6 +34,9 @@ vi.mock('@/components/career-iq/ThankYouNoteRoom', () => ({
 vi.mock('@/components/career-iq/NetworkingHubRoom', () => ({
   NetworkingHubRoom: () => <div data-testid="networking-hub-room">NETWORKING</div>,
 }));
+vi.mock('@/components/career-iq/SalaryNegotiationRoom', () => ({
+  SalaryNegotiationRoom: () => <div data-testid="salary-negotiation-room">NEGOTIATION</div>,
+}));
 
 // ApplicationSwitcher calls useJobApplications. Give it an empty list.
 vi.mock('@/hooks/useJobApplications', () => ({
@@ -49,6 +52,7 @@ interface FakeApplication {
   company_name: string;
   stage: string;
   interview_prep_enabled: boolean | null;
+  offer_enabled: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -60,6 +64,7 @@ const baseApp: FakeApplication = {
   company_name: 'Acme',
   stage: 'applied',
   interview_prep_enabled: null,
+  offer_enabled: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 };
@@ -174,5 +179,59 @@ describe('ApplicationWorkspaceRoute — Interview Prep toggle', () => {
     expect(patchCalls[0]?.body).toMatchObject({ interview_prep_enabled: true });
 
     await screen.findByTestId('interview-lab-room');
+  });
+});
+
+describe('ApplicationWorkspaceRoute — Offer / Negotiation toggle', () => {
+  beforeEach(() => {
+    currentApp = { ...baseApp };
+    patchCalls.length = 0;
+    installFetchStub();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('renders a muted Offer pill when stage is applied and toggle is null', async () => {
+    renderAt('/workspace/application/app-1/resume');
+
+    const pill = await screen.findByRole('button', { name: /offer negotiation/i });
+    expect(pill.getAttribute('data-state')).toBe('muted');
+    expect(pill.className).toContain('border-dashed');
+  });
+
+  it('renders an active Offer pill when offer_enabled is true regardless of stage', async () => {
+    currentApp = { ...baseApp, stage: 'applied', offer_enabled: true };
+    renderAt('/workspace/application/app-1/resume');
+
+    const pill = await screen.findByRole('button', { name: /offer negotiation/i });
+    expect(pill.getAttribute('data-state')).toBe('available');
+    expect(pill.className).not.toContain('border-dashed');
+  });
+
+  it('renders the activation screen when the user lands on /offer-negotiation and the tool is inactive', async () => {
+    currentApp = { ...baseApp, stage: 'applied', offer_enabled: null };
+    renderAt('/workspace/application/app-1/offer-negotiation');
+
+    await screen.findByText('Offer & Negotiation is ready when you are');
+    expect(screen.queryByTestId('salary-negotiation-room')).toBeNull();
+    expect(screen.getByRole('button', { name: /Activate Offer & Negotiation/i })).toBeInTheDocument();
+  });
+
+  it('clicking Activate fires PATCH and re-renders SalaryNegotiationRoom', async () => {
+    currentApp = { ...baseApp, stage: 'applied', offer_enabled: null };
+    renderAt('/workspace/application/app-1/offer-negotiation');
+
+    const activate = await screen.findByRole('button', { name: /Activate Offer & Negotiation/i });
+    fireEvent.click(activate);
+
+    await waitFor(() => {
+      expect(patchCalls.some((c) => c.url.includes('/job-applications/app-1'))).toBe(true);
+    });
+    expect(patchCalls[0]?.body).toMatchObject({ offer_enabled: true });
+
+    await screen.findByTestId('salary-negotiation-room');
   });
 });

@@ -75,12 +75,16 @@ export function buildResumeWorkspaceRoute(
  * state as a side effect. That solves the state-reset bug
  * (state-reset-and-export-plan.md) at the routing layer.
  */
+// Phase 2.3c — ordered by real-world workflow: apply → network → interview →
+// thank-you (post-interview courtesy) → offer (outcome). `offer-negotiation`
+// sits last because it's toggle-gated and most applications never reach it.
 export const APPLICATION_WORKSPACE_TOOLS = [
   'resume',
   'cover-letter',
-  'thank-you-note',
   'networking',
   'interview-prep',
+  'thank-you-note',
+  'offer-negotiation',
 ] as const;
 
 export type ApplicationWorkspaceTool = (typeof APPLICATION_WORKSPACE_TOOLS)[number];

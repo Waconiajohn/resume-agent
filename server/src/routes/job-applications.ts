@@ -88,6 +88,8 @@ const createJobApplicationSchema = z.object({
   score: z.number().int().min(0).max(100).optional(),
   // Phase 2.3b — Interview Prep toggle. NULL defers to stage-derived default.
   interview_prep_enabled: z.boolean().nullable().optional(),
+  // Phase 2.3c — Offer/Negotiation toggle. NULL defers to stage-derived default.
+  offer_enabled: z.boolean().nullable().optional(),
 });
 
 const updateJobApplicationSchema = createJobApplicationSchema.partial().extend({

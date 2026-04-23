@@ -17,9 +17,9 @@
  * it through their startPipeline calls.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Mic, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Handshake, Mic, Plus, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -35,6 +35,7 @@ import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
 import { NetworkingHubRoom } from '@/components/career-iq/NetworkingHubRoom';
 import { InterviewLabRoom } from '@/components/career-iq/InterviewLabRoom';
+import { SalaryNegotiationRoom } from '@/components/career-iq/SalaryNegotiationRoom';
 import { useJobApplications } from '@/hooks/useJobApplications';
 import type { MasterResume } from '@/types/resume';
 
@@ -54,6 +55,12 @@ interface ApplicationRecord {
    * screening/interviewing). TRUE/FALSE force the result.
    */
   interview_prep_enabled?: boolean | null;
+  /**
+   * Phase 2.3c — explicit user override for Offer / Negotiation tool
+   * visibility. NULL defers to the stage-derived default (active when
+   * stage = 'offer'). TRUE/FALSE force the result.
+   */
+  offer_enabled?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +76,19 @@ export function isInterviewPrepActive(
     return app.interview_prep_enabled;
   }
   return app.stage === 'screening' || app.stage === 'interviewing';
+}
+
+/**
+ * Phase 2.3c — effective active-state for Offer / Negotiation on this
+ * application. Explicit user toggle wins; otherwise derive from stage.
+ */
+export function isOfferActive(
+  app: Pick<ApplicationRecord, 'stage' | 'offer_enabled'>,
+): boolean {
+  if (app.offer_enabled !== null && app.offer_enabled !== undefined) {
+    return app.offer_enabled;
+  }
+  return app.stage === 'offer';
 }
 
 interface ApplicationWorkspaceRouteProps {
@@ -136,14 +156,12 @@ export function ApplicationWorkspaceRoute({
 
   // Declared before the early returns below so hook order stays stable across
   // the loading / error / loaded render branches (Rules of Hooks).
-  const handleToggleInterviewPrep = useCallback(
-    async (enabled: boolean) => {
+  const applyToggle = useCallback(
+    async (patch: Partial<ApplicationRecord>) => {
       if (!accessToken || !application) return;
       setToggleInFlight(true);
       try {
-        const result = await patchApplication(application.id, accessToken, {
-          interview_prep_enabled: enabled,
-        });
+        const result = await patchApplication(application.id, accessToken, patch);
         if (result.ok) {
           setApplication(result.data);
         }
@@ -152,6 +170,16 @@ export function ApplicationWorkspaceRoute({
       }
     },
     [accessToken, application],
+  );
+
+  const handleToggleInterviewPrep = useCallback(
+    (enabled: boolean) => applyToggle({ interview_prep_enabled: enabled }),
+    [applyToggle],
+  );
+
+  const handleToggleOffer = useCallback(
+    (enabled: boolean) => applyToggle({ offer_enabled: enabled }),
+    [applyToggle],
   );
 
   useEffect(() => {
@@ -218,6 +246,7 @@ export function ApplicationWorkspaceRoute({
   // fix: scope lives in the URL, not in long-lived hooks.
 
   const interviewPrepActive = isInterviewPrepActive(application);
+  const offerActive = isOfferActive(application);
 
   const ApplicationHeader = (
     <GlassCard className="p-5">
@@ -237,12 +266,16 @@ export function ApplicationWorkspaceRoute({
         <div className="flex flex-wrap gap-2 text-xs">
           {(APPLICATION_WORKSPACE_TOOLS as readonly ApplicationWorkspaceTool[]).map((t) => {
             const isSelected = t === tool;
-            // Phase 2.3b — Interview Prep is muted (dashed border, muted text)
-            // when it's not the current tool AND its toggle resolves inactive.
-            // When the user IS viewing Interview Prep, the pill renders
-            // active-selected regardless of activation state — the activation
-            // screen lives in the body, not the pill.
-            const isMutedInactive = t === 'interview-prep' && !isSelected && !interviewPrepActive;
+            // Phase 2.3b + 2.3c — Interview Prep and Offer/Negotiation render
+            // muted (dashed border, muted text) when they're not the current
+            // tool AND their toggle resolves inactive. When the user IS
+            // viewing one of them, the pill renders active-selected
+            // regardless of activation state — the activation screen lives
+            // in the body, not the pill.
+            const isMutedInactive = !isSelected && (
+              (t === 'interview-prep' && !interviewPrepActive)
+              || (t === 'offer-negotiation' && !offerActive)
+            );
             return (
               <button
                 key={t}
@@ -319,12 +352,11 @@ export function ApplicationWorkspaceRoute({
         initialTargetCompany={application.company_name}
       />
     );
-  } else {
-    // `tool` narrows to 'interview-prep' here (the only remaining case in
-    // APPLICATION_WORKSPACE_TOOLS). Phase 2.3b — gate on activation state.
-    // Inactive applications render the lightweight activation screen
-    // instead of the lab; clicking Activate flips interview_prep_enabled
-    // to TRUE server-side and re-renders the lab.
+  } else if (tool === 'interview-prep') {
+    // Phase 2.3b — gate on activation state. Inactive applications render
+    // the lightweight activation screen instead of the lab; clicking
+    // Activate flips interview_prep_enabled to TRUE server-side and
+    // re-renders the lab. Reverse toggle lives below the lab content.
     if (interviewPrepActive) {
       body = (
         <>
@@ -334,7 +366,8 @@ export function ApplicationWorkspaceRoute({
             initialCompany={application.company_name}
             initialRole={application.role_title}
           />
-          <HideInterviewPrepLink
+          <HideToolLink
+            label="Hide Interview Prep for this application"
             disabled={toggleInFlight}
             onHide={() => handleToggleInterviewPrep(false)}
           />
@@ -342,9 +375,46 @@ export function ApplicationWorkspaceRoute({
       );
     } else {
       body = (
-        <InterviewPrepActivationScreen
+        <ToolActivationScreen
+          icon={Mic}
+          title="Interview Prep is ready when you are"
+          description="Turn this on once an interview is on the calendar. Interview Prep uses the role, the job description, and your positioning to generate a briefing, practice questions, and leave-behinds — all scoped to this application. Leave it off until you have an interview scheduled; nothing is lost by flipping it on later."
+          activateLabel="Activate Interview Prep"
           activating={toggleInFlight}
           onActivate={() => handleToggleInterviewPrep(true)}
+          onBack={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, 'resume'))}
+        />
+      );
+    }
+  } else {
+    // Phase 2.3c — tool === 'offer-negotiation'. Same toggle pattern as
+    // Interview Prep: activation screen when inactive, SalaryNegotiationRoom
+    // plus a reverse-toggle link when active.
+    if (offerActive) {
+      body = (
+        <>
+          <SalaryNegotiationRoom
+            key={applicationId}
+            prefillJobApplicationId={applicationId}
+            prefillCompany={application.company_name}
+            prefillRole={application.role_title}
+          />
+          <HideToolLink
+            label="Hide Offer & Negotiation for this application"
+            disabled={toggleInFlight}
+            onHide={() => handleToggleOffer(false)}
+          />
+        </>
+      );
+    } else {
+      body = (
+        <ToolActivationScreen
+          icon={Handshake}
+          title="Offer & Negotiation is ready when you are"
+          description="Turn this on once an offer has been extended. Offer & Negotiation helps you analyze the offer, prepare your counter, and practice the conversation — all scoped to this application. Leave it off until the offer lands; nothing is lost by flipping it on later."
+          activateLabel="Activate Offer & Negotiation"
+          activating={toggleInFlight}
+          onActivate={() => handleToggleOffer(true)}
           onBack={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, 'resume'))}
         />
       );
@@ -487,40 +557,46 @@ function ApplicationSwitcher({ current, onNavigate }: ApplicationSwitcherProps) 
   );
 }
 
-// ─── InterviewPrepActivationScreen (Phase 2.3b) ────────────────────────
-// Minimal body-level activation surface shown when Interview Prep's
-// effective state is inactive (either explicit `interview_prep_enabled =
-// false` or stage-derived default off). Keeps URL stable at
-// `/workspace/application/:id/interview-prep`; the user clicks Activate to
-// flip the flag and reveal InterviewLabRoom.
+// ─── ToolActivationScreen (Phase 2.3c, extracted from Phase 2.3b) ──────
+// Shared body-level activation surface. Renders when a toggleable tool's
+// effective state is inactive. Keeps URL stable at the tool route; the
+// user clicks Activate to flip the enabled flag and reveal the tool body.
+// Used by Interview Prep (Mic icon) and Offer / Negotiation (Handshake
+// icon). `description` accepts ReactNode so future screens can use
+// multi-paragraph or inline-linked copy without widening the API.
 
-interface InterviewPrepActivationScreenProps {
+interface ToolActivationScreenProps {
+  icon: LucideIcon;
+  title: string;
+  description: ReactNode;
+  activateLabel: string;
   activating: boolean;
   onActivate: () => void;
   onBack: () => void;
 }
 
-function InterviewPrepActivationScreen({
+function ToolActivationScreen({
+  icon: Icon,
+  title,
+  description,
+  activateLabel,
   activating,
   onActivate,
   onBack,
-}: InterviewPrepActivationScreenProps) {
+}: ToolActivationScreenProps) {
   return (
     <GlassCard className="p-8">
       <div className="flex items-start gap-3">
         <div className="rounded-lg bg-[var(--link)]/12 p-2">
-          <Mic size={16} className="text-[var(--link)]" aria-hidden="true" />
+          <Icon size={16} className="text-[var(--link)]" aria-hidden="true" />
         </div>
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">
-            Interview Prep is ready when you are
+            {title}
           </h2>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--text-soft)]">
-            Turn this on once an interview is on the calendar. Interview Prep uses the role,
-            the job description, and your positioning to generate a briefing, practice
-            questions, and leave-behinds — all scoped to this application. Leave it off until
-            you have an interview scheduled; nothing is lost by flipping it on later.
-          </p>
+          <div className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--text-soft)]">
+            {typeof description === 'string' ? <p>{description}</p> : description}
+          </div>
           <div className="mt-5 flex flex-wrap items-center gap-4">
             <GlassButton
               variant="primary"
@@ -529,7 +605,7 @@ function InterviewPrepActivationScreen({
               disabled={activating}
               loading={activating}
             >
-              {activating ? 'Activating…' : 'Activate Interview Prep'}
+              {activating ? 'Activating…' : activateLabel}
             </GlassButton>
             <button
               type="button"
@@ -545,17 +621,18 @@ function InterviewPrepActivationScreen({
   );
 }
 
-// ─── HideInterviewPrepLink (Phase 2.3b) ────────────────────────────────
-// Reverse toggle — renders below InterviewLabRoom. Lets the user set
-// `interview_prep_enabled = false` when they don't need the tool anymore;
-// the activation screen takes over next visit.
+// ─── HideToolLink (Phase 2.3c, extracted from Phase 2.3b) ──────────────
+// Shared reverse-toggle affordance. Small right-aligned muted link that
+// sits below a tool's content. Setting the enabled flag to FALSE re-
+// renders the activation screen in place (URL stays put).
 
-interface HideInterviewPrepLinkProps {
+interface HideToolLinkProps {
+  label: string;
   disabled: boolean;
   onHide: () => void;
 }
 
-function HideInterviewPrepLink({ disabled, onHide }: HideInterviewPrepLinkProps) {
+function HideToolLink({ label, disabled, onHide }: HideToolLinkProps) {
   return (
     <div className="flex justify-end">
       <button
@@ -564,7 +641,7 @@ function HideInterviewPrepLink({ disabled, onHide }: HideInterviewPrepLinkProps)
         disabled={disabled}
         className="text-[12px] text-[var(--text-soft)] transition-colors hover:text-[var(--text-muted)] disabled:opacity-60"
       >
-        Hide Interview Prep for this application
+        {label}
       </button>
     </div>
   );
