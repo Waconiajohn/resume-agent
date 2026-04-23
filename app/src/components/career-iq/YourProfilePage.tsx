@@ -623,12 +623,26 @@ interface YourProfilePageProps {
   onGetDefaultResume?: () => Promise<MasterResume | null>;
   onNavigateResume?: () => void;
   careerProfile?: CareerProfileV2 | null;
+  /**
+   * Phase 3.1 — section id to scroll to on mount/when the param changes.
+   * Passed in from CareerIQScreen's workspaceLaunchContext.focus. Recognised
+   * values: 'positioning' | 'career-evidence' | 'benchmark-linkedin-brand'.
+   * Anything else is a no-op (page stays at the top).
+   */
+  focusSection?: string | null;
 }
+
+const KNOWN_SECTION_IDS = new Set([
+  'positioning',
+  'career-evidence',
+  'benchmark-linkedin-brand',
+]);
 
 export function YourProfilePage({
   onGetDefaultResume,
   onNavigateResume,
   careerProfile: _careerProfile = null,
+  focusSection = null,
 }: YourProfilePageProps) {
   const { story, signals, updateField, hasStarted, lastSavedAt } = useWhyMeStory();
   const _navigate = useNavigate();
@@ -644,6 +658,20 @@ export function YourProfilePage({
     const t = setTimeout(() => setWhyMeSaved(false), 2500);
     return () => clearTimeout(t);
   }, [lastSavedAt]);
+
+  // Phase 3.1 — deep-link into a specific Career Vault section when the
+  // `focus` URL param matches one of the three section ids. Uses rAF to let
+  // the layout settle (education strips default-collapsed, but the outer
+  // career-vault strip may reflow as it reads localStorage on mount).
+  useEffect(() => {
+    if (!focusSection || !KNOWN_SECTION_IDS.has(focusSection)) return;
+    if (typeof window === 'undefined') return;
+    const frame = window.requestAnimationFrame(() => {
+      const el = document.getElementById(focusSection);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusSection]);
 
   return (
     <div className="mx-auto flex max-w-[900px] flex-col gap-6 px-6 py-8">
@@ -675,7 +703,10 @@ export function YourProfilePage({
       />
 
       {/* ─── Section 1 — Positioning ────────────────────────────────────── */}
-      <section className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6">
+      <section
+        id="positioning"
+        className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
+      >
         <h2 className="text-lg font-semibold text-[var(--text-strong)]">Positioning</h2>
 
         <EducationStrip
@@ -738,7 +769,10 @@ export function YourProfilePage({
       </section>
 
       {/* ─── Section 2 — Career Evidence ────────────────────────────────── */}
-      <section className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6">
+      <section
+        id="career-evidence"
+        className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
+      >
         <h2 className="text-lg font-semibold text-[var(--text-strong)]">Career Evidence</h2>
 
         <ResumeSection
@@ -752,7 +786,10 @@ export function YourProfilePage({
       </section>
 
       {/* ─── Section 3 — Benchmark LinkedIn Brand ────────────────────────── */}
-      <section className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6">
+      <section
+        id="benchmark-linkedin-brand"
+        className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
+      >
         <h2 className="text-lg font-semibold text-[var(--text-strong)]">Benchmark LinkedIn Brand</h2>
 
         <EducationStrip

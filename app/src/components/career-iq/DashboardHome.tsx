@@ -77,35 +77,39 @@ function CareerVaultHealth({
   dashboardState,
   hasMasterResume,
   onOpenCareerProfile,
+  onOpenCareerVaultSection,
 }: {
   dashboardState: DashboardState;
   hasMasterResume: boolean;
   onOpenCareerProfile: () => void;
+  /**
+   * Phase 3.1 — deep-link into a specific Career Vault section from the
+   * Section 1 home strip. Falls back to opening the top of Career Vault
+   * if no handler is wired.
+   */
+  onOpenCareerVaultSection: (section: 'positioning' | 'career-evidence' | 'benchmark-linkedin-brand') => void;
 }) {
   const whyMeItem: HealthItem = (() => {
-    if (dashboardState === 'strong') {
-      return { key: 'why-me', label: 'Why-Me', state: 'done', stateLabel: 'Strong', onOpen: onOpenCareerProfile };
-    }
-    if (dashboardState === 'refining') {
-      return { key: 'why-me', label: 'Why-Me', state: 'in-progress', stateLabel: 'Building', onOpen: onOpenCareerProfile };
-    }
-    return { key: 'why-me', label: 'Why-Me', state: 'not-started', stateLabel: 'Not started', onOpen: onOpenCareerProfile };
+    const base = { key: 'why-me', label: 'Why-Me', onOpen: () => onOpenCareerVaultSection('positioning') };
+    if (dashboardState === 'strong') return { ...base, state: 'done', stateLabel: 'Strong' };
+    if (dashboardState === 'refining') return { ...base, state: 'in-progress', stateLabel: 'Building' };
+    return { ...base, state: 'not-started', stateLabel: 'Not started' };
   })();
 
-  // TODO Phase 3: replace with persisted LinkedIn-brand state once Career Vault
-  // restructure lands. Today nothing persists whether the user has audited
+  // TODO Phase 3+: replace with persisted LinkedIn-brand state once a real
+  // signal exists. Today nothing persists whether the user has audited
   // their LinkedIn profile, so every user ships as "Not started".
   const linkedInItem: HealthItem = {
     key: 'linkedin-brand',
     label: 'Benchmark LinkedIn Brand',
     state: 'not-started',
     stateLabel: 'Not started',
-    onOpen: onOpenCareerProfile,
+    onOpen: () => onOpenCareerVaultSection('benchmark-linkedin-brand'),
   };
 
   const careerRecordItem: HealthItem = hasMasterResume
-    ? { key: 'career-record', label: 'Career Evidence', state: 'done', stateLabel: 'Strong', onOpen: onOpenCareerProfile }
-    : { key: 'career-record', label: 'Career Evidence', state: 'not-started', stateLabel: 'Not started', onOpen: onOpenCareerProfile };
+    ? { key: 'career-record', label: 'Career Evidence', state: 'done', stateLabel: 'Strong', onOpen: () => onOpenCareerVaultSection('career-evidence') }
+    : { key: 'career-record', label: 'Career Evidence', state: 'not-started', stateLabel: 'Not started', onOpen: () => onOpenCareerVaultSection('career-evidence') };
 
   const items: HealthItem[] = [whyMeItem, linkedInItem, careerRecordItem];
   const allStrong = items.every((item) => item.state === 'done');
@@ -383,6 +387,9 @@ export function DashboardHome({
         dashboardState={dashboardState}
         hasMasterResume={hasMasterResume}
         onOpenCareerProfile={openCareerProfile}
+        onOpenCareerVaultSection={(section) =>
+          onNavigateRoute?.(`/workspace?room=career-profile&focus=${section}`)
+        }
       />
 
       <ApplicationsSection

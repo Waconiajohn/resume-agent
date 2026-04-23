@@ -369,6 +369,7 @@ export function CareerIQScreen({
           onGetDefaultResume={onGetDefaultResume}
           onNavigateResume={() => handleRoomNavigate('resume')}
           careerProfile={profile}
+          focusSection={normalizedWorkspaceFocus}
         />
       );
     }
