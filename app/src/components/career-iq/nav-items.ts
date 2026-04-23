@@ -38,7 +38,7 @@ export const SIDEBAR_NAV: readonly NavItem[] = [
   {
     id: 'career-profile',
     label: 'Career Vault',
-    description: 'Your positioning, career record, and LinkedIn brand in one place',
+    description: 'Your positioning, career evidence, and LinkedIn brand in one place',
     icon: User,
     room: 'career-profile',
     mobileTab: true,

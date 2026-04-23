@@ -486,7 +486,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     message: string;
   }>({
     tone: 'neutral',
-    message: 'Accepted edits stay in this run unless you choose to sync them to your Career Record.',
+    message: 'Accepted edits stay in this run unless you choose to sync them to your Career Evidence.',
   });
   const [clarificationMemory, setClarificationMemory] = useState<ClarificationMemoryEntry[]>([]);
   const lastMasterSnapshotRef = useRef('');
@@ -965,7 +965,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setMasterSaveMode('session_only');
     setMasterSaveStatus({
       tone: 'neutral',
-      message: 'Accepted edits stay in this run unless you choose to sync them to your Career Record.',
+      message: 'Accepted edits stay in this run unless you choose to sync them to your Career Evidence.',
     });
     if (options?.clearInputs) {
       setResumeText('');
@@ -1381,7 +1381,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         ? prev
         : {
             tone: 'neutral',
-            message: 'Accepted edits stay in this run unless you choose to sync them to your Career Record.',
+            message: 'Accepted edits stay in this run unless you choose to sync them to your Career Evidence.',
           }
     ));
   }, [currentClarificationMemory.length, masterSaveMode, selectedPromotableItems.length]);
@@ -1718,7 +1718,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setMasterSaveMode('session_only');
     setMasterSaveStatus({
       tone: 'neutral',
-      message: 'Accepted edits stay in this run unless you choose to sync them to your Career Record.',
+      message: 'Accepted edits stay in this run unless you choose to sync them to your Career Evidence.',
     });
     resetHistory();
     resetGapChat();

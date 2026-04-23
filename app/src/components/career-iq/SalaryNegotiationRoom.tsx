@@ -1197,7 +1197,7 @@ export function SalaryNegotiationRoom({
             <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">Resume context</div>
             <h2 className="mt-2 text-base font-semibold text-[var(--text-strong)]">This strategy gets stronger when the platform can see your full scope and proof</h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
-              If your Career Record is already saved, we will use it. If not, paste it here so the strategy reflects your real level, impact, and credibility.
+              If your Career Evidence is already saved, we will use it. If not, paste it here so the strategy reflects your real level, impact, and credibility.
             </p>
           </div>
           {resumeText.length > 50 && !resumeLoading && (
@@ -1216,13 +1216,13 @@ export function SalaryNegotiationRoom({
           ) : resumeText.length > 50 ? (
             <div className="flex items-center gap-2 text-[12px] text-[var(--badge-green-text)]/70">
               <Check size={12} />
-              Resume loaded from Resume Builder / Career Record.
+              Resume loaded from Resume Builder / Career Evidence.
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2 text-[12px] text-[var(--badge-amber-text)]/70 mb-1">
                 <AlertCircle size={12} />
-                No Career Record found — paste your resume below
+                No Career Evidence found — paste your resume below
               </div>
               <TextareaField
                 label="Your Resume"

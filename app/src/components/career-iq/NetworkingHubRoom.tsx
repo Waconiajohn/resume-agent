@@ -938,7 +938,7 @@ function OutreachGenerator({ prefill, onReady, initialTargetCompany }: OutreachG
           <textarea
             id="outreach-resume"
             aria-label="Resume text"
-            placeholder="Resume text * — auto-loading from your Career Record..."
+            placeholder="Resume text * — auto-loading from your Career Evidence..."
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             rows={4}

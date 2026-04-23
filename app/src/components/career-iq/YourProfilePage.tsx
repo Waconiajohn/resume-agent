@@ -3,13 +3,13 @@
  *
  * Unified identity page consolidating all "who you are" data:
  *   Section A — Why-Me Story (positioning backbone)
- *   Section B — Career Record (source of truth)
+ *   Section B — Career Evidence (source of truth)
  *   Section C — Brand & Benchmark Assets (bio + case studies)
  *   Section D — LinkedIn Profile (public-facing summary)
  *   Section E — Proof Library (aggregated read-only + manual entry)
  *
  * Phase 3 will restructure this into the three Career Vault sections
- * (Positioning / Career Record / Benchmark LinkedIn Brand). Phase 1
+ * (Positioning / Career Evidence / Benchmark LinkedIn Brand). Phase 1
  * is a pure label rename — structure preserved.
  */
 
@@ -68,7 +68,7 @@ function SectionHeader({
   );
 }
 
-// ─── Section A — Career Record ────────────────────────────────────────────────
+// ─── Section A — Career Evidence ────────────────────────────────────────────────
 
 interface ResumeSectionProps {
   onGetDefaultResume?: () => Promise<MasterResume | null>;
@@ -117,10 +117,10 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   if (resumeLoading) {
     return (
       <GlassCard className="p-6">
-        <SectionHeader icon={FileText} label="Resume" title="Your Career Record" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Career Evidence" />
         <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-soft)]">
           <Loader2 size={16} className="animate-spin text-[var(--link)]" />
-          Loading your Career Record...
+          Loading your Career Evidence...
         </div>
       </GlassCard>
     );
@@ -129,15 +129,15 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   if (!resume) {
     return (
       <GlassCard className="p-6">
-        <SectionHeader icon={FileText} label="Resume" title="Your Career Record" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Career Evidence" />
         <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-          Your Career Record is the source of truth for every tool in the workspace. Upload it once
+          Your Career Evidence is the source of truth for every tool in the workspace. Upload it once
           and every application starts with full context.
         </p>
         <div className="mt-5 text-center py-6">
           {resumeError ? (
             <div className="text-sm text-[var(--text-soft)]">
-              <p>We couldn't load your Career Record. You may not have uploaded one yet.</p>
+              <p>We couldn't load your Career Evidence. You may not have uploaded one yet.</p>
               <button onClick={() => navigate('/workspace?room=resume')} className="mt-2 text-[var(--link)] hover:underline text-sm">
                 Go to Resume Builder →
               </button>
@@ -145,7 +145,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
           ) : (
             <>
               <p className="text-sm text-[var(--text-muted)] mb-3">
-                No Career Record yet.
+                No Career Evidence yet.
               </p>
               <GlassButton onClick={() => navigate('/workspace?room=resume')}>
                 Go to Resume Builder
@@ -167,7 +167,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   return (
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-4">
-        <SectionHeader icon={FileText} label="Resume" title="Your Career Record" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Career Evidence" />
         <div className="flex items-center gap-2 shrink-0">
           {onNavigateResume && (
             <GlassButton variant="ghost" size="sm" onClick={onNavigateResume}>
@@ -704,7 +704,7 @@ export function YourProfilePage({
         </GlassCard>
       )}
 
-      {/* Section B — Career Record */}
+      {/* Section B — Career Evidence */}
       <ResumeSection
         onGetDefaultResume={onGetDefaultResume}
         onNavigateResume={onNavigateResume}

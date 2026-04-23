@@ -84,10 +84,10 @@ function CareerVaultHealth({
 }) {
   const whyMeItem: HealthItem = (() => {
     if (dashboardState === 'strong') {
-      return { key: 'why-me', label: 'Why-Me', state: 'done', stateLabel: 'Done', onOpen: onOpenCareerProfile };
+      return { key: 'why-me', label: 'Why-Me', state: 'done', stateLabel: 'Strong', onOpen: onOpenCareerProfile };
     }
     if (dashboardState === 'refining') {
-      return { key: 'why-me', label: 'Why-Me', state: 'in-progress', stateLabel: 'Draft', onOpen: onOpenCareerProfile };
+      return { key: 'why-me', label: 'Why-Me', state: 'in-progress', stateLabel: 'Building', onOpen: onOpenCareerProfile };
     }
     return { key: 'why-me', label: 'Why-Me', state: 'not-started', stateLabel: 'Not started', onOpen: onOpenCareerProfile };
   })();
@@ -104,13 +104,13 @@ function CareerVaultHealth({
   };
 
   const careerRecordItem: HealthItem = hasMasterResume
-    ? { key: 'career-record', label: 'Career Record', state: 'done', stateLabel: 'Done', onOpen: onOpenCareerProfile }
-    : { key: 'career-record', label: 'Career Record', state: 'not-started', stateLabel: 'Not started', onOpen: onOpenCareerProfile };
+    ? { key: 'career-record', label: 'Career Evidence', state: 'done', stateLabel: 'Strong', onOpen: onOpenCareerProfile }
+    : { key: 'career-record', label: 'Career Evidence', state: 'not-started', stateLabel: 'Not started', onOpen: onOpenCareerProfile };
 
   const items: HealthItem[] = [whyMeItem, linkedInItem, careerRecordItem];
-  const allDone = items.every((item) => item.state === 'done');
+  const allStrong = items.every((item) => item.state === 'done');
 
-  if (allDone) {
+  if (allStrong) {
     return (
       <GlassCard className="px-5 py-4">
         <button

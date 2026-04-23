@@ -73,10 +73,10 @@ export function ProfileReveal({
               }}
             >
               <p className="text-sm font-medium text-[var(--text-strong)] mb-1">
-                Your Career Record is ready now.
+                Your Career Evidence is ready now.
               </p>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                The retry worked, and future Resume Builder runs will use this profile and Career Record together.
+                The retry worked, and future Resume Builder runs will use this profile and Career Evidence together.
               </p>
             </div>
           )}
@@ -89,10 +89,10 @@ export function ProfileReveal({
               }}
             >
               <p className="text-sm font-medium text-[var(--text-strong)] mb-1">
-                Your profile is saved, but your first Career Record still needs one more step.
+                Your profile is saved, but your first Career Evidence still needs one more step.
               </p>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-3">
-                We kept your setup data so you can retry the Career Record creation now without losing anything.
+                We kept your setup data so you can retry the Career Evidence creation now without losing anything.
               </p>
               <button
                 type="button"
@@ -104,7 +104,7 @@ export function ProfileReveal({
                   color: retryingMasterResume ? 'var(--text-muted)' : 'var(--bg-0)',
                 }}
               >
-                {retryingMasterResume ? 'Retrying Career Record creation...' : 'Retry creating my Career Record'}
+                {retryingMasterResume ? 'Retrying Career Evidence creation...' : 'Retry creating my Career Evidence'}
               </button>
             </div>
           )}

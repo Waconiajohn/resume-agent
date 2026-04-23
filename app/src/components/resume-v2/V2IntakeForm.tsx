@@ -566,7 +566,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
         setResumeText(text);
         setMasterResumeNotice(null);
       } else {
-        setMasterResumeNotice('No Career Record yet — upload your resume below.');
+        setMasterResumeNotice('No Career Evidence yet — upload your resume below.');
       }
     } finally {
       setMasterResumeLoading(false);

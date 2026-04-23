@@ -357,7 +357,7 @@ export default function App() {
         if (!updated) {
           return {
             success: false,
-            message: 'Failed to update your Career Record.',
+            message: 'Failed to update your Career Evidence.',
           };
         }
 
@@ -369,8 +369,8 @@ export default function App() {
           success: true,
           resumeId: updated.id,
           message: selectedPromotionItems.length > 0 || clarificationMemory.length > 0
-            ? `Synced your selected edits${clarificationMemory.length > 0 ? ' and clarification evidence' : ''} to your Career Record.`
-            : 'Career Record updated.',
+            ? `Synced your selected edits${clarificationMemory.length > 0 ? ' and clarification evidence' : ''} to your Career Evidence.`
+            : 'Career Evidence updated.',
         };
       }
 
@@ -381,7 +381,7 @@ export default function App() {
       if (!created.success) {
         return {
           success: false,
-          message: created.error ?? 'Failed to create a Career Record.',
+          message: created.error ?? 'Failed to create a Career Evidence.',
         };
       }
 
@@ -408,7 +408,7 @@ export default function App() {
       return {
         success: true,
         resumeId: createdResumeId ?? undefined,
-        message: 'Created your default Career Record.',
+        message: 'Created your default Career Evidence.',
       };
     },
     [
