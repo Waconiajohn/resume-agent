@@ -11,7 +11,6 @@ import {
   User,
   Users,
   GraduationCap,
-  ClipboardCheck,
   BriefcaseBusiness,
   BookOpen,
 } from 'lucide-react';
@@ -41,6 +40,7 @@ const ROOM_GROUPS: RoomGroup[] = [
     rooms: [
       { id: 'dashboard', label: 'Home', icon: LayoutDashboard, description: 'Your daily workspace view', gated: false },
       { id: 'career-profile', label: 'Your Profile', icon: User, description: 'Your resume, story, and evidence in one place', gated: false },
+      { id: 'jobs', label: 'Job Search', icon: Search, description: 'Search, pipeline, and next moves', gated: false },
       { id: 'resume', label: 'Resume Builder', icon: FileText, description: 'Build, review, and save role-specific resumes', gated: false },
     ],
   },
@@ -48,7 +48,6 @@ const ROOM_GROUPS: RoomGroup[] = [
     label: 'Active Search',
     rooms: [
       { id: 'linkedin', label: 'LinkedIn', icon: Linkedin, description: 'Profile and content updates', gated: false },
-      { id: 'jobs', label: 'Job Search', icon: Search, description: 'Search, pipeline, and next moves', gated: false },
       { id: 'interview', label: 'Interview Prep', icon: Mic, description: 'Prep, debrief, and follow-up', gated: false },
       { id: 'networking', label: 'Networking', icon: Users, description: 'Referrals and outreach', gated: false },
     ],
@@ -161,64 +160,47 @@ export function Sidebar({ activeRoom, onNavigate, onNavigateRoute, dashboardStat
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3">
-        {ROOM_GROUPS.map((group) => (
-          <div key={group.label} className={collapsed ? 'mb-1' : 'mb-4'}>
-            {!collapsed && (
-              <div className="px-3 pb-2 pt-3">
-                <span className="eyebrow-label">
-                  {group.label}
-                </span>
-              </div>
-            )}
-            <div className="space-y-1">
-              {group.rooms.map(renderRoomButton)}
-            </div>
-          </div>
-        ))}
+      <nav className="flex-1 overflow-y-auto px-3 pt-3">
+        <div className="space-y-1">
+          {ROOM_GROUPS.flatMap((group) => group.rooms).map(renderRoomButton)}
 
-        {/* My Applications — Approach C entry point. Uses onNavigateRoute
-            (not the room system) because application-scoped URLs live under
-            /workspace/application/:id and aren't a kanban room. Highlights
-            when the user is inside either the list or any application. */}
-        <div className={collapsed ? 'mt-2' : 'mt-2 border-t border-[var(--line-soft)] pt-3'}>
+          {/* My Applications — route-based (Approach C) rather than a room id,
+              but styled identically to sibling room buttons. */}
           <button
             type="button"
             onClick={() => onNavigateRoute?.('/workspace/applications')}
             className={cn(
-              'flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors',
+              'group relative flex w-full items-start gap-3 border-l px-3 py-3 text-left transition-all duration-150',
               isApplicationsActive
-                ? 'bg-[var(--rail-tab-active-bg)] text-[var(--text-strong)]'
-                : 'text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]',
+                ? 'border-[var(--rail-tab-active-border)] bg-[var(--rail-tab-active-bg)] text-[var(--text-strong)]'
+                : 'border-transparent text-[var(--text-muted)] hover:border-[var(--line-soft)] hover:bg-[var(--rail-tab-hover-bg)] hover:text-[var(--text-strong)]',
             )}
-            title="My applications"
+            title={collapsed ? 'My Applications' : undefined}
             aria-current={isApplicationsActive ? 'page' : undefined}
           >
-            <BriefcaseBusiness size={18} className="flex-shrink-0" />
+            <BriefcaseBusiness
+              size={20}
+              className={cn(
+                'mt-0.5 flex-shrink-0 transition-colors',
+                isApplicationsActive
+                  ? 'text-[var(--accent)]'
+                  : 'text-[var(--text-soft)] group-hover:text-[var(--text-muted)]',
+              )}
+            />
             {!collapsed && (
-              <span className="text-[13px] font-medium leading-tight">My Applications</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate text-[15px] font-semibold uppercase tracking-[0.07em] leading-tight">
+                    My Applications
+                  </span>
+                </div>
+                <div className={cn('mt-1 text-[13px] leading-relaxed', isApplicationsActive ? 'text-[var(--text-muted)]' : 'text-[var(--text-soft)]')}>
+                  Saved jobs and per-role work
+                </div>
+              </div>
             )}
           </button>
         </div>
-
-        {/* Career Assessment link */}
-        <div className={collapsed ? 'mb-1 mt-2' : 'mb-4 mt-2'}>
-          <button
-            type="button"
-            onClick={() => onNavigateRoute?.('/profile-setup')}
-            className={cn(
-              'flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors',
-              'text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]',
-            )}
-            title="Career Assessment"
-          >
-            <ClipboardCheck size={18} className="flex-shrink-0" />
-            {!collapsed && (
-              <span className="text-[13px] font-medium leading-tight">Career Assessment</span>
-            )}
-          </button>
-        </div>
-
       </nav>
 
     </aside>

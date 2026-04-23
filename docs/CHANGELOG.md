@@ -1,5 +1,23 @@
 # Changelog — Resume Agent
 
+## 2026-04-22 — Workspace UX cleanup: promote Career Vault + Job Search to Core Tools
+**Sprint:** LMS + CareerIQ Integration + LinkedIn 360Brew Update | **Story:** Out-of-sprint UX cleanup
+**Summary:** Sidebar restructured to a flat list with Your Profile + Job Search at the top. StepCards component removed from DashboardHome (was duplicating sidebar entries with mismatched labels). Career Assessment bottom-of-sidebar button removed (redundant with the new-user hero CTA and the existing "Re-run Career Assessment" button inside YourProfilePage). workspaceHomeGuidance hero CTA label aligned with the sidebar it points to ("Refine positioning" → "Open Your Profile").
+
+### Changes Made
+- `app/src/components/career-iq/DashboardHome.tsx` — deleted the new-user StepCards block (three cards "Career Assessment" + "Resume work" + "Job board") and the `StepCard` component. Dropped unused lucide imports.
+- `app/src/components/career-iq/Sidebar.tsx` — reordered Core Tools to Home · Your Profile · Job Search · Resume Builder. Flattened into a single visual list (group subtitles hidden). Deleted bottom "Career Assessment" button. Restyled "My Applications" to match sibling room buttons.
+- `app/src/components/career-iq/workspaceHomeGuidance.ts` — hero CTA label "Refine positioning" → "Open Your Profile".
+- `app/src/components/career-iq/CareerIQScreen.tsx` — no label change here (that's Phase 1.1); only followed the DashboardHome prop plumbing.
+
+### Decisions Made
+- Cover Letter / Thank You / 90-Day Plan / Salary Negotiation stay nested in their room landings (Resume Builder, Interview Prep). Post-Approach-C, they're application-scoped tools whose canonical home is `/workspace/application/:id/:tool`.
+- Didn't add a standalone "Master Resume" sidebar entry — it's already a section inside YourProfilePage.
+- The hidden `financial` / Retirement Bridge room is left alone (product decision).
+
+### Known Issues
+- None new.
+
 ## 2026-04-22 — Remove legacy `/coach` + V2 CoachScreen (user-reported dead-end)
 **Sprint:** LMS + CareerIQ Integration + LinkedIn 360Brew Update | **Story:** Out-of-sprint bug fix
 **Summary:** User completed a V3 resume, clicked a "resume session" button, and landed on a dead-end `/sessions/:id/workspace/overview` URL stuck on "Reading your resume…". Root cause: `handleResumeSession` in `App.tsx` fell back to `navigate('/coach')` for any non-`resume_v2` session; `/coach` rendered the legacy V2 CoachScreen, which pushState'd the phantom `/sessions/:id/workspace/overview` URL via `useWorkspaceNavigation`. CoachScreen couldn't drive a V3 session, so it sat on the V2 intake-phase narrative forever. Deleted the dead branch end-to-end.

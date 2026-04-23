@@ -17,10 +17,10 @@ import { supabase } from '@/lib/supabase';
 import { hydrateV2SessionLoad, type LoadSessionResponseBody } from '@/lib/resume-v2-session-load';
 import type { AgentDataSources } from '@/lib/lms-injection-mapper';
 import type { PipelineInterviewCard } from './InterviewLabRoom';
+import type { PipelineCard } from './ZoneYourPipeline';
 import type { RealFeedEvent } from './ZoneAgentFeed';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
-import type { PipelineCard } from './ZoneYourPipeline';
 import { resolveWorkspaceRoom, toExposedWorkspaceRoom, type WorkspaceRoom } from './workspaceRoomAccess';
 
 const FinancialWellnessRoom = lazy(() => import('./FinancialWellnessRoom').then((module) => ({ default: module.FinancialWellnessRoom })));

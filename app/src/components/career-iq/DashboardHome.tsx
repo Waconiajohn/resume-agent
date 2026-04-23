@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, FileText, Search, Target } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { ZoneYourPipeline, type PipelineCard } from './ZoneYourPipeline';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -189,75 +189,7 @@ function HomeGuideCard({
         </div>
       </div>
 
-      {dashboardState === 'new-user' && (
-        <div className="grid gap-3 border-t border-[var(--line-soft)] bg-[var(--bg-1)]/10 p-4 lg:grid-cols-[1.05fr_0.85fr_0.85fr]">
-          <StepCard
-            icon={Target}
-            title="Career Assessment"
-            description="Tighten the positioning story every other tool reads."
-            actionLabel="Start assessment"
-            onClick={() => onNavigateRoute?.('/profile-setup')}
-            className="border-[var(--link)]/18 bg-[var(--link)]/[0.08]"
-          />
-          <StepCard
-            icon={FileText}
-            title="Resume work"
-            description={hasResumeSessions
-              ? `${sessionCount} saved application${sessionCount === 1 ? '' : 's'} ready to reopen.`
-              : 'Start a role-specific resume and keep the best additions for future use.'}
-            actionLabel={hasResumeSessions ? 'Open resumes' : 'Start resume'}
-            onClick={() => onNavigateRoom?.('resume')}
-            className="border-[var(--line-soft)] bg-[var(--accent-muted)]"
-          />
-          <StepCard
-            icon={Search}
-            title="Job board"
-            description="Search roles, save the best ones, and keep applications moving."
-            actionLabel="Open jobs"
-            onClick={() => onNavigateRoom?.('jobs')}
-            className="border-[var(--badge-green-text)]/18 bg-[var(--badge-green-text)]/[0.06]"
-          />
-        </div>
-      )}
     </GlassCard>
-  );
-}
-
-function StepCard({
-  icon: Icon,
-  title,
-  description,
-  actionLabel,
-  onClick,
-  className,
-}: {
-  icon: typeof Target;
-  title: string;
-  description: string;
-  actionLabel: string;
-  onClick?: () => void;
-  className?: string;
-}) {
-  return (
-    <div className={`rounded-2xl border p-3.5 ${className ?? 'border-[var(--line-soft)] bg-[var(--accent-muted)]'}`}>
-      <div className="flex items-center gap-2">
-        <div className="rounded-xl bg-black/20 p-2">
-          <Icon size={16} className="text-[var(--link)]" />
-        </div>
-        <div className="text-sm font-semibold text-[var(--text-strong)]">{title}</div>
-      </div>
-      <div className="mt-2 space-y-2">
-        <p className="text-xs leading-relaxed text-[var(--text-soft)]">{description}</p>
-        <button
-          type="button"
-          onClick={onClick}
-          className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-[var(--link)] transition-colors hover:text-[var(--link)]"
-        >
-          {actionLabel}
-          <ArrowRight size={12} />
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -302,8 +234,6 @@ export function DashboardHome({
         onRefineWhyMe={onRefineWhyMe}
         onNavigateRoute={onNavigateRoute}
       />
-
-      {/* CoachingNudgeBar removed — momentum nudges are not ready for production */}
 
       {!isNewUser && (
         <ZoneYourPipeline
