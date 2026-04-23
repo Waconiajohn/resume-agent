@@ -65,7 +65,7 @@ export const SIDEBAR_NAV: readonly NavItem[] = [
     description: '3-4 live sessions per week on career-building topics',
     icon: Radio,
     room: 'live-webinars',
-    mobileTab: false,
+    mobileTab: true,
   },
   {
     id: 'learning',
@@ -73,7 +73,7 @@ export const SIDEBAR_NAV: readonly NavItem[] = [
     description: 'Career-building courses personalized with your data',
     icon: GraduationCap,
     room: 'learning',
-    mobileTab: true,
+    mobileTab: false,
   },
 ];
 
