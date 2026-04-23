@@ -11,8 +11,9 @@
  * reach the new routing.
  */
 
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Plus, ArrowRight, Briefcase, Archive, Undo2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { useJobApplications, type JobApplicationStage, type JobApplicationArchivedFilter } from '@/hooks/useJobApplications';
@@ -24,6 +25,8 @@ interface ApplicationsListScreenProps {
 
 // Ordered for display. Kept in sync with the CHECK constraint on
 // job_applications.stage (see 20260421_job_applications_kanban_columns.sql).
+// Phase 2.2 — closed_won / closed_lost are intentionally absent from the
+// Active view; they live in the Archived view only.
 const STAGE_ORDER: readonly JobApplicationStage[] = [
   'saved',
   'researching',
@@ -45,6 +48,27 @@ const STAGE_LABELS: Record<JobApplicationStage, string> = {
   closed_won: 'Accepted',
   closed_lost: 'Closed',
 };
+
+// Phase 2.2 — 4 high-level buckets that appear above the Active list as
+// clickable counts. Mapping (Option B from the audit): `researching` folds
+// into Saved because it's a pre-application state; `applied` sits in its
+// own bucket; `screening` + `interviewing` merge into Interviewing.
+type PipelineBucket = 'saved' | 'applied' | 'interviewing' | 'offer';
+
+const BUCKET_DEFINITIONS: ReadonlyArray<{
+  id: PipelineBucket;
+  label: string;
+  stages: readonly JobApplicationStage[];
+}> = [
+  { id: 'saved', label: 'Saved', stages: ['saved', 'researching'] },
+  { id: 'applied', label: 'Applied', stages: ['applied'] },
+  { id: 'interviewing', label: 'Interviewing', stages: ['screening', 'interviewing'] },
+  { id: 'offer', label: 'Offer', stages: ['offer'] },
+];
+
+// Stages hidden from the Active view (rendered only when the Archived
+// toggle is on).
+const TERMINAL_STAGES: readonly JobApplicationStage[] = ['closed_won', 'closed_lost'];
 
 function formatRelative(iso: string): string {
   const then = new Date(iso).getTime();
@@ -70,6 +94,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
     archiveApplication,
     restoreApplication,
   } = useJobApplications({ archived: archivedFilter });
+  const [selectedBucket, setSelectedBucket] = useState<PipelineBucket | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [roleTitle, setRoleTitle] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -110,6 +135,40 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
     }
   }
 
+  const isActiveView = archivedFilter === 'active';
+
+  // Bucket counts are computed from the stages the Active view actually
+  // renders — terminal stages (closed_won / closed_lost) are intentionally
+  // excluded. In the Archived view the counter row is hidden, so the
+  // computation is unused but cheap.
+  const bucketCounts = useMemo<Record<PipelineBucket, number>>(() => {
+    const counts: Record<PipelineBucket, number> = {
+      saved: 0,
+      applied: 0,
+      interviewing: 0,
+      offer: 0,
+    };
+    for (const bucket of BUCKET_DEFINITIONS) {
+      counts[bucket.id] = bucket.stages.reduce(
+        (total, stage) => total + (groupedByStage[stage]?.length ?? 0),
+        0,
+      );
+    }
+    return counts;
+  }, [groupedByStage]);
+
+  // Stages rendered in the list body.
+  //   Active + no bucket selected → all non-terminal stages.
+  //   Active + bucket selected → just that bucket's stages.
+  //   Archived → every stage (terminal rows are the whole point of Archived).
+  const visibleStages = useMemo<readonly JobApplicationStage[]>(() => {
+    if (!isActiveView) return STAGE_ORDER;
+    const nonTerminal = STAGE_ORDER.filter((s) => !TERMINAL_STAGES.includes(s));
+    if (!selectedBucket) return nonTerminal;
+    const bucket = BUCKET_DEFINITIONS.find((b) => b.id === selectedBucket);
+    return bucket ? bucket.stages : nonTerminal;
+  }, [isActiveView, selectedBucket]);
+
   return (
     <div className="mx-auto flex h-full max-w-[1280px] flex-col gap-6 overflow-y-auto p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -130,7 +189,9 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
           <div className="inline-flex rounded-full border border-[var(--line-soft)] p-0.5 text-[11px]">
             <button
               type="button"
-              onClick={() => setArchivedFilter('active')}
+              onClick={() => {
+                setArchivedFilter('active');
+              }}
               className={
                 archivedFilter === 'active'
                   ? 'rounded-full bg-[var(--link)] px-3 py-1 font-semibold text-[var(--link-on)]'
@@ -141,7 +202,10 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
             </button>
             <button
               type="button"
-              onClick={() => setArchivedFilter('archived')}
+              onClick={() => {
+                setArchivedFilter('archived');
+                setSelectedBucket(null);
+              }}
               className={
                 archivedFilter === 'archived'
                   ? 'rounded-full bg-[var(--link)] px-3 py-1 font-semibold text-[var(--link-on)]'
@@ -243,9 +307,45 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
         </GlassCard>
       )}
 
+      {/* Phase 2.2 — 4-bucket pipeline summary. Active view only. Clicking a
+          count filters the list below; clicking the selected count clears
+          the filter. */}
+      {isActiveView && applications.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {BUCKET_DEFINITIONS.map((bucket) => {
+            const count = bucketCounts[bucket.id];
+            const isSelected = selectedBucket === bucket.id;
+            return (
+              <button
+                key={bucket.id}
+                type="button"
+                onClick={() =>
+                  setSelectedBucket((prev) => (prev === bucket.id ? null : bucket.id))
+                }
+                aria-pressed={isSelected}
+                className={cn(
+                  'flex flex-col items-start rounded-2xl border px-4 py-3 text-left transition-all duration-150',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/60',
+                  isSelected
+                    ? 'border-[var(--link)]/60 bg-[var(--rail-tab-active-bg)]'
+                    : 'border-[var(--line-soft)] bg-[var(--bg-1)] hover:border-[var(--link)]/40 hover:bg-[var(--rail-tab-hover-bg)]',
+                )}
+              >
+                <span className="text-[11px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
+                  {bucket.label}
+                </span>
+                <span className="mt-1 text-xl font-semibold tabular-nums text-[var(--text-strong)]">
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {applications.length > 0 && (
         <div className="flex flex-col gap-6">
-          {STAGE_ORDER.map((stage) => {
+          {visibleStages.map((stage) => {
             const items = groupedByStage[stage] ?? [];
             if (items.length === 0) return null;
             return (

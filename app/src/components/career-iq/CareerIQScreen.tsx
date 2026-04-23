@@ -423,7 +423,6 @@ export function CareerIQScreen({
         <JobCommandCenterRoom
           onNavigate={onNavigate}
           onNavigateRoom={handleRoomNavigate}
-          initialFocus={normalizedWorkspaceFocus}
         />
       );
     }

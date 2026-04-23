@@ -12,7 +12,7 @@ import {
   Sparkles,
   CheckCircle2,
   XCircle,
-  Briefcase,
+  Users,
   ChevronDown,
   ChevronUp,
   AlertTriangle,
@@ -20,33 +20,28 @@ import {
 import { cn } from '@/lib/utils';
 import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 import { trackProductEvent } from '@/lib/product-telemetry';
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useJobFinder, type RankedMatch, type JobEvaluation } from '@/hooks/useJobFinder';
-import { useApplicationPipeline, type PipelineStage } from '@/hooks/useJobApplications';
+import { useJobApplications } from '@/hooks/useJobApplications';
 import { useRadarSearch } from '@/hooks/useRadarSearch';
 import type { RadarJob } from '@/hooks/useRadarSearch';
-import { useDailyOps } from '@/hooks/useDailyOps';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobFilters } from '@/hooks/useJobFilters';
 import { JobFilterPanel } from '@/components/shared/JobFilterPanel';
-import { PipelineBoard } from '@/components/job-command-center/PipelineBoard';
-import { AddOpportunityDialog } from '@/components/job-command-center/AddOpportunityDialog';
-import { PipelineFilters } from '@/components/job-command-center/PipelineFilters';
 import { RadarSection } from '@/components/job-command-center/RadarSection';
 import { WatchlistBar } from '@/components/job-command-center/WatchlistBar';
 import { WatchlistManager } from '@/components/job-command-center/WatchlistManager';
-import { DailyOpsSection } from '@/components/job-command-center/DailyOpsSection';
 import { BooleanSearchPanel } from '@/components/job-command-center/BooleanSearchPanel';
 import { formatJobAgeLabel } from '@/components/job-command-center/job-age';
 import { useLatestMasterResumeText } from './useLatestMasterResumeText';
+import { SmartReferralsRoom } from './SmartReferralsRoom';
 
 import type { CareerIQRoom } from './Sidebar';
 
 interface JobCommandCenterRoomProps {
   onNavigate: (route: string) => void;
   onNavigateRoom?: (room: CareerIQRoom) => void;
-  initialFocus?: string | null;
 }
 
 // --- JobEvaluationCard ---
@@ -412,35 +407,34 @@ function SmartMatches({
   );
 }
 
-// DailyOps is now rendered via DailyOpsSection (imported above)
+// --- Mode types ---
 
-// --- Tab types ---
+type JCCMode = 'broad-search' | 'insider-jobs';
 
-type JCCTab = 'board' | 'pipeline';
-
-const JCC_TABS: Array<{
-  id: JCCTab;
+const JCC_MODES: Array<{
+  id: JCCMode;
   label: string;
   icon: React.ComponentType<{ size: number; className?: string }>;
 }> = [
-  { id: 'board', label: 'Job Board', icon: Search },
-  { id: 'pipeline', label: 'Board', icon: Briefcase },
+  { id: 'broad-search', label: 'Broad Search', icon: Search },
+  { id: 'insider-jobs', label: 'Insider Jobs', icon: Users },
 ];
 
 // --- Main component ---
 
 export function JobCommandCenterRoom({
   onNavigate,
-  onNavigateRoom,
-  initialFocus = null,
+  onNavigateRoom: _onNavigateRoom,
 }: JobCommandCenterRoomProps) {
   const { session, loading: authLoading } = useAuth();
   const { resumeText: masterResumeText, loading: loadingMasterResume } = useLatestMasterResumeText();
   const jobFinder = useJobFinder();
-  const pipeline = useApplicationPipeline();
+  // createApplication is the only pipeline-hook call surface we still need
+  // (when the user promotes a Radar job to a saved application). Tracking /
+  // kanban state moved to the Applications page in Phase 2.2.
+  const { createApplication } = useJobApplications();
   const radar = useRadarSearch();
   const watchlist = useWatchlist();
-  const dailyOps = useDailyOps(pipeline.applications, pipeline.dueActions, pipeline.loading);
   const {
     filters: jobFilters,
     setLocation: setJobFilterLocation,
@@ -449,34 +443,14 @@ export function JobCommandCenterRoom({
     setPostedWithin: setJobFilterPostedWithin,
   } = useJobFilters('main-job-filters');
 
-  const [activeTab, setActiveTab] = useState<JCCTab>('board');
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [activeMode, setActiveMode] = useState<JCCMode>('broad-search');
   const [showWatchlistManager, setShowWatchlistManager] = useState(false);
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all');
-
-  useEffect(() => {
-    if (initialFocus === 'pipeline' || initialFocus === 'needs-attention') {
-      setActiveTab('pipeline');
-      return;
-    }
-    if (initialFocus === 'shortlist') {
-      setActiveTab('pipeline');
-      setStageFilter('saved');
-      return;
-    }
-    if (initialFocus === 'board' || initialFocus === 'job-board') {
-      setActiveTab('board');
-      setStageFilter('all');
-    }
-  }, [initialFocus]);
 
   useEffect(() => {
     if (authLoading) return;
 
     if (!session?.access_token) {
-      pipeline.clear();
       watchlist.clear();
       radar.reset();
       jobFinder.reset();
@@ -484,13 +458,10 @@ export function JobCommandCenterRoom({
       return;
     }
 
-    void pipeline.refresh();
     void watchlist.refresh();
   }, [
     authLoading,
     jobFinder.reset,
-    pipeline.clear,
-    pipeline.refresh,
     radar.reset,
     session?.access_token,
     watchlist.clear,
@@ -506,30 +477,6 @@ export function JobCommandCenterRoom({
       setShowAiSuggestions(true);
     }
   }, [jobFinder.error, jobFinder.matches.length, jobFinder.status]);
-
-  const handleAddApplication = useCallback(() => {
-    setShowAddDialog(true);
-  }, []);
-
-  const handleAddSubmit = useCallback(
-    async (data: {
-      role_title: string;
-      company_name: string;
-      source?: string;
-      url?: string;
-      notes?: string;
-    }) => {
-      await pipeline.createApplication({
-        role_title: data.role_title,
-        company_name: data.company_name,
-        stage: 'saved',
-        source: data.source ?? 'manual',
-        url: data.url,
-        notes: data.notes,
-      });
-    },
-    [pipeline],
-  );
 
   const handleSearchCompany = useCallback(
     (companyName: string) => {
@@ -565,7 +512,7 @@ export function JobCommandCenterRoom({
         has_apply_url: Boolean(job.apply_url),
         job_source: job.source ?? null,
       });
-      await pipeline.createApplication({
+      await createApplication({
         role_title: job.title,
         company_name: job.company,
         stage: 'saved',
@@ -575,7 +522,7 @@ export function JobCommandCenterRoom({
       });
       radar.dismissJob(job.external_id);
     },
-    [pipeline, radar],
+    [createApplication, radar],
   );
 
   const handleRequestMoreSuggestions = useCallback(() => {
@@ -585,7 +532,7 @@ export function JobCommandCenterRoom({
 
   const handleBuildResumeRequest = useCallback(
     (
-      source: 'job_board' | 'pipeline' | 'suggestions',
+      source: 'job_board' | 'suggestions',
       roleTitle: string | null = null,
       companyName: string | null = null,
     ) => {
@@ -599,43 +546,27 @@ export function JobCommandCenterRoom({
     [onNavigate],
   );
 
-  const filteredApplications = useMemo(() => {
-    let apps = pipeline.applications;
-    if (stageFilter !== 'all') {
-      apps = apps.filter((a) => a.stage === stageFilter);
-    }
-    if (searchText.trim()) {
-      const lower = searchText.toLowerCase();
-      apps = apps.filter(
-        (a) =>
-          a.role_title.toLowerCase().includes(lower) ||
-          a.company_name.toLowerCase().includes(lower),
-      );
-    }
-    return apps;
-  }, [pipeline.applications, stageFilter, searchText]);
-
   return (
     <div className="room-shell">
       <div className="room-header">
         <div className="room-header-copy">
           <div className="eyebrow-label">Job Search</div>
-          <h1 className="room-title">One job board, one shortlist, one board for your applications</h1>
+          <h1 className="room-title">Find your next role two ways.</h1>
           <p className="room-subtitle">
-            Search public jobs here, save the best few to your shortlist, and work the real opportunities on the Board. The first-degree-connection company scans stay separate in Insider Jobs.
+            Broad Search scans public job boards. Insider Jobs surfaces roles at companies where you already have a first-degree connection.
           </p>
         </div>
       </div>
 
       <div className="rail-tabs">
-        {JCC_TABS.map(({ id, label, icon: Icon }) => {
+        {JCC_MODES.map(({ id, label, icon: Icon }) => {
           return (
           <button
             key={id}
             type="button"
-            onClick={() => setActiveTab(id)}
+            onClick={() => setActiveMode(id)}
             className="rail-tab"
-            data-active={activeTab === id}
+            data-active={activeMode === id}
           >
             <Icon size={14} />
             {label}
@@ -644,45 +575,13 @@ export function JobCommandCenterRoom({
         })}
       </div>
 
-      {/* Pipeline tab — display:none preserves state */}
-      <div style={{ display: activeTab === 'pipeline' ? undefined : 'none' }}>
-        <div className="flex flex-col gap-6">
-          <DailyOpsSection
-            data={dailyOps}
-            title="Needs Attention"
-            subtitle="Work follow-ups, stale opportunities, and anything else that already belongs inside your live pipeline."
-          />
-
-          <PipelineFilters
-            searchText={searchText}
-            onSearchChange={setSearchText}
-            activeStageFilter={stageFilter}
-            onStageFilterChange={setStageFilter}
-          />
-
-          <PipelineBoard
-            applications={filteredApplications}
-            loading={pipeline.loading}
-            onMoveStage={pipeline.moveToStage}
-            onAddApplication={handleAddApplication}
-            onBuildResume={() => handleBuildResumeRequest('pipeline')}
-            onPrepInterview={onNavigateRoom ? () => onNavigateRoom('interview') : undefined}
-            onNegotiateSalary={(application) => {
-              const params = new URLSearchParams({
-                room: 'interview',
-                focus: 'negotiation',
-                job: application.id,
-                company: application.company_name,
-                role: application.role_title,
-              });
-              onNavigate(`/workspace?${params.toString()}`);
-            }}
-          />
-        </div>
+      {/* Insider Jobs mode — display:none preserves state */}
+      <div style={{ display: activeMode === 'insider-jobs' ? undefined : 'none' }}>
+        <SmartReferralsRoom onNavigate={onNavigate} />
       </div>
 
-      {/* Job Board tab — display:none preserves state */}
-      <div style={{ display: activeTab === 'board' ? undefined : 'none' }}>
+      {/* Broad Search mode — display:none preserves state */}
+      <div style={{ display: activeMode === 'broad-search' ? undefined : 'none' }}>
         <div className="flex flex-col gap-6">
           <WatchlistBar
             companies={watchlist.companies}
@@ -763,12 +662,6 @@ export function JobCommandCenterRoom({
           </details>
         </div>
       </div>
-
-      <AddOpportunityDialog
-        open={showAddDialog}
-        onClose={() => setShowAddDialog(false)}
-        onSubmit={handleAddSubmit}
-      />
 
       <WatchlistManager
         open={showWatchlistManager}

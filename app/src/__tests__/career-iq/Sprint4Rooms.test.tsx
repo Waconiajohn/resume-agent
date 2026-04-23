@@ -163,12 +163,15 @@ describe('JobCommandCenterRoom', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([]) }));
   });
 
-  it('renders the simplified job board surface', () => {
+  it('renders the two-mode discovery surface', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(getJobTabButton(/^Job Board$/i)).toBeInTheDocument();
-    expect(getJobTabButton(/^Board$/i)).toBeInTheDocument();
-    // The room subtitle explains the board's purpose
-    expect(screen.getByText(/One job board, one shortlist, one board for your applications/i)).toBeInTheDocument();
+    expect(getJobTabButton(/^Broad Search$/i)).toBeInTheDocument();
+    expect(getJobTabButton(/^Insider Jobs$/i)).toBeInTheDocument();
+    // The room title names the two discovery paths.
+    expect(screen.getByText(/Find your next role two ways\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Broad Search scans public job boards\. Insider Jobs surfaces roles/i),
+    ).toBeInTheDocument();
   });
 
   it('renders the boolean-search generator by default', () => {
@@ -209,13 +212,6 @@ describe('JobCommandCenterRoom', () => {
     expect(screen.getByText('More Role Ideas')).toBeInTheDocument();
   });
 
-  it('opens directly into the shortlist view when shortlist focus is provided', () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} initialFocus="shortlist" />);
-    // Pipeline tab should be active and Shortlist filter applied
-    expect(screen.getByRole('heading', { name: /^Stages$/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Shortlist' })).toHaveAttribute('aria-pressed', 'true');
-  });
-
   it('tracks when more role suggestions are requested from the boolean-search panel', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
 
@@ -239,14 +235,11 @@ describe('JobCommandCenterRoom', () => {
 
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
 
+    // The room bootstraps watchlist data; it must not auto-run a radar scan.
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some(
-          ([input]) => typeof input === 'string' && (
-            input.includes('/applications')
-            || input.includes('/watchlist')
-            || input.includes('/applications/due-actions')
-          ),
+          ([input]) => typeof input === 'string' && input.includes('/watchlist'),
         ),
       ).toBe(true),
     );
@@ -260,49 +253,6 @@ describe('JobCommandCenterRoom', () => {
   it('keeps the live extra-suggestions action in the board', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     expect(screen.getAllByText('Show More Suggestions').length).toBeGreaterThan(0);
-  });
-
-  it('renders application pipeline kanban board', () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(getJobTabButton(/^Board$/i));
-    expect(screen.getByRole('heading', { name: /^Stages$/ })).toBeInTheDocument();
-  });
-
-  it('opens directly into Pipeline when pipeline focus is provided', () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} initialFocus="pipeline" />);
-    expect(screen.getByRole('heading', { name: /^Stages$/ })).toBeInTheDocument();
-  });
-
-  it('opens directly into Shortlist when shortlist focus is provided', () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} initialFocus="shortlist" />);
-    expect(screen.getByRole('heading', { name: /^Stages$/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Shortlist' })).toHaveAttribute('aria-pressed', 'true');
-  });
-
-  it('renders kanban stage columns', () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(getJobTabButton(/^Board$/i));
-    // Stage names may appear in more than one place within the kanban
-    // (column header + cards), so use getAllByText for robustness.
-    expect(screen.getAllByText('Shortlist').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Applied').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Interviewing').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Offer').length).toBeGreaterThan(0);
-  });
-
-  it('renders the pipeline attention section', () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    expect(getJobTabButton(/^Board$/i)).toBeInTheDocument();
-    fireEvent.click(getJobTabButton(/^Board$/i));
-    expect(screen.getByText('Needs Attention')).toBeInTheDocument();
-  });
-
-  it('keeps pipeline attention focused on active work instead of a second discovery workflow', () => {
-    render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
-    fireEvent.click(getJobTabButton(/^Board$/i));
-    expect(screen.getByText('Needs Attention')).toBeInTheDocument();
-    expect(screen.queryByText('Application Tracker')).not.toBeInTheDocument();
-    expect(screen.queryByText('Top Matches')).not.toBeInTheDocument();
   });
 });
 
