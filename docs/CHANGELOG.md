@@ -1,5 +1,34 @@
 # Changelog — Resume Agent
 
+## 2026-04-22 — Remove legacy `/coach` + V2 CoachScreen (user-reported dead-end)
+**Sprint:** LMS + CareerIQ Integration + LinkedIn 360Brew Update | **Story:** Out-of-sprint bug fix
+**Summary:** User completed a V3 resume, clicked a "resume session" button, and landed on a dead-end `/sessions/:id/workspace/overview` URL stuck on "Reading your resume…". Root cause: `handleResumeSession` in `App.tsx` fell back to `navigate('/coach')` for any non-`resume_v2` session; `/coach` rendered the legacy V2 CoachScreen, which pushState'd the phantom `/sessions/:id/workspace/overview` URL via `useWorkspaceNavigation`. CoachScreen couldn't drive a V3 session, so it sat on the V2 intake-phase narrative forever. Deleted the dead branch end-to-end.
+
+### Changes Made
+- `app/src/App.tsx` — dropped `CoachScreen` import, the `/coach → resume_v2` redirect effect, the `currentView === 'coach'` ternaries on the `Header`, and the 50-line `/coach` Route block. Replaced the route with a one-line `Navigate` to `buildResumeWorkspaceRoute()` so any bookmarked `/coach` URL lands somewhere real. Simplified `handleResumeSession` to always route to `buildResumeBuilderSessionRoute({ sessionId })` — V3PipelineScreen loads the session from the URL param itself, so the old product-type branching and side-effecting `loadSession` call were unnecessary.
+- `app/src/lib/app-routing.ts` — removed `'coach'` from `AppView`, from `getAppView()`, and from `resolveNavigationTarget()`'s `pathByView` map.
+- `app/src/components/CoachScreen.tsx` — deleted (741 lines).
+- `app/src/hooks/useWorkspaceNavigation.ts` — deleted (314 lines). The only consumer was CoachScreen; this hook was the sole source of the phantom `/sessions/:id/workspace/overview` URL that React Router never had a route for.
+- `app/src/components/InterviewLayout.tsx` — deleted (149 lines). The "Reading your resume…" narrative the user saw lived here.
+- `app/src/components/SectionsNodeSummary.tsx` — deleted (95 lines). CoachScreen-only.
+- `app/src/lib/coach-screen-utils.tsx` — deleted. Only consumers were CoachScreen and SectionsNodeSummary.
+- `app/src/lib/__tests__/coach-screen-utils.test.tsx` — deleted alongside the util file.
+- `app/src/__tests__/AppRoutingShell.test.tsx` — removed the `CoachScreen` mock; rewrote the "redirects a resume-v2 coach route" test into "redirects the legacy /coach route to the workspace resume room" (which exercises the new Navigate redirect). Net: one pre-existing AppRoutingShell failure is now passing.
+- `app/src/lib/__tests__/app-routing.test.ts` — updated `getAppView('/coach')` expectation from `'coach'` to `'workspace'` (the default fallback).
+
+### Decisions Made
+- **Kept a one-line `/coach` → `/workspace?room=resume` `Navigate` redirect rather than deleting the route outright.** Standard "deprecate a URL" pattern — anyone with a stale `/coach` bookmark lands on the resume workspace instead of a 404. Zero remaining CoachScreen code, so this is a stub, not a revival.
+- **Dropped product-type branching in `handleResumeSession` entirely.** V3PipelineScreen is driven by `useV3SessionPersistence` and reads the session id from the URL — it handles a loaded session regardless of `product_type`. The old code's special-case for `resume_v2` was not meaningfully different from the other branch, and the "else → `/coach`" fallback was the actual bug.
+- **Didn't audit the other `handleResumeSession` call sites' product-type assumptions.** ContinueCard + SessionHistoryTab in theory can surface non-resume sessions. Out of scope for this fix — those would land on V3PipelineScreen which can render an error state, which is strictly better than the prior dead-end. If the broader "non-resume session in a resume UI" problem needs a fix, it's a separate story.
+
+### Known Issues
+- Not new: `AppRoutingShell.test.tsx` has 2 pre-existing failures (down from 3 before this change) — both related to the `V2ResumeScreen` mock expecting a component that's no longer at `/resume-builder/session` (V3 is there now). Matches the baseline in `memory/MEMORY.md`.
+- None introduced. Server tests: unchanged. App tests: 2005 pass / 10 fail / 3 skipped; net +1 passing, −1 failing vs. baseline, due to one pre-existing AppRoutingShell failure now passing and the deleted `coach-screen-utils.test.tsx` (3 tests).
+
+### Next Steps
+- Watch for user reports of any remaining `/sessions/:id/workspace/*` URLs in the wild — grep and other audits say none exist now, but browsers may still have the URL in history for active users.
+- The two pre-existing AppRoutingShell V2/V3 mock mismatch failures are a 15-minute follow-up — swap `vi.mock('@/components/resume-v2/V2ResumeScreen'…)` for the V3 screen. Separate story.
+
 ## 2026-04-21 — Stories 1.2 + 1.3 closeout: Interview Authority + 360Brew rules
 **Sprint:** LMS + CareerIQ Integration + LinkedIn 360Brew Update | **Stories:** 1.2 + 1.3
 **Summary:** Same closeout pattern as Story 1.1 — both stories' implementations predated the sprint, just lacked test coverage. Added 14 tests across the two stories to lock in the acceptance-criteria surface.

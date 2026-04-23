@@ -161,10 +161,6 @@ vi.mock('@/components/admin/AdminDashboard', () => ({
   AdminDashboard: () => <div>Admin</div>,
 }));
 
-vi.mock('@/components/CoachScreen', () => ({
-  CoachScreen: () => <div>Coach</div>,
-}));
-
 describe('App routing shell', () => {
   beforeEach(() => {
     mockGetDefaultResume.mockClear();
@@ -230,19 +226,14 @@ describe('App routing shell', () => {
     );
   });
 
-  it('redirects a resume-v2 coach route back into the v2 builder', async () => {
-    mockSessionState.currentSession = {
-      id: 'resume-v2-current',
-      product_type: 'resume_v2',
-    };
-
+  it('redirects the legacy /coach route to the workspace resume room', async () => {
     render(
       <MemoryRouter initialEntries={['/coach']}>
         <App />
       </MemoryRouter>,
     );
 
-    expect((await screen.findAllByText('Resume V2 Screen')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Workspace room: resume')).length).toBeGreaterThan(0);
   });
 
   it('routes legacy tool detail pages back to workspace home', async () => {

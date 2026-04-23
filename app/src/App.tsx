@@ -8,7 +8,6 @@ import { useSession } from '@/hooks/useSession';
 import { useAgent } from '@/hooks/useAgent';
 import { Header } from '@/components/Header';
 import { AuthGate } from '@/components/AuthGate';
-import { CoachScreen } from '@/components/CoachScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { SalesPage } from '@/components/SalesPage';
 import { SettingsPage } from '@/components/SettingsPage';
@@ -183,12 +182,6 @@ export default function App() {
     }
   }, [isPipelineGateActive]);
 
-  useEffect(() => {
-    if (location.pathname !== '/coach') return;
-    if (currentSession?.product_type !== 'resume_v2') return;
-    navigate(buildResumeBuilderSessionRoute({ sessionId: currentSession.id }), { replace: true });
-  }, [currentSession, location.pathname, navigate]);
-
   const intakeInitialJobUrl = useMemo(() => {
     if (location.pathname !== RESUME_BUILDER_SESSION_ROUTE) return '';
     return new URLSearchParams(location.search).get('jobUrl')?.trim() ?? '';
@@ -256,22 +249,10 @@ export default function App() {
   }, [getDefaultResume, listResumes, navigate]);
 
   const handleResumeSession = useCallback(
-    async (sessionId: string) => {
-      const targetSession = sessions.find((session) => session.id === sessionId);
-      if (targetSession?.product_type === 'resume_v2') {
-        navigate(buildResumeBuilderSessionRoute({ sessionId }));
-        return;
-      }
-
-      const loadedSession = await loadSession(sessionId);
-      if (loadedSession?.product_type === 'resume_v2') {
-        navigate(buildResumeBuilderSessionRoute({ sessionId }));
-        return;
-      }
-
-      navigate('/coach');
+    (sessionId: string) => {
+      navigate(buildResumeBuilderSessionRoute({ sessionId }));
     },
-    [loadSession, navigate, sessions],
+    [navigate],
   );
 
   const handleDeleteSession = useCallback(
@@ -526,7 +507,7 @@ export default function App() {
     const legalPath = location.pathname === '/terms' || location.pathname === '/privacy' || location.pathname === '/contact';
     const isResetPasswordPath = location.pathname === '/reset-password';
     const knownUnauthPaths = [
-      '/', '/sales', '/workspace', '/billing', '/pricing', '/coach',
+      '/', '/sales', '/workspace', '/billing', '/pricing',
       '/profile-setup', '/discover', '/resume-builder', '/affiliate', '/admin',
     ];
     const isKnownPath = knownUnauthPaths.some(
@@ -596,9 +577,9 @@ export default function App() {
               displayName={displayName}
               onSignOut={handleSignOut}
               onUpdateProfile={updateProfile}
-              pipelineStage={currentView === 'coach' ? (pipelineStage ?? currentPhase) : null}
-              isProcessing={currentView === 'coach' ? isProcessing : false}
-              sessionComplete={currentView === 'coach' ? (sessionComplete ?? false) : false}
+              pipelineStage={null}
+              isProcessing={false}
+              sessionComplete={false}
               onNavigate={navigateTo}
               onReplayTour={currentView === 'workspace' ? handleTourReplay : undefined}
             />
@@ -637,55 +618,7 @@ export default function App() {
               <Route path="/app" element={<Navigate to="/workspace" replace />} />
               <Route path="/career-iq" element={<Navigate to={getWorkspaceEntryRedirect(location.search)} replace />} />
               <Route path="/dashboard" element={<Navigate to="/workspace" replace />} />
-              <Route
-                path="/coach"
-                element={currentSession ? (
-                  currentView === 'coach' && !connected && !sessionComplete && !agentError && !hasLiveWorkspaceState ? (
-                    <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="h-8 w-8 rounded-full border-2 border-[var(--line-soft)] border-t-[#afc4ff] motion-safe:animate-spin" />
-                        <span className="text-sm text-[var(--text-soft)]">Connecting to session...</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <CoachScreen
-                      sessionId={currentSession.id}
-                      accessToken={accessToken}
-                      messages={messages}
-                      streamingText={streamingText}
-                      tools={tools}
-                      askPrompt={askPrompt}
-                      phaseGate={phaseGate}
-                      currentPhase={pipelineStage ?? currentPhase}
-                      isProcessing={isProcessing}
-                      connected={connected}
-                      lastBackendActivityAt={lastBackendActivityAt}
-                      stalledSuspected={stalledSuspected}
-                      sessionComplete={sessionComplete}
-                      resume={resume}
-                      panelType={panelType}
-                      panelData={panelData}
-                      error={agentError ?? sessionError}
-                      onSendMessage={handleSendMessage}
-                      isPipelineGateActive={isPipelineGateActive}
-                      onPipelineRespond={handlePipelineRespond}
-                      positioningProfileFound={positioningProfileFound}
-                      onSaveCurrentResumeAsBase={handleSaveCurrentResumeAsBase}
-                      approvedSections={approvedSections}
-                      sectionDrafts={sectionDrafts}
-                      sectionBuildOrder={sectionBuildOrder}
-                      onDismissSuggestion={dismissSuggestion}
-                      onLocalSectionEdit={updateSectionLocally}
-                      liveDraftReadiness={draftReadiness}
-                      liveWorkflowReplan={workflowReplan}
-                      pipelineActivity={pipelineActivity}
-                      onReconnectStream={reconnectStreamNow}
-                    />
-                  )
-                ) : (
-                  <Navigate to="/workspace?room=resume" replace />
-                )}
-              />
+              <Route path="/coach" element={<Navigate to={buildResumeWorkspaceRoute()} replace />} />
               <Route path="/resume-builder" element={<Navigate to={buildResumeWorkspaceRoute()} replace />} />
               {/* v3 cutover phase F: resume-builder serves v3.
                   v2 pipeline source is at tag v2-final-2026-04-19; see

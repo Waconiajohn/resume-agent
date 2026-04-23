@@ -3,7 +3,6 @@ import { getLegacyWorkspaceAliasConfig } from './workspace-legacy-aliases';
 export type AppView =
   | 'sales'
   | 'workspace'
-  | 'coach'
   | 'resume-v2'
   | 'pricing'
   | 'billing'
@@ -132,7 +131,6 @@ export function getApplicationToolFromPathname(
 
 export function getAppView(pathname: string): AppView {
   if (pathname === '/' || pathname === '/sales') return 'sales';
-  if (pathname === '/coach') return 'coach';
   if (pathname === RESUME_BUILDER_SESSION_ROUTE) return 'resume-v2';
   if (pathname === '/pricing') return 'pricing';
   if (pathname === '/billing') return 'billing';
@@ -179,7 +177,6 @@ export function resolveNavigationTarget(viewName: string): string {
 
   const pathByView: Record<string, string> = {
     workspace: buildWorkspaceRoute(),
-    coach: '/coach',
     'resume-v2': RESUME_BUILDER_SESSION_ROUTE,
     pricing: '/pricing',
     billing: '/billing',

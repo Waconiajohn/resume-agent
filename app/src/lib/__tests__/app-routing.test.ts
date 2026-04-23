@@ -16,7 +16,7 @@ describe('app-routing', () => {
     expect(getAppView('/workspace')).toBe('workspace');
     expect(getAppView('/tools/linkedin')).toBe('workspace');
     expect(getAppView('/resume-builder/session')).toBe('resume-v2');
-    expect(getAppView('/coach')).toBe('coach');
+    expect(getAppView('/coach')).toBe('workspace');
     expect(getAppView('/')).toBe('sales');
   });
 
