@@ -563,7 +563,7 @@ export function LMSRoom({ onNavigateRoom, agentDataSources = {} }: LMSRoomProps)
         <div className="px-5 pt-5 pb-4 border-b border-[var(--line-soft)]">
           <div className="flex items-center gap-2 text-[14px] font-bold">
             <GraduationCap size={18} className="text-[var(--accent)]" />
-            <span className="text-[var(--text-strong)]">Learning</span>
+            <span className="text-[var(--text-strong)]">Masterclass</span>
           </div>
         </div>
 

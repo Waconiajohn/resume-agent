@@ -544,7 +544,7 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
           <Mic size={24} className="text-[var(--text-soft)] mx-auto mb-2" />
           <p className="text-[13px] text-[var(--text-soft)]">No interviews scheduled</p>
           <p className="text-[13px] text-[var(--text-soft)] mt-1">
-            Open an application from My Applications, or move a pipeline card into the Interviewing stage.
+            Open an application from My Applications, or move an application into the Interviewing stage.
           </p>
         </div>
       ) : (
@@ -1460,7 +1460,7 @@ export function InterviewLabRoom({
     try {
       const resumeText = await fetchResumeText();
       if (!resumeText || resumeText.length < 50) {
-        setMockInterviewError('Upload a resume first — we need it to run the practice session.');
+        setMockInterviewError('Upload a resume first — we need it to run the mock interview.');
         setMockInterviewLoading(false);
         return;
       }
@@ -1668,7 +1668,7 @@ export function InterviewLabRoom({
                     date: 'TBD',
                     time: 'TBD',
                     type: 'video' as const,
-                    round: 'From pipeline',
+                    round: 'From application',
                     jobApplicationId: card.id,
                   }))
                 : activeCompany && activeRole

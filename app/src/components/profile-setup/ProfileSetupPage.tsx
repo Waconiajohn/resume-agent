@@ -292,11 +292,11 @@ export default function ProfileSetupPage() {
         trackProductEvent('profile_setup_retry_failed', {
           session_id: state.sessionId,
           reason: 'master_resume_not_created',
-          message: 'Master resume creation still needs another retry.',
+          message: 'Career Record creation still needs another retry.',
         });
         dispatch({
           type: 'SET_ERROR',
-          error: 'We saved your profile again, but your master resume still needs another retry.',
+          error: 'We saved your profile again, but your Career Record still needs another retry.',
         });
         return;
       }
@@ -320,11 +320,11 @@ export default function ProfileSetupPage() {
     trackProductEvent('profile_setup_retry_failed', {
       session_id: state.sessionId,
       reason: 'request_failed',
-      message: hookErrorRef.current ?? 'Could not create your master resume yet. Please try again.',
+      message: hookErrorRef.current ?? 'Could not create your Career Record yet. Please try again.',
     });
     dispatch({
       type: 'SET_ERROR',
-      error: hookErrorRef.current ?? 'Could not create your master resume yet. Please try again.',
+      error: hookErrorRef.current ?? 'Could not create your Career Record yet. Please try again.',
     });
   }, [complete, state.masterResumeCreated, state.screen, state.sessionId]);
 

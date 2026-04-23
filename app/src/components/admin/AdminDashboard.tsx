@@ -340,7 +340,7 @@ export function AdminDashboard() {
       <div className="space-y-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
-            label="Total Pipelines"
+            label="Total Resume Runs"
             value={p.completions_total + p.errors_total}
           />
           <StatCard
@@ -599,7 +599,7 @@ export function AdminDashboard() {
             <div className="min-w-0">
               <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider">Profile Setup Recovery</p>
               <p className="text-sm text-[var(--text-muted)] mt-1">
-                Monitor whether reveal-screen retry is being used and whether it actually recovers master-resume creation.
+                Monitor whether reveal-screen retry is being used and whether it actually recovers Career Record creation.
               </p>
             </div>
             <div className="text-right shrink-0">
@@ -622,7 +622,7 @@ export function AdminDashboard() {
             <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
               <p className="text-[11px] uppercase tracking-wider text-[var(--text-soft)]">Succeeded</p>
               <p className="mt-1 text-lg font-semibold text-[var(--badge-green-text)]">{retryRecovery.succeeded}</p>
-              <p className="text-xs text-[var(--text-soft)]">master resume recovered</p>
+              <p className="text-xs text-[var(--text-soft)]">Career Record recovered</p>
             </div>
             <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
               <p className="text-[11px] uppercase tracking-wider text-[var(--text-soft)]">Still Failing</p>

@@ -663,7 +663,7 @@ export function ExecutiveBioRoom() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-[12px] text-[var(--badge-amber-text)]/70 mb-1">
               <AlertCircle size={12} />
-              No master resume found — paste below
+              No Career Record found — paste below
             </div>
             <textarea
               value={resumeText}

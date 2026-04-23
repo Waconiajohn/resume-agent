@@ -214,8 +214,8 @@ export function MasterResumeTab({
   if (!resumeLoading && !resume) {
     return (
       <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-6 py-12 text-center">
-        <p className="text-sm text-[var(--text-soft)]">No master resume found.</p>
-        <p className="mt-1 text-xs text-[var(--text-soft)]">Complete a session and save your resume to get started.</p>
+        <p className="text-sm text-[var(--text-soft)]">No Career Record found.</p>
+        <p className="mt-1 text-xs text-[var(--text-soft)]">Complete an application and save your resume to get started.</p>
       </div>
     );
   }

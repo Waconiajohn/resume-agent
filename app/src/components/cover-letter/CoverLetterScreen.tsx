@@ -381,7 +381,7 @@ export function CoverLetterScreen({
         const sessionData = await sessionRes.json();
         const sessionId = sessionData.session?.id as string;
         if (!sessionId) {
-          setIntakeError('Failed to create session');
+          setIntakeError('Failed to create cover letter');
           setIntakeLoading(false);
           return;
         }
@@ -430,7 +430,7 @@ export function CoverLetterScreen({
     } catch { /* ignore */ }
   }, [letterDraft]);
 
-  const resolvedBackLabel = backLabel ?? (embedded ? 'Back to Resume Builder' : 'Back to Tools');
+  const resolvedBackLabel = backLabel ?? (embedded ? 'Back to Application' : 'Back to Home');
   const outerClassName = embedded ? '' : 'h-[calc(100vh-3.5rem)] overflow-y-auto';
 
   // ─── Intake Phase ────────────────────────────────────────────────
@@ -602,7 +602,7 @@ export function CoverLetterScreen({
               <span className="text-sm font-medium text-[var(--badge-amber-text)]">Cover letter not received</span>
             </div>
             <p className="mb-4 text-xs text-[var(--text-soft)]">
-              The pipeline completed but no cover letter draft was returned. Please try again.
+              The run completed but no cover letter draft was returned. Please try again.
             </p>
             <GlassButton variant="ghost" onClick={handleRetry}>
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" />

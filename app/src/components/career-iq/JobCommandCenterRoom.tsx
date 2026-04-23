@@ -425,7 +425,7 @@ const JCC_TABS: Array<{
   icon: React.ComponentType<{ size: number; className?: string }>;
 }> = [
   { id: 'board', label: 'Job Board', icon: Search },
-  { id: 'pipeline', label: 'Pipeline', icon: Briefcase },
+  { id: 'pipeline', label: 'Board', icon: Briefcase },
 ];
 
 // --- Main component ---
@@ -621,9 +621,9 @@ export function JobCommandCenterRoom({
       <div className="room-header">
         <div className="room-header-copy">
           <div className="eyebrow-label">Job Search</div>
-          <h1 className="room-title">One job board, one shortlist, one pipeline</h1>
+          <h1 className="room-title">One job board, one shortlist, one board for your applications</h1>
           <p className="room-subtitle">
-            Search public jobs here, save the best few to your shortlist, and work the real opportunities in Pipeline. The first-degree-connection company scans stay separate in Smart Referrals.
+            Search public jobs here, save the best few to your shortlist, and work the real opportunities on the Board. The first-degree-connection company scans stay separate in Smart Referrals.
           </p>
         </div>
       </div>

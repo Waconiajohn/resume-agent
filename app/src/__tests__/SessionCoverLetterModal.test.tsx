@@ -65,7 +65,7 @@ describe('SessionCoverLetterModal', () => {
     });
     render(<SessionCoverLetterModal {...props} />);
     await waitFor(() => {
-      expect(screen.getByText(/no saved cover letter was found for this session/i)).toBeTruthy();
+      expect(screen.getByText(/no saved cover letter was found for this application/i)).toBeTruthy();
     });
   });
 

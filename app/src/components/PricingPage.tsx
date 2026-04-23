@@ -23,7 +23,7 @@ const PLANS: PricingPlan[] = [
     included_sessions: 3,
     max_sessions_per_month: 3,
     features: [
-      '3 resume pipeline runs / month',
+      '3 Resume Runs / month',
       'Full 3-agent workflow',
       'PDF & DOCX export',
       'ATS compliance check',
@@ -38,7 +38,7 @@ const PLANS: PricingPlan[] = [
     included_sessions: 15,
     max_sessions_per_month: 50,
     features: [
-      '15 pipeline runs / month',
+      '15 Resume Runs / month',
       'Up to 50 total runs',
       'Full 3-agent workflow',
       'PDF & DOCX export',
@@ -55,7 +55,7 @@ const PLANS: PricingPlan[] = [
     included_sessions: 50,
     max_sessions_per_month: 200,
     features: [
-      '50 pipeline runs / month',
+      '50 Resume Runs / month',
       'Up to 200 total runs',
       'Full 3-agent workflow',
       'PDF & DOCX export',
@@ -81,7 +81,7 @@ interface ComparisonRow {
 }
 
 const COMPARISON_ROWS: ComparisonRow[] = [
-  { feature: 'Resume pipeline runs / month', free: '3', starter: '15', pro: '50' },
+  { feature: 'Resume Runs / month', free: '3', starter: '15', pro: '50' },
   { feature: 'Maximum runs with overage', free: '3', starter: '50', pro: '200' },
   { feature: 'Full 3-agent workflow', free: true, starter: true, pro: true },
   { feature: 'PDF + DOCX export', free: true, starter: true, pro: true },
@@ -95,7 +95,7 @@ const COMPARISON_ROWS: ComparisonRow[] = [
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
-    q: 'What counts as a pipeline run?',
+    q: 'What counts as a Resume Run?',
     a: 'Each completed resume generation — resume + job description → tailored resume — counts as one run. Revisions to the same resume do not consume a new run.',
   },
   {

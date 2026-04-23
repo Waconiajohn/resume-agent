@@ -437,7 +437,7 @@ export function MockInterviewView({
           </button>
           <span className="text-[var(--text-soft)]">/</span>
           <span className="text-[13px] text-[var(--text-soft)]">
-            {mode === 'practice' ? 'Practice Session' : 'Mock Interview'} — Complete
+            Mock Interview — Complete
           </span>
         </div>
 
@@ -469,7 +469,7 @@ export function MockInterviewView({
           <div className="flex items-start gap-3 mb-4">
             <AlertCircle size={18} className="text-[var(--badge-red-text)] flex-shrink-0 mt-0.5" />
             <div>
-              <div className="text-[14px] font-medium text-[var(--badge-red-text)] mb-1">Session Error</div>
+              <div className="text-[14px] font-medium text-[var(--badge-red-text)] mb-1">Mock Interview Error</div>
               <p className="text-[13px] text-[var(--text-soft)]">{error}</p>
             </div>
           </div>
@@ -494,10 +494,10 @@ export function MockInterviewView({
       <div className="flex flex-col gap-6 p-6 max-w-[1400px] mx-auto">
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold text-[var(--text-strong)]">
-            {mode === 'practice' ? 'Practice Session' : 'Mock Interview'}
+            Mock Interview
           </h1>
           <p className="text-[13px] text-[var(--text-soft)]">
-            {companyName ? `Preparing for ${companyName}...` : 'Setting up your interview session...'}
+            {companyName ? `Preparing for ${companyName}...` : 'Setting up your mock interview...'}
           </p>
         </div>
 
@@ -524,7 +524,7 @@ export function MockInterviewView({
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-0.5">
           <h1 className="text-lg font-semibold text-[var(--text-strong)]">
-            {mode === 'practice' ? 'Practice Session' : 'Mock Interview'}
+            Mock Interview
           </h1>
           {companyName && (
             <p className="text-[13px] text-[var(--text-soft)]">{companyName}</p>

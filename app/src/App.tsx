@@ -359,7 +359,7 @@ export default function App() {
         if (!updated) {
           return {
             success: false,
-            message: 'Failed to update your master resume.',
+            message: 'Failed to update your Career Record.',
           };
         }
 
@@ -371,8 +371,8 @@ export default function App() {
           success: true,
           resumeId: updated.id,
           message: selectedPromotionItems.length > 0 || clarificationMemory.length > 0
-            ? `Synced your selected edits${clarificationMemory.length > 0 ? ' and clarification evidence' : ''} to your master resume.`
-            : 'Master resume updated.',
+            ? `Synced your selected edits${clarificationMemory.length > 0 ? ' and clarification evidence' : ''} to your Career Record.`
+            : 'Career Record updated.',
         };
       }
 
@@ -383,7 +383,7 @@ export default function App() {
       if (!created.success) {
         return {
           success: false,
-          message: created.error ?? 'Failed to create a master resume.',
+          message: created.error ?? 'Failed to create a Career Record.',
         };
       }
 
@@ -410,7 +410,7 @@ export default function App() {
       return {
         success: true,
         resumeId: createdResumeId ?? undefined,
-        message: 'Created your default master resume.',
+        message: 'Created your default Career Record.',
       };
     },
     [

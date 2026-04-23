@@ -39,7 +39,7 @@ const ROOM_GROUPS: RoomGroup[] = [
     label: 'Core Tools',
     rooms: [
       { id: 'dashboard', label: 'Home', icon: LayoutDashboard, description: 'Your daily workspace view', gated: false },
-      { id: 'career-profile', label: 'Your Profile', icon: User, description: 'Your resume, story, and evidence in one place', gated: false },
+      { id: 'career-profile', label: 'Career Vault', icon: User, description: 'Your positioning, career record, and LinkedIn brand in one place', gated: false },
       { id: 'jobs', label: 'Job Search', icon: Search, description: 'Search, pipeline, and next moves', gated: false },
       { id: 'resume', label: 'Resume Builder', icon: FileText, description: 'Build, review, and save role-specific resumes', gated: false },
     ],
@@ -55,7 +55,7 @@ const ROOM_GROUPS: RoomGroup[] = [
   {
     label: 'Resources',
     rooms: [
-      { id: 'learning', label: 'Learning', icon: GraduationCap, description: '8 courses personalized with your data', gated: false },
+      { id: 'learning', label: 'Masterclass', icon: GraduationCap, description: 'Career-building courses personalized with your data', gated: false },
       { id: 'executive-bio', label: 'Executive Bio', icon: BookOpen, description: 'Long-form bio for speaking bios, about pages, and board intros', gated: false },
     ],
   },

@@ -89,7 +89,7 @@ export function ResumeWorkshopRoom({
       ? `Knowledge base v${v3Master.summary.version} · ${v3Master.summary.positionCount ?? 0} positions`
       : v3Master.loading
         ? 'Loading…'
-        : 'No default master resume yet';
+        : 'No default Career Record yet';
   const tailoredCount = sessions.filter((session) => {
     const type = session.product_type ?? 'resume';
     return type === 'resume' || type === 'resume_v2' || type === 'cover_letter';
@@ -145,7 +145,7 @@ export function ResumeWorkshopRoom({
             <div className="eyebrow-label">Resume Builder</div>
             <h1 className="room-title">Choose the resume tool you need right now</h1>
             <p className="room-subtitle">
-              Start a new role-specific resume, open your master resume, write a cover letter, or review saved job workspaces. The landing view should help you choose, not dump you into a table.
+              Start a new role-specific resume, open your Career Record, write a cover letter, or review saved job workspaces. The landing view should help you choose, not dump you into a table.
             </p>
             <div className="room-meta-strip mt-5">
               <div className="room-meta-item">
@@ -153,7 +153,7 @@ export function ResumeWorkshopRoom({
                 <strong>{tailoredCount}</strong>
               </div>
               <div className="room-meta-item">
-                Master Resume
+                Career Record
                 <strong>{masterLabel}</strong>
               </div>
             </div>
@@ -176,11 +176,11 @@ export function ResumeWorkshopRoom({
           />
           <ResumeToolCard
             eyebrow="Reusable Base"
-            title="Master Resume"
-            description="Maintain the long-term source resume you promote strong edits into after a role-specific run proves worth keeping."
+            title="Career Record"
+            description="Maintain the long-term source document you promote strong edits into after a role-specific run proves worth keeping."
             meta={masterDetail}
             icon={LibraryBig}
-            actionLabel="Open Master Resume"
+            actionLabel="Open Career Record"
             onAction={openMasterResume}
           />
           <ResumeToolCard
@@ -276,9 +276,9 @@ export function ResumeWorkshopRoom({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-3xl">
                 <div className="eyebrow-label">
-                  Master Resume
+                  Career Record
                 </div>
-                <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Keep your long-term resume clean, current, and reusable</h2>
+                <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Keep your long-term Career Record clean, current, and reusable</h2>
                 <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
                   Use this as the durable base you promote strong edits into after job-specific work proves worth keeping.
                 </p>

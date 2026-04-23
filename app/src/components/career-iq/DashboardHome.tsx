@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { ZoneYourPipeline, type PipelineCard } from './ZoneYourPipeline';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import type { CareerIQRoom } from './Sidebar';
@@ -24,8 +23,8 @@ interface DashboardHomeProps {
   hasResumeSessions?: boolean;
   /**
    * Sprint E3 — true when the user has a v3 knowledge base or any legacy
-   * master resume. Softens the dashboard hero for returning users who
-   * haven't yet completed the Why Me positioning interview.
+   * Career Record. Softens the dashboard hero for returning users who
+   * haven't yet completed the Why-Me positioning interview.
    */
   hasMasterResume?: boolean;
   sessionCount?: number;
@@ -34,8 +33,6 @@ interface DashboardHomeProps {
   nudges?: CoachingNudge[];
   onDismissNudge?: (nudgeId: string) => void;
   coachRecommendation?: CoachRecommendation | null;
-  onInterviewPrepClick?: (card: PipelineCard) => void;
-  onNegotiationPrepClick?: (card: PipelineCard) => void;
   onNavigateRoute?: (route: string) => void;
 }
 
@@ -60,7 +57,7 @@ function ContinueCard({
   onResume: (id: string) => void;
   onNavigateRoom?: (room: CareerIQRoom) => void;
 }) {
-  const title = [session.job_title, session.company_name].filter(Boolean).join(' at ') || 'Resume session';
+  const title = [session.job_title, session.company_name].filter(Boolean).join(' at ') || 'Resume draft';
   return (
     <GlassCard className="flex items-center justify-between gap-4 p-4 sm:p-5">
       <div className="min-w-0">
@@ -206,8 +203,6 @@ export function DashboardHome({
   nudges: _nudges = [],
   onDismissNudge: _onDismissNudge,
   coachRecommendation,
-  onInterviewPrepClick,
-  onNegotiationPrepClick,
   onNavigateRoute,
 }: DashboardHomeProps) {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>(loadDismissed);
@@ -216,8 +211,6 @@ export function DashboardHome({
     setDismissed(updated);
     saveDismissed(updated);
   };
-
-  const isNewUser = dashboardState === 'new-user';
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 p-6">
@@ -234,14 +227,6 @@ export function DashboardHome({
         onRefineWhyMe={onRefineWhyMe}
         onNavigateRoute={onNavigateRoute}
       />
-
-      {!isNewUser && (
-        <ZoneYourPipeline
-          onNavigateRoom={onNavigateRoom}
-          onInterviewPrepClick={onInterviewPrepClick}
-          onNegotiationPrepClick={onNegotiationPrepClick}
-        />
-      )}
     </div>
   );
 }

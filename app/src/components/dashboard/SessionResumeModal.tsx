@@ -111,7 +111,7 @@ export function SessionResumeModal({ sessionId, onClose, onGetSessionResume }: S
           )}
 
           {!loading && !error && !resume && (
-            <p className="py-8 text-center text-sm text-[var(--text-soft)]">No saved resume was found for this session.</p>
+            <p className="py-8 text-center text-sm text-[var(--text-soft)]">No saved resume was found for this application.</p>
           )}
 
           {!loading && !error && resume && (

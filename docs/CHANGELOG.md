@@ -1,5 +1,32 @@
 # Changelog — Resume Agent
 
+## 2026-04-23 — Phase 1.1 terminology cleanup per product model
+**Sprint:** Product restructure Phase 1 | **Story:** Phase 1.1 — terminology audit and replacement
+**Summary:** Audited the codebase for UI-facing strings using deprecated terms and replaced them per the approved terminology table in the Phase 1 handoff. No structural changes — text only. Also deleted `ZoneYourPipeline` / `ZoneYourSignals` (superseded by the new Home spec) and disabled `OnboardingTour` pending the Phase 4 auto-populate onboarding.
+
+### Changes Made
+- **Terminology renames across ~52 files** — `master resume` → `Career Record`; `Your Profile` label → `Career Vault`; `Pipeline` (kanban/tab/headings) → `Board` / `Stages` / `Applications` per context; `Learning` → `Masterclass`; `Why Me` → `Why-Me`; `pipeline run` (billing) → `Resume Run`; `Practice Session` → `Mock Interview` (interview context) / `Negotiation Practice` (salary context); `Weekly Live Sessions` → `Live Webinars`; `"this session"` → `"this application"` / `"this run"` per context; `"Back to Resume Builder"` → context-aware (`Back to Application` when embedded, `Back to Home` otherwise); `Total Pipelines` admin metric → `Total Resume Runs`.
+- **Sidebar description** — dropped the hard-coded "8 courses" number; now "Career-building courses personalized with your data".
+- **Kanban collision fix** — JobCommandCenter's kanban tab is `Board`, the board heading is `Stages`, and `Pipeline Summary` became `Stage Summary`. The sidebar item stays `Applications` for per-job pursuits (no clash).
+- **Consistency catch** — `workspaceHomeGuidance` hero CTA updated from `Open Your Profile` to `Open Career Vault` so the button label matches its destination.
+- **Deleted:** `app/src/components/career-iq/ZoneYourPipeline.tsx` and `app/src/components/career-iq/ZoneYourSignals.tsx` (superseded by the new Home spec).
+- **Disabled:** `app/src/components/OnboardingTour.tsx` — component now returns `null`; tour data preserved for Phase 4 revival. The corresponding test describe block is `.skip`-ped.
+- **Tests updated** to match renamed UI copy: `SessionCoverLetterModal.test.tsx`, `SessionResumeModal.test.tsx`, `career-iq/CareerIQComponents.test.tsx`, `career-iq/Sprint4Rooms.test.tsx`, `dashboard/MasterResumeTab.test.tsx`, `dashboard/EvidenceLibraryTab.test.tsx`, `admin/AdminDashboard.test.tsx`, `job-command-center/BooleanSearchPanel.test.tsx`, `profile-setup/ProfileReveal.test.tsx`.
+
+### Decisions Made
+- **URL slugs untouched** per Phase 1 handoff — `?focus=master-resume`, `?room=career-profile`, `?room=learning`, `/resume-builder/session`, etc. all stay.
+- **Backend code paths untouched** — DB table `master_resumes`, hook names like `useSession`, type names like `PipelineState`, SSE event types, component file names — all kept as internal.
+- **YourProfilePage structure preserved** — only the h1/section headings/JSDoc were renamed. Three-section Career Vault restructure is Phase 3.
+- **Executive Bio, Resume Builder, Interview Prep, Networking sidebar labels kept as-is** — those are Phase 1.2 sidebar restructure concerns.
+- **Admin "Platform analytics and session management" copy kept** — admin surface; internal "session" usage.
+
+### Known Issues
+- Course count discrepancy: product spec says 46 courses; code's `COURSE_CONFIGS` has 8. Dropped the hard-coded number from the sidebar description rather than commit either number.
+- None introduced. App tests: 1998 pass / 10 fail / 10 skipped (6 new `.skip` from OnboardingTour). Pre-existing failures unchanged.
+
+### Next Steps
+- Phase 1.2: sidebar restructure to the final 6-item form per the handoff (Home · Career Vault · Job Search · Applications · Live Webinars · Masterclass). Do not start without explicit go-ahead.
+
 ## 2026-04-22 — Workspace UX cleanup: promote Career Vault + Job Search to Core Tools
 **Sprint:** LMS + CareerIQ Integration + LinkedIn 360Brew Update | **Story:** Out-of-sprint UX cleanup
 **Summary:** Sidebar restructured to a flat list with Your Profile + Job Search at the top. StepCards component removed from DashboardHome (was duplicating sidebar entries with mismatched labels). Career Assessment bottom-of-sidebar button removed (redundant with the new-user hero CTA and the existing "Re-run Career Assessment" button inside YourProfilePage). workspaceHomeGuidance hero CTA label aligned with the sidebar it points to ("Refine positioning" → "Open Your Profile").

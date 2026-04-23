@@ -17,7 +17,6 @@ import { supabase } from '@/lib/supabase';
 import { hydrateV2SessionLoad, type LoadSessionResponseBody } from '@/lib/resume-v2-session-load';
 import type { AgentDataSources } from '@/lib/lms-injection-mapper';
 import type { PipelineInterviewCard } from './InterviewLabRoom';
-import type { PipelineCard } from './ZoneYourPipeline';
 import type { RealFeedEvent } from './ZoneAgentFeed';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
@@ -34,14 +33,14 @@ const ExecutiveBioRoom = lazy(() => import('./ExecutiveBioRoom').then((module) =
 
 const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   dashboard: 'Workspace Home',
-  'career-profile': 'Your Profile',
+  'career-profile': 'Career Vault',
   resume: 'Resume Builder',
   linkedin: 'LinkedIn',
   jobs: 'Job Search',
   networking: 'Networking',
   interview: 'Interview Prep',
   financial: 'Retirement Bridge',
-  learning: 'Learning',
+  learning: 'Masterclass',
   'executive-bio': 'Executive Bio',
 };
 
@@ -330,26 +329,6 @@ export function CareerIQScreen({
     onNavigate(resolvedRoom === 'dashboard' ? '/workspace' : `/workspace?room=${resolvedRoom}`);
   };
 
-  const handleInterviewPrepClick = (card: PipelineCard) => {
-    setPipelineInterviews((current) => {
-      if (current.some((item) => item.id === card.id)) return current;
-      return [{ id: card.id, company: card.company, role: card.role }, ...current];
-    });
-    handleRoomNavigate('interview');
-  };
-
-  const handleNegotiationPrepClick = (card: PipelineCard) => {
-    const params = new URLSearchParams({
-      room: 'interview',
-      focus: 'negotiation',
-      company: card.company,
-      role: card.role,
-      job: card.id,
-    });
-    refreshCoachRec();
-    onNavigate(`/workspace?${params.toString()}`);
-  };
-
   const handleTourMount = useCallback(
     (replayFn: () => void) => {
       onRegisterTourReplay?.(replayFn);
@@ -381,8 +360,6 @@ export function CareerIQScreen({
           nudges={nudges}
           onDismissNudge={dismissNudge}
           coachRecommendation={coachRec}
-          onInterviewPrepClick={handleInterviewPrepClick}
-          onNegotiationPrepClick={handleNegotiationPrepClick}
           onNavigateRoute={onNavigate}
         />
       );

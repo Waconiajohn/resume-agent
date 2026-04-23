@@ -228,7 +228,7 @@ const MOBILE_TABS: { id: CareerIQRoom; label: string; icon: typeof Home }[] = [
   { id: 'dashboard', label: 'Home', icon: Home },
   { id: 'career-profile', label: 'Profile', icon: Sparkles },
   { id: 'resume', label: 'Resume', icon: User },
-  { id: 'jobs', label: 'Pipeline', icon: Columns3 },
+  { id: 'jobs', label: 'Board', icon: Columns3 },
   { id: 'interview', label: 'Interview', icon: Activity },
 ];
 

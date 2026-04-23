@@ -141,7 +141,7 @@ export function InterviewView({
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto pb-48">
         <div className="max-w-2xl mx-auto px-8 py-16">
-          {/* Why Me Draft — compact context card */}
+          {/* Why-Me Draft — compact context card */}
           <div
             className="mb-10 rounded-lg px-4 py-3"
             style={{ background: 'var(--surface-1)', border: '1px solid var(--line-soft)' }}

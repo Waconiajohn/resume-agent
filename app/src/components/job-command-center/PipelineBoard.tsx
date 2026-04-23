@@ -71,7 +71,7 @@ export function PipelineBoard({
     <GlassCard className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Briefcase size={18} className="text-[var(--link)]" />
-        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Application Pipeline</h3>
+        <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Stages</h3>
         {loading && <Loader2 size={14} className="text-[var(--link)] animate-spin ml-1" />}
         {onAddApplication && (
           <button

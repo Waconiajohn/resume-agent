@@ -71,7 +71,7 @@ describe('SessionResumeModal', () => {
     render(<SessionResumeModal {...makeProps({ onGetSessionResume: mockFn(() => Promise.resolve(null)) })} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/no saved resume was found for this session/i)).toBeTruthy();
+      expect(screen.getByText(/no saved resume was found for this application/i)).toBeTruthy();
     });
   });
 

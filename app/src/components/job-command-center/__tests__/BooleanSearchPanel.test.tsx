@@ -49,7 +49,7 @@ describe('BooleanSearchPanel', () => {
       />,
     );
 
-    expect(screen.getByText(/Save a master resume first/i)).toBeInTheDocument();
+    expect(screen.getByText(/Save a Career Record first/i)).toBeInTheDocument();
   });
 
   it('calls the boolean-search route and renders copy-ready strings', async () => {

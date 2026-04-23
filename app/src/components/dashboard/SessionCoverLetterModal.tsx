@@ -131,7 +131,7 @@ export function SessionCoverLetterModal({
           )}
 
           {!loading && !error && !letter && (
-            <p className="py-8 text-center text-sm text-[var(--text-soft)]">No saved cover letter was found for this session.</p>
+            <p className="py-8 text-center text-sm text-[var(--text-soft)]">No saved cover letter was found for this application.</p>
           )}
 
           {!loading && !error && letter && (

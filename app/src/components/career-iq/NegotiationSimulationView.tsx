@@ -591,7 +591,7 @@ export function NegotiationSimulationView({
           </div>
 
           <GlassButton variant="primary" onClick={handleStart} className="w-full justify-center">
-            Start Practice Session
+            Start Negotiation Practice
           </GlassButton>
         </GlassCard>
       </div>

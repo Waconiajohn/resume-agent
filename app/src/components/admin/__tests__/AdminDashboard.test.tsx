@@ -106,14 +106,14 @@ describe('AdminDashboard', () => {
 
     render(<AdminDashboard />);
 
-    expect(await screen.findByText('Total Pipelines')).toBeInTheDocument();
+    expect(await screen.findByText('Total Resume Runs')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Funnel' }));
 
     expect(await screen.findByText('Profile Setup Recovery')).toBeInTheDocument();
     expect(screen.getByText('Attention Right Now')).toBeInTheDocument();
     expect(screen.getAllByText('Profile Setup Retry Success').length).toBeGreaterThan(0);
-    expect(screen.getByText('Monitor whether reveal-screen retry is being used and whether it actually recovers master-resume creation.')).toBeInTheDocument();
+    expect(screen.getByText('Monitor whether reveal-screen retry is being used and whether it actually recovers Career Record creation.')).toBeInTheDocument();
     expect(screen.getByText('Retry request failures: 1')).toBeInTheDocument();
     expect(screen.getByText('Needed again after retry: 1')).toBeInTheDocument();
     expect(screen.getByText('Total failed retry attempts: 2')).toBeInTheDocument();

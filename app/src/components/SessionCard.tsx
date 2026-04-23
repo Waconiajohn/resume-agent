@@ -43,7 +43,7 @@ export function SessionCard({ session, onClick, onDelete, deleteDisabled = false
                 }}
                 disabled={deleteDisabled}
                 className="inline-flex items-center justify-center rounded-md p-1.5 text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)] hover:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Delete session"
+                aria-label="Delete application"
               >
                 <Trash2 className="h-4 w-4" />
               </button>

@@ -70,7 +70,7 @@ describe('ProfileReveal', () => {
     vi.clearAllMocks();
   });
 
-  it('shows a retry affordance when the master resume was not created', () => {
+  it('shows a retry affordance when the Career Record was not created', () => {
     const onRetry = vi.fn();
 
     render(
@@ -81,12 +81,12 @@ describe('ProfileReveal', () => {
       />,
     );
 
-    expect(screen.getByText(/your profile is saved, but your first master resume still needs one more step/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /retry creating my master resume/i }));
+    expect(screen.getByText(/your profile is saved, but your first career record still needs one more step/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /retry creating my career record/i }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it('hides the retry affordance once the master resume exists', () => {
+  it('hides the retry affordance once the Career Record exists', () => {
     render(
       <ProfileReveal
         profile={makeProfile()}
@@ -94,10 +94,10 @@ describe('ProfileReveal', () => {
       />,
     );
 
-    expect(screen.queryByRole('button', { name: /retry creating my master resume/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /retry creating my career record/i })).not.toBeInTheDocument();
   });
 
-  it('shows a success confirmation once the master resume retry succeeds', () => {
+  it('shows a success confirmation once the Career Record retry succeeds', () => {
     render(
       <ProfileReveal
         profile={makeProfile()}
@@ -106,7 +106,7 @@ describe('ProfileReveal', () => {
       />,
     );
 
-    expect(screen.getByText(/your master resume is ready now/i)).toBeInTheDocument();
+    expect(screen.getByText(/your career record is ready now/i)).toBeInTheDocument();
     expect(screen.getByText(/the retry worked/i)).toBeInTheDocument();
   });
 });

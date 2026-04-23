@@ -259,7 +259,7 @@ describe('Sidebar', () => {
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Your Profile')).toBeInTheDocument();
+    expect(screen.getByText('Career Vault')).toBeInTheDocument();
     expect(screen.getByText('Resume Builder')).toBeInTheDocument();
     expect(screen.getByText('LinkedIn')).toBeInTheDocument();
     expect(screen.getByText('Job Search')).toBeInTheDocument();
@@ -274,7 +274,7 @@ describe('Sidebar', () => {
     expect(resumeButton).not.toBeDisabled();
     const homeButton = screen.getByText('Home').closest('button');
     expect(homeButton).not.toBeDisabled();
-    const profileButton = screen.getByText('Your resume, story, and evidence in one place').closest('button');
+    const profileButton = screen.getByText('Your positioning, career record, and LinkedIn brand in one place').closest('button');
     expect(profileButton).not.toBeDisabled();
   });
 

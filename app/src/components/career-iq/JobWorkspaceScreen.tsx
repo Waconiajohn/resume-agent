@@ -5,7 +5,6 @@ import { GlassButton } from '@/components/GlassButton';
 import { SessionResumeModal } from '@/components/dashboard/SessionResumeModal';
 import { SessionCoverLetterModal } from '@/components/dashboard/SessionCoverLetterModal';
 import { JobWorkspaceView } from '@/components/dashboard/JobWorkspaceView';
-import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 import { useApplicationPipeline, type PipelineStage } from '@/hooks/useJobApplications';
 import {
   buildJobRecords,
@@ -85,11 +84,11 @@ export function JobWorkspaceScreen({
           <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Job Workspace</div>
           <h1 className="mt-2 text-xl font-semibold text-[var(--text-strong)]">Workspace not found</h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--text-soft)]">
-            We could not find saved assets linked to this job yet. Open Resume Builder to review recent role-specific work or attach new assets to the application.
+            We could not find saved assets linked to this job yet. Go back to Home to open an application or start a new Resume Run.
           </p>
-          <GlassButton variant="ghost" className="mt-5" onClick={() => onNavigate?.(RESUME_BUILDER_SESSION_ROUTE)}>
+          <GlassButton variant="ghost" className="mt-5" onClick={() => onNavigate?.('/workspace')}>
             <ArrowLeft size={14} className="mr-1.5" />
-            Back to Resume Builder
+            Back to Home
           </GlassButton>
         </GlassCard>
       </div>
@@ -102,11 +101,11 @@ export function JobWorkspaceScreen({
         <div>
           <button
             type="button"
-            onClick={() => onNavigate?.(RESUME_BUILDER_SESSION_ROUTE)}
+            onClick={() => onNavigate?.('/workspace')}
             className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--link)]"
           >
             <ArrowLeft size={14} />
-            Back to Resume Builder
+            Back to Home
           </button>
           <div className="mt-4 text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Job Workspace</div>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--text-strong)]">{record.company}</h1>

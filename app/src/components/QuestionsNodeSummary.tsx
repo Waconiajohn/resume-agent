@@ -255,7 +255,7 @@ export function QuestionsNodeSummary({
           <p className="max-w-xl text-sm text-[var(--text-soft)]">
             {isActiveNode
               ? 'Your coach is working on this step. Results will appear here shortly.'
-              : 'This step hasn\'t been reached yet. Continue your session to see results here.'}
+              : 'This step hasn\'t been reached yet. Continue to see results here.'}
           </p>
         )}
       </GlassCard>

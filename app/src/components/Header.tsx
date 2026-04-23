@@ -293,7 +293,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             <nav className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-5">
               {[
                 { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
-                { id: 'career-profile', label: 'Your Profile', icon: User },
+                { id: 'career-profile', label: 'Career Vault', icon: User },
                 { id: 'resume', label: 'Resume Builder', icon: FileText },
                 { id: 'linkedin', label: 'LinkedIn', icon: Linkedin },
                 { id: 'jobs', label: 'Job Search', icon: Search },

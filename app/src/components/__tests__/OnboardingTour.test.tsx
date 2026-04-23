@@ -67,7 +67,9 @@ function renderTour(onMountReplay = vi.fn()) {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('OnboardingTour', () => {
+// Phase 1.1 — tour is disabled (component returns null) until Phase 4 rebuilds
+// onboarding. Tests preserved but skipped; revive or replace when Phase 4 lands.
+describe.skip('OnboardingTour', () => {
   beforeEach(() => {
     localStorageMock.clear();
     vi.clearAllMocks();

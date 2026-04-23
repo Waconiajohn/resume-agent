@@ -144,7 +144,7 @@ export function WhyMeStoryCard() {
         </div>
         <div>
           <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
-            Your Why Me Story
+            Your Why-Me Story
           </div>
           <h2 className="mt-1 text-sm font-semibold text-[var(--text-strong)]">
             The narrative every tool works from
@@ -190,7 +190,7 @@ export function WhyMeStoryCard() {
         </div>
       </div>
 
-      {/* Section B: Pipeline Narrative (read-only) */}
+      {/* Section B: Career Narrative (read-only) */}
       <div className="mt-6">
         <div className="mb-3 text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
           Your Positioning Narrative
@@ -293,9 +293,9 @@ export function WhyMeStoryCard() {
                 <Sparkles size={14} className="text-[var(--text-soft)]" />
               </div>
               <div>
-                <div className="text-sm font-medium text-[var(--text-soft)]">No pipeline narrative yet</div>
+                <div className="text-sm font-medium text-[var(--text-soft)]">No career narrative yet</div>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--text-soft)]">
-                  Run your first Resume Builder session to save a positioning narrative here — branded title, elevator pitch, and the strongest line to reuse across your tools.
+                  Complete your first Resume Run to save a positioning narrative here — branded title, elevator pitch, and the strongest line to reuse across your tools.
                 </p>
               </div>
             </div>

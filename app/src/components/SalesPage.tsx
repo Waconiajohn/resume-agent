@@ -78,7 +78,7 @@ function Hero() {
           </a>
         </div>
         <p className="mt-5 text-xs text-white/40">
-          No credit card required · 3 free pipeline runs every month
+          No credit card required · 3 free Resume Runs every month
         </p>
       </div>
     </section>

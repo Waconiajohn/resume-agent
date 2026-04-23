@@ -8,8 +8,8 @@
  * Replay: exposed via `onReplay` callback and triggered by the Header Help button.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Joyride, type EventData, STATUS } from 'react-joyride';
+// Tour disabled in Phase 1.1. Imports, TOUR_STEPS, and helpers preserved so
+// Phase 4 can revive or rewrite the flow without rebuilding this scaffold.
 
 const TOUR_COMPLETED_KEY = 'careeriq_tour_completed';
 
@@ -332,64 +332,10 @@ function getStepsForViewport() {
   return TOUR_STEPS;
 }
 
-export function OnboardingTour({ onMountReplay }: OnboardingTourProps) {
-  const [run, setRun] = useState(false);
-  const [steps, setSteps] = useState(TOUR_STEPS);
-  const startedRef = useRef(false);
-
-  // Auto-start on first visit
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    setSteps(getStepsForViewport());
-    if (!loadTourCompleted()) {
-      // Small delay so the workspace has time to render sidebar targets
-      const timer = setTimeout(() => setRun(true), 800);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  // Expose replay function to parent (for Header Help button)
-  const replay = useCallback(() => {
-    setSteps(getStepsForViewport());
-    setRun(false);
-    requestAnimationFrame(() => setRun(true));
-  }, []);
-
-  useEffect(() => {
-    onMountReplay(replay);
-  }, [onMountReplay, replay]);
-
-  const handleEvent = useCallback((data: EventData) => {
-    const { status } = data;
-    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
-      setRun(false);
-      saveTourCompleted();
-    }
-  }, []);
-
-  return (
-    <Joyride
-      steps={steps}
-      run={run}
-      continuous
-      scrollToFirstStep={false}
-      tooltipComponent={TourTooltip as Parameters<typeof Joyride>[0]['tooltipComponent']}
-      onEvent={handleEvent}
-      options={{
-        overlayColor: 'rgba(0, 0, 0, 0.52)',
-        zIndex: 9000,
-        spotlightRadius: 6,
-        arrowColor: 'var(--surface-elevated, #253040)',
-        buttons: ['back', 'primary', 'skip'],
-      }}
-      locale={{
-        back: 'Back',
-        close: 'Close',
-        last: 'Done',
-        next: 'Next',
-        skip: 'Skip',
-      }}
-    />
-  );
+export function OnboardingTour(_props: OnboardingTourProps) {
+  // Disabled in Phase 1.1 — the tour references sidebar items that no longer
+  // exist in the new IA (Resume Builder, Interview Prep, etc.) and will be
+  // replaced by the Phase 4 auto-populate onboarding flow. TOUR_STEPS + helper
+  // copy above left in place; Phase 4 may repurpose them or remove wholesale.
+  return null;
 }

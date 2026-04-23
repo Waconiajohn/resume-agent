@@ -64,7 +64,7 @@ export function deriveWorkspaceHomeGuidance(params: {
           'Your resume is loaded. Answer three positioning questions and every tool starts leaning on your strongest angles, not just your titles.',
         mobileInsight:
           'Your resume is loaded. Answer three positioning questions to sharpen every tool.',
-        primary: { label: 'Open Your Profile', room: 'career-profile' },
+        primary: { label: 'Open Career Vault', room: 'career-profile' },
         secondary: { label: 'Tailor a resume', room: 'resume' },
       };
     }
