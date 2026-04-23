@@ -9,6 +9,7 @@ export type ExposedWorkspaceRoom =
   | 'networking'
   | 'interview'
   | 'learning'
+  | 'live-webinars'
   | 'executive-bio';
 
 export type HiddenWorkspaceRoom =
@@ -25,6 +26,7 @@ const EXPOSED_WORKSPACE_ROOMS: readonly ExposedWorkspaceRoom[] = [
   'interview',
   'networking',
   'learning',
+  'live-webinars',
   'executive-bio',
 ];
 

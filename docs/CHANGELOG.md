@@ -1,5 +1,37 @@
 # Changelog — Resume Agent
 
+## 2026-04-23 — Phase 1.2 sidebar restructure to 6-item target + nav surface sync
+**Sprint:** Product restructure Phase 1 | **Story:** Phase 1.2 — sidebar restructure + nav sync
+**Summary:** Collapsed the sidebar from 10 items across 3 groups to a flat 6-item list (Home · Career Vault · Job Search · Applications · Live Webinars · Masterclass). Extracted nav entries into a single `nav-items.ts` module so the three top-level nav surfaces (Sidebar, Header mobile hamburger, MobileBriefing bottom tab) no longer drift. Top-bar Help button rewired to `/settings` and now renders on every route.
+
+### Changes Made
+- `app/src/components/career-iq/nav-items.ts` — new shared module. `NavItem` type + `SIDEBAR_NAV` (6 items) + `BOTTOM_TAB_NAV` (5 items, excludes Live Webinars) + `isApplicationsPath()` helper. Single source of truth for all three nav surfaces.
+- `app/src/components/career-iq/Sidebar.tsx` — rewritten to consume `SIDEBAR_NAV`. Removed from sidebar: Resume Builder, LinkedIn, Interview Prep, Networking, Executive Bio. My Applications → Applications, promoted to position 4. Live Webinars added at position 5. Dropped the `ROOM_GROUPS` data model + the dead `isLocked` / `gated` branch (no remaining rooms were gated).
+- `app/src/components/Header.tsx` — mobile hamburger now maps over `SIDEBAR_NAV` (6 items, synced with sidebar). Dropped the `onReplayTour` prop and the conditional Help render; Help now always shows and navigates to `/settings`.
+- `app/src/components/career-iq/MobileBriefing.tsx` — bottom tab bar now maps over `BOTTOM_TAB_NAV` (5 items: Home, Career Vault, Job Search, Applications, Masterclass). Fixed the "Profile/Resume/Board/Interview" label drift. Applications tab uses `onNavigateRoute` for its route-based target.
+- `app/src/components/career-iq/LiveWebinarsRoom.tsx` — new placeholder room. "Coming soon" messaging; Phase 6 will build the schedule/archive.
+- `app/src/components/career-iq/workspaceRoomAccess.ts` — added `'live-webinars'` to `ExposedWorkspaceRoom` + `EXPOSED_WORKSPACE_ROOMS`.
+- `app/src/components/career-iq/CareerIQScreen.tsx` — added `live-webinars` to `ROOM_LABELS` + lazy import + `renderContent` case.
+- `app/src/components/career-iq/workspaceHomeGuidance.ts` — extended `labelByRoom` to cover `live-webinars` (TypeScript exhaustiveness fix).
+- `app/src/App.tsx` — dropped `onReplayTour` prop pass on `<Header>` (Header no longer accepts it). `replayTourRef` / `handleTourReplay` / `onRegisterTourReplay` machinery left in place for Phase 4 tour revival.
+- `app/src/__tests__/career-iq/CareerIQComponents.test.tsx` — Sidebar test block rewritten. Asserts the 6 target labels, the absence of the 5 removed labels, the route-based Applications click handler, and active-room highlighting on Career Vault.
+- `app/src/__tests__/Header.test.tsx` — wrapped existing tests in `MemoryRouter` (Header now uses `useLocation`).
+
+### Decisions Made
+- **LinkedIn: sidebar removal immediate (no 7th slot).** Phase 3 (this week) will absorb LinkedIn into Career Vault / Benchmark LinkedIn Brand. Brief visibility gap accepted per owner.
+- **Executive Bio: sidebar removal only.** Room + route retained for direct URL access.
+- **Mobile bottom tab reduced from 5 drift-labels to 5 synced labels.** Same 5 items as sidebar minus Live Webinars.
+- **Nav sync via Option B (shared module), not Option A (comments).** Comments don't prevent drift — they only document what drift looks like. A single config file is equally un-invasive and eliminates the drift vector.
+- **Help button wired to `/settings` via `onNavigate('/settings')`.** `resolveNavigationTarget` already returns absolute paths as-is (line 176), so no routing-table change was needed.
+- **Kept replayTourRef machinery in App.tsx.** OnboardingTour is disabled (Phase 1.1), scheduled for Phase 4 revival. Ripping out the ref plumbing now would require rebuilding it in Phase 4.
+- **Removed rooms keep their routes and `ROOM_LABELS` entries.** Users with bookmarked `/workspace?room=linkedin` URLs still land on the right page; breadcrumbs still label correctly.
+
+### Known Issues
+- None new. App tests: 1997 pass / 10 fail / 10 skipped. Server tests: 2565 pass / 0 fail. All 10 app failures are the pre-existing baseline (AppRoutingShell × 2, ExecutiveBioRoom × 1, SmartReferralsRoom × 2, Sprint4Rooms × 1, LinkedInStudioRoom × 2, LinkedInStudioRoom-hookformula × 1, StageBadge × 1).
+
+### Next Steps
+- Phase 1.3 and beyond per the product restructure plan. Phase 3 (Career Vault restructure) is the next to touch sidebar-adjacent surfaces — LinkedIn absorbs into Career Vault there.
+
 ## 2026-04-23 — Phase 1.1 terminology cleanup per product model
 **Sprint:** Product restructure Phase 1 | **Story:** Phase 1.1 — terminology audit and replacement
 **Summary:** Audited the codebase for UI-facing strings using deprecated terms and replaced them per the approved terminology table in the Phase 1 handoff. No structural changes — text only. Also deleted `ZoneYourPipeline` / `ZoneYourSignals` (superseded by the new Home spec) and disabled `OnboardingTour` pending the Phase 4 auto-populate onboarding.

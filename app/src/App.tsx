@@ -581,7 +581,6 @@ export default function App() {
               isProcessing={false}
               sessionComplete={false}
               onNavigate={navigateTo}
-              onReplayTour={currentView === 'workspace' ? handleTourReplay : undefined}
             />
 
             {!verifyBannerDismissed && user && !user.email_confirmed_at && (

@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
+import type { ReactElement } from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Header } from '@/components/Header';
+
+// Header depends on useLocation() for the Help button's active-state logic,
+// so tests must render inside a Router.
+const renderHeader = (ui: ReactElement) =>
+  render(<MemoryRouter>{ui}</MemoryRouter>);
 
 describe('Header', () => {
   afterEach(() => {
@@ -11,7 +18,7 @@ describe('Header', () => {
   it('saves the edited display name through onUpdateProfile', async () => {
     const onUpdateProfile = vi.fn(async () => ({ error: null }));
 
-    render(
+    renderHeader(
       <Header
         email="e2e@example.com"
         displayName="E2E User"
@@ -44,7 +51,7 @@ describe('Header', () => {
   it('sign out button calls onSignOut', () => {
     const onSignOut = vi.fn();
 
-    render(
+    renderHeader(
       <Header
         email="e2e@example.com"
         displayName="E2E User"

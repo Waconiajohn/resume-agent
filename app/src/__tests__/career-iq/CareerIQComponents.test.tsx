@@ -254,73 +254,69 @@ const renderSidebar = (ui: React.ReactElement) =>
 describe('Sidebar', () => {
   afterEach(() => cleanup());
 
-  it('renders all room labels', () => {
+  it('renders the 6 target nav labels in order', () => {
     renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Career Vault')).toBeInTheDocument();
-    expect(screen.getByText('Resume Builder')).toBeInTheDocument();
-    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
     expect(screen.getByText('Job Search')).toBeInTheDocument();
-    expect(screen.getByText('Interview Prep')).toBeInTheDocument();
+    expect(screen.getByText('Applications')).toBeInTheDocument();
+    expect(screen.getByText('Live Webinars')).toBeInTheDocument();
+    expect(screen.getByText('Masterclass')).toBeInTheDocument();
   });
 
-  it('keeps core rooms available when dashboardState is new-user', () => {
+  it('does not render removed items (Resume Builder, LinkedIn, Interview Prep, Networking, Executive Bio)', () => {
+    renderSidebar(
+      <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
+    );
+    expect(screen.queryByText('Resume Builder')).not.toBeInTheDocument();
+    expect(screen.queryByText('LinkedIn')).not.toBeInTheDocument();
+    expect(screen.queryByText('Interview Prep')).not.toBeInTheDocument();
+    expect(screen.queryByText('Networking')).not.toBeInTheDocument();
+    expect(screen.queryByText('Executive Bio')).not.toBeInTheDocument();
+  });
+
+  it('keeps all items available when dashboardState is new-user', () => {
     renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
     );
-    const resumeButton = screen.getByText('Resume Builder').closest('button');
-    expect(resumeButton).not.toBeDisabled();
-    const homeButton = screen.getByText('Home').closest('button');
-    expect(homeButton).not.toBeDisabled();
-    const profileButton = screen.getByText('Your positioning, career record, and LinkedIn brand in one place').closest('button');
-    expect(profileButton).not.toBeDisabled();
-  });
-
-  it('does not show lock state on core rooms when dashboardState is new-user', () => {
-    renderSidebar(
-      <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
-    );
-    const resumeButton = screen.getByText('Resume Builder').closest('button');
-    expect(resumeButton?.getAttribute('title')).toBeNull();
-    expect(screen.queryByText('Complete your Career Profile to unlock Resume Builder')).not.toBeInTheDocument();
-  });
-
-  it('enables all rooms when dashboardState is refining', () => {
-    renderSidebar(
-      <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="refining" />,
-    );
-    const resumeButton = screen.getByText('Resume Builder').closest('button');
-    expect(resumeButton).not.toBeDisabled();
-    const linkedinButton = screen.getByText('LinkedIn').closest('button');
-    expect(linkedinButton).not.toBeDisabled();
+    expect(screen.getByText('Home').closest('button')).not.toBeDisabled();
+    expect(screen.getByText('Career Vault').closest('button')).not.toBeDisabled();
+    expect(screen.getByText('Applications').closest('button')).not.toBeDisabled();
   });
 
   it('highlights active room', () => {
     renderSidebar(
-      <Sidebar activeRoom="resume" onNavigate={vi.fn()} dashboardState="strong" />,
+      <Sidebar activeRoom="career-profile" onNavigate={vi.fn()} dashboardState="strong" />,
     );
-    const resumeButton = screen.getByText('Resume Builder').closest('button');
-    expect(resumeButton?.className).toContain('bg-[var(--rail-tab-active-bg)]');
+    const vaultButton = screen.getByText('Career Vault').closest('button');
+    expect(vaultButton?.className).toContain('bg-[var(--rail-tab-active-bg)]');
   });
 
-  it('calls onNavigate when a non-gated room is clicked', () => {
+  it('calls onNavigate when a room-based item is clicked', () => {
     const onNavigate = vi.fn();
     renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={onNavigate} dashboardState="strong" />,
     );
-    fireEvent.click(screen.getByText('Resume Builder'));
-    expect(onNavigate).toHaveBeenCalledWith('resume');
+    fireEvent.click(screen.getByText('Job Search'));
+    expect(onNavigate).toHaveBeenCalledWith('jobs');
   });
 
-  it('still allows navigation to Resume Builder when dashboardState is new-user', () => {
+  it('calls onNavigateRoute when Applications is clicked', () => {
     const onNavigate = vi.fn();
+    const onNavigateRoute = vi.fn();
     renderSidebar(
-      <Sidebar activeRoom="dashboard" onNavigate={onNavigate} dashboardState="new-user" />,
+      <Sidebar
+        activeRoom="dashboard"
+        onNavigate={onNavigate}
+        onNavigateRoute={onNavigateRoute}
+        dashboardState="strong"
+      />,
     );
-    fireEvent.click(screen.getByText('Resume Builder'));
-    expect(onNavigate).toHaveBeenCalledWith('resume');
+    fireEvent.click(screen.getByText('Applications'));
+    expect(onNavigateRoute).toHaveBeenCalledWith('/workspace/applications');
+    expect(onNavigate).not.toHaveBeenCalled();
   });
 });
 

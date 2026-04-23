@@ -3,20 +3,18 @@ import {
   ArrowRight,
   Sparkles,
   Bot,
-  Home,
-  Columns3,
-  Activity,
-  User,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { WhyMeSignals, DashboardState } from './useWhyMeStory';
 import type { CareerIQRoom } from './Sidebar';
 import type { RealFeedEvent } from './ZoneAgentFeed';
 import type { CoachRecommendation } from '@/hooks/useCoachRecommendation';
 import { deriveWorkspaceHomeGuidance } from './workspaceHomeGuidance';
+import { BOTTOM_TAB_NAV, isApplicationsPath } from './nav-items';
 
 interface MobileBriefingProps {
   userName: string;
@@ -224,25 +222,40 @@ function CardStack({ children }: { children: React.ReactNode[] }) {
 
 // --- Bottom Navigation ---
 
-const MOBILE_TABS: { id: CareerIQRoom; label: string; icon: typeof Home }[] = [
-  { id: 'dashboard', label: 'Home', icon: Home },
-  { id: 'career-profile', label: 'Profile', icon: Sparkles },
-  { id: 'resume', label: 'Resume', icon: User },
-  { id: 'jobs', label: 'Board', icon: Columns3 },
-  { id: 'interview', label: 'Interview', icon: Activity },
-];
+function BottomNav({
+  activeTab,
+  onNavigate,
+  onNavigateRoute,
+}: {
+  activeTab: CareerIQRoom;
+  onNavigate: (room: CareerIQRoom) => void;
+  onNavigateRoute?: (route: string) => void;
+}) {
+  const location = useLocation();
+  const applicationsActive = isApplicationsPath(location.pathname);
 
-function BottomNav({ activeTab, onNavigate }: { activeTab: CareerIQRoom; onNavigate: (room: CareerIQRoom) => void }) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-[var(--line-soft)] bg-[var(--bg-1)]/95 backdrop-blur-xl px-2 py-2 safe-area-pb">
-      {MOBILE_TABS.map((tab) => {
+      {BOTTOM_TAB_NAV.map((tab) => {
         const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
+        const isActive = tab.route
+          ? applicationsActive
+          : tab.room !== undefined && activeTab === tab.room && !applicationsActive;
+
+        const handleClick = () => {
+          if (tab.route) {
+            onNavigateRoute?.(tab.route);
+          } else if (tab.room) {
+            onNavigate(tab.room);
+          }
+        };
+
         return (
           <button
             key={tab.id}
             type="button"
-            onClick={() => onNavigate(tab.id)}
+            onClick={handleClick}
+            aria-current={isActive ? 'page' : undefined}
             className={cn(
               'flex flex-col items-center gap-0.5 px-3 py-1 min-h-[44px] min-w-[44px] transition-colors',
               isActive ? 'text-[var(--link)]' : 'text-[var(--text-soft)]',
@@ -275,7 +288,7 @@ export function MobileBriefing({
 }: MobileBriefingProps) {
   // navOnly mode: render only the bottom nav bar (used when a room is displayed above)
   if (navOnly) {
-    return <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} />;
+    return <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} onNavigateRoute={onNavigateRoute} />;
   }
 
   return (
@@ -305,7 +318,7 @@ export function MobileBriefing({
       </div>
 
       {/* Bottom navigation — reflects current active room */}
-      <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} />
+      <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} onNavigateRoute={onNavigateRoute} />
     </div>
   );
 }

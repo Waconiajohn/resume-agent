@@ -30,6 +30,7 @@ const InterviewLabRoom = lazy(() => import('./InterviewLabRoom').then((module) =
 const SmartReferralsRoom = lazy(() => import('./SmartReferralsRoom').then((module) => ({ default: module.SmartReferralsRoom })));
 const LMSRoom = lazy(() => import('@/components/lms/LMSRoom').then((module) => ({ default: module.LMSRoom })));
 const ExecutiveBioRoom = lazy(() => import('./ExecutiveBioRoom').then((module) => ({ default: module.ExecutiveBioRoom })));
+const LiveWebinarsRoom = lazy(() => import('./LiveWebinarsRoom').then((module) => ({ default: module.LiveWebinarsRoom })));
 
 const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   dashboard: 'Workspace Home',
@@ -41,6 +42,7 @@ const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   interview: 'Interview Prep',
   financial: 'Retirement Bridge',
   learning: 'Masterclass',
+  'live-webinars': 'Live Webinars',
   'executive-bio': 'Executive Bio',
 };
 
@@ -458,6 +460,10 @@ export function CareerIQScreen({
 
     if (activeRoom === 'executive-bio') {
       return <ExecutiveBioRoom />;
+    }
+
+    if (activeRoom === 'live-webinars') {
+      return <LiveWebinarsRoom />;
     }
 
     const unhandledRoom: never = activeRoom;

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, CreditCard, FileText, HelpCircle, LayoutDashboard, Linkedin, LogOut, Menu, Mic, Palette, Search, Settings2, User, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { ChevronDown, CreditCard, HelpCircle, LogOut, Menu, Palette, Settings2, X } from 'lucide-react';
 import { PipelineProgressBar } from './PipelineProgressBar';
 import { AccessibilitySettings } from './AccessibilitySettings';
 import { useTheme } from '@/hooks/useTheme';
+import { SIDEBAR_NAV, isApplicationsPath } from './career-iq/nav-items';
 
 interface HeaderProps {
   email?: string;
@@ -13,11 +15,11 @@ interface HeaderProps {
   isProcessing?: boolean;
   sessionComplete?: boolean;
   onNavigate?: (view: string) => void;
-  /** Called when the user clicks the Help button to replay the onboarding tour */
-  onReplayTour?: () => void;
 }
 
-export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelineStage, isProcessing, sessionComplete, onNavigate, onReplayTour }: HeaderProps) {
+export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelineStage, isProcessing, sessionComplete, onNavigate }: HeaderProps) {
+  const location = useLocation();
+  const applicationsActive = isApplicationsPath(location.pathname);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [a11yOpen, setA11yOpen] = useState(false);
@@ -91,6 +93,10 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
   const handleNavClick = (view: string) => {
     setMenuOpen(false);
     onNavigate?.(view);
+  };
+
+  const handleHelpClick = () => {
+    onNavigate?.('/settings');
   };
 
   const handleSignOut = () => {
@@ -216,19 +222,17 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             </div>
           )}
 
-          {/* Help / tour replay button */}
-          {onReplayTour && (
-            <button
-              type="button"
-              onClick={onReplayTour}
-              aria-label="Replay onboarding tour"
-              title="Take a guided tour of the workspace"
-              className="flex items-center gap-1.5 rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
-            >
-              <HelpCircle className="h-5 w-5" aria-hidden="true" />
-              <span className="text-[13px] font-medium hidden sm:inline">Help</span>
-            </button>
-          )}
+          {/* Help — routes to Settings & Help on every route. */}
+          <button
+            type="button"
+            onClick={handleHelpClick}
+            aria-label="Help and settings"
+            title="Help and settings"
+            className="flex items-center gap-1.5 rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
+          >
+            <HelpCircle className="h-5 w-5" aria-hidden="true" />
+            <span className="text-[13px] font-medium hidden sm:inline">Help</span>
+          </button>
 
           {/* Accessibility settings */}
           <button
@@ -291,24 +295,23 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             </div>
 
             <nav className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-5">
-              {[
-                { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
-                { id: 'career-profile', label: 'Career Vault', icon: User },
-                { id: 'resume', label: 'Resume Builder', icon: FileText },
-                { id: 'linkedin', label: 'LinkedIn', icon: Linkedin },
-                { id: 'jobs', label: 'Job Search', icon: Search },
-                { id: 'interview', label: 'Interview Prep', icon: Mic },
-              ].map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => handleNavClick(id)}
-                  className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
-                >
-                  <Icon className="h-4 w-4 flex-shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
-                  {label}
-                </button>
-              ))}
+              {SIDEBAR_NAV.map((item) => {
+                const Icon = item.icon;
+                const target = item.route ?? item.room ?? '';
+                const isActive = item.route ? applicationsActive : false;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleNavClick(target)}
+                    aria-current={isActive ? 'page' : undefined}
+                    className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
+                    {item.label}
+                  </button>
+                );
+              })}
             </nav>
 
             {email && (
