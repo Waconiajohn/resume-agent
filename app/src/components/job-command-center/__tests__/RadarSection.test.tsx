@@ -83,6 +83,11 @@ function defaultProps(overrides: Partial<React.ComponentProps<typeof RadarSectio
     onSearch: vi.fn(),
     onDismiss: vi.fn(),
     onPromote: vi.fn(),
+    // Phase 2.2.1 — controlled props (formerly inner-state). Defaults mirror
+    // the "unfiltered" state driven by the outer JobFilterPanel.
+    location: '',
+    datePosted: 'any' as const,
+    remoteType: 'any' as const,
     ...overrides,
   };
 }
@@ -100,20 +105,8 @@ describe('RadarSection — search inputs', () => {
     expect(screen.getByPlaceholderText('Job title, keywords...')).toBeInTheDocument();
   });
 
-  it('renders the location search input', () => {
-    render(<RadarSection {...defaultProps()} />);
-    expect(screen.getByPlaceholderText('Location or Remote')).toBeInTheDocument();
-  });
-
-  it('renders the date posted filter dropdown', () => {
-    render(<RadarSection {...defaultProps()} />);
-    expect(screen.getByDisplayValue('Any time')).toBeInTheDocument();
-  });
-
-  it('renders the remote type filter dropdown', () => {
-    render(<RadarSection {...defaultProps()} />);
-    expect(screen.getByDisplayValue('Any work type')).toBeInTheDocument();
-  });
+  // Phase 2.2.1 — Location / Date Posted / Remote Type are now controlled by
+  // the outer JobFilterPanel and no longer rendered inside RadarSection.
 });
 
 describe('RadarSection — job result cards', () => {

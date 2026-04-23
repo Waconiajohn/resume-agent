@@ -25,6 +25,7 @@ import { useJobFinder, type RankedMatch, type JobEvaluation } from '@/hooks/useJ
 import { useJobApplications } from '@/hooks/useJobApplications';
 import { useRadarSearch } from '@/hooks/useRadarSearch';
 import type { RadarJob } from '@/hooks/useRadarSearch';
+import type { WorkModes } from '@/hooks/useJobFilters';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobFilters } from '@/hooks/useJobFilters';
@@ -412,6 +413,25 @@ function SmartMatches({
 
 type JCCMode = 'broad-search' | 'insider-jobs';
 
+/**
+ * Flatten the outer JobFilterPanel's multi-select Work Mode chips into the
+ * single remoteType value that radar.search / tracking events consume.
+ *
+ * The outer UI lets users pick any combination of Remote / Hybrid / On-site.
+ * The radar API takes one value. Exactly-one selection wins; zero or two+
+ * selections collapse to 'any'. Preserving this behavior is intentional in
+ * Phase 2.2.1 — the multi-to-single lossy mapping is a known limit of the
+ * current API and is out of scope for this phase.
+ */
+function deriveRemoteType(
+  workModes: WorkModes,
+): 'remote' | 'hybrid' | 'onsite' | 'any' {
+  if (workModes.remote && !workModes.hybrid && !workModes.onsite) return 'remote';
+  if (workModes.hybrid && !workModes.remote && !workModes.onsite) return 'hybrid';
+  if (workModes.onsite && !workModes.remote && !workModes.hybrid) return 'onsite';
+  return 'any';
+}
+
 const JCC_MODES: Array<{
   id: JCCMode;
   label: string;
@@ -481,14 +501,7 @@ export function JobCommandCenterRoom({
 
   const handleSearchCompany = useCallback(
     (companyName: string) => {
-      const remoteType =
-        jobFilters.workModes.remote && !jobFilters.workModes.hybrid && !jobFilters.workModes.onsite
-          ? 'remote'
-          : jobFilters.workModes.hybrid && !jobFilters.workModes.remote && !jobFilters.workModes.onsite
-            ? 'hybrid'
-            : jobFilters.workModes.onsite && !jobFilters.workModes.remote && !jobFilters.workModes.hybrid
-              ? 'onsite'
-              : 'any';
+      const remoteType = deriveRemoteType(jobFilters.workModes);
       trackProductEvent('job_board_search_run', {
         query: companyName,
         location: jobFilters.location || null,
@@ -621,16 +634,9 @@ export function JobCommandCenterRoom({
             onDismiss={radar.dismissJob}
             onPromote={handlePromoteRadarJob}
             onBuildResume={(job) => handleBuildResumeRequest('job_board', job.title, job.company)}
-            initialLocation={jobFilters.location}
-            initialRemoteType={
-              jobFilters.workModes.remote && !jobFilters.workModes.hybrid && !jobFilters.workModes.onsite
-                ? 'remote'
-                : jobFilters.workModes.hybrid && !jobFilters.workModes.remote && !jobFilters.workModes.onsite
-                  ? 'hybrid'
-                  : jobFilters.workModes.onsite && !jobFilters.workModes.remote && !jobFilters.workModes.hybrid
-                    ? 'onsite'
-                    : 'any'
-            }
+            location={jobFilters.location}
+            datePosted={jobFilters.postedWithin}
+            remoteType={deriveRemoteType(jobFilters.workModes)}
           />
 
           {(showAiSuggestions || jobFinder.status !== 'idle' || jobFinder.matches.length > 0 || jobFinder.error) && (

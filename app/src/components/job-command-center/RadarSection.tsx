@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Search,
   MapPin,
@@ -29,8 +29,14 @@ interface RadarSectionProps {
   onDismiss: (externalId: string) => void;
   onPromote: (job: RadarJob) => void;
   onBuildResume?: (job: RadarJob) => void;
-  initialLocation?: string;
-  initialRemoteType?: RadarSearchFilters['remoteType'];
+  /**
+   * Phase 2.2.1 — Location, Date Posted, and Remote Type are controlled by
+   * the parent (JobCommandCenterRoom) via the outer JobFilterPanel. The
+   * inner search UI here only owns the keyword query + Search button.
+   */
+  location: string;
+  datePosted: RadarSearchFilters['datePosted'];
+  remoteType: RadarSearchFilters['remoteType'];
 }
 
 function formatSalary(min: number | null, max: number | null): string | null {
@@ -86,21 +92,11 @@ export function RadarSection({
   onDismiss,
   onPromote,
   onBuildResume,
-  initialLocation,
-  initialRemoteType,
+  location,
+  datePosted,
+  remoteType,
 }: RadarSectionProps) {
   const [query, setQuery] = useState('');
-  const [location, setLocation] = useState(initialLocation ?? '');
-  const [datePosted, setDatePosted] = useState<RadarSearchFilters['datePosted']>('any');
-  const [remoteType, setRemoteType] = useState<RadarSearchFilters['remoteType']>(initialRemoteType ?? 'any');
-
-  useEffect(() => {
-    setLocation(initialLocation ?? '');
-  }, [initialLocation]);
-
-  useEffect(() => {
-    setRemoteType(initialRemoteType ?? 'any');
-  }, [initialRemoteType]);
 
   const handleSearch = useCallback(() => {
     if (!query.trim()) return;
@@ -136,9 +132,11 @@ export function RadarSection({
         Search public jobs, check how old each role is, and save the best 5 or 6 to your shortlist before you start building resumes.
       </p>
 
-      {/* Search bar */}
-      <div className="flex gap-2 mb-3">
-        <div className="relative flex-[3]">
+      {/* Search bar — Location / Date Posted / Work Mode live in the outer
+          JobFilterPanel (Phase 2.2.1). Inner owns only the keyword query
+          and the Search CTA. */}
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
           <Search
             size={14}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-soft)] pointer-events-none"
@@ -152,59 +150,17 @@ export function RadarSection({
             className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-9 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
           />
         </div>
-        <div className="relative flex-[2]">
-          <MapPin
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-soft)] pointer-events-none"
-          />
-          <input
-            type="text"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Location or Remote"
-            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] pl-9 pr-3 py-2 text-[13px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
-          />
-        </div>
-      </div>
-
-      {/* Filter row */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <select
-          value={datePosted}
-          onChange={(e) => setDatePosted(e.target.value as RadarSearchFilters['datePosted'])}
-          className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
-        >
-          <option value="any">Any time</option>
-          <option value="24h">Last 24h</option>
-          <option value="3d">Last 3 days</option>
-          <option value="7d">Last 7 days</option>
-          <option value="14d">Last 14 days</option>
-          <option value="30d">Last 30 days</option>
-        </select>
-        <select
-          value={remoteType}
-          onChange={(e) => setRemoteType(e.target.value as RadarSearchFilters['remoteType'])}
-          className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-1.5 text-[12px] text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30"
-        >
-          <option value="any">Any work type</option>
-          <option value="remote">Remote</option>
-          <option value="hybrid">Hybrid</option>
-          <option value="onsite">On-site</option>
-        </select>
-        <div className="flex gap-2 ml-auto">
-          <GlassButton onClick={handleSearch} disabled={loading || !query.trim()} size="sm">
-            {loading ? (
-              <>
-                <Loader2 size={13} className="animate-spin" /> Searching...
-              </>
-            ) : (
-              <>
-                <Search size={13} /> Search
-              </>
-            )}
-          </GlassButton>
-        </div>
+        <GlassButton onClick={handleSearch} disabled={loading || !query.trim()} size="sm">
+          {loading ? (
+            <>
+              <Loader2 size={13} className="animate-spin" /> Searching...
+            </>
+          ) : (
+            <>
+              <Search size={13} /> Search
+            </>
+          )}
+        </GlassButton>
       </div>
 
       {/* Error state */}

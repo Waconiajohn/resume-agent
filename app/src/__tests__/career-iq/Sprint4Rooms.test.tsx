@@ -183,18 +183,22 @@ describe('JobCommandCenterRoom', () => {
   it('tracks manual job-board searches', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
 
+    // Phase 2.2.1 — Location lives on the outer JobFilterPanel now; the
+    // inner RadarSection only owns the keyword query + Search button.
+    fireEvent.change(screen.getByLabelText('Filter by location'), {
+      target: { value: 'Chicago' },
+    });
     fireEvent.change(screen.getByPlaceholderText('Job title, keywords...'), {
       target: { value: 'VP Marketing' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('Location or Remote'), {
-      target: { value: 'Chicago' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^Search$/i }));
 
     expect(trackProductEventMock).toHaveBeenCalledWith('job_board_search_run', {
       query: 'VP Marketing',
       location: 'Chicago',
-      date_posted: 'any',
+      // The outer JobFilterPanel defaults postedWithin='7d' and workModes
+      // remote+hybrid both true, which deriveRemoteType flattens to 'any'.
+      date_posted: '7d',
       remote_type: 'any',
       source: 'manual',
     });
