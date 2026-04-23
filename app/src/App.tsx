@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
-const DiscoveryFlow = lazy(() => import('./components/discovery/DiscoveryFlow'));
 const ProfileSetupPage = lazy(() => import('./components/profile-setup/ProfileSetupPage'));
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,7 +15,6 @@ import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { CareerProfileProvider } from '@/components/career-iq/CareerProfileContext';
 import { WorkspaceLayout } from '@/components/career-iq/WorkspaceLayout';
-import { JobWorkspaceRoute } from '@/components/career-iq/JobWorkspaceRoute';
 import { ApplicationWorkspaceRoute } from '@/components/career-iq/ApplicationWorkspaceRoute';
 import { ApplicationsListScreen } from '@/components/career-iq/ApplicationsListScreen';
 import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
@@ -508,7 +506,7 @@ export default function App() {
     const isResetPasswordPath = location.pathname === '/reset-password';
     const knownUnauthPaths = [
       '/', '/sales', '/workspace', '/billing', '/pricing',
-      '/profile-setup', '/discover', '/resume-builder', '/affiliate', '/admin',
+      '/profile-setup', '/resume-builder', '/affiliate', '/admin',
     ];
     const isKnownPath = knownUnauthPaths.some(
       (p) => location.pathname === p || location.pathname.startsWith(p + '/'),
@@ -540,19 +538,7 @@ export default function App() {
   }
 
   if (isDiscoveryRoute) {
-    return (
-      <ToastProvider>
-        <ErrorBoundary key="discovery">
-          <Suspense fallback={
-            <div className="flex h-screen items-center justify-center" style={{ background: 'var(--bg-0)' }}>
-              <div className="h-8 w-8 rounded-full border-2 border-[var(--line-soft)] border-t-[#afc4ff] motion-safe:animate-spin" />
-            </div>
-          }>
-            <DiscoveryFlow />
-          </Suspense>
-        </ErrorBoundary>
-      </ToastProvider>
-    );
+    return <Navigate to="/workspace" replace />;
   }
 
   return (
@@ -634,17 +620,6 @@ export default function App() {
                 )}
               />
               <Route
-                path="/resume-v3"
-                element={(
-                  <WorkspaceLayout>
-                    <V3PipelineScreen
-                      accessToken={accessToken}
-                      initialResumeText={intakeInitialResumeText}
-                    />
-                  </WorkspaceLayout>
-                )}
-              />
-              <Route
                 path="/profile-setup"
                 element={(
                   <WorkspaceLayout>
@@ -658,20 +633,6 @@ export default function App() {
                       </Suspense>
                     </ErrorBoundary>
                   </WorkspaceLayout>
-                )}
-              />
-              <Route
-                path="/workspace/job/:jobId"
-                element={(
-                  <JobWorkspaceRoute
-                    sessions={sessions}
-                    loading={sessionLoading}
-                    onLoadSessions={listSessions}
-                    onResumeSession={handleResumeSession}
-                    onNavigate={navigateTo}
-                    onGetSessionResume={getSessionResume}
-                    onGetSessionCoverLetter={getSessionCoverLetter}
-                  />
                 )}
               />
               {/* Approach C Phase 2.1 — My Applications list.

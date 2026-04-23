@@ -178,10 +178,6 @@ export function buildWorkspaceRoomRoute(
   return `/workspace?${params.toString()}`;
 }
 
-export function buildJobWorkspaceRoute(jobApplicationId: string): string {
-  return `/workspace/job/${jobApplicationId}`;
-}
-
 export function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('en-US', {
     month: 'short',
