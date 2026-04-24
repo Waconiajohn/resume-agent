@@ -305,9 +305,13 @@ describe('InterviewLabRoom', () => {
   });
 
   it('opens directly into thank-you notes when thank-you focus is provided', () => {
+    // Phase 2.3e: in-lab entry now uses the delegate-or-fallback pattern.
+    // Without an active application context, the fallback informational
+    // card is shown — it references the company/role inline and directs
+    // the user to Applications. Asserting that shape here.
     render(<InterviewLabRoom initialFocus="thank-you" initialCompany="Acme Corp" initialRole="VP Engineering" />);
-    expect(screen.getByText('Thank-You Notes')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument();
+    expect(screen.getAllByText('Thank-You Notes').length).toBeGreaterThan(0);
+    expect(screen.getByText('Acme Corp — VP Engineering')).toBeInTheDocument();
   });
 
   it('opens directly into negotiation prep when negotiation focus is provided', () => {

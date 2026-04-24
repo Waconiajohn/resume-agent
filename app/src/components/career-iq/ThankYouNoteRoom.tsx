@@ -1,3 +1,14 @@
+/**
+ * ThankYouNoteRoom — Phase 2.3e.
+ *
+ * Recipient-role primary axis, multi-recipient, independent per-recipient
+ * refinement, optional soft interview-prep coupling, timing awareness.
+ *
+ * Flow:
+ *   Idle form → running (activity feed) → note_review (per-recipient
+ *   cards with approve / revise / direct-edit each) → complete (report).
+ */
+
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
@@ -24,15 +35,62 @@ import {
   Clock,
   Hash,
   Zap,
+  Link as LinkIcon,
+  Edit3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { useThankYouNote, type InterviewerInput } from '@/hooks/useThankYouNote';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import {
+  useThankYouNote,
+  type RecipientInput,
+  type RecipientRole,
+  type ThankYouNote,
+  type TimingWarning,
+} from '@/hooks/useThankYouNote';
 import { usePriorResult } from '@/hooks/usePriorResult';
 import { markdownToHtml } from '@/lib/markdown';
 import { useLatestMasterResumeText } from './useLatestMasterResumeText';
+import { API_BASE } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
-// --- Delivery timing recommendation helpers ---
+// ─── Constants ─────────────────────────────────────────────────────
+
+const RECIPIENT_ROLE_OPTIONS: Array<{ value: RecipientRole; label: string; helper: string }> = [
+  {
+    value: 'hiring_manager',
+    label: 'Hiring Manager',
+    helper: 'Owns the role outcome. Confirms fit + forward-looking close.',
+  },
+  {
+    value: 'recruiter',
+    label: 'Recruiter',
+    helper: 'Navigates the process. Appreciative, logistics-friendly.',
+  },
+  {
+    value: 'panel_interviewer',
+    label: 'Panel Interviewer',
+    helper: 'Peer interviewer. Reference a conversation unique to them.',
+  },
+  {
+    value: 'executive_sponsor',
+    label: 'Executive Sponsor',
+    helper: 'Senior skip-level. Brief, strategic, acknowledges their time.',
+  },
+  {
+    value: 'other',
+    label: 'Other',
+    helper: 'Peer/professional tone with user-supplied context.',
+  },
+];
+
+const INTERVIEW_TYPES = [
+  { value: 'phone', label: 'Phone Screen', icon: Phone },
+  { value: 'video', label: 'Video Call', icon: Video },
+  { value: 'onsite', label: 'Onsite', icon: MapPin },
+  { value: 'panel', label: 'Panel Interview', icon: MessageSquare },
+];
+
+// ─── Delivery timing helpers (kept) ────────────────────────────────
 
 interface DeliveryRecommendation {
   label: string;
@@ -73,171 +131,53 @@ function getDeliveryRecommendation(interviewType: string): DeliveryRecommendatio
   }
 }
 
-// Detect approximate tone from note content
-function detectNoteTone(content: string): { label: string; color: string } {
-  const warmWords = /\b(enjoyed|delightful|wonderful|pleasure|warm|appreciate|grateful|exciting|excited)\b/gi;
-  const boldWords = /\b(confident|compelling|strong|proven|demonstrated|decisive|strategic)\b/gi;
-  const formalWords = /\b(sincerely|appreciate|regarding|professional|respectfully|conversation|discussion)\b/gi;
+// ─── Recipient card ────────────────────────────────────────────────
 
-  const warmCount = (content.match(warmWords) || []).length;
-  const boldCount = (content.match(boldWords) || []).length;
-  const formalCount = (content.match(formalWords) || []).length;
+let recipientIdCounter = 0;
+type RecipientFormEntry = RecipientInput & { _id: number };
 
-  if (warmCount >= boldCount && warmCount >= formalCount) {
-    return { label: 'Warm', color: 'text-[var(--badge-green-text)]' };
-  }
-  if (boldCount >= warmCount && boldCount >= formalCount) {
-    return { label: 'Confident', color: 'text-[var(--badge-amber-text)]' };
-  }
-  return { label: 'Professional', color: 'text-[var(--link)]' };
+function makeEmptyRecipient(): RecipientFormEntry {
+  return {
+    _id: ++recipientIdCounter,
+    role: 'hiring_manager',
+    name: '',
+    title: '',
+    topics_discussed: [],
+    rapport_notes: '',
+    key_questions: [],
+  };
 }
 
-// --- Individual note card in the output ---
-
-interface NoteCardProps {
-  title: string;
-  content: string;
-  interviewType: string;
-}
-
-function NoteCard({ title, content, interviewType }: NoteCardProps) {
-  const [copied, setCopied] = useState(false);
-
-  const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
-  const readTime = Math.max(1, Math.round(wordCount / 200));
-  const delivery = getDeliveryRecommendation(interviewType);
-  const tone = detectNoteTone(content);
-
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
-  }, [content]);
-
-  return (
-    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
-      {/* Note header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--line-soft)] bg-[var(--accent-muted)]">
-        <div className="flex items-center gap-2">
-          <Mail className="h-3.5 w-3.5 text-[var(--link)]" />
-          <span className="text-[13px] font-semibold text-[var(--text-strong)]">{title}</span>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          {/* Delivery timing badge */}
-          <span className={cn(
-            'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium border',
-            delivery.color, delivery.bg, delivery.border,
-          )}>
-            <Zap className="h-2.5 w-2.5" />
-            {delivery.label}
-          </span>
-          {/* Tone indicator */}
-          <span className={cn(
-            'rounded-md px-1.5 py-0.5 text-[12px] border bg-[var(--accent-muted)] border-[var(--line-soft)]',
-            tone.color,
-          )}>
-            {tone.label}
-          </span>
-          {/* Word count */}
-          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">
-            <Hash className="h-2.5 w-2.5" />
-            {wordCount}w
-          </span>
-          {/* Read time */}
-          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">
-            <Clock className="h-2.5 w-2.5" />
-            ~{readTime}m read
-          </span>
-          {/* Copy */}
-          <button
-            type="button"
-            onClick={handleCopy}
-            className={cn(
-              'flex items-center gap-1 rounded-md px-2 py-0.5 text-[12px] border transition-all',
-              copied
-                ? 'bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20 text-[var(--badge-green-text)]'
-                : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)] hover:bg-[var(--accent-muted)]',
-            )}
-          >
-            {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-        </div>
-      </div>
-      {/* Note body */}
-      <div className="px-5 py-4">
-        <p className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">{content}</p>
-      </div>
-    </div>
-  );
-}
-
-// --- Parse individual notes from markdown report ---
-
-function parseNoteCards(report: string): { title: string; content: string }[] {
-  const cards: { title: string; content: string }[] = [];
-  const lines = report.split('\n');
-  let current: { title: string; lines: string[] } | null = null;
-
-  for (const line of lines) {
-    if (line.startsWith('## ')) {
-      if (current) {
-        const content = current.lines.join('\n').trim();
-        if (content) cards.push({ title: current.title, content });
-      }
-      current = { title: line.replace(/^## /, '').trim(), lines: [] };
-    } else if (current) {
-      current.lines.push(line);
-    }
-  }
-  if (current) {
-    const content = current.lines.join('\n').trim();
-    if (content) cards.push({ title: current.title, content });
-  }
-
-  return cards;
-}
-
-// --- Interviewer card ---
-
-interface InterviewerCardProps {
+interface RecipientCardProps {
   index: number;
-  interviewer: InterviewerInput;
-  onChange: (index: number, updated: InterviewerInput) => void;
+  recipient: RecipientFormEntry;
+  onChange: (index: number, updated: RecipientFormEntry) => void;
   onRemove: (index: number) => void;
   isOnly: boolean;
 }
 
-function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: InterviewerCardProps) {
+function RecipientCard({ index, recipient, onChange, onRemove, isOnly }: RecipientCardProps) {
   const [expanded, setExpanded] = useState(true);
-  const [topicsRaw, setTopicsRaw] = useState(interviewer.topics_discussed.join(', '));
-  const [keyQsRaw, setKeyQsRaw] = useState((interviewer.key_questions ?? []).join('\n'));
+  const [topicsRaw, setTopicsRaw] = useState((recipient.topics_discussed ?? []).join(', '));
+  const [keyQsRaw, setKeyQsRaw] = useState((recipient.key_questions ?? []).join('\n'));
 
-  const update = (patch: Partial<InterviewerInput>) => onChange(index, { ...interviewer, ...patch });
+  const update = (patch: Partial<RecipientFormEntry>) => onChange(index, { ...recipient, ...patch });
 
   const handleTopicsBlur = () => {
-    const topics = topicsRaw
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const topics = topicsRaw.split(',').map((t) => t.trim()).filter(Boolean);
     update({ topics_discussed: topics });
   };
 
   const handleKeyQsBlur = () => {
-    const qs = keyQsRaw
-      .split('\n')
-      .map((q) => q.trim())
-      .filter(Boolean);
+    const qs = keyQsRaw.split('\n').map((q) => q.trim()).filter(Boolean);
     update({ key_questions: qs });
   };
 
-  const label = interviewer.name.trim() || `Interviewer ${index + 1}`;
+  const label = recipient.name.trim() || `Recipient ${index + 1}`;
+  const roleLabel = RECIPIENT_ROLE_OPTIONS.find((r) => r.value === recipient.role)?.label ?? recipient.role;
 
   return (
     <div className="rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)] overflow-hidden">
-      {/* Header */}
       <div
         role="button"
         tabIndex={0}
@@ -254,10 +194,13 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
           <User size={14} className="text-[var(--link)]" />
         </div>
         <div className="flex-1 min-w-0">
-          <span className="text-[14px] font-medium text-[var(--text-strong)]">{label}</span>
-          {interviewer.title && (
-            <span className="text-[12px] text-[var(--text-soft)] ml-2">{interviewer.title}</span>
-          )}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-[14px] font-medium text-[var(--text-strong)]">{label}</span>
+            <span className="text-[11px] text-[var(--link)]/70 uppercase tracking-wider">{roleLabel}</span>
+            {recipient.title && (
+              <span className="text-[12px] text-[var(--text-soft)]">{recipient.title}</span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {!isOnly && (
@@ -265,7 +208,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemove(index); }}
               className="p-1 rounded-lg text-[var(--text-soft)] hover:text-[var(--badge-red-text)]/70 hover:bg-[var(--badge-red-text)]/5 transition-colors"
-              aria-label="Remove interviewer"
+              aria-label="Remove recipient"
             >
               <Trash2 size={13} />
             </button>
@@ -274,25 +217,57 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
         </div>
       </div>
 
-      {/* Body */}
       {expanded && (
         <div className="px-5 pb-5 space-y-4 border-t border-[var(--line-soft)]">
-          <div className="grid grid-cols-2 gap-3 pt-4">
+          <div className="pt-4">
+            <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
+              Role <span className="text-[var(--link)]/60">*</span>
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {RECIPIENT_ROLE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => update({ role: opt.value })}
+                  className={cn(
+                    'flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors',
+                    recipient.role === opt.value
+                      ? 'border-[var(--link)]/30 bg-[var(--link)]/[0.06]'
+                      : 'border-[var(--line-soft)] hover:bg-[var(--accent-muted)]',
+                  )}
+                >
+                  <span className={cn(
+                    'text-[12px] font-semibold',
+                    recipient.role === opt.value ? 'text-[var(--text-strong)]' : 'text-[var(--text-soft)]',
+                  )}>
+                    {opt.label}
+                  </span>
+                  <span className="text-[11px] text-[var(--text-soft)] leading-snug">{opt.helper}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">Name</label>
+              <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
+                Name <span className="text-[var(--link)]/60">*</span>
+              </label>
               <input
                 type="text"
-                value={interviewer.name}
+                value={recipient.name}
                 onChange={(e) => update({ name: e.target.value })}
                 placeholder="e.g. Sarah Chen"
                 className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors"
               />
             </div>
             <div>
-              <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">Title</label>
+              <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
+                Title <span className="text-[var(--text-soft)] normal-case font-normal">(optional)</span>
+              </label>
               <input
                 type="text"
-                value={interviewer.title}
+                value={recipient.title ?? ''}
                 onChange={(e) => update({ title: e.target.value })}
                 placeholder="e.g. VP of Engineering"
                 className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors"
@@ -302,14 +277,14 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
 
           <div>
             <label className="block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
-              Topics Discussed <span className="text-[var(--text-soft)] normal-case font-normal">(comma-separated)</span>
+              Topics Discussed <span className="text-[var(--text-soft)] normal-case font-normal">(comma-separated, optional)</span>
             </label>
             <input
               type="text"
               value={topicsRaw}
               onChange={(e) => setTopicsRaw(e.target.value)}
               onBlur={handleTopicsBlur}
-              placeholder="e.g. supply chain transformation, Q3 targets, team structure"
+              placeholder="e.g. supply chain transformation, Q3 targets"
               className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors"
             />
           </div>
@@ -319,7 +294,7 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
               Rapport Notes <span className="text-[var(--text-soft)] normal-case font-normal">(optional)</span>
             </label>
             <textarea
-              value={interviewer.rapport_notes ?? ''}
+              value={recipient.rapport_notes ?? ''}
               onChange={(e) => update({ rapport_notes: e.target.value })}
               placeholder="Shared interests, personal anecdotes, memorable moments..."
               rows={2}
@@ -346,7 +321,362 @@ function InterviewerCard({ index, interviewer, onChange, onRemove, isOnly }: Int
   );
 }
 
-// --- Activity feed ---
+// ─── Interview-prep pull control (soft coupling) ───────────────────
+
+interface InterviewPrepPullControlProps {
+  applicationId: string;
+  enabled: boolean;
+  onChange: (enabled: boolean, sourceSessionId?: string) => void;
+}
+
+interface PrepPointer {
+  session_id: string;
+  generated_at: string;
+}
+
+function InterviewPrepPullControl({ applicationId, enabled, onChange }: InterviewPrepPullControlProps) {
+  const [pointer, setPointer] = useState<PrepPointer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setPointer(null);
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) {
+          if (!cancelled) { setLoading(false); }
+          return;
+        }
+        const res = await fetch(
+          `${API_BASE}/interview-prep/reports/by-application/${encodeURIComponent(applicationId)}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (cancelled) return;
+        if (res.status === 404) {
+          setPointer(null);
+        } else if (res.ok) {
+          const data = (await res.json()) as Partial<PrepPointer>;
+          if (data.session_id) {
+            setPointer({
+              session_id: data.session_id,
+              generated_at: data.generated_at ?? '',
+            });
+          }
+        } else {
+          setError(`Failed to look up interview prep (${res.status})`);
+        }
+      } catch {
+        if (!cancelled) setError('Failed to look up interview prep');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [applicationId]);
+
+  if (loading) {
+    return (
+      <GlassCard className="p-4">
+        <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
+          <Loader2 size={12} className="animate-spin" />
+          Checking for a prior interview-prep session…
+        </div>
+      </GlassCard>
+    );
+  }
+
+  if (error || !pointer) {
+    return null;
+  }
+
+  return (
+    <GlassCard className="p-4">
+      <label className="flex items-start gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => onChange(e.target.checked, pointer.session_id)}
+          className="mt-0.5 h-4 w-4"
+        />
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <LinkIcon size={12} className="text-[var(--link)]" />
+            <span className="text-[13px] font-semibold text-[var(--text-strong)]">
+              Use my interview-prep notes for this application
+            </span>
+          </div>
+          <p className="text-[12px] text-[var(--text-soft)] mt-1 leading-relaxed">
+            Pulls the most recent interview-prep report for this application so the drafts can reference
+            real moments from your prep without you retyping them.
+          </p>
+          {pointer.generated_at && (
+            <p className="text-[11px] text-[var(--text-soft)] mt-1">
+              Prepared: {new Date(pointer.generated_at).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+      </label>
+    </GlassCard>
+  );
+}
+
+// ─── Timing warning banner ─────────────────────────────────────────
+
+function TimingWarningBanner({ warning }: { warning: TimingWarning }) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.06] px-4 py-3">
+      <AlertCircle size={14} className="text-[var(--badge-amber-text)] flex-shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <div className="text-[12px] font-semibold text-[var(--badge-amber-text)] uppercase tracking-wider">
+          Timing note · {warning.days_since_interview} days since interview
+        </div>
+        <p className="text-[13px] text-[var(--text-soft)] mt-0.5 leading-relaxed">{warning.message}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Per-recipient review card ─────────────────────────────────────
+
+interface PerRecipientReviewCardProps {
+  note: ThankYouNote;
+  index: number;
+  onRequestRevise: (index: number, feedback: string) => Promise<boolean>;
+  onSaveEdit: (index: number, editedSubject: string | undefined, editedBody: string) => Promise<boolean>;
+  disabled: boolean;
+}
+
+function PerRecipientReviewCard({
+  note,
+  index,
+  onRequestRevise,
+  onSaveEdit,
+  disabled,
+}: PerRecipientReviewCardProps) {
+  const [mode, setMode] = useState<'preview' | 'revise' | 'edit'>('preview');
+  const [feedback, setFeedback] = useState('');
+  const [editSubject, setEditSubject] = useState(note.subject_line ?? '');
+  const [editBody, setEditBody] = useState(note.content);
+  const [submitting, setSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Reset edit buffers when the note prop changes (e.g., after a rerun).
+  useEffect(() => {
+    setEditSubject(note.subject_line ?? '');
+    setEditBody(note.content);
+  }, [note.subject_line, note.content]);
+
+  const roleLabel = RECIPIENT_ROLE_OPTIONS.find((r) => r.value === note.recipient_role)?.label ?? note.recipient_role;
+  const wordCount = note.content.trim().split(/\s+/).filter(Boolean).length;
+
+  const handleCopy = useCallback(async () => {
+    const text = note.subject_line
+      ? `Subject: ${note.subject_line}\n\n${note.content}`
+      : note.content;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  }, [note.content, note.subject_line]);
+
+  const handleRevise = useCallback(async () => {
+    const trimmed = feedback.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    const ok = await onRequestRevise(index, trimmed);
+    setSubmitting(false);
+    if (ok) {
+      setFeedback('');
+      setMode('preview');
+    }
+  }, [feedback, submitting, onRequestRevise, index]);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    const ok = await onSaveEdit(
+      index,
+      note.format === 'email' ? editSubject : undefined,
+      editBody,
+    );
+    setSubmitting(false);
+    if (ok) setMode('preview');
+  }, [submitting, onSaveEdit, index, note.format, editSubject, editBody]);
+
+  return (
+    <GlassCard className="p-5 space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="rounded-lg bg-[var(--link)]/10 p-2">
+          <Mail size={14} className="text-[var(--link)]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-[14px] font-semibold text-[var(--text-strong)]">{note.recipient_name}</span>
+            <span className="text-[11px] text-[var(--link)]/70 uppercase tracking-wider">{roleLabel}</span>
+            {note.recipient_title && (
+              <span className="text-[12px] text-[var(--text-soft)]">· {note.recipient_title}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-1 text-[11px] text-[var(--text-soft)]">
+            <span>{note.format.replace('_', ' ')}</span>
+            <span>·</span>
+            <span className="flex items-center gap-1"><Hash size={10} />{wordCount}w</span>
+            {typeof note.quality_score === 'number' && (
+              <>
+                <span>·</span>
+                <span>Quality: {note.quality_score}/100</span>
+              </>
+            )}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => void handleCopy()}
+          className={cn(
+            'flex items-center gap-1 rounded-md px-2 py-1 text-[12px] border transition-all',
+            copied
+              ? 'bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20 text-[var(--badge-green-text)]'
+              : 'bg-[var(--accent-muted)] border-[var(--line-soft)] text-[var(--text-soft)] hover:text-[var(--text-muted)]',
+          )}
+        >
+          {copied ? <Check size={11} /> : <Copy size={11} />}
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+
+      {mode === 'preview' && (
+        <>
+          {note.format === 'email' && note.subject_line && (
+            <div className="text-[12px] text-[var(--text-soft)]">
+              <span className="font-semibold uppercase tracking-wider">Subject:</span> {note.subject_line}
+            </div>
+          )}
+          <p className="text-[13px] text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">{note.content}</p>
+
+          <div className="flex items-center gap-2 pt-1 border-t border-[var(--line-soft)]/60">
+            <GlassButton
+              variant="ghost"
+              size="sm"
+              onClick={() => setMode('revise')}
+              disabled={disabled || submitting}
+              className="text-[13px]"
+            >
+              Revise this one
+            </GlassButton>
+            <GlassButton
+              variant="ghost"
+              size="sm"
+              onClick={() => setMode('edit')}
+              disabled={disabled || submitting}
+              className="text-[13px]"
+            >
+              <Edit3 size={12} className="mr-1.5" />
+              Edit directly
+            </GlassButton>
+          </div>
+        </>
+      )}
+
+      {mode === 'revise' && (
+        <div className="space-y-3">
+          <label className="block text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
+            Ask the agent to revise this note only
+          </label>
+          <textarea
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            placeholder="e.g. make it shorter · reference the Q3 roadmap question · more assertive close"
+            rows={3}
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] resize-none leading-relaxed focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
+          />
+          <div className="flex items-center gap-2">
+            <GlassButton
+              variant="primary"
+              size="sm"
+              onClick={() => void handleRevise()}
+              disabled={feedback.trim().length === 0 || submitting || disabled}
+              className="text-[13px]"
+            >
+              {submitting ? <Loader2 size={12} className="mr-1.5 animate-spin" /> : null}
+              Request revision
+            </GlassButton>
+            <GlassButton
+              variant="ghost"
+              size="sm"
+              onClick={() => { setMode('preview'); setFeedback(''); }}
+              disabled={submitting}
+              className="text-[13px]"
+            >
+              Cancel
+            </GlassButton>
+          </div>
+        </div>
+      )}
+
+      {mode === 'edit' && (
+        <div className="space-y-3">
+          {note.format === 'email' && (
+            <div>
+              <label className="block text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
+                Subject
+              </label>
+              <input
+                type="text"
+                value={editSubject}
+                onChange={(e) => setEditSubject(e.target.value)}
+                className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
+              />
+            </div>
+          )}
+          <div>
+            <label className="block text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5">
+              Body
+            </label>
+            <textarea
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              rows={10}
+              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] resize-none leading-relaxed focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 whitespace-pre-wrap"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <GlassButton
+              variant="primary"
+              size="sm"
+              onClick={() => void handleSaveEdit()}
+              disabled={submitting || disabled}
+              className="text-[13px]"
+            >
+              {submitting ? <Loader2 size={12} className="mr-1.5 animate-spin" /> : null}
+              Save my edits
+            </GlassButton>
+            <GlassButton
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setMode('preview');
+                setEditSubject(note.subject_line ?? '');
+                setEditBody(note.content);
+              }}
+              disabled={submitting}
+              className="text-[13px]"
+            >
+              Cancel
+            </GlassButton>
+          </div>
+        </div>
+      )}
+    </GlassCard>
+  );
+}
+
+// ─── Activity feed (kept, light trim) ───────────────────────────────
 
 function ActivityFeed({
   activityMessages,
@@ -357,77 +687,45 @@ function ActivityFeed({
   currentStage: string | null;
   company: string;
 }) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [activityMessages.length]);
 
-  const stageLabel = currentStage === 'drafting'
-    ? 'Drafting notes'
-    : currentStage === 'quality'
-    ? 'Checking quality'
-    : currentStage
-    ? currentStage
-    : 'Starting...';
-
   return (
-    <GlassCard className="p-8">
-      {/* Glow orb */}
-      <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-[var(--link)]/[0.04] blur-3xl pointer-events-none" />
-
-      <div className="flex items-center gap-4 mb-8">
-        <div className="relative">
-          <div className="rounded-xl bg-[var(--link)]/10 p-3">
-            <Mail size={20} className="text-[var(--link)]" />
-          </div>
-          <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[var(--badge-green-text)]/20 border-2 border-[var(--badge-green-text)]/40 flex items-center justify-center">
-            <Loader2 size={8} className="text-[var(--badge-green-text)] animate-spin" />
-          </div>
-        </div>
-        <div>
-          <h3 className="text-[17px] font-semibold text-[var(--text-strong)]">
-            Writing notes for {company || 'your interview'}
-          </h3>
-          <p className="text-[13px] text-[var(--text-soft)] mt-0.5">{stageLabel}</p>
-        </div>
-      </div>
-
-      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
-        {activityMessages.length === 0 ? (
-          <div className="text-center py-12">
-            <Loader2 size={24} className="text-[var(--text-soft)] mx-auto mb-3 animate-spin" />
-            <p className="text-[13px] text-[var(--text-soft)]">Connecting to pipeline...</p>
-          </div>
-        ) : (
-          activityMessages.map((msg, i) => {
-            const opacity = Math.max(0.3, 1 - (activityMessages.length - 1 - i) * 0.08);
-            return (
-              <div
-                key={msg.id}
-                className="flex items-start gap-3 py-1.5"
-                style={{ opacity }}
-              >
-                <div className="h-1.5 w-1.5 rounded-full bg-[var(--link)]/50 mt-2 flex-shrink-0" />
-                <span className="text-[13px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
-              </div>
-            );
-          })
+    <GlassCard className="p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Loader2 size={14} className="text-[var(--link)] animate-spin" />
+        <span className="text-[13px] font-semibold text-[var(--text-strong)]">
+          Drafting for {company || 'your interview'}
+        </span>
+        {currentStage && (
+          <span className="ml-auto text-[11px] text-[var(--text-soft)] uppercase tracking-wider">{currentStage}</span>
         )}
-        <div ref={bottomRef} />
+      </div>
+      <div ref={scrollRef} className="max-h-64 overflow-y-auto space-y-1.5">
+        {activityMessages.length === 0 ? (
+          <div className="text-[12px] text-[var(--text-soft)]">Waiting for the first update…</div>
+        ) : (
+          activityMessages.map((m) => (
+            <div key={m.id} className="text-[12px] text-[var(--text-soft)] leading-relaxed">{m.message}</div>
+          ))
+        )}
       </div>
     </GlassCard>
   );
 }
 
-// --- Report view ---
+// ─── Report view (complete state) ──────────────────────────────────
 
 function ReportView({
   report,
   qualityScore,
   company,
   role,
-  interviewType,
   onReset,
 }: {
   report: string;
@@ -454,12 +752,8 @@ function ReportView({
       ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border-[var(--badge-amber-text)]/20'
       : 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10 border-[var(--badge-red-text)]/20';
 
-  const noteCards = parseNoteCards(report);
-  const hasParsedCards = noteCards.length > 0;
-
   return (
     <div className="space-y-6">
-      {/* Back + actions bar */}
       <div className="flex items-center gap-4">
         <button
           type="button"
@@ -475,13 +769,12 @@ function ReportView({
             Note Strength {qualityScore}%
           </div>
         )}
-        <GlassButton variant="ghost" onClick={handleCopyAll} size="sm">
+        <GlassButton variant="ghost" onClick={() => void handleCopyAll()} size="sm">
           {copiedAll ? <Check size={13} className="mr-1.5 text-[var(--badge-green-text)]" /> : <Copy size={13} className="mr-1.5" />}
           {copiedAll ? 'Copied!' : 'Copy All'}
         </GlassButton>
       </div>
 
-      {/* Report card header */}
       <GlassCard className="px-5 py-4 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-80 h-80 rounded-full bg-[var(--link)]/[0.03] blur-3xl pointer-events-none" />
         <div className="flex items-center gap-3">
@@ -495,80 +788,27 @@ function ReportView({
         </div>
       </GlassCard>
 
-      {/* Quality bar */}
-      {qualityScore !== null && (
-        <GlassCard className="px-4 py-3">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[13px] text-[var(--text-soft)]">Note Strength</span>
-            <span className={cn(
-              'text-[13px] font-semibold',
-              qualityScore >= 80 ? 'text-[var(--badge-green-text)]' : qualityScore >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-[var(--badge-red-text)]',
-            )}>
-              {qualityScore >= 80 ? 'Strong' : qualityScore >= 60 ? 'Solid' : 'Needs polish'}
-            </span>
-          </div>
-          <div className="h-1.5 w-full rounded-full bg-[var(--accent-muted)]">
-            <div
-              className={cn(
-                'h-full rounded-full transition-all duration-500',
-                qualityScore >= 80 ? 'bg-[var(--badge-green-text)]/60' : qualityScore >= 60 ? 'bg-[var(--badge-amber-text)]/60' : 'bg-[var(--badge-red-text)]/60',
-              )}
-              style={{ width: `${qualityScore}%` }}
-            />
-          </div>
-        </GlassCard>
-      )}
-
-      {/* Per-note cards or fallback prose */}
-      {hasParsedCards ? (
-        <div className="space-y-3">
-          {noteCards.map((card, i) => (
-            <NoteCard
-              key={i}
-              title={card.title}
-              content={card.content}
-              interviewType={interviewType}
-            />
-          ))}
-        </div>
-      ) : (
-        <GlassCard className="p-8 relative overflow-hidden">
-          <div
-            className="prose prose-invert prose-sm max-w-none
-              prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
-              prose-h1:text-[18px] prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
-              prose-h2:text-[15px] prose-h2:mt-8 prose-h2:mb-3
-              prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2
-              prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed
-              prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
-              prose-strong:text-[var(--text-muted)]
-              prose-em:text-[var(--text-soft)]
-              prose-blockquote:border-[var(--link)]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:italic
-              prose-hr:border-[var(--line-soft)]"
-            dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
-          />
-        </GlassCard>
-      )}
+      <GlassCard className="p-8 relative overflow-hidden">
+        <div
+          className="prose prose-invert prose-sm max-w-none
+            prose-headings:text-[var(--text-strong)] prose-headings:font-semibold
+            prose-h1:text-[18px] prose-h1:border-b prose-h1:border-[var(--line-soft)] prose-h1:pb-3 prose-h1:mb-5
+            prose-h2:text-[15px] prose-h2:mt-8 prose-h2:mb-3
+            prose-h3:text-[14px] prose-h3:mt-5 prose-h3:mb-2
+            prose-p:text-[var(--text-soft)] prose-p:text-[13px] prose-p:leading-relaxed
+            prose-li:text-[var(--text-soft)] prose-li:text-[13px] prose-li:leading-relaxed
+            prose-strong:text-[var(--text-muted)]
+            prose-em:text-[var(--text-soft)]
+            prose-blockquote:border-[var(--link)]/30 prose-blockquote:text-[var(--text-soft)] prose-blockquote:italic
+            prose-hr:border-[var(--line-soft)]"
+          dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
+        />
+      </GlassCard>
     </div>
   );
 }
 
-// --- Idle form ---
-
-const INTERVIEW_TYPES = [
-  { value: 'phone', label: 'Phone Screen', icon: Phone },
-  { value: 'video', label: 'Video Call', icon: Video },
-  { value: 'onsite', label: 'Onsite', icon: MapPin },
-  { value: 'panel', label: 'Panel Interview', icon: MessageSquare },
-];
-
-let interviewerIdCounter = 0;
-
-function makeEmptyInterviewer(): InterviewerInput & { _id: number } {
-  return { _id: ++interviewerIdCounter, name: '', title: '', topics_discussed: [], rapport_notes: '', key_questions: [] };
-}
-
-// --- Main component ---
+// ─── Main component ────────────────────────────────────────────────
 
 interface ThankYouNoteRoomProps {
   initialCompany?: string;
@@ -587,9 +827,11 @@ export function ThankYouNoteRoom({
   const [role, setRole] = useState(initialRole ?? '');
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewType, setInterviewType] = useState('video');
-  const [interviewers, setInterviewers] = useState<(InterviewerInput & { _id: number })[]>([makeEmptyInterviewer()]);
+  const [recipients, setRecipients] = useState<RecipientFormEntry[]>([makeEmptyRecipient()]);
   const [formError, setFormError] = useState<string | null>(null);
   const [reviewFeedback, setReviewFeedback] = useState('');
+  const [pullInterviewPrep, setPullInterviewPrep] = useState(false);
+  const [pulledSourceSessionId, setPulledSourceSessionId] = useState<string | undefined>(undefined);
   const resumeRef = useRef<string>('');
   const { resumeText: loadedResumeText, loading: loadingResume } = useLatestMasterResumeText();
 
@@ -601,6 +843,7 @@ export function ThankYouNoteRoom({
     error,
     currentStage,
     noteReviewData,
+    timingWarning,
     startPipeline,
     respondToGate,
     reset,
@@ -620,35 +863,54 @@ export function ThankYouNoteRoom({
   }, [loadedResumeText]);
 
   useEffect(() => {
-    if (initialCompany) {
-      setCompany(initialCompany);
-    }
-    if (initialRole) {
-      setRole(initialRole);
-    }
+    if (initialCompany) setCompany(initialCompany);
+    if (initialRole) setRole(initialRole);
   }, [initialCompany, initialRole]);
 
-  const handleAddInterviewer = () => {
-    setInterviewers((prev) => [...prev, makeEmptyInterviewer()]);
+  const handleAddRecipient = () => {
+    setRecipients((prev) => (prev.length >= 10 ? prev : [...prev, makeEmptyRecipient()]));
   };
 
-  const handleChangeInterviewer = (index: number, updated: InterviewerInput) => {
-    setInterviewers((prev) => prev.map((iv, i) => (i === index ? { ...updated, _id: iv._id } : iv)));
+  const handleChangeRecipient = (index: number, updated: RecipientFormEntry) => {
+    setRecipients((prev) => prev.map((r, i) => (i === index ? updated : r)));
   };
 
-  const handleRemoveInterviewer = (index: number) => {
-    setInterviewers((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveRecipient = (index: number) => {
+    setRecipients((prev) => prev.filter((_, i) => i !== index));
   };
+
+  const handlePullChange = useCallback((enabled: boolean, sessionId?: string) => {
+    setPullInterviewPrep(enabled);
+    setPulledSourceSessionId(enabled ? sessionId : undefined);
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     setFormError(null);
 
+    if (!initialJobApplicationId) {
+      setFormError('Open this tool from inside an application to draft scoped thank-yous.');
+      return;
+    }
     if (!company.trim()) { setFormError('Company name is required.'); return; }
     if (!role.trim()) { setFormError('Role title is required.'); return; }
 
-    const validInterviewers = interviewers.filter((iv) => iv.name.trim() || iv.title.trim());
-    if (validInterviewers.length === 0) {
-      setFormError('Add at least one interviewer with a name or title.');
+    const validRecipients: RecipientInput[] = recipients
+      .filter((r) => r.name.trim().length > 0)
+      .map((r) => ({
+        role: r.role,
+        name: r.name.trim(),
+        title: r.title?.trim() || undefined,
+        topics_discussed: r.topics_discussed && r.topics_discussed.length > 0 ? r.topics_discussed : undefined,
+        rapport_notes: r.rapport_notes?.trim() || undefined,
+        key_questions: r.key_questions && r.key_questions.length > 0 ? r.key_questions : undefined,
+      }));
+
+    if (validRecipients.length === 0) {
+      setFormError('Add at least one recipient with a name.');
+      return;
+    }
+    if (validRecipients.length > 10) {
+      setFormError('Add up to 10 recipients.');
       return;
     }
     if (!resumeRef.current) {
@@ -657,96 +919,145 @@ export function ThankYouNoteRoom({
     }
 
     await startPipeline({
+      applicationId: initialJobApplicationId,
       resumeText: resumeRef.current,
       company: company.trim(),
       role: role.trim(),
       interviewDate: interviewDate || undefined,
       interviewType,
-      interviewers: validInterviewers,
-      jobApplicationId: initialJobApplicationId,
+      recipients: validRecipients,
+      sourceSessionId: pullInterviewPrep ? pulledSourceSessionId : undefined,
     });
-  }, [company, initialJobApplicationId, role, interviewDate, interviewType, interviewers, startPipeline]);
+  }, [
+    company,
+    role,
+    interviewDate,
+    interviewType,
+    recipients,
+    initialJobApplicationId,
+    pullInterviewPrep,
+    pulledSourceSessionId,
+    startPipeline,
+  ]);
 
   const handleReset = useCallback(() => {
     reset();
     setFormError(null);
     setCompany(initialCompany ?? '');
     setRole(initialRole ?? '');
+    setReviewFeedback('');
   }, [initialCompany, initialRole, reset]);
 
-  // Note review gate
+  const handlePerRecipientRevise = useCallback(
+    (index: number, feedback: string) =>
+      respondToGate('note_review', { recipient_index: index, feedback }),
+    [respondToGate],
+  );
+
+  const handlePerRecipientEdit = useCallback(
+    (index: number, editedSubject: string | undefined, editedBody: string) =>
+      respondToGate('note_review', {
+        recipient_index: index,
+        ...(editedSubject !== undefined ? { edited_subject: editedSubject } : {}),
+        edited_body: editedBody,
+      }),
+    [respondToGate],
+  );
+
+  const reviewNotes: ThankYouNote[] = useMemo(
+    () => noteReviewData?.notes ?? [],
+    [noteReviewData],
+  );
+  const reviewQualityScore = noteReviewData?.quality_score ?? null;
+
+  // ── Note review gate ───────────────────────────────────────────
   if (status === 'note_review') {
+    const reviewDisabled = false;
     return (
-      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+      <div className="flex flex-col gap-6 p-8 max-w-[900px] mx-auto">
         <div>
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Review Your Notes</h1>
           <p className="text-[13px] text-[var(--text-soft)] mt-1">
-            The agent has drafted your thank-you notes. Approve to finalize or request changes.
+            Each note is tuned to the recipient&rsquo;s role. Revise one at a time, edit directly, or approve the full set.
           </p>
         </div>
-        <GlassCard className="p-6 space-y-4">
-          {noteReviewData && noteReviewData.quality_score > 0 && (
-            <div className="flex items-center gap-3 pb-2 border-b border-[var(--line-soft)]">
-              <span className="text-[13px] text-[var(--text-soft)]">Draft quality</span>
+
+        {timingWarning && <TimingWarningBanner warning={timingWarning} />}
+
+        {reviewQualityScore !== null && reviewQualityScore > 0 && (
+          <GlassCard className="px-4 py-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[13px] text-[var(--text-soft)]">Note Strength</span>
               <span className={cn(
-                'text-[13px] font-semibold px-2 py-0.5 rounded-md border',
-                noteReviewData.quality_score >= 80
-                  ? 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10 border-[var(--badge-green-text)]/20'
-                  : noteReviewData.quality_score >= 60
-                  ? 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10 border-[var(--badge-amber-text)]/20'
-                  : 'text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/10 border-[var(--badge-red-text)]/20',
+                'text-[13px] font-semibold',
+                reviewQualityScore >= 80 ? 'text-[var(--badge-green-text)]'
+                : reviewQualityScore >= 60 ? 'text-[var(--badge-amber-text)]'
+                : 'text-[var(--badge-red-text)]',
               )}>
-                {noteReviewData.quality_score}%
+                {reviewQualityScore >= 80 ? 'Strong' : reviewQualityScore >= 60 ? 'Solid' : 'Needs polish'}
               </span>
             </div>
-          )}
-          {noteReviewData && noteReviewData.notes.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
-                Drafted notes ({noteReviewData.notes.length})
-              </p>
-              {noteReviewData.notes.map((note, i) => {
-                const n = note as Record<string, unknown>;
-                const interviewerName = typeof n.interviewer_name === 'string' ? n.interviewer_name : `Note ${i + 1}`;
-                return (
-                  <div key={i} className="flex items-center gap-2 text-[13px] text-[var(--text-muted)]">
-                    <CheckCircle2 size={13} className="text-[var(--badge-green-text)] flex-shrink-0" />
-                    {interviewerName}
-                  </div>
-                );
-              })}
+            <div className="h-1.5 w-full rounded-full bg-[var(--accent-muted)]">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all duration-500',
+                  reviewQualityScore >= 80 ? 'bg-[var(--badge-green-text)]/60'
+                  : reviewQualityScore >= 60 ? 'bg-[var(--badge-amber-text)]/60'
+                  : 'bg-[var(--badge-red-text)]/60',
+                )}
+                style={{ width: `${reviewQualityScore}%` }}
+              />
             </div>
-          )}
-          <div className="space-y-2 pt-2">
-            <p className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
-              Request changes (optional)
-            </p>
-            <textarea
-              value={reviewFeedback}
-              onChange={(e) => setReviewFeedback(e.target.value)}
-              placeholder="Describe any changes you'd like made to tone, length, or specific details..."
-              rows={3}
-              className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--link)]/20 focus:border-[var(--link)]/30 transition-colors resize-none leading-relaxed"
+          </GlassCard>
+        )}
+
+        <div className="space-y-3">
+          {reviewNotes.map((note, i) => (
+            <PerRecipientReviewCard
+              key={`${note.recipient_name}-${i}`}
+              note={note}
+              index={i}
+              onRequestRevise={handlePerRecipientRevise}
+              onSaveEdit={handlePerRecipientEdit}
+              disabled={reviewDisabled}
             />
+          ))}
+        </div>
+
+        <GlassCard className="p-5 space-y-3">
+          <div>
+            <p className="text-[12px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">
+              Collection-level request (optional)
+            </p>
+            <p className="text-[11px] text-[var(--text-soft)] mt-0.5">
+              Rewrites every note. For single-recipient changes, use the per-card controls above.
+            </p>
           </div>
-          <div className="flex items-center gap-3 pt-2">
+          <textarea
+            value={reviewFeedback}
+            onChange={(e) => setReviewFeedback(e.target.value)}
+            placeholder="e.g. make all notes more concise; emphasize the transformation track record"
+            rows={2}
+            className="w-full rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-[13px] text-[var(--text-strong)] resize-none leading-relaxed focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
+          />
+          <div className="flex items-center gap-3">
             <GlassButton
               variant="primary"
               onClick={() => void respondToGate('note_review', true)}
               className="gap-2"
             >
               <CheckCircle2 size={14} />
-              Approve Notes
+              Approve all notes
             </GlassButton>
             {reviewFeedback.trim() && (
               <GlassButton
                 variant="ghost"
                 onClick={() => {
-                  void respondToGate('note_review', { approved: false, feedback: reviewFeedback.trim() });
+                  void respondToGate('note_review', { feedback: reviewFeedback.trim() });
                   setReviewFeedback('');
                 }}
               >
-                Request Changes
+                Rewrite all with this feedback
               </GlassButton>
             )}
           </div>
@@ -755,10 +1066,11 @@ export function ThankYouNoteRoom({
     );
   }
 
-  // Complete → report
+  // ── Complete → report ─────────────────────────────────────────
   if (status === 'complete' && report) {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+        {timingWarning && <TimingWarningBanner warning={timingWarning} />}
         <ReportView
           report={report}
           qualityScore={qualityScore}
@@ -789,19 +1101,16 @@ export function ThankYouNoteRoom({
     );
   }
 
-  // Running
+  // ── Running ───────────────────────────────────────────────────
   if (status === 'connecting' || status === 'running') {
     return (
-      <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
+      <div className="flex flex-col gap-6 p-8 max-w-[900px] mx-auto">
         <div>
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Thank-You Notes</h1>
-          <p className="text-[13px] text-[var(--text-soft)] mt-1">Drafting tailored follow-up notes for each interviewer</p>
+          <p className="text-[13px] text-[var(--text-soft)] mt-1">Drafting recipient-calibrated notes</p>
         </div>
-        <ActivityFeed
-          activityMessages={activityMessages}
-          currentStage={currentStage}
-          company={company}
-        />
+        {timingWarning && <TimingWarningBanner warning={timingWarning} />}
+        <ActivityFeed activityMessages={activityMessages} currentStage={currentStage} company={company} />
         <div className="flex justify-start">
           <button
             type="button"
@@ -815,7 +1124,7 @@ export function ThankYouNoteRoom({
     );
   }
 
-  // Error state
+  // ── Error ─────────────────────────────────────────────────────
   if (status === 'error' && error) {
     return (
       <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
@@ -833,10 +1142,9 @@ export function ThankYouNoteRoom({
     );
   }
 
-  // Idle form
+  // ── Idle form ─────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-8 p-8 max-w-[900px] mx-auto">
-      {/* Header */}
       <div className="flex gap-3">
         <div className="rounded-xl bg-[var(--link)]/10 p-2.5 self-start shrink-0">
           <Mail size={20} className="text-[var(--link)]" />
@@ -844,7 +1152,7 @@ export function ThankYouNoteRoom({
         <div>
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Thank-You Notes</h1>
           <p className="text-[13px] text-[var(--text-soft)] leading-relaxed mt-1">
-            Draft notes for each interviewer that reference the conversation, reinforce your fit, and make the follow-up easier to send.
+            Draft notes for each recipient, calibrated to their role — hiring manager, recruiter, panel, sponsor. Refine each one independently.
           </p>
         </div>
       </div>
@@ -853,7 +1161,7 @@ export function ThankYouNoteRoom({
         className="mb-3"
       />
 
-      {/* Prior result */}
+      {/* Prior saved draft */}
       {priorLoading && (
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
@@ -900,6 +1208,15 @@ export function ThankYouNoteRoom({
           <AlertCircle size={12} />
           No resume found — complete the Resume Strategist first for best results
         </div>
+      )}
+
+      {/* Soft interview-prep coupling */}
+      {initialJobApplicationId && (
+        <InterviewPrepPullControl
+          applicationId={initialJobApplicationId}
+          enabled={pullInterviewPrep}
+          onChange={handlePullChange}
+        />
       )}
 
       {/* Section 1: Interview details */}
@@ -974,7 +1291,6 @@ export function ThankYouNoteRoom({
           </div>
         </div>
 
-        {/* Delivery timing hint */}
         {interviewType && (
           <div className={cn(
             'flex items-center gap-2 rounded-xl px-4 py-2.5 border text-[12px]',
@@ -990,37 +1306,38 @@ export function ThankYouNoteRoom({
         )}
       </div>
 
-      {/* Section 2: Interviewers */}
+      {/* Section 2: Recipients */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <User size={16} className="text-[var(--link)]" />
-          <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Interviewers</h2>
+          <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Recipients</h2>
+          <span className="text-[11px] text-[var(--text-soft)]">({recipients.length} / 10)</span>
           <div className="flex-1 h-px bg-[var(--accent-muted)]" />
           <button
             type="button"
-            onClick={handleAddInterviewer}
-            className="flex items-center gap-1.5 text-[12px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors"
+            onClick={handleAddRecipient}
+            disabled={recipients.length >= 10}
+            className="flex items-center gap-1.5 text-[12px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors disabled:opacity-50"
           >
             <Plus size={13} />
-            Add interviewer
+            Add recipient
           </button>
         </div>
 
         <div className="space-y-3">
-          {interviewers.map((iv, i) => (
-            <InterviewerCard
-              key={iv._id}
+          {recipients.map((r, i) => (
+            <RecipientCard
+              key={r._id}
               index={i}
-              interviewer={iv}
-              onChange={handleChangeInterviewer}
-              onRemove={handleRemoveInterviewer}
-              isOnly={interviewers.length === 1}
+              recipient={r}
+              onChange={handleChangeRecipient}
+              onRemove={handleRemoveRecipient}
+              isOnly={recipients.length === 1}
             />
           ))}
         </div>
       </div>
 
-      {/* Error */}
       {formError && (
         <div className="flex items-center gap-2 text-[13px] text-[var(--badge-red-text)] bg-[var(--badge-red-text)]/5 border border-[var(--badge-red-text)]/15 rounded-xl px-4 py-3">
           <AlertCircle size={14} className="flex-shrink-0" />
@@ -1028,14 +1345,14 @@ export function ThankYouNoteRoom({
         </div>
       )}
 
-      {/* Submit */}
       <div className="flex items-center justify-between">
-        <p className="text-[12px] text-[var(--text-soft)]">
-          Notes will reference specific moments and close with forward momentum.
+        <p className="text-[12px] text-[var(--text-soft)] flex items-center gap-1">
+          <Zap size={11} />
+          Each note is calibrated to the recipient&rsquo;s role. Refine each one independently after drafting.
         </p>
         <GlassButton
           variant="primary"
-          onClick={handleSubmit}
+          onClick={() => void handleSubmit()}
           className="text-[14px] px-6 py-3 gap-2"
         >
           <Sparkles size={15} />

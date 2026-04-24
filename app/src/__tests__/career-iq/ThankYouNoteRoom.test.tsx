@@ -42,6 +42,7 @@ const idleState = {
   error: null,
   currentStage: null,
   noteReviewData: null,
+  timingWarning: null,
   pendingGate: null,
   startPipeline: mockStartPipeline,
   respondToGate: mockRespondToGate,
@@ -100,16 +101,27 @@ describe('ThankYouNoteRoom', () => {
     expect(screen.getByDisplayValue('VP Engineering')).toBeInTheDocument();
   });
 
-  it('shows interviewers section with one card by default', () => {
+  it('shows recipients section with one card by default', () => {
     render(<ThankYouNoteRoom />);
-    expect(screen.getByText('Interviewers')).toBeInTheDocument();
-    expect(screen.getByText('Interviewer 1')).toBeInTheDocument();
+    expect(screen.getByText('Recipients')).toBeInTheDocument();
+    expect(screen.getByText('Recipient 1')).toBeInTheDocument();
   });
 
-  it('adds a second interviewer card when add button is clicked', () => {
+  it('adds a second recipient card when add button is clicked', () => {
     render(<ThankYouNoteRoom />);
-    fireEvent.click(screen.getByText('Add interviewer'));
-    expect(screen.getByText('Interviewer 2')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Add recipient'));
+    expect(screen.getByText('Recipient 2')).toBeInTheDocument();
+  });
+
+  it('renders all five recipient role options in the role picker', () => {
+    render(<ThankYouNoteRoom />);
+    // "Hiring Manager" appears twice — once in the card header badge and
+    // once in the role picker button. The card is expanded by default.
+    expect(screen.getAllByText('Hiring Manager').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Recruiter')).toBeInTheDocument();
+    expect(screen.getByText('Panel Interviewer')).toBeInTheDocument();
+    expect(screen.getByText('Executive Sponsor')).toBeInTheDocument();
+    expect(screen.getByText('Other')).toBeInTheDocument();
   });
 
   it('does not call startPipeline when required fields are empty', () => {
@@ -129,8 +141,8 @@ describe('ThankYouNoteRoom', () => {
     render(<ThankYouNoteRoom />);
     // Quality badge is present
     expect(screen.getByText('Note Strength 91%')).toBeInTheDocument();
-    // Copy button is present
-    expect(screen.getByText('Copy')).toBeInTheDocument();
+    // Copy-all button is present in the ReportView header
+    expect(screen.getByText('Copy All')).toBeInTheDocument();
   });
 
   it('calls reset when Draft another version is clicked in complete state', () => {

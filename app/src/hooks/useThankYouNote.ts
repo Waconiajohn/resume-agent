@@ -1,3 +1,12 @@
+/**
+ * useThankYouNote — Phase 2.3e.
+ *
+ * Multi-recipient thank-you note hook with recipient-role primary axis,
+ * per-recipient independent refinement, soft interview-prep coupling,
+ * and timing awareness. Mirrors the SSE peer-tool pattern from
+ * useInterviewPrep / useFollowUpEmail.
+ */
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseSSEStream } from '@/lib/sse-parser';
 import { API_BASE } from '@/lib/api';
@@ -7,12 +16,76 @@ import { safeString, safeNumber } from '@/lib/safe-cast';
 import type { ActivityMessage } from '@/types/activity';
 
 export type { ActivityMessage };
-export type ThankYouNoteStatus = 'idle' | 'connecting' | 'running' | 'note_review' | 'complete' | 'error';
+
+export type ThankYouNoteStatus =
+  | 'idle'
+  | 'connecting'
+  | 'running'
+  | 'note_review'
+  | 'complete'
+  | 'error';
+
+export type NoteFormat = 'email' | 'handwritten' | 'linkedin_message';
+
+export type RecipientRole =
+  | 'hiring_manager'
+  | 'recruiter'
+  | 'panel_interviewer'
+  | 'executive_sponsor'
+  | 'other';
+
+export interface RecipientInput {
+  role: RecipientRole;
+  name: string;
+  title?: string;
+  topics_discussed?: string[];
+  rapport_notes?: string;
+  key_questions?: string[];
+}
+
+export interface ThankYouNote {
+  recipient_role: RecipientRole;
+  recipient_name: string;
+  recipient_title: string;
+  format: NoteFormat;
+  content: string;
+  subject_line?: string;
+  personalization_notes: string;
+  quality_score?: number;
+}
+
+export interface TimingWarning {
+  days_since_interview: number;
+  message: string;
+}
 
 export interface NoteReviewData {
-  notes: unknown[];
+  notes: ThankYouNote[];
   quality_score: number;
 }
+
+export interface ThankYouNoteInput {
+  applicationId: string;
+  resumeText: string;
+  company: string;
+  role: string;
+  recipients: RecipientInput[];
+  interviewDate?: string;
+  interviewType?: string;
+  sourceSessionId?: string;
+}
+
+/** Collection-level gate response. */
+export type CollectionGateResponse =
+  | true
+  | 'approved'
+  | { feedback: string }
+  | { edited_content: string };
+
+/** Per-recipient gate response. */
+export type PerRecipientGateResponse =
+  | { recipient_index: number; feedback: string }
+  | { recipient_index: number; edited_subject?: string; edited_body?: string };
 
 interface ThankYouNoteHookState {
   status: ThankYouNoteStatus;
@@ -22,33 +95,39 @@ interface ThankYouNoteHookState {
   error: string | null;
   currentStage: string | null;
   noteReviewData: NoteReviewData | null;
+  timingWarning: TimingWarning | null;
   pendingGate: string | null;
-}
-
-export interface InterviewerInput {
-  name: string;
-  title: string;
-  topics_discussed: string[];
-  rapport_notes?: string;
-  key_questions?: string[];
-}
-
-export interface ThankYouNoteInput {
-  resumeText: string;
-  company: string;
-  role: string;
-  interviewDate?: string;
-  interviewType?: string;
-  interviewers: InterviewerInput[];
-  jobApplicationId?: string;
 }
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
 
-function normalizeReviewNotes(value: unknown): unknown[] {
+function normalizeNote(raw: unknown): ThankYouNote | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const format = safeString(r.format, 'email') as NoteFormat;
+  const role = safeString(r.recipient_role, 'other') as RecipientRole;
+  return {
+    recipient_role: role,
+    recipient_name: safeString(r.recipient_name),
+    recipient_title: safeString(r.recipient_title),
+    format,
+    content: safeString(r.content),
+    subject_line: typeof r.subject_line === 'string' ? r.subject_line : undefined,
+    personalization_notes: safeString(r.personalization_notes),
+    quality_score:
+      typeof r.quality_score === 'number' ? r.quality_score : undefined,
+  };
+}
+
+function normalizeReviewNotes(value: unknown): ThankYouNote[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((item) => item != null && typeof item === 'object' && !Array.isArray(item));
+  const notes: ThankYouNote[] = [];
+  for (const raw of value) {
+    const note = normalizeNote(raw);
+    if (note) notes.push(note);
+  }
+  return notes;
 }
 
 function normalizeGateName(value: unknown): 'note_review' | null {
@@ -64,6 +143,7 @@ export function useThankYouNote() {
     error: null,
     currentStage: null,
     noteReviewData: null,
+    timingWarning: null,
     pendingGate: null,
   });
 
@@ -93,7 +173,12 @@ export function useThankYouNote() {
       ...prev,
       activityMessages: [
         ...prev.activityMessages.slice(-(MAX_ACTIVITY_MESSAGES - 1)),
-        { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, message: text, stage, timestamp: Date.now() },
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          message: text,
+          stage,
+          timestamp: Date.now(),
+        },
       ],
     }));
   }, []);
@@ -123,17 +208,27 @@ export function useThankYouNote() {
           addActivity(safeString(data.message), safeString(data.stage));
           break;
 
+        case 'thank_you_timing_warning': {
+          const days = safeNumber(data.days_since_interview);
+          const message = safeString(data.message);
+          if (days > 0 && message) {
+            setState((prev) => ({ ...prev, timingWarning: { days_since_interview: days, message } }));
+            addActivity(`Timing note: ${message}`, 'timing');
+          }
+          break;
+        }
+
         case 'note_drafted': {
-          const interviewer = safeString(data.interviewer_name);
+          const recipient = safeString(data.recipient_name);
           const format = safeString(data.format);
-          addActivity(`Drafted ${format} note for ${interviewer}`, 'drafting');
+          addActivity(`Drafted ${format} note for ${recipient}`, 'drafting');
           break;
         }
 
         case 'note_complete': {
-          const interviewer = safeString(data.interviewer_name);
+          const recipient = safeString(data.recipient_name);
           const qualityScore = safeNumber(data.quality_score);
-          addActivity(`Quality checked note for ${interviewer} — score: ${qualityScore}`, 'quality');
+          addActivity(`Quality checked note for ${recipient} — score: ${qualityScore}`, 'quality');
           break;
         }
 
@@ -280,13 +375,14 @@ export function useThankYouNote() {
         error: null,
         currentStage: null,
         noteReviewData: null,
+        timingWarning: null,
         pendingGate: null,
       });
 
       try {
         const { accessToken, session } = await createProductSession({
           productType: 'thank_you_note',
-          jobApplicationId: input.jobApplicationId,
+          jobApplicationId: input.applicationId,
         });
         accessTokenRef.current = accessToken;
         sessionIdRef.current = session.id;
@@ -300,13 +396,14 @@ export function useThankYouNote() {
           },
           body: JSON.stringify({
             session_id: session.id,
+            job_application_id: input.applicationId,
             resume_text: input.resumeText,
             company: input.company,
             role: input.role,
             interview_date: input.interviewDate,
             interview_type: input.interviewType,
-            interviewers: input.interviewers,
-            job_application_id: input.jobApplicationId,
+            source_session_id: input.sourceSessionId,
+            recipients: input.recipients,
           }),
         });
 
@@ -332,7 +429,10 @@ export function useThankYouNote() {
   );
 
   const respondToGate = useCallback(
-    async (gate: string, response: unknown): Promise<boolean> => {
+    async (
+      gate: string,
+      response: CollectionGateResponse | PerRecipientGateResponse,
+    ): Promise<boolean> => {
       const sessionId = sessionIdRef.current;
       const token = accessTokenRef.current;
       if (!sessionId || !token) return false;
@@ -350,8 +450,18 @@ export function useThankYouNote() {
           console.error('[useThankYouNote] Gate respond failed:', res.status);
           return false;
         }
-        // Transition back to running after responding
-        setState((prev) => ({ ...prev, status: 'running', pendingGate: null }));
+        // Only collection-level approve/revise/direct-edit or per-recipient
+        // revise transitions back to 'running' (a rerun is coming). A
+        // per-recipient direct-edit mutates state server-side without a
+        // rerun, so the gate stays open; the UI decides when to approve.
+        const triggersRerun =
+          response === true
+          || response === 'approved'
+          || (typeof response === 'object' && 'feedback' in response && typeof response.feedback === 'string')
+          || (typeof response === 'object' && 'edited_content' in response);
+        if (triggersRerun) {
+          setState((prev) => ({ ...prev, status: 'running', pendingGate: null }));
+        }
         return true;
       } catch (err) {
         console.error('[useThankYouNote] Gate respond error:', err);
@@ -378,6 +488,7 @@ export function useThankYouNote() {
       error: null,
       currentStage: null,
       noteReviewData: null,
+      timingWarning: null,
       pendingGate: null,
     });
   }, []);

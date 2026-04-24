@@ -1,11 +1,16 @@
 /**
  * Thank You Note Writer — Tool definitions.
  *
- * 4 tools:
- * - analyze_interview_context: Extract key themes, decision-makers, rapport signals
- * - write_thank_you_note: Write a note for a specific interviewer in a specific format
- * - personalize_per_interviewer: Adjust tone/references based on interviewer role/seniority
- * - assemble_note_set: Combine all notes into final collection with delivery timing
+ * Phase 2.3e: recipient-role primary axis, multi-recipient with
+ * independent refinement, soft interview-prep coupling, timing
+ * awareness.
+ *
+ * 5 tools:
+ * - analyze_interview_context: Extract themes, decision-makers, rapport signals
+ * - write_thank_you_note: Draft a note for a specific recipient, calibrated by role
+ * - personalize_per_recipient: Quality-check a specific draft (tone + uniqueness)
+ * - assemble_note_set: Combine all notes into final collection with timing guidance
+ * - emit_timing_warning: Surface a soft warning when days-since-interview > 2
  */
 
 import type { AgentTool } from '../../runtime/agent-protocol.js';
@@ -14,9 +19,10 @@ import type {
   ThankYouNoteSSEEvent,
   ThankYouNote,
   NoteFormat,
-  InterviewerContext,
+  RecipientContext,
+  RecipientRole,
 } from '../types.js';
-import { NOTE_FORMAT_LABELS } from '../types.js';
+import { NOTE_FORMAT_LABELS, RECIPIENT_ROLE_LABELS } from '../types.js';
 import { THANK_YOU_NOTE_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
@@ -27,20 +33,58 @@ import {
 
 type WriterTool = AgentTool<ThankYouNoteState, ThankYouNoteSSEEvent>;
 
+// ─── Role-specific tone guidance ───────────────────────────────────
+
+const ROLE_TONE_GUIDANCE: Record<RecipientRole, string> = {
+  hiring_manager:
+    'HIRING MANAGER: Confirm fit without overclaiming. Reinforce 1–2 value propositions that map to conversation topics. Forward-looking close with a concrete next step. Never "look forward to hearing back."',
+  recruiter:
+    'RECRUITER: Appreciative of process navigation. One confident sentence of continued interest. Logistics-friendly — offer to make their job easier. Do not re-pitch.',
+  panel_interviewer:
+    'PANEL INTERVIEWER (peer): Peer tone, future colleague posture. Reference a SPECIFIC conversation thread with THIS person — not what you said to the hiring manager. Connection-oriented close.',
+  executive_sponsor:
+    'EXECUTIVE SPONSOR: Strategic/visionary. Brief (75–125 words). One strategic synthesis — not a recap — from the conversation. Acknowledge their time; do not apologize for it. No asks.',
+  other:
+    'OTHER: Standard peer/professional tone. Calibrate to seniority cue from the title and any user-supplied rapport notes. Apply the standard personalization rules.',
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────
+
+function findRecipientIndex(
+  recipients: RecipientContext[],
+  name: string,
+): number {
+  for (let i = 0; i < recipients.length; i += 1) {
+    if (recipients[i].name === name) return i;
+  }
+  return -1;
+}
+
+/**
+ * Find the most recent note written for this recipient name (regardless of format).
+ * Returns -1 if none found.
+ */
+function findLatestNoteIndex(notes: ThankYouNote[], recipientName: string): number {
+  for (let i = notes.length - 1; i >= 0; i -= 1) {
+    if (notes[i].recipient_name === recipientName) return i;
+  }
+  return -1;
+}
+
 // ─── Tool: analyze_interview_context ──────────────────────────────
 
 const analyzeInterviewContextTool: WriterTool = {
   name: 'analyze_interview_context',
   description:
     'Analyze the interview context to extract key themes, decision-makers, rapport signals, ' +
-    'and strategic opportunities for personalized thank-you notes.',
+    'and strategic opportunities for personalized thank-you notes. Reads recipients (with roles) from state.',
   model_tier: 'mid',
   input_schema: {
     type: 'object',
     properties: {
       resume_text: {
         type: 'string',
-        description: 'The full text of the candidate\'s resume',
+        description: "The full text of the candidate's resume",
       },
     },
     required: ['resume_text'],
@@ -50,9 +94,19 @@ const analyzeInterviewContextTool: WriterTool = {
     const scratchpad = ctx.scratchpad;
     const resumeText = String(input.resume_text ?? '');
 
-    const interviewerDetails = state.interviewers.map((i: InterviewerContext) =>
-      `- ${i.name} (${i.title}): Topics: ${i.topics_discussed.join(', ')}${i.rapport_notes ? `. Rapport: ${i.rapport_notes}` : ''}${i.key_questions?.length ? `. Key questions: ${i.key_questions.join('; ')}` : ''}`,
-    ).join('\n');
+    const recipientDetails = state.recipients
+      .map((r: RecipientContext) => {
+        const topics = r.topics_discussed?.length ? r.topics_discussed.join(', ') : '(none captured — lean on prior interview-prep context if available)';
+        const rapport = r.rapport_notes ? `. Rapport: ${r.rapport_notes}` : '';
+        const questions = r.key_questions?.length ? `. Key questions: ${r.key_questions.join('; ')}` : '';
+        const titleSuffix = r.title ? ` (${r.title})` : '';
+        return `- ${r.name}${titleSuffix} [role=${r.role}]: Topics: ${topics}${rapport}${questions}`;
+      })
+      .join('\n');
+
+    const priorContext = state.prior_interview_prep?.report_excerpt
+      ? `\n## Prior interview-prep report excerpt\n${state.prior_interview_prep.report_excerpt}`
+      : '';
 
     const sharedContext = state.shared_context;
     const platformContextSections = [
@@ -62,65 +116,52 @@ const analyzeInterviewContextTool: WriterTool = {
         legacyStrategy: state.platform_context?.positioning_strategy,
       }),
       ...renderWhyMeStorySection({
-        heading: '## Why-Me Narrative',
+        heading: '## Why-Me Story',
         legacyWhyMeStory: state.platform_context?.why_me_story,
       }),
-    ];
-    const platformContext = platformContextSections.length > 0
-      ? `\n${platformContextSections.join('\n')}`
-      : '';
+    ].filter(Boolean).join('\n');
 
     const response = await llm.chat({
       model: MODEL_MID,
-      max_tokens: 4096,
-      system: `You are a senior executive career strategist. You analyze interview contexts to identify the best personalization opportunities for thank-you notes.
-
-${THANK_YOU_NOTE_RULES}
-
-Return ONLY valid JSON.`,
+      max_tokens: 2048,
+      system: `You are a senior executive interview strategist. You identify the strongest personalization opportunities for each recipient, calibrated by their role (hiring_manager / recruiter / panel_interviewer / executive_sponsor / other). Return ONLY valid JSON.`,
       messages: [{
         role: 'user',
-        content: `Analyze this interview context for thank-you note personalization.
+        content: `Analyze the interview context to guide personalized thank-you notes.
+
+## Candidate Resume
+${resumeText}
 
 ## Interview Context
 Company: ${state.interview_context.company}
 Role: ${state.interview_context.role}
-Date: ${state.interview_context.interview_date ?? 'Not specified'}
-Type: ${state.interview_context.interview_type ?? 'Not specified'}
+${state.interview_context.interview_date ? `Date: ${state.interview_context.interview_date}` : ''}
 
-## Interviewers
-${interviewerDetails}
+## Recipients
+${recipientDetails}
+${priorContext}
 
-## Resume
-${resumeText}
-${platformContext}
+${platformContextSections ? platformContextSections : ''}
 
-REQUIREMENTS:
-- Identify the key themes across all interviews
-- For each interviewer, identify the strongest personalization opportunity
-- Identify rapport signals and connection points
-- Determine the appropriate tone and format for each interviewer based on their seniority
-- Extract candidate strengths most relevant to what was discussed
-- Ground everything in the actual interview details — never fabricate
+For each recipient, determine:
+1. The strongest personalization angle given their role and the conversation
+2. The single most important value-proposition thread to reinforce (if any)
+3. The tone calibration (peer / appreciative-of-process / strategic-brief / etc.)
 
 Return JSON:
 {
-  "key_themes": ["theme1", "theme2"],
-  "interviewer_analysis": [
+  "key_themes": ["theme 1", "theme 2"],
+  "recipient_analysis": [
     {
-      "name": "interviewer name",
-      "seniority_level": "senior|mid|peer",
-      "recommended_format": "email|handwritten|linkedin_message",
-      "strongest_personalization": "specific callback opportunity",
-      "tone_recommendation": "formal|warm|casual",
-      "relevant_candidate_strengths": ["strength1", "strength2"]
+      "name": "...",
+      "role": "...",
+      "seniority_level": "C-suite | VP | director | IC | recruiter | HRBP | other",
+      "tone_recommendation": "...",
+      "strongest_personalization": "...",
+      "value_thread": "...",
+      "format_recommendation": "email | handwritten | linkedin_message"
     }
-  ],
-  "candidate_summary": {
-    "name": "candidate name",
-    "current_title": "title",
-    "key_strengths": ["strength1", "strength2"]
-  }
+  ]
 }`,
       }],
     });
@@ -129,27 +170,68 @@ Return JSON:
     try {
       result = JSON.parse(repairJSON(response.text) ?? response.text);
     } catch {
-      result = {
-        key_themes: [] as string[],
-        interviewer_analysis: [] as unknown[],
-        candidate_summary: null,
-      };
+      result = { key_themes: [], recipient_analysis: [] };
     }
 
     scratchpad.interview_analysis = result;
-    scratchpad.key_themes = Array.isArray(result.key_themes) ? result.key_themes : [];
 
-    if (result.candidate_summary && typeof result.candidate_summary === 'object') {
-      const cs = result.candidate_summary as Record<string, unknown>;
-      scratchpad.candidate_name = String(cs.name ?? '');
-      scratchpad.candidate_title = String(cs.current_title ?? '');
+    // Derive candidate name for later tools.
+    const nameMatch = resumeText.match(/^([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,3})/);
+    if (nameMatch) {
+      scratchpad.candidate_name = nameMatch[1];
     }
 
     return JSON.stringify({
       success: true,
       theme_count: Array.isArray(result.key_themes) ? result.key_themes.length : 0,
-      interviewer_count: Array.isArray(result.interviewer_analysis) ? result.interviewer_analysis.length : 0,
+      recipient_count: Array.isArray(result.recipient_analysis) ? result.recipient_analysis.length : 0,
     });
+  },
+};
+
+// ─── Tool: emit_timing_warning ────────────────────────────────────
+
+const emitTimingWarningTool: WriterTool = {
+  name: 'emit_timing_warning',
+  description:
+    'Emit a soft UI warning when more than 2 days have passed since the most recent interview. ' +
+    'The user-facing message is author-written (not a template). Call this only when ' +
+    'state.activity_signals.days_since_interview is greater than 2. Never blocks the pipeline.',
+  model_tier: 'orchestrator',
+  input_schema: {
+    type: 'object',
+    properties: {
+      message: {
+        type: 'string',
+        description: 'Short, first-person warning copy (1–2 sentences) surfacing that the window has slipped. No template language.',
+      },
+    },
+    required: ['message'],
+  },
+  async execute(input, ctx) {
+    const state = ctx.getState();
+    const days = state.activity_signals?.days_since_interview;
+    if (typeof days !== 'number' || days <= 2) {
+      return { emitted: false, reason: 'timing_window_still_fresh' };
+    }
+    if (state.timing_warning_emitted) {
+      return { emitted: false, reason: 'already_emitted' };
+    }
+
+    const raw = String(input.message ?? '').trim();
+    if (!raw) {
+      return { emitted: false, reason: 'empty_message' };
+    }
+
+    ctx.emit({
+      type: 'thank_you_timing_warning',
+      session_id: state.session_id,
+      days_since_interview: days,
+      message: raw,
+    });
+    state.timing_warning_emitted = true;
+
+    return { emitted: true, days_since_interview: days };
   },
 };
 
@@ -158,90 +240,132 @@ Return JSON:
 const writeThankYouNoteTool: WriterTool = {
   name: 'write_thank_you_note',
   description:
-    'Write a thank-you note for a specific interviewer in a specific format. ' +
-    'The note is personalized to the conversation topics and interviewer context.',
+    'Draft a thank-you note for a specific recipient, calibrated by recipient_role. ' +
+    'Replaces or appends into state.notes keyed on recipient_name. If revision_feedback_by_recipient ' +
+    'has an entry for this recipient, incorporate it and clear that entry in the scratchpad return.',
   model_tier: 'primary',
   input_schema: {
     type: 'object',
     properties: {
-      interviewer_name: {
+      recipient_name: {
         type: 'string',
-        description: 'Name of the interviewer to write the note for',
+        description: 'Name of the recipient (must match a recipient in state.recipients).',
       },
       format: {
         type: 'string',
         enum: ['email', 'handwritten', 'linkedin_message'],
-        description: 'The note format to write',
+        description: 'The note delivery channel.',
       },
       key_topics: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Key topics to reference in the note',
+        description: 'Specific topics to reference. May be empty — the analyze step and prior context can fill in.',
       },
     },
-    required: ['interviewer_name', 'format', 'key_topics'],
+    required: ['recipient_name', 'format'],
   },
   async execute(input, ctx) {
     const state = ctx.getState();
     const scratchpad = ctx.scratchpad;
-    const interviewerName = String(input.interviewer_name ?? '');
+    const recipientName = String(input.recipient_name ?? '');
     const format = String(input.format ?? 'email') as NoteFormat;
     const keyTopics = Array.isArray(input.key_topics)
       ? (input.key_topics as string[]).map(String)
-      : [] as string[];
+      : [];
     const formatLabel = NOTE_FORMAT_LABELS[format] ?? format;
 
-    // Find the interviewer context
-    let interviewer: InterviewerContext | undefined;
-    for (const i of state.interviewers) {
-      if (i.name === interviewerName) { interviewer = i; break; }
+    const recipientIndex = findRecipientIndex(state.recipients, recipientName);
+    if (recipientIndex < 0) {
+      return JSON.stringify({
+        success: false,
+        error: `Recipient '${recipientName}' not found in state.recipients.`,
+      });
     }
+    const recipient = state.recipients[recipientIndex];
+    const role: RecipientRole = recipient.role;
+    const roleLabel = RECIPIENT_ROLE_LABELS[role];
+    const roleGuidance = ROLE_TONE_GUIDANCE[role];
 
-    const interviewerContext = interviewer
-      ? `\n## Interviewer\nName: ${interviewer.name}\nTitle: ${interviewer.title}\nTopics Discussed: ${interviewer.topics_discussed.join(', ')}${interviewer.rapport_notes ? `\nRapport Notes: ${interviewer.rapport_notes}` : ''}${interviewer.key_questions?.length ? `\nKey Questions: ${interviewer.key_questions.join('; ')}` : ''}`
-      : `\n## Interviewer\nName: ${interviewerName}`;
+    const perRecipientFeedback = state.revision_feedback_by_recipient?.[recipientIndex];
+    const collectionFeedback = state.revision_feedback;
 
-    const interviewAnalysis = scratchpad.interview_analysis as Record<string, unknown> | undefined;
-    let analysiContext = '';
-    if (interviewAnalysis && Array.isArray(interviewAnalysis.interviewer_analysis)) {
-      const match = (interviewAnalysis.interviewer_analysis as Array<Record<string, unknown>>).find(
-        (a) => a.name === interviewerName,
+    const topicsBlock = recipient.topics_discussed?.length
+      ? `Topics Discussed: ${recipient.topics_discussed.join(', ')}`
+      : '';
+    const rapportBlock = recipient.rapport_notes ? `Rapport Notes: ${recipient.rapport_notes}` : '';
+    const questionsBlock = recipient.key_questions?.length
+      ? `Key Questions: ${recipient.key_questions.join('; ')}`
+      : '';
+    const priorExcerpt = state.prior_interview_prep?.report_excerpt?.trim();
+
+    const analysis = scratchpad.interview_analysis as Record<string, unknown> | undefined;
+    let analysisLine = '';
+    if (analysis && Array.isArray(analysis.recipient_analysis)) {
+      const match = (analysis.recipient_analysis as Array<Record<string, unknown>>).find(
+        (a) => a.name === recipientName,
       );
       if (match) {
-        analysiContext = `\n## Analysis for this interviewer\nSeniority: ${match.seniority_level}\nTone: ${match.tone_recommendation}\nBest personalization: ${match.strongest_personalization}`;
+        analysisLine = `Seniority: ${String(match.seniority_level ?? 'unspecified')}. Tone: ${String(match.tone_recommendation ?? 'peer-professional')}. Personalization angle: ${String(match.strongest_personalization ?? 'conversation-specific')}.`;
       }
     }
 
     const candidateName = scratchpad.candidate_name ? String(scratchpad.candidate_name) : 'the candidate';
-
     const wordCountGuide: Record<NoteFormat, string> = {
-      email: '150-250 words, 3-5 short paragraphs',
-      handwritten: '75-150 words, card-sized',
-      linkedin_message: '50-100 words, concise',
+      email: '150–250 words, 3–5 short paragraphs',
+      handwritten: '75–150 words, card-sized',
+      linkedin_message: '50–100 words, concise',
     };
+
+    const revisionBlock: string[] = [];
+    if (perRecipientFeedback) {
+      revisionBlock.push(
+        '',
+        '## User Revision Requested (this recipient only)',
+        `"${perRecipientFeedback}"`,
+        'Incorporate this feedback. Preserve what was working; change only what was called out.',
+      );
+    } else if (collectionFeedback) {
+      revisionBlock.push(
+        '',
+        '## User Revision Requested (collection-level)',
+        `"${collectionFeedback}"`,
+        'Apply this to the current recipient as well; adjust tone and emphasis accordingly.',
+      );
+    }
 
     const response = await llm.chat({
       model: MODEL_PRIMARY,
       max_tokens: 4096,
-      system: `You are a world-class executive communication writer. You write authentic, personalized thank-you notes that build relationships and reinforce candidacy without desperation.
+      system: `You are a world-class executive communication writer. You write authentic, role-calibrated thank-you notes that build relationships and reinforce candidacy without desperation.
 
 ${THANK_YOU_NOTE_RULES}
 
 Return ONLY valid JSON.`,
       messages: [{
         role: 'user',
-        content: `Write a ${formatLabel} thank-you note for ${interviewerName}.
+        content: `Draft a ${formatLabel} thank-you note for ${recipientName}.
+
+## Recipient
+Name: ${recipientName}
+Role: ${roleLabel} (${role})
+${recipient.title ? `Title: ${recipient.title}` : 'Title: (not provided)'}
+${topicsBlock}
+${rapportBlock}
+${questionsBlock}
+${analysisLine ? `\n## Analysis\n${analysisLine}` : ''}
 
 ## Interview Context
 Company: ${state.interview_context.company}
 Role: ${state.interview_context.role}
-Date: ${state.interview_context.interview_date ?? 'Recent'}
+${state.interview_context.interview_date ? `Date: ${state.interview_context.interview_date}` : ''}
 Candidate: ${candidateName}
-${interviewerContext}
-${analysiContext}
 
 ## Key Topics to Reference
-${keyTopics.map((t) => `- ${t}`).join('\n')}
+${keyTopics.length > 0 ? keyTopics.map((t) => `- ${t}`).join('\n') : '(none supplied — use prior interview-prep context if available)'}
+
+${priorExcerpt ? `## Prior interview-prep report excerpt (reference real moments only; never invent)\n${priorExcerpt}\n` : ''}
+## Role-Tone Guidance (primary axis)
+${roleGuidance}
 
 ## Format Requirements
 - Format: ${formatLabel}
@@ -249,20 +373,20 @@ ${keyTopics.map((t) => `- ${t}`).join('\n')}
 ${format === 'email' ? '- Include a compelling subject line' : ''}
 
 REQUIREMENTS:
-- Express genuine gratitude for the specific conversation, not generic thanks
-- Reference at least one specific topic or moment from the interview
-- Subtly reinforce fit with one brief connection to the candidate's relevant experience
-- Match tone to interviewer seniority and format
-- Close with a forward-looking statement about next steps or continued conversation
-- Do NOT include desperation, salary mentions, cliches, or apologies
-- Write from the candidate's perspective (first person)
+- Role calibration is the primary axis — the note must sound clearly different from a note to a recipient in a different role, even at the same interview.
+- Reference at least one specific moment from the interview. Use prior-interview-prep excerpts only for real topics, never to invent.
+- Subtly reinforce fit with one brief connection to the candidate's relevant experience.
+- Close with a forward-looking statement appropriate to the role's tone guidance.
+- Do NOT include desperation, salary mentions, cliches, or apologies.
+- Write in the first person from the candidate's perspective.
+${revisionBlock.join('\n')}
 
 Return JSON:
 {
   "content": "the full note text",
 ${format === 'email' ? '  "subject_line": "email subject line",' : ''}
   "word_count": <actual word count>,
-  "personalization_notes": "brief description of how this note was personalized"
+  "personalization_notes": "brief description of how this note was personalized and why it fits the role"
 }`,
       }],
     });
@@ -281,75 +405,87 @@ ${format === 'email' ? '  "subject_line": "email subject line",' : ''}
 
     const content = String(result.content ?? '');
     const note: ThankYouNote = {
-      interviewer_name: interviewerName,
-      interviewer_title: interviewer?.title ?? '',
+      recipient_role: role,
+      recipient_name: recipientName,
+      recipient_title: recipient.title ?? '',
       format,
       content,
       subject_line: format === 'email' ? String(result.subject_line ?? '') : undefined,
       personalization_notes: String(result.personalization_notes ?? ''),
     };
 
-    // Append to scratchpad notes
-    if (!Array.isArray(scratchpad.notes)) {
-      scratchpad.notes = [] as ThankYouNote[];
+    // Replace the existing note for this recipient (if any), else append.
+    const scratchNotes = (scratchpad.notes ?? []) as ThankYouNote[];
+    const scratchIdx = findLatestNoteIndex(scratchNotes, recipientName);
+    if (scratchIdx >= 0) {
+      scratchNotes[scratchIdx] = note;
+    } else {
+      scratchNotes.push(note);
     }
-    (scratchpad.notes as ThankYouNote[]).push(note);
+    scratchpad.notes = scratchNotes;
 
-    // Update state
-    if (!state.notes) {
-      state.notes = [] as ThankYouNote[];
+    const stateIdx = findLatestNoteIndex(state.notes, recipientName);
+    if (stateIdx >= 0) {
+      state.notes[stateIdx] = note;
+    } else {
+      state.notes.push(note);
     }
-    state.notes.push(note);
+
+    // Consume per-recipient feedback so subsequent rounds don't re-apply it.
+    if (perRecipientFeedback && state.revision_feedback_by_recipient) {
+      delete state.revision_feedback_by_recipient[recipientIndex];
+    }
 
     ctx.emit({
       type: 'note_drafted',
-      interviewer_name: interviewerName,
+      recipient_name: recipientName,
+      recipient_role: role,
       format,
     });
 
     return JSON.stringify({
       success: true,
-      interviewer_name: interviewerName,
+      recipient_name: recipientName,
+      recipient_role: role,
       format,
       word_count: content.split(/\s+/).filter(Boolean).length,
     });
   },
 };
 
-// ─── Tool: personalize_per_interviewer ────────────────────────────
+// ─── Tool: personalize_per_recipient ──────────────────────────────
 
-const personalizePerInterviewerTool: WriterTool = {
-  name: 'personalize_per_interviewer',
+const personalizePerRecipientTool: WriterTool = {
+  name: 'personalize_per_recipient',
   description:
-    'Quality-check and adjust tone, references, and personalization depth for a specific note ' +
-    'based on the interviewer\'s role, seniority, and rapport established.',
+    "Quality-check and score a drafted note for a specific recipient. Evaluates role calibration, " +
+    "personalization depth, tone, anti-patterns, and uniqueness against the rest of the note set.",
   model_tier: 'mid',
   input_schema: {
     type: 'object',
     properties: {
-      interviewer_name: {
+      recipient_name: {
         type: 'string',
-        description: 'Name of the interviewer whose note to personalize',
+        description: 'Recipient whose note to quality-check.',
       },
       format: {
         type: 'string',
         enum: ['email', 'handwritten', 'linkedin_message'],
-        description: 'The note format to personalize',
+        description: 'The note format to quality-check.',
       },
     },
-    required: ['interviewer_name', 'format'],
+    required: ['recipient_name', 'format'],
   },
   async execute(input, ctx) {
     const state = ctx.getState();
     const scratchpad = ctx.scratchpad;
-    const interviewerName = String(input.interviewer_name ?? '');
+    const recipientName = String(input.recipient_name ?? '');
     const format = String(input.format ?? 'email') as NoteFormat;
 
-    // Find the most recently written note for this interviewer+format
     const notes = (scratchpad.notes ?? []) as ThankYouNote[];
     let noteIndex = -1;
-    for (let i = notes.length - 1; i >= 0; i--) {
-      if (notes[i].interviewer_name === interviewerName && notes[i].format === format) {
+    for (let i = notes.length - 1; i >= 0; i -= 1) {
+      if (notes[i].recipient_name === recipientName && notes[i].format === format) {
         noteIndex = i;
         break;
       }
@@ -358,16 +494,17 @@ const personalizePerInterviewerTool: WriterTool = {
     if (noteIndex === -1) {
       return JSON.stringify({
         success: false,
-        error: `No note found for interviewer=${interviewerName}, format=${format}. Write it first.`,
+        error: `No note found for recipient=${recipientName}, format=${format}. Write it first.`,
       });
     }
 
     const note = notes[noteIndex];
+    const roleLabel = RECIPIENT_ROLE_LABELS[note.recipient_role];
+    const roleGuidance = ROLE_TONE_GUIDANCE[note.recipient_role];
 
-    // Check uniqueness against other notes in the set
     const otherNotes = notes
       .filter((_, idx) => idx !== noteIndex)
-      .map((n) => `[${n.interviewer_name}]: ${n.content.substring(0, 200)}...`);
+      .map((n) => `[${n.recipient_name} — ${n.recipient_role}]: ${n.content.substring(0, 200)}...`);
     const otherNotesContext = otherNotes.length > 0
       ? `\n## Other Notes in This Set (for uniqueness check)\n${otherNotes.join('\n')}`
       : '';
@@ -375,7 +512,7 @@ const personalizePerInterviewerTool: WriterTool = {
     const response = await llm.chat({
       model: MODEL_MID,
       max_tokens: 2048,
-      system: `You are a senior executive communications editor. You evaluate thank-you notes for personalization quality, tone accuracy, and anti-pattern detection.
+      system: `You are a senior executive communications editor. You evaluate thank-you notes for role calibration, personalization quality, tone accuracy, and anti-pattern detection.
 
 ${THANK_YOU_NOTE_RULES}
 
@@ -385,37 +522,42 @@ Return ONLY valid JSON.`,
         content: `Quality-check and score this thank-you note.
 
 ## Note
-Interviewer: ${interviewerName}
+Recipient: ${recipientName} (${roleLabel})
 Format: ${format}
 Content:
 ${note.content}
 ${note.subject_line ? `Subject Line: ${note.subject_line}` : ''}
 ${otherNotesContext}
 
+## Role-Tone Guidance (the note should match this)
+${roleGuidance}
+
 ## Interview Context
 Company: ${state.interview_context.company}
 Role: ${state.interview_context.role}
 
 REVIEW CHECKLIST:
-1. Personalization depth: Does it reference specific conversation topics?
-2. Tone calibration: Peer-level, confident, not obsequious or desperate?
-3. Strategic reinforcement: One brief, natural connection to candidate's value?
-4. Format compliance: Word count appropriate for ${format}?
-5. Anti-pattern scan: Desperation, salary, cliches, excessive flattery?
-6. Uniqueness: Does it differ meaningfully from other notes in the set?
-7. Name and title accuracy: Correct?
-8. Natural voice: Sounds human, not template-generated?
+1. Role calibration: Does the tone match the role-tone guidance?
+2. Personalization depth: Does it reference specific conversation topics?
+3. Tone overall: Peer-level, confident, not obsequious or desperate?
+4. Strategic reinforcement: One brief, natural connection to candidate's value?
+5. Format compliance: Word count appropriate for ${format}?
+6. Anti-pattern scan: Desperation, salary, cliches, excessive flattery?
+7. Uniqueness: Does it differ meaningfully in tone AND content from the other notes?
+8. Name and title accuracy.
+9. Natural voice.
 
 Return JSON:
 {
   "quality_score": <0-100>,
+  "role_calibration_ok": true/false,
   "personalization_score": <0-100>,
   "tone_ok": true/false,
   "format_compliance_ok": true/false,
-  "anti_patterns_found": ["pattern1", "pattern2"],
+  "anti_patterns_found": ["pattern1"],
   "uniqueness_ok": true/false,
-  "issues": ["issue1", "issue2"],
-  "strengths": ["strength1", "strength2"]
+  "issues": ["issue1"],
+  "strengths": ["strength1"]
 }`,
       }],
     });
@@ -426,6 +568,7 @@ Return JSON:
     } catch {
       result = {
         quality_score: 70,
+        role_calibration_ok: true,
         personalization_score: 70,
         tone_ok: true,
         format_compliance_ok: true,
@@ -437,14 +580,11 @@ Return JSON:
     }
 
     const qualityScore = Math.min(100, Math.max(0, Number(result.quality_score) || 70));
-
-    // Update note quality score in scratchpad
     notes[noteIndex].quality_score = qualityScore;
 
-    // Update in state as well
     let stateNoteIndex = -1;
-    for (let i = state.notes.length - 1; i >= 0; i--) {
-      if (state.notes[i].interviewer_name === interviewerName && state.notes[i].format === format) {
+    for (let i = state.notes.length - 1; i >= 0; i -= 1) {
+      if (state.notes[i].recipient_name === recipientName && state.notes[i].format === format) {
         stateNoteIndex = i;
         break;
       }
@@ -455,20 +595,22 @@ Return JSON:
 
     ctx.emit({
       type: 'note_complete',
-      interviewer_name: interviewerName,
+      recipient_name: recipientName,
+      recipient_role: note.recipient_role,
       format,
       quality_score: qualityScore,
     });
 
     return JSON.stringify({
       success: true,
-      interviewer_name: interviewerName,
+      recipient_name: recipientName,
       format,
       quality_score: qualityScore,
+      role_calibration_ok: Boolean(result.role_calibration_ok),
       tone_ok: Boolean(result.tone_ok),
       format_compliance_ok: Boolean(result.format_compliance_ok),
-      anti_patterns_found: Array.isArray(result.anti_patterns_found) ? result.anti_patterns_found.map(String) : [],
       uniqueness_ok: Boolean(result.uniqueness_ok),
+      anti_patterns_found: Array.isArray(result.anti_patterns_found) ? result.anti_patterns_found.map(String) : [],
       issue_count: Array.isArray(result.issues) ? result.issues.length : 0,
       strength_count: Array.isArray(result.strengths) ? result.strengths.length : 0,
     });
@@ -480,8 +622,8 @@ Return JSON:
 const assembleNoteSetTool: WriterTool = {
   name: 'assemble_note_set',
   description:
-    'Assemble all written notes into a formatted collection with quality scores, ' +
-    'delivery timing guidance, and personalization summaries.',
+    'Assemble all written notes into a formatted collection with per-recipient role labels, ' +
+    'quality scores, and delivery timing guidance.',
   model_tier: 'mid',
   input_schema: {
     type: 'object',
@@ -498,12 +640,11 @@ const assembleNoteSetTool: WriterTool = {
       message: 'Assembling thank-you note collection...',
     });
 
-    const notes = (scratchpad.notes ?? []) as ThankYouNote[];
+    const notes = (scratchpad.notes ?? state.notes ?? []) as ThankYouNote[];
     const candidateName = scratchpad.candidate_name ? String(scratchpad.candidate_name) : 'Candidate';
 
     const reportParts: string[] = [];
 
-    // ── Header ──
     reportParts.push(`# Thank You Note Collection — ${candidateName}`);
     reportParts.push('');
     reportParts.push(`**Company:** ${state.interview_context.company}`);
@@ -513,39 +654,47 @@ const assembleNoteSetTool: WriterTool = {
     }
     reportParts.push('');
 
-    // ── Delivery Timing Guidance ──
+    if (typeof state.activity_signals?.days_since_interview === 'number' && state.activity_signals.days_since_interview > 2) {
+      reportParts.push(
+        '> **Timing note:** ' +
+        `More than ${state.activity_signals.days_since_interview} days have passed since the most recent interview. ` +
+        'A thank-you still carries weight, but consider sending alongside a follow-up if silence has stretched long.',
+      );
+      reportParts.push('');
+    }
+
     reportParts.push('## Delivery Timing');
     reportParts.push('');
     reportParts.push('| Format | Send By |');
     reportParts.push('|--------|---------|');
-    reportParts.push('| Email | Within 2-4 hours of the interview (same day) |');
-    reportParts.push('| LinkedIn Message | Within 12-24 hours |');
+    reportParts.push('| Email | Within 2–4 hours of the interview (same day) |');
+    reportParts.push('| LinkedIn Message | Within 12–24 hours |');
     reportParts.push('| Handwritten Note | Mail within 24 hours |');
     reportParts.push('');
-    reportParts.push('> **Important:** All notes for all interviewers should be sent in the same window. Interviewers compare notes.');
+    reportParts.push('> **Important:** All notes for all recipients should be sent in the same window. Recipients compare notes.');
     reportParts.push('');
 
-    // ── Overview table ──
     reportParts.push('## Note Overview');
     reportParts.push('');
-    reportParts.push('| Interviewer | Title | Format | Words | Quality |');
-    reportParts.push('|-------------|-------|--------|-------|---------|');
+    reportParts.push('| Recipient | Role | Title | Format | Words | Quality |');
+    reportParts.push('|-----------|------|-------|--------|-------|---------|');
     for (const note of notes) {
       const formatLabel = NOTE_FORMAT_LABELS[note.format] ?? note.format;
+      const roleLabel = RECIPIENT_ROLE_LABELS[note.recipient_role] ?? note.recipient_role;
       const wordCount = note.content.split(/\s+/).filter(Boolean).length;
       reportParts.push(
-        `| ${note.interviewer_name} | ${note.interviewer_title} | ${formatLabel} | ${wordCount} | ${note.quality_score ?? 'N/A'}/100 |`,
+        `| ${note.recipient_name} | ${roleLabel} | ${note.recipient_title || '—'} | ${formatLabel} | ${wordCount} | ${note.quality_score ?? 'N/A'}/100 |`,
       );
     }
     reportParts.push('');
 
-    // ── Individual Notes ──
     for (const note of notes) {
       const formatLabel = NOTE_FORMAT_LABELS[note.format] ?? note.format;
+      const roleLabel = RECIPIENT_ROLE_LABELS[note.recipient_role] ?? note.recipient_role;
       const wordCount = note.content.split(/\s+/).filter(Boolean).length;
-      reportParts.push(`## ${note.interviewer_name} — ${formatLabel}`);
+      reportParts.push(`## ${note.recipient_name} — ${roleLabel} (${formatLabel})`);
       reportParts.push('');
-      reportParts.push(`*${note.interviewer_title} | ${wordCount} words | Quality: ${note.quality_score ?? 'N/A'}/100*`);
+      reportParts.push(`*${note.recipient_title || 'Title not provided'} | ${wordCount} words | Quality: ${note.quality_score ?? 'N/A'}/100*`);
       reportParts.push('');
       if (note.subject_line) {
         reportParts.push(`**Subject:** ${note.subject_line}`);
@@ -561,7 +710,6 @@ const assembleNoteSetTool: WriterTool = {
 
     const report = reportParts.join('\n');
 
-    // ── Quality scoring ──
     const qualityScores = notes.map((n) => n.quality_score ?? 0).filter((s) => s > 0);
     const overallQuality = qualityScores.length > 0
       ? Math.round(qualityScores.reduce((sum, s) => sum + s, 0) / qualityScores.length)
@@ -583,7 +731,7 @@ const assembleNoteSetTool: WriterTool = {
       report_length: report.length,
       note_count: notes.length,
       quality_score: overallQuality,
-      interviewers_covered: [...new Set(notes.map((n) => n.interviewer_name))],
+      recipients_covered: [...new Set(notes.map((n) => n.recipient_name))],
     });
   },
 };
@@ -592,7 +740,8 @@ const assembleNoteSetTool: WriterTool = {
 
 export const writerTools: WriterTool[] = [
   analyzeInterviewContextTool,
+  emitTimingWarningTool,
   writeThankYouNoteTool,
-  personalizePerInterviewerTool,
+  personalizePerRecipientTool,
   assembleNoteSetTool,
 ];

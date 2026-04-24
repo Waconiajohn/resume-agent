@@ -53,6 +53,7 @@ interface FakeApplication {
   stage: string;
   interview_prep_enabled: boolean | null;
   offer_enabled: boolean | null;
+  thank_you_note_enabled?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -65,6 +66,7 @@ const baseApp: FakeApplication = {
   stage: 'applied',
   interview_prep_enabled: null,
   offer_enabled: null,
+  thank_you_note_enabled: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 };
@@ -233,5 +235,83 @@ describe('ApplicationWorkspaceRoute — Offer / Negotiation toggle', () => {
     expect(patchCalls[0]?.body).toMatchObject({ offer_enabled: true });
 
     await screen.findByTestId('salary-negotiation-room');
+  });
+});
+
+// ─── Phase 2.3e — Thank-You Note toggle ──────────────────────────────────────
+
+describe('ApplicationWorkspaceRoute — Thank-You Note toggle', () => {
+  beforeEach(() => {
+    currentApp = { ...baseApp };
+    patchCalls.length = 0;
+    installFetchStub();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('renders a muted Thank-You pill when stage is applied (stage-derived off)', async () => {
+    renderAt('/workspace/application/app-1/resume');
+
+    const pill = await screen.findByRole('button', { name: /thank you note/i });
+    expect(pill.getAttribute('data-state')).toBe('muted');
+  });
+
+  it('renders an active Thank-You pill when stage is screening (stage-derived on)', async () => {
+    currentApp = { ...baseApp, stage: 'screening', thank_you_note_enabled: null };
+    renderAt('/workspace/application/app-1/resume');
+
+    const pill = await screen.findByRole('button', { name: /thank you note/i });
+    expect(pill.getAttribute('data-state')).toBe('available');
+  });
+
+  it('renders an active Thank-You pill when stage is interviewing', async () => {
+    currentApp = { ...baseApp, stage: 'interviewing', thank_you_note_enabled: null };
+    renderAt('/workspace/application/app-1/resume');
+
+    const pill = await screen.findByRole('button', { name: /thank you note/i });
+    expect(pill.getAttribute('data-state')).toBe('available');
+  });
+
+  it('renders a muted Thank-You pill when stage is offer (stage-derived inactive)', async () => {
+    currentApp = { ...baseApp, stage: 'offer', thank_you_note_enabled: null };
+    renderAt('/workspace/application/app-1/resume');
+
+    const pill = await screen.findByRole('button', { name: /thank you note/i });
+    expect(pill.getAttribute('data-state')).toBe('muted');
+  });
+
+  it('explicit thank_you_note_enabled=true wins over stage', async () => {
+    currentApp = { ...baseApp, stage: 'closed_lost', thank_you_note_enabled: true };
+    renderAt('/workspace/application/app-1/resume');
+
+    const pill = await screen.findByRole('button', { name: /thank you note/i });
+    expect(pill.getAttribute('data-state')).toBe('available');
+  });
+
+  it('renders the activation screen when /thank-you-note is inactive', async () => {
+    currentApp = { ...baseApp, stage: 'applied', thank_you_note_enabled: null };
+    renderAt('/workspace/application/app-1/thank-you-note');
+
+    await screen.findByText('Write thank-you notes');
+    expect(screen.queryByTestId('thank-you-note-room')).toBeNull();
+    expect(screen.getByRole('button', { name: /Activate Thank-You Notes/i })).toBeInTheDocument();
+  });
+
+  it('clicking Activate fires PATCH and re-renders ThankYouNoteRoom', async () => {
+    currentApp = { ...baseApp, stage: 'applied', thank_you_note_enabled: null };
+    renderAt('/workspace/application/app-1/thank-you-note');
+
+    const activate = await screen.findByRole('button', { name: /Activate Thank-You Notes/i });
+    fireEvent.click(activate);
+
+    await waitFor(() => {
+      expect(patchCalls.some((c) => c.url.includes('/job-applications/app-1'))).toBe(true);
+    });
+    expect(patchCalls[0]?.body).toMatchObject({ thank_you_note_enabled: true });
+
+    await screen.findByTestId('thank-you-note-room');
   });
 });

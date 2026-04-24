@@ -44,13 +44,15 @@ function makeEvent(type: string, data: Record<string, unknown>) {
 }
 
 const sampleInput = {
+  applicationId: '11111111-1111-1111-1111-111111111111',
   resumeText: 'Jane Smith, SVP Marketing with 15 years experience in brand strategy.',
   company: 'Acme Corp',
   role: 'VP Marketing',
   interviewDate: '2026-03-01',
   interviewType: 'panel',
-  interviewers: [
+  recipients: [
     {
+      role: 'hiring_manager' as const,
       name: 'Bob Jones',
       title: 'CEO',
       topics_discussed: ['company vision', 'growth strategy'],
@@ -133,8 +135,10 @@ describe('useThankYouNote', () => {
     expect(body.role).toBe('VP Marketing');
     expect(body.interview_date).toBe('2026-03-01');
     expect(body.interview_type).toBe('panel');
-    expect(body.interviewers).toHaveLength(1);
-    expect(body.interviewers[0].name).toBe('Bob Jones');
+    expect(body.recipients).toHaveLength(1);
+    expect(body.recipients[0].name).toBe('Bob Jones');
+    expect(body.recipients[0].role).toBe('hiring_manager');
+    expect(body.job_application_id).toBe('11111111-1111-1111-1111-111111111111');
   });
 
   it('startPipeline sets error on fetch failure', async () => {
@@ -252,7 +256,15 @@ describe('useThankYouNote', () => {
       [Symbol.asyncIterator]: async function* () {
         yield makeEvent('note_review_ready', {
           notes: [
-            { interviewer_name: 'Bob Jones', note: 'Thanks for the time' },
+            {
+              recipient_role: 'hiring_manager',
+              recipient_name: 'Bob Jones',
+              recipient_title: 'CEO',
+              format: 'email',
+              content: 'Thanks for the time',
+              personalization_notes: 'strategy reference',
+              quality_score: 90,
+            },
             'bad-note',
             null,
           ],
@@ -272,7 +284,18 @@ describe('useThankYouNote', () => {
     });
 
     expect(result.current.noteReviewData).toEqual({
-      notes: [{ interviewer_name: 'Bob Jones', note: 'Thanks for the time' }],
+      notes: [
+        {
+          recipient_role: 'hiring_manager',
+          recipient_name: 'Bob Jones',
+          recipient_title: 'CEO',
+          format: 'email',
+          content: 'Thanks for the time',
+          subject_line: undefined,
+          personalization_notes: 'strategy reference',
+          quality_score: 90,
+        },
+      ],
       quality_score: 87,
     });
   });

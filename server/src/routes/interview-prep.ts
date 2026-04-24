@@ -164,6 +164,50 @@ interviewPrepRoutes.get('/reports/session/:sessionId', rateLimitMiddleware(30, 6
   return c.json({ report: data });
 });
 
+// ─── GET /reports/by-application/:applicationId — Discovery helper (Phase 2.3e) ─
+//
+// Returns a pointer to the most recent interview-prep session for the given
+// application, so tools like Thank-You Note can offer a "pull interview-prep
+// context" affordance without the user having to know session IDs.
+
+interviewPrepRoutes.get('/reports/by-application/:applicationId', rateLimitMiddleware(30, 60_000), async (c) => {
+  if (!FF_INTERVIEW_PREP) {
+    return c.json({ error: 'Not found' }, 404);
+  }
+
+  const user = c.get('user');
+  const applicationId = c.req.param('applicationId') ?? '';
+  const parsed = z.string().uuid().safeParse(applicationId);
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid application id' }, 400);
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('interview_prep_reports')
+    .select('session_id, created_at')
+    .eq('user_id', user.id)
+    .eq('job_application_id', parsed.data)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error(
+      { error: error.message, userId: user.id, applicationId: parsed.data },
+      'GET /interview-prep/reports/by-application/:applicationId: query failed',
+    );
+    return c.json({ error: 'Failed to fetch report' }, 500);
+  }
+  if (!data) {
+    return c.json({ error: 'No interview-prep report found for application' }, 404);
+  }
+
+  return c.json({
+    session_id: data.session_id,
+    generated_at: data.created_at,
+  });
+});
+
 // ─── POST /debrief — Generate AI-structured debrief notes ──────────────────────
 
 const debriefInputSchema = z.object({

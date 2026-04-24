@@ -976,6 +976,73 @@ function PostInterviewFollowUpEmailForm({
   );
 }
 
+// --- Thank-You Note in-lab entry ---
+//
+// Phase 2.3e: mirrors the 2.3d delegate-or-fallback pattern. When the
+// lab has an active application context, render the peer-tool room
+// directly with that applicationId. When it doesn't, show a short
+// informational card directing the user to open an application.
+
+interface InLabThankYouNoteEntryProps {
+  company: string;
+  role: string;
+  jobApplicationId?: string;
+  sessionId?: string;
+  onBack: () => void;
+}
+
+function InLabThankYouNoteEntry({
+  company,
+  role,
+  jobApplicationId,
+  sessionId,
+  onBack,
+}: InLabThankYouNoteEntryProps) {
+  if (!jobApplicationId) {
+    return (
+      <GlassCard className="p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-[var(--link)]/10 p-2">
+            <Mail size={15} className="text-[var(--link)]" />
+          </div>
+          <div>
+            <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Thank-You Notes</h3>
+            <p className="text-[13px] text-[var(--text-soft)]">
+              {company} — {role}
+            </p>
+          </div>
+        </div>
+        <p className="text-[13px] leading-relaxed text-[var(--text-soft)]">
+          Thank-you notes are scoped to a specific application so the agent can reference the interview
+          context, recipient roles, and any prior interview-prep notes you captured. Open this from{' '}
+          <span className="font-medium text-[var(--text-strong)]">My Applications</span> to draft notes.
+        </p>
+        <div className="flex justify-end">
+          <GlassButton variant="ghost" onClick={onBack} className="text-[13px]">
+            Back
+          </GlassButton>
+        </div>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <ThankYouNoteRoom
+        key={jobApplicationId}
+        initialJobApplicationId={jobApplicationId}
+        initialCompany={company}
+        initialRole={role}
+        initialSessionId={sessionId}
+      />
+      <div className="flex justify-end">
+        <GlassButton variant="ghost" onClick={onBack} className="text-[13px]">
+          Done
+        </GlassButton>
+      </div>
+    </div>
+  );
+}
 
 // --- Main component ---
 
@@ -1656,11 +1723,12 @@ export function InterviewLabRoom({
           )}
 
           {followUpView === 'thank_you' && (
-            <ThankYouNoteRoom
-              initialCompany={activeCompany}
-              initialRole={activeRole}
-              initialJobApplicationId={activeJobApplicationId}
-              initialSessionId={sessionTargets.thankYouSessionId}
+            <InLabThankYouNoteEntry
+              company={activeCompany || 'Unknown company'}
+              role={activeRole || 'Unknown role'}
+              jobApplicationId={activeJobApplicationId}
+              sessionId={sessionTargets.thankYouSessionId}
+              onBack={() => setFollowUpView('overview')}
             />
           )}
 

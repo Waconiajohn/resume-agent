@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Handshake, Mic, Plus, Send, type LucideIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, Handshake, Mail, Mic, Plus, Send, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -70,6 +70,13 @@ interface ApplicationRecord {
    * signals when the user asks to reset.
    */
   follow_up_email_enabled?: boolean | null;
+  /**
+   * Phase 2.3e — explicit user override for Thank-You Note tool
+   * visibility. NULL defers to the stage-derived default (active when
+   * stage in screening/interviewing; inactive for offer/closed_won/
+   * closed_lost). TRUE/FALSE force the result.
+   */
+  thank_you_note_enabled?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -98,6 +105,24 @@ export function isOfferActive(
     return app.offer_enabled;
   }
   return app.stage === 'offer';
+}
+
+/**
+ * Phase 2.3e — effective active-state for Thank-You Note on this
+ * application. Explicit user toggle wins; otherwise derive from stage
+ * (active when stage is screening or interviewing; inactive for
+ * offer/closed_won/closed_lost).
+ */
+export function isThankYouNoteActive(
+  app: Pick<ApplicationRecord, 'stage' | 'thank_you_note_enabled'>,
+): boolean {
+  if (app.thank_you_note_enabled !== null && app.thank_you_note_enabled !== undefined) {
+    return app.thank_you_note_enabled;
+  }
+  if (app.stage === 'offer' || app.stage === 'closed_won' || app.stage === 'closed_lost') {
+    return false;
+  }
+  return app.stage === 'screening' || app.stage === 'interviewing';
 }
 
 /**
@@ -218,6 +243,11 @@ export function ApplicationWorkspaceRoute({
     [applyToggle],
   );
 
+  const handleToggleThankYouNote = useCallback(
+    (enabled: boolean) => applyToggle({ thank_you_note_enabled: enabled }),
+    [applyToggle],
+  );
+
   useEffect(() => {
     if (!applicationId || !accessToken) {
       setLoading(false);
@@ -284,6 +314,7 @@ export function ApplicationWorkspaceRoute({
   const interviewPrepActive = isInterviewPrepActive(application);
   const offerActive = isOfferActive(application);
   const followUpEmailActive = isFollowUpEmailActive(application);
+  const thankYouNoteActive = isThankYouNoteActive(application);
 
   const ApplicationHeader = (
     <GlassCard className="p-5">
@@ -313,6 +344,7 @@ export function ApplicationWorkspaceRoute({
               (t === 'interview-prep' && !interviewPrepActive)
               || (t === 'offer-negotiation' && !offerActive)
               || (t === 'follow-up-email' && !followUpEmailActive)
+              || (t === 'thank-you-note' && !thankYouNoteActive)
             );
             return (
               <button
@@ -370,18 +402,38 @@ export function ApplicationWorkspaceRoute({
       />
     );
   } else if (tool === 'thank-you-note') {
-    // ThankYouNoteRoom already accepts initialJobApplicationId; bonus:
-    // pre-fill company + role from the application so the user doesn't
-    // have to retype them. Key on applicationId forces a full remount
-    // when the user switches applications within the thank-you tool.
-    body = (
-      <ThankYouNoteRoom
-        key={applicationId}
-        initialJobApplicationId={applicationId}
-        initialCompany={application.company_name}
-        initialRole={application.role_title}
-      />
-    );
+    // Phase 2.3e — gate on activation state. Inactive applications
+    // render the activation screen; clicking Activate flips
+    // thank_you_note_enabled to TRUE and reveals the room.
+    if (thankYouNoteActive) {
+      body = (
+        <>
+          <ThankYouNoteRoom
+            key={applicationId}
+            initialJobApplicationId={applicationId}
+            initialCompany={application.company_name}
+            initialRole={application.role_title}
+          />
+          <HideToolLink
+            label="Hide Thank-You Notes for this application"
+            disabled={toggleInFlight}
+            onHide={() => handleToggleThankYouNote(false)}
+          />
+        </>
+      );
+    } else {
+      body = (
+        <ToolActivationScreen
+          icon={Mail}
+          title="Write thank-you notes"
+          description="Draft tailored thank-yous for everyone you met with. Each note is calibrated by recipient role — hiring manager, recruiter, panel interviewer, executive sponsor — and you can refine each one independently. Send within a day or two of the interview."
+          activateLabel="Activate Thank-You Notes"
+          activating={toggleInFlight}
+          onActivate={() => handleToggleThankYouNote(true)}
+          onBack={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, 'resume'))}
+        />
+      );
+    }
   } else if (tool === 'networking') {
     body = (
       <NetworkingHubRoom

@@ -135,10 +135,48 @@ Verification criteria:
 7. **Interviewer name and title accuracy** — Verify spelling and title match the input exactly. This is non-negotiable.
 8. **Natural voice** — Read the note aloud. Does it sound like a real person wrote it, or a corporate template? If it sounds robotic, inject warmth without losing professionalism.`;
 
+// ─── Rule 7: Recipient-Role Tone (Phase 2.3e) ──────────────────────
+
+export const RULE_7_RECIPIENT_ROLE = `## RULE 7 — RECIPIENT-ROLE TONE (primary axis)
+
+Phase 2.3e promotes recipient role from a free-text field to the primary axis for tone and content emphasis. Every note must be calibrated to the recipient's role — a note to a recruiter should not read like a note to an executive sponsor.
+
+**hiring_manager** — the person who owns the role's outcome
+- Confirms fit without overclaiming. The hiring manager decides; your note reinforces the decision.
+- Reinforces 1–2 specific value propositions that map to conversation topics. Not a resume recap.
+- Forward-looking close: propose a concrete next step (a follow-up on a specific topic, a resource, a continuing question). Never "look forward to hearing back."
+- Avoid: sales pitch energy, "I'd be a great addition," bullet-point value props, laundry lists.
+
+**recruiter** — the person navigating you through the process
+- Appreciative of process navigation. Recruiters remember candidates who recognized their work; most don't.
+- Clear on continued interest. State the interest in one confident sentence.
+- Logistics-friendly. Offer to make their job easier — availability, references ready, materials on hand.
+- Avoid: treating the recruiter as a gatekeeper to bypass; over-pitching (the recruiter already sold you to the team, they don't need to be re-sold); demanding timelines.
+
+**panel_interviewer** — a peer interviewer (not the hiring manager, not a sponsor)
+- Peer tone. This person is a future colleague, not an evaluator to impress.
+- References a specific conversation thread WITH that person — the thing only the two of you discussed. This is what distinguishes panel notes from each other.
+- Connection-oriented close: express interest in continuing the working relationship regardless of outcome.
+- Avoid: copying what you said to the hiring manager; sounding like you're negotiating for their vote; bland "nice to meet you" closes.
+
+**executive_sponsor** — senior executive who met you briefly, often via a skip-level
+- Strategic/visionary tone. They have minutes of mindshare; use them wisely.
+- Acknowledge their time explicitly and briefly. Do not apologize for taking it.
+- One strategic insight you took from the conversation — not a recap, a synthesis. Prove you understood what they actually said.
+- Brief. 75–125 words. Longer signals you missed the point.
+- Avoid: exhaustive topic coverage, multiple value props, asking for anything, cliches about "inspired by your vision."
+
+**other** — anyone who doesn't fit the four archetypes (HRBP, peer interviewer, second-round panelist, etc.)
+- Standard peer/professional tone. Use the user-supplied context and rapport notes.
+- Calibrated to whatever seniority cue the title provides.
+- Personalization rules still apply — a specific moment and a specific connection.
+
+**Cross-recipient uniqueness requirement is non-negotiable.** When the note set includes multiple roles, the TONE should differ audibly between notes, not just the referenced topic. Two panel_interviewer notes should reference different conversation threads. A hiring_manager note and an executive_sponsor note must feel clearly different in posture even if they cover the same interview day.`;
+
 // ─── Combined System Prompt Injection ──────────────────────────────
 
 /**
- * All 7 rules concatenated for injection into the Thank You Note agent's system prompt.
+ * All 8 rules concatenated for injection into the Thank You Note agent's system prompt.
  */
 export const THANK_YOU_NOTE_RULES = [
   RULE_0_PHILOSOPHY,
@@ -148,4 +186,5 @@ export const THANK_YOU_NOTE_RULES = [
   RULE_4_FORMAT_GUIDANCE,
   RULE_5_ANTI_PATTERNS,
   RULE_6_SELF_REVIEW,
+  RULE_7_RECIPIENT_ROLE,
 ].join('\n\n---\n\n');

@@ -100,10 +100,10 @@ describe('Thank You Note Agent Registration', () => {
     expect(desc!.capabilities).toContain('format_adaptation');
   });
 
-  it('writer has correct tool count (4 + emit_transparency = 5)', () => {
+  it('writer has correct tool count (5 + emit_transparency = 6)', () => {
     const desc = agentRegistry.describe('thank-you-note', 'writer');
     expect(desc).toBeDefined();
-    expect(desc!.tools).toHaveLength(5);
+    expect(desc!.tools).toHaveLength(6);
   });
 
   it('writer tools include expected names', () => {
@@ -111,8 +111,9 @@ describe('Thank You Note Agent Registration', () => {
     expect(desc).toBeDefined();
     expect(desc!.tools).toContain('analyze_interview_context');
     expect(desc!.tools).toContain('write_thank_you_note');
-    expect(desc!.tools).toContain('personalize_per_interviewer');
+    expect(desc!.tools).toContain('personalize_per_recipient');
     expect(desc!.tools).toContain('assemble_note_set');
+    expect(desc!.tools).toContain('emit_timing_warning');
     expect(desc!.tools).toContain('emit_transparency');
   });
 
@@ -142,8 +143,9 @@ describe('Thank You Note Tool Model Tiers', () => {
     const tiers = Object.fromEntries(writerTools.map((t) => [t.name, t.model_tier]));
     expect(tiers.analyze_interview_context).toBe('mid');
     expect(tiers.write_thank_you_note).toBe('primary');
-    expect(tiers.personalize_per_interviewer).toBe('mid');
+    expect(tiers.personalize_per_recipient).toBe('mid');
     expect(tiers.assemble_note_set).toBe('mid');
+    expect(tiers.emit_timing_warning).toBe('orchestrator');
   });
 
   it('all tools have descriptions (length > 20)', () => {
@@ -159,10 +161,10 @@ describe('Thank You Note Tool Model Tiers', () => {
     }
   });
 
-  it('write_thank_you_note description mentions format', () => {
+  it('write_thank_you_note description mentions recipient_role calibration', () => {
     const writeTool = writerTools.find((t) => t.name === 'write_thank_you_note');
     expect(writeTool).toBeDefined();
-    expect(writeTool!.description.toLowerCase()).toContain('format');
+    expect(writeTool!.description.toLowerCase()).toContain('recipient_role');
   });
 
   it('analyze_interview_context description mentions themes', () => {
@@ -300,9 +302,9 @@ describe('Thank You Note ProductConfig', () => {
     expect(state.current_stage).toBe('writing');
   });
 
-  it('createInitialState defaults interviewers to empty array when not specified', () => {
+  it('createInitialState defaults recipients to empty array when not specified', () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
-    expect(state.interviewers).toEqual([]);
+    expect(state.recipients).toEqual([]);
   });
 
   it('createInitialState defaults notes to empty array', () => {
@@ -317,14 +319,33 @@ describe('Thank You Note ProductConfig', () => {
     expect(state.shared_context?.careerNarrative.careerArc).toBe('Trusted operator who leaves interviewers with high-confidence follow-through');
   });
 
-  it('createInitialState accepts interviewers input', () => {
+  it('createInitialState accepts recipients input with normalized roles', () => {
     const state = config.createInitialState('sess-1', 'user-1', {
-      interviewers: [
-        { name: 'Jane Doe', title: 'VP Engineering', topics_discussed: ['system design'] },
+      recipients: [
+        { role: 'hiring_manager', name: 'Jane Doe', title: 'VP Engineering', topics_discussed: ['system design'] },
       ],
     });
-    expect(state.interviewers).toHaveLength(1);
-    expect(state.interviewers[0].name).toBe('Jane Doe');
+    expect(state.recipients).toHaveLength(1);
+    expect(state.recipients[0].name).toBe('Jane Doe');
+    expect(state.recipients[0].role).toBe('hiring_manager');
+  });
+
+  it('createInitialState coerces unknown role to "other"', () => {
+    const state = config.createInitialState('sess-1', 'user-1', {
+      recipients: [{ role: 'bogus-role', name: 'Sam' }],
+    });
+    expect(state.recipients[0].role).toBe('other');
+  });
+
+  it('createInitialState drops recipients missing a name', () => {
+    const state = config.createInitialState('sess-1', 'user-1', {
+      recipients: [
+        { role: 'hiring_manager', name: '' },
+        { role: 'hiring_manager', name: 'Real Name' },
+      ],
+    });
+    expect(state.recipients).toHaveLength(1);
+    expect(state.recipients[0].name).toBe('Real Name');
   });
 
   it('createInitialState accepts company and role', () => {
@@ -352,8 +373,8 @@ describe('Thank You Note ProductConfig', () => {
     const state = config.createInitialState('sess-1', 'user-1', {
       company: 'Acme Corp',
       role: 'VP Operations',
-      interviewers: [
-        { name: 'Bob Jones', title: 'CEO', topics_discussed: ['strategy', 'growth'] },
+      recipients: [
+        { role: 'hiring_manager', name: 'Bob Jones', title: 'CEO', topics_discussed: ['strategy', 'growth'] },
       ],
     });
     const msg = config.buildAgentMessage('writer', state, {
@@ -470,8 +491,9 @@ describe('Thank You Note ProductConfig', () => {
     const state = config.createInitialState('sess-1', 'user-1', {});
     state.final_report = '# Thank You Note Collection';
     state.notes = [{
-      interviewer_name: 'Jane',
-      interviewer_title: 'CEO',
+      recipient_role: 'hiring_manager',
+      recipient_name: 'Jane',
+      recipient_title: 'CEO',
       format: 'email' as const,
       content: 'Thank you for the conversation...',
       personalization_notes: 'Referenced strategy discussion',
@@ -486,8 +508,9 @@ describe('Thank You Note ProductConfig', () => {
     state.quality_score = 88;
     state.notes = [
       {
-        interviewer_name: 'Jane',
-        interviewer_title: 'CEO',
+        recipient_role: 'hiring_manager',
+        recipient_name: 'Jane',
+        recipient_title: 'CEO',
         format: 'email',
         content: 'A polished thank-you note...',
         personalization_notes: 'Referenced strategy discussion',
@@ -516,8 +539,9 @@ describe('Thank You Note ProductConfig', () => {
     const scratchpad: Record<string, unknown> = {
       notes: [
         {
-          interviewer_name: 'Jane',
-          interviewer_title: 'CEO',
+          recipient_role: 'hiring_manager',
+          recipient_name: 'Jane',
+          recipient_title: 'CEO',
           format: 'email',
           content: 'A thank-you note...',
           personalization_notes: 'Referenced strategy',
@@ -530,7 +554,7 @@ describe('Thank You Note ProductConfig', () => {
     const noop = () => {};
     config.agents[0].onComplete!(scratchpad, state, noop);
     expect(state.notes).toHaveLength(1);
-    expect(state.notes[0].interviewer_name).toBe('Jane');
+    expect(state.notes[0].recipient_name).toBe('Jane');
     expect(state.final_report).toBe('# Thank You Note Collection — Jane Smith');
     expect(state.quality_score).toBe(90);
   });
