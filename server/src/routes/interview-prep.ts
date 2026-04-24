@@ -256,7 +256,12 @@ Return JSON:
   }
 });
 
-// ─── POST /follow-up-email — Generate situation-specific follow-up email ───────
+// ─── POST /follow-up-email — DEPRECATED (Phase 2.3d) ──────────────────────────
+//
+// Superseded by the peer-tool `/api/follow-up-email/*` SSE agent pipeline
+// (server/src/routes/follow-up-email.ts). Kept for one release so any
+// external caller has time to migrate; scheduled for deletion next phase.
+// All in-repo callers were migrated in the Phase 2.3d commit.
 
 const FOLLOW_UP_SITUATION_DESCRIPTIONS: Record<string, string> = {
   post_interview: 'Standard follow-up sent 5-7 business days after the interview to check on status',
@@ -279,6 +284,11 @@ interviewPrepRoutes.post('/follow-up-email', rateLimitMiddleware(20, 60_000), as
   if (!FF_INTERVIEW_PREP) {
     return c.json({ error: 'Feature not enabled' }, 404);
   }
+
+  logger.warn(
+    { route: '/interview-prep/follow-up-email' },
+    'DEPRECATED: use /api/follow-up-email/* (SSE peer tool) instead. This handler is scheduled for removal.',
+  );
 
   const body = await c.req.json().catch(() => null);
   const parsed = followUpEmailInputSchema.safeParse(body);

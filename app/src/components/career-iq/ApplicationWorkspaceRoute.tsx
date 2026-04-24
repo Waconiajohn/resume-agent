@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Handshake, Mic, Plus, type LucideIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, Handshake, Mic, Plus, Send, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -35,6 +35,7 @@ import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
 import { NetworkingHubRoom } from '@/components/career-iq/NetworkingHubRoom';
 import { InterviewLabRoom } from '@/components/career-iq/InterviewLabRoom';
+import { FollowUpEmailRoom } from '@/components/career-iq/FollowUpEmailRoom';
 import { SalaryNegotiationRoom } from '@/components/career-iq/SalaryNegotiationRoom';
 import { useJobApplications } from '@/hooks/useJobApplications';
 import type { MasterResume } from '@/types/resume';
@@ -61,6 +62,14 @@ interface ApplicationRecord {
    * stage = 'offer'). TRUE/FALSE force the result.
    */
   offer_enabled?: boolean | null;
+  /**
+   * Phase 2.3d — explicit user override for Follow-Up Email tool
+   * visibility. NULL defers to the client-side stage approximation
+   * (active when stage === 'interviewing'); the server's
+   * computeFollowUpEmailDefault enriches that with thank-you / debrief
+   * signals when the user asks to reset.
+   */
+  follow_up_email_enabled?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -89,6 +98,28 @@ export function isOfferActive(
     return app.offer_enabled;
   }
   return app.stage === 'offer';
+}
+
+/**
+ * Phase 2.3d — effective active-state for Follow-Up Email on this
+ * application. Explicit user toggle wins; otherwise fall back to the
+ * stage-only approximation (active when stage === 'interviewing').
+ *
+ * The authoritative stage-derived default (interviewing AND (thank-you
+ * sent OR days-since-debrief > 3)) requires DB joins and lives on the
+ * server (computeFollowUpEmailDefault in server/src/routes/follow-up-email.ts).
+ * The client-side approximation is only used to decide whether to mute
+ * the pill before the user clicks; any user action round-trips through
+ * the server, so drift between the approximation and the authoritative
+ * rule never produces a wrong-looking tool state.
+ */
+export function isFollowUpEmailActive(
+  app: Pick<ApplicationRecord, 'stage' | 'follow_up_email_enabled'>,
+): boolean {
+  if (app.follow_up_email_enabled !== null && app.follow_up_email_enabled !== undefined) {
+    return app.follow_up_email_enabled;
+  }
+  return app.stage === 'interviewing';
 }
 
 interface ApplicationWorkspaceRouteProps {
@@ -182,6 +213,11 @@ export function ApplicationWorkspaceRoute({
     [applyToggle],
   );
 
+  const handleToggleFollowUpEmail = useCallback(
+    (enabled: boolean) => applyToggle({ follow_up_email_enabled: enabled }),
+    [applyToggle],
+  );
+
   useEffect(() => {
     if (!applicationId || !accessToken) {
       setLoading(false);
@@ -247,6 +283,7 @@ export function ApplicationWorkspaceRoute({
 
   const interviewPrepActive = isInterviewPrepActive(application);
   const offerActive = isOfferActive(application);
+  const followUpEmailActive = isFollowUpEmailActive(application);
 
   const ApplicationHeader = (
     <GlassCard className="p-5">
@@ -275,6 +312,7 @@ export function ApplicationWorkspaceRoute({
             const isMutedInactive = !isSelected && (
               (t === 'interview-prep' && !interviewPrepActive)
               || (t === 'offer-negotiation' && !offerActive)
+              || (t === 'follow-up-email' && !followUpEmailActive)
             );
             return (
               <button
@@ -382,6 +420,40 @@ export function ApplicationWorkspaceRoute({
           activateLabel="Activate Interview Prep"
           activating={toggleInFlight}
           onActivate={() => handleToggleInterviewPrep(true)}
+          onBack={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, 'resume'))}
+        />
+      );
+    }
+  } else if (tool === 'follow-up-email') {
+    // Phase 2.3d — tool === 'follow-up-email'. Same toggle pattern as
+    // Interview Prep and Offer / Negotiation. FollowUpEmailRoom hosts the
+    // SSE agent flow; the activation screen gates it until the user turns
+    // the tool on.
+    if (followUpEmailActive) {
+      body = (
+        <>
+          <FollowUpEmailRoom
+            key={applicationId}
+            applicationId={applicationId}
+            initialCompany={application.company_name}
+            initialRole={application.role_title}
+          />
+          <HideToolLink
+            label="Hide Follow-Up Email for this application"
+            disabled={toggleInFlight}
+            onHide={() => handleToggleFollowUpEmail(false)}
+          />
+        </>
+      );
+    } else {
+      body = (
+        <ToolActivationScreen
+          icon={Send}
+          title="Follow up with the hiring team"
+          description="Send a polite nudge when the timeline has stretched. Follow-Up Email drafts a sequence-aware message that references your interview conversation and keeps you top of mind — first a warm check-in, then a more direct ask, and finally a graceful value-add if the silence continues. Turn it on when you're ready to nudge."
+          activateLabel="Activate Follow-Up Email"
+          activating={toggleInFlight}
+          onActivate={() => handleToggleFollowUpEmail(true)}
           onBack={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, 'resume'))}
         />
       );

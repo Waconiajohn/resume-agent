@@ -102,6 +102,16 @@ export const FF_NETWORK_INTELLIGENCE = envBool('FF_NETWORK_INTELLIGENCE', true);
 export const FF_INTERVIEW_PREP = envBool('FF_INTERVIEW_PREP', true);
 
 /**
+ * FF_FOLLOW_UP_EMAIL — Enable the Follow-Up Email peer tool routes.
+ *
+ * Default: true (consumer-ready, Phase 2.3d).
+ * Set FF_FOLLOW_UP_EMAIL=false in server/.env to deactivate.
+ * Converts the legacy sync /interview-prep/follow-up-email handler into a
+ * first-class peer tool with SSE agent pattern + multi-turn refinement.
+ */
+export const FF_FOLLOW_UP_EMAIL = envBool('FF_FOLLOW_UP_EMAIL', true);
+
+/**
  * FF_LINKEDIN_OPTIMIZER — Enable the LinkedIn Optimizer Agent routes.
  *
  * Default: true (consumer-ready).

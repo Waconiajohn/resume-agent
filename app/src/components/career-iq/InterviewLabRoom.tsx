@@ -35,6 +35,7 @@ import {
 } from '@/lib/auth-scoped-storage';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useInterviewPrep } from '@/hooks/useInterviewPrep';
+import { FollowUpEmailRoom } from '@/components/career-iq/FollowUpEmailRoom';
 import { usePriorResult } from '@/hooks/usePriorResult';
 import { supabase } from '@/lib/supabase';
 import { useInterviewDebriefs } from '@/hooks/useInterviewDebriefs';
@@ -905,231 +906,76 @@ function PrepReport({ company, role, report, qualityScore, onBack }: {
 }
 
 // --- Post-Interview Follow-Up Email Form ---
-
-type FollowUpSituation = 'post_interview' | 'no_response' | 'rejection_graceful' | 'keep_warm' | 'negotiation_counter';
-
-const FOLLOW_UP_SITUATION_LABELS: Record<FollowUpSituation, { label: string; description: string }> = {
-  post_interview: { label: 'Status check-in', description: '5-7 days after interview, no word yet' },
-  no_response: { label: 'No response (2+ weeks)', description: 'Polite persistence after silence' },
-  rejection_graceful: { label: 'Graceful rejection response', description: 'Keep the door open, build the relationship' },
-  keep_warm: { label: 'Keep warm', description: 'A contact worth maintaining for future opportunities' },
-  negotiation_counter: { label: 'Negotiation counter', description: 'Acknowledge offer + frame your counter' },
-};
+//
+// Phase 2.3d (2026-04-23): follow-up email is now a first-class peer tool
+// living at `/workspace/application/:id/follow-up-email`. The in-lab entry
+// point below is preserved for convenience, but it only works when an
+// application context is attached — without it, the SSE agent pipeline
+// has no job_application_id to scope DB lookups against.
+//
+// The original PostInterviewFollowUpEmailForm (sync POST to the deprecated
+// /interview-prep/follow-up-email endpoint) was removed in the same
+// commit. The new FollowUpEmailRoom renders the full peer-tool flow.
 
 interface PostInterviewFollowUpEmailFormProps {
   company: string;
   role: string;
+  jobApplicationId?: string;
   onBack: () => void;
 }
 
-function PostInterviewFollowUpEmailForm({ company, role, onBack }: PostInterviewFollowUpEmailFormProps) {
-  const [situation, setSituation] = useState<FollowUpSituation>('post_interview');
-  const [recipientName, setRecipientName] = useState('');
-  const [recipientTitle, setRecipientTitle] = useState('');
-  const [specificContext, setSpecificContext] = useState('');
-  const [result, setResult] = useState<null | { subject: string; body: string; tone_notes: string; timing_guidance: string }>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const handleGenerate = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/interview-prep/follow-up-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          company,
-          role,
-          situation,
-          recipient_name: recipientName || undefined,
-          recipient_title: recipientTitle || undefined,
-          specific_context: specificContext || undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { error?: string };
-        setError(data.error ?? 'Failed to generate email. Please try again.');
-        return;
-      }
-
-      const data = await res.json() as { subject: string; body: string; tone_notes: string; timing_guidance: string };
-      setResult(data);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Something went wrong.';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [company, role, situation, recipientName, recipientTitle, specificContext]);
-
-  const handleCopy = useCallback(async () => {
-    if (!result) return;
-    const text = `Subject: ${result.subject}\n\n${result.body}`;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
-  }, [result]);
-
-  const inputClass = 'w-full rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-[12px] text-[var(--text-muted)] placeholder:text-[var(--text-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 focus:border-[var(--link)]/30';
-  const labelClass = 'block text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider mb-1.5';
+function PostInterviewFollowUpEmailForm({
+  company,
+  role,
+  jobApplicationId,
+  onBack,
+}: PostInterviewFollowUpEmailFormProps) {
+  if (!jobApplicationId) {
+    return (
+      <GlassCard className="p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-[var(--link)]/10 p-2">
+            <Send size={15} className="text-[var(--link)]" />
+          </div>
+          <div>
+            <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Follow-Up Email</h3>
+            <p className="text-[13px] text-[var(--text-soft)]">
+              {company} — {role}
+            </p>
+          </div>
+        </div>
+        <p className="text-[13px] leading-relaxed text-[var(--text-soft)]">
+          The follow-up email tool is scoped to a specific application so it can pull your
+          prior interview-prep notes, the interview date, and whether you&rsquo;ve already
+          sent a thank-you. Open this from <span className="font-medium text-[var(--text-strong)]">My Applications</span> to
+          draft one.
+        </p>
+        <div className="flex justify-end">
+          <GlassButton variant="ghost" onClick={onBack} className="text-[13px]">
+            Back
+          </GlassButton>
+        </div>
+      </GlassCard>
+    );
+  }
 
   return (
-    <GlassCard className="p-6 space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="rounded-lg bg-[var(--link)]/10 p-2">
-          <Send size={15} className="text-[var(--link)]" />
-        </div>
-        <div>
-          <h3 className="text-[14px] font-semibold text-[var(--text-strong)]">Follow-Up Email</h3>
-          <p className="text-[13px] text-[var(--text-soft)]">{company} — {role}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onBack}
-          className="ml-auto text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-
-      <div>
-        <label className={labelClass}>Situation</label>
-        <div className="space-y-1.5">
-          {(Object.entries(FOLLOW_UP_SITUATION_LABELS) as Array<[FollowUpSituation, { label: string; description: string }]>).map(([key, cfg]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setSituation(key)}
-              className={cn(
-                'w-full flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
-                situation === key
-                  ? 'border-[var(--link)]/25 bg-[var(--link)]/[0.06]'
-                  : 'border-[var(--line-soft)] hover:border-[var(--line-soft)] hover:bg-[var(--accent-muted)]',
-              )}
-            >
-              <div className={cn(
-                'mt-0.5 h-3 w-3 rounded-full border-2 flex-shrink-0',
-                situation === key ? 'border-[var(--link)] bg-[var(--link)]/30' : 'border-[var(--line-strong)]',
-              )} />
-              <div>
-                <div className={cn('text-[12px] font-medium', situation === key ? 'text-[var(--text-strong)]' : 'text-[var(--text-soft)]')}>
-                  {cfg.label}
-                </div>
-                <div className="text-[13px] text-[var(--text-soft)] mt-0.5">{cfg.description}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelClass}>Recipient name</label>
-          <input
-            type="text"
-            placeholder="e.g. Sarah Chen"
-            value={recipientName}
-            onChange={(e) => setRecipientName(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Recipient title</label>
-          <input
-            type="text"
-            placeholder="e.g. VP of Engineering"
-            value={recipientTitle}
-            onChange={(e) => setRecipientTitle(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className={labelClass}>
-          {situation === 'negotiation_counter'
-            ? 'Offer details and what you want to counter'
-            : situation === 'rejection_graceful'
-            ? 'Any specific connection or moment worth referencing'
-            : 'Any additional context'}
-        </label>
-        <textarea
-          rows={3}
-          placeholder={
-            situation === 'negotiation_counter'
-              ? 'e.g. Offer was $180k base. I was expecting $200k based on market and my experience...'
-              : situation === 'rejection_graceful'
-              ? 'e.g. We discussed the supply chain restructuring project — that was a great conversation...'
-              : 'Anything specific you want woven in...'
-          }
-          value={specificContext}
-          onChange={(e) => setSpecificContext(e.target.value)}
-          className={`${inputClass} resize-none`}
-        />
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-3 py-2">
-          <AlertCircle size={13} className="text-[var(--badge-red-text)] flex-shrink-0" />
-          <span className="text-[12px] text-[var(--badge-red-text)]/80">{error}</span>
-        </div>
-      )}
-
-      {result && (
-        <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold text-[var(--text-soft)] uppercase tracking-wider">Generated email</span>
-            <button
-              type="button"
-              onClick={() => void handleCopy()}
-              className="ml-auto text-[13px] text-[var(--link)]/60 hover:text-[var(--link)] transition-colors flex items-center gap-1"
-            >
-              {copied ? <CheckCircle2 size={11} /> : <FileText size={11} />}
-              {copied ? 'Copied' : 'Copy'}
-            </button>
-          </div>
-          <div>
-            <div className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider mb-1">Subject</div>
-            <p className="text-[12px] text-[var(--text-muted)] font-medium">{result.subject}</p>
-          </div>
-          <div>
-            <div className="text-[12px] text-[var(--text-soft)] uppercase tracking-wider mb-1">Body</div>
-            <p className="text-[12px] text-[var(--text-soft)] leading-relaxed whitespace-pre-wrap">{result.body}</p>
-          </div>
-          {result.timing_guidance && (
-            <div className="rounded-lg border border-[var(--badge-amber-text)]/15 bg-[var(--badge-amber-text)]/[0.04] px-3 py-2">
-              <p className="text-[13px] text-[var(--badge-amber-text)]/70">{result.timing_guidance}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="flex gap-2 pt-1">
-        <GlassButton
-          variant="primary"
-          onClick={() => void handleGenerate()}
-          disabled={loading}
-          className="text-[13px]"
-        >
-          {loading ? (
-            <Loader2 size={13} className="mr-1.5 animate-spin" />
-          ) : (
-            <Send size={13} className="mr-1.5" />
-          )}
-          {loading ? 'Writing...' : result ? 'Regenerate' : 'Generate Email'}
-        </GlassButton>
+    <div className="space-y-3">
+      <FollowUpEmailRoom
+        key={jobApplicationId}
+        applicationId={jobApplicationId}
+        initialCompany={company}
+        initialRole={role}
+      />
+      <div className="flex justify-end">
         <GlassButton variant="ghost" onClick={onBack} className="text-[13px]">
           Done
         </GlassButton>
       </div>
-    </GlassCard>
+    </div>
   );
 }
+
 
 // --- Main component ---
 
@@ -1822,6 +1668,7 @@ export function InterviewLabRoom({
             <PostInterviewFollowUpEmailForm
               company={activeCompany || 'Unknown company'}
               role={activeRole || 'Unknown role'}
+              jobApplicationId={activeJobApplicationId}
               onBack={() => setFollowUpView('overview')}
             />
           )}
