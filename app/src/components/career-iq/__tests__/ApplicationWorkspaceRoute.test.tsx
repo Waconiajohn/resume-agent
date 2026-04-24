@@ -31,6 +31,9 @@ vi.mock('@/components/resume-v3/V3PipelineScreen', () => ({
 vi.mock('@/components/career-iq/ThankYouNoteRoom', () => ({
   ThankYouNoteRoom: () => <div data-testid="thank-you-note-room">THANK YOU</div>,
 }));
+vi.mock('@/components/career-iq/NetworkingRoom', () => ({
+  NetworkingRoom: () => <div data-testid="networking-room">NETWORKING MESSAGE</div>,
+}));
 vi.mock('@/components/career-iq/NetworkingHubRoom', () => ({
   NetworkingHubRoom: () => <div data-testid="networking-hub-room">NETWORKING</div>,
 }));
@@ -54,6 +57,7 @@ interface FakeApplication {
   interview_prep_enabled: boolean | null;
   offer_enabled: boolean | null;
   thank_you_note_enabled?: boolean | null;
+  networking_enabled?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +71,7 @@ const baseApp: FakeApplication = {
   interview_prep_enabled: null,
   offer_enabled: null,
   thank_you_note_enabled: null,
+  networking_enabled: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 };
@@ -313,5 +318,80 @@ describe('ApplicationWorkspaceRoute — Thank-You Note toggle', () => {
     expect(patchCalls[0]?.body).toMatchObject({ thank_you_note_enabled: true });
 
     await screen.findByTestId('thank-you-note-room');
+  });
+});
+
+// ─── Phase 2.3f — Networking Message toggle ──────────────────────────────────
+
+describe('ApplicationWorkspaceRoute — Networking Message toggle', () => {
+  beforeEach(() => {
+    currentApp = { ...baseApp };
+    patchCalls.length = 0;
+    installFetchStub();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('renders an active Networking pill on applied (stage-derived on)', async () => {
+    currentApp = { ...baseApp, stage: 'applied', networking_enabled: null };
+    renderAt('/workspace/application/app-1/resume');
+    const pill = await screen.findByRole('button', { name: /networking/i });
+    expect(pill.getAttribute('data-state')).toBe('available');
+  });
+
+  it('renders an active Networking pill on interviewing', async () => {
+    currentApp = { ...baseApp, stage: 'interviewing', networking_enabled: null };
+    renderAt('/workspace/application/app-1/resume');
+    const pill = await screen.findByRole('button', { name: /networking/i });
+    expect(pill.getAttribute('data-state')).toBe('available');
+  });
+
+  it('renders a muted Networking pill on offer (stage-derived inactive)', async () => {
+    currentApp = { ...baseApp, stage: 'offer', networking_enabled: null };
+    renderAt('/workspace/application/app-1/resume');
+    const pill = await screen.findByRole('button', { name: /networking/i });
+    expect(pill.getAttribute('data-state')).toBe('muted');
+  });
+
+  it('explicit networking_enabled=true wins over stage', async () => {
+    currentApp = { ...baseApp, stage: 'closed_lost', networking_enabled: true };
+    renderAt('/workspace/application/app-1/resume');
+    const pill = await screen.findByRole('button', { name: /networking/i });
+    expect(pill.getAttribute('data-state')).toBe('available');
+  });
+
+  it('renders the activation screen when /networking is inactive', async () => {
+    currentApp = { ...baseApp, stage: 'offer', networking_enabled: null };
+    renderAt('/workspace/application/app-1/networking');
+    await screen.findByText('Draft a networking message');
+    expect(screen.queryByTestId('networking-room')).toBeNull();
+    expect(screen.getByRole('button', { name: /Activate Networking Message/i })).toBeInTheDocument();
+  });
+
+  it('mounts NetworkingRoom (not NetworkingHubRoom) when active', async () => {
+    currentApp = { ...baseApp, stage: 'applied', networking_enabled: null };
+    renderAt('/workspace/application/app-1/networking');
+    await screen.findByTestId('networking-room');
+    // The old Hub room stub should not be rendered in the Applications workspace
+    // slot anymore. Confirm by absence.
+    expect(screen.queryByText(/CRM/)).toBeNull();
+  });
+
+  it('clicking Activate fires PATCH and renders NetworkingRoom', async () => {
+    currentApp = { ...baseApp, stage: 'offer', networking_enabled: null };
+    renderAt('/workspace/application/app-1/networking');
+
+    const activate = await screen.findByRole('button', { name: /Activate Networking Message/i });
+    fireEvent.click(activate);
+
+    await waitFor(() => {
+      expect(patchCalls.some((c) => c.url.includes('/job-applications/app-1'))).toBe(true);
+    });
+    expect(patchCalls[0]?.body).toMatchObject({ networking_enabled: true });
+
+    await screen.findByTestId('networking-room');
   });
 });

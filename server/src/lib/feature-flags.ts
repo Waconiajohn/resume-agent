@@ -112,6 +112,16 @@ export const FF_INTERVIEW_PREP = envBool('FF_INTERVIEW_PREP', true);
 export const FF_FOLLOW_UP_EMAIL = envBool('FF_FOLLOW_UP_EMAIL', true);
 
 /**
+ * FF_NETWORKING_MESSAGE — Enable the thin Networking Message peer tool routes.
+ *
+ * Default: true (consumer-ready, Phase 2.3f).
+ * Set FF_NETWORKING_MESSAGE=false in server/.env to deactivate.
+ * Single-agent, single-message per session. Parallel to the heavier
+ * /api/networking-outreach/* pipeline (which is unchanged by 2.3f).
+ */
+export const FF_NETWORKING_MESSAGE = envBool('FF_NETWORKING_MESSAGE', true);
+
+/**
  * FF_LINKEDIN_OPTIMIZER — Enable the LinkedIn Optimizer Agent routes.
  *
  * Default: true (consumer-ready).

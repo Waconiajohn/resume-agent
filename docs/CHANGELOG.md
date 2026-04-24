@@ -1,5 +1,51 @@
 # Changelog — Resume Agent
 
+## 2026-04-24 — Phase 2.3f: Networking messages as peer tool (thin version)
+**Sprint:** Applications workspace peer tools | **Story:** Phase 2.3f — networking message thin peer tool
+**Summary:** Added a thin, single-agent networking-message peer tool at `/api/networking-message/*` and swapped the Applications workspace `networking` slot from the heavy `NetworkingHubRoom` to the new `NetworkingRoom`. Path A (pure add): the existing `networking-outreach` pipeline, `networking-contacts` CRUD, `NetworkingHubRoom`, `useNetworkingOutreach`, and `SmartReferralsRoom` are unchanged. Pre-commit hook made `$CLAUDE_PROJECT_DIR`-relative so it fires reliably from any cwd.
+
+### Changes Made
+- `supabase/migrations/20260425000000_networking_messages.sql` — new table. Single-message persistence: `recipient_{name,type,title,company,linkedin_url}`, `messaging_method`, `goal`, `context`, `message_markdown`, `job_application_id` + `session_id` FKs, user-scoped RLS. CHECK constraints enforce the 5-value `recipient_type` and 3-value `messaging_method` enums.
+- `supabase/migrations/20260425000001_job_applications_networking_enabled.sql` — nullable BOOLEAN column matching the 2.3b/c/d/e sibling pattern. NULL defers to the pure stage rule (active on every non-terminal stage; inactive on `offer`/`closed_won`/`closed_lost`).
+- `server/src/lib/feature-flags.ts` — added `FF_NETWORKING_MESSAGE` (default `true`).
+- `server/src/routes/job-applications.ts` — one new Zod line: `networking_enabled: z.boolean().nullable().optional()`.
+- `server/src/agents/networking-message/types.ts` — `RecipientType` (5 values), `MessagingMethod` (3 values) with char caps, `TargetApplicationContext`, `NetworkingMessageDraft`, `NetworkingMessageState`, SSE event union.
+- `server/src/agents/networking-message/knowledge/rules.ts` — 6 short writing rules: peer-not-supplicant voice, recipient-type is a tone hint, channel char-cap discipline (300 / 1900 / 8000), ground the ask in application context, hard prohibitions, one message one purpose.
+- `server/src/agents/networking-message/writer/tools.ts` — `assess_context` (mid tier, optional context summarizer) + `write_message` (primary tier, single draft with safety-trim at sentence boundary when the model overshoots the channel cap). Role-tone hints are strings the prompt pulls in, not structural branches.
+- `server/src/agents/networking-message/writer/agent.ts` — single-agent config. `max_rounds: 6`, `overall_timeout_ms: 300_000`.
+- `server/src/agents/networking-message/product.ts` — `ProductConfig` with one `message_review` gate supporting `approve / { feedback } / { edited_content }`. `persistResult` writes the message row first, then best-effort CRM: upserts a `networking_contacts` row (priority: `linkedin_url` > `name + company` > `name`) and calls `processNewTouchpoint`. CRM failures are logged-and-swallowed.
+- `server/src/routes/networking-message.ts` — `createProductRoutes` wiring, Zod `startSchema` (recipients 1-level, channel enum, `job_application_id` required), `transformInput` pulls `loadAgentContextBundle` + the `job_applications` row (company / role / jd_text excerpt, 4000-char cap). Exports `computeNetworkingDefault(applicationId, userId)` — the pure-stage resolver.
+- `server/src/index.ts` — mount `/api/networking-message`.
+- `server/src/__tests__/networking-message-agent.test.ts` — 42 tests covering registration, tools, knowledge, state normalization, `buildAgentMessage` injection, gate variants (approve / revise / direct-edit / unknown / condition), `onComplete` / `finalizeResult` / `validateAfterAgent`, write_message char-cap enforcement (over-cap → trimmed to sentence boundary for connection_request; under-cap preserved for inmail), and `computeNetworkingDefault` at each stage.
+- `server/src/__tests__/job-applications-networking.test.ts` — 4 tests mirroring the 2.3b/c/d/e schema pattern.
+- `app/src/hooks/useNetworking.ts` — new hook mirroring `useFollowUpEmail` shape. `startPipeline(input)`, `respondToGate(gate, response)`, `reset()`. `edited_content` responses don't flip status back to `running` (server mutates in-place).
+- `app/src/components/career-iq/NetworkingRoom.tsx` — new room. Form phase: 5-option recipient-type picker with helper copy, recipient name/title/company/LinkedIn, channel selector with char-cap hints, goal + context textareas. Review phase: single draft card with char-count indicator (red when over cap), copy button, revise textarea, direct-edit mode.
+- `app/src/components/career-iq/ApplicationWorkspaceRoute.tsx` — added `networking_enabled` to `ApplicationRecord`, `isNetworkingActive` helper (stage-derived), `handleToggleNetworking`, muted-pill branch, swapped `tool === 'networking'` dispatch: `NetworkingHubRoom` → `NetworkingRoom` behind `ToolActivationScreen` + `HideToolLink`. Icon: `MessageSquare`.
+- `app/src/__tests__/hooks/useNetworking.test.ts` — 8 tests: idle state, start POST body shape, SSE draft+gate handling, revise and direct-edit respondToGate paths, pipeline_error handling, reset.
+- `app/src/__tests__/career-iq/NetworkingRoom.test.tsx` — 7 tests covering form render, validation (recipient + goal), startPipeline invocation shape, review-state render, Approve / Revise gate responses.
+- `app/src/components/career-iq/__tests__/ApplicationWorkspaceRoute.test.tsx` — new describe block (7 tests) for the networking toggle: active pill on `applied` / `interviewing`, muted pill on `offer`, explicit override wins, activation screen when inactive, `NetworkingRoom` mounts (not `NetworkingHubRoom`), Activate fires PATCH + remounts.
+- `.claude/settings.json` — `pre-commit-check.sh` command is now `$CLAUDE_PROJECT_DIR/.claude/hooks/pre-commit-check.sh` so the hook resolves from any cwd.
+- `.claude/hooks/pre-commit-check.sh` — hardcoded absolute paths replaced with `"$CLAUDE_PROJECT_DIR/app"` and `"$CLAUDE_PROJECT_DIR/server"`, with a fallback `dirname`-based walk-up so the hook also works when invoked outside Claude Code.
+
+### Decisions Made
+- **Path A (pure add), not consolidation.** The existing 2-agent `networking-outreach` pipeline + `NetworkingHubRoom` stay alive because `SmartReferralsRoom`'s Outreach tab still imports and uses them. Thin peer tool replaces the workspace slot only.
+- **Route name `/api/networking-message/*`, not `/api/networking/*`.** The latter is occupied by the `networking-contacts` CRUD. No rename of the CRUD mount — avoiding blast radius.
+- **New table `networking_messages`, not extending `networking_outreach_reports`.** Clean state model, no vestigial `messages jsonb` sequence column to manage, no cross-pipeline contention.
+- **Pure stage rule for the toggle default.** No DB joins beyond the application lookup. Simpler than 2.3d/2.3e's timing-aware rules.
+- **`messaging_method` stays as an optional hint with `connection_request` default.** The agent calibrates the draft against the channel's character cap; the user can override via the form dropdown.
+- **CRM touchpoint via upsert-then-processNewTouchpoint.** The spec assumed `processNewTouchpoint` could create contacts; the service as written requires a pre-existing `contactId`. Inline ~25-line helper does the upsert (`linkedin_url` > `name+company` > `name` match priority). Touchpoint write is best-effort; failures don't fail the session.
+- **Tool JSON-parse pattern fixed.** The write tools use `repairJSON<T>(text)` directly rather than the `JSON.parse(repairJSON(...) ?? ...)` double-parse idiom used elsewhere. `repairJSON` returns a parsed object; calling `JSON.parse` on it would coerce to `[object Object]` and silently fall to the catch-block fallback. Fixed only in the new files; the idiom exists in other agents (executive-bio, retirement-bridge, follow-up-email, networking-outreach) but is out of scope for 2.3f.
+- **Pre-commit hook portability.** Root cause of the intermittent "No such file or directory" was the relative path in `settings.json` being resolved against the Bash tool's cwd. `$CLAUDE_PROJECT_DIR` prefix + hook-script fallback fix both symptoms (cwd-dependence + the hardcoded `/Users/johnschrup/resume-agent` paths inside the script).
+
+### Known Issues
+- None introduced. Server tests: **2697 / 0 failing** (+46 from this change, from 2651 baseline). App tests: **1974 passing / 10 failing / 10 skipped** — all 10 failures match the pre-existing baseline. No new regressions.
+- `networking_outreach_reports.session_id` + `.job_application_id` columns remain missing from the 2026-03-17 workspace-asset-links migration. Flagged in the 2.3f audit; still tracked for a future cleanup phase.
+- The `JSON.parse(repairJSON(...) ?? ...)` idiom in other agents (executive-bio, retirement-bridge, follow-up-email, networking-outreach) is a latent bug in the happy path — LLM JSON gets parsed correctly only via the fallback branch. Not exercised by current tests. Out of scope for 2.3f.
+
+### Next Steps
+- Fix the `JSON.parse(repairJSON(...))` idiom across other agents when one of them gets touched next; add a shared helper in `repairJSON.ts` to make the correct pattern the default.
+- Consider a future phase to deprecate `networking-outreach` in favor of a sequence-aware thin tool, once the 2.3f version has enough user data to inform the sequencing rules.
+
 ## 2026-04-23 — Phase 2.3e: Thank-You Note refactor — recipient-role primary axis, multi-recipient, soft-decouple from interview
 **Sprint:** Applications workspace peer tools | **Story:** Phase 2.3e — thank-you-note restructure
 **Summary:** Restructured the existing thank-you-note peer tool around recipient role as the primary axis for tone and content. Added the Phase 2.3 toggle pattern on `job_applications`, per-recipient independent refinement via an extended gate-response shape, optional soft interview-prep coupling via `source_session_id`, and timing awareness that surfaces a UI warning when more than two days have passed since the most recent interview. Applied the 2.3d delegate-or-fallback pattern to InterviewLabRoom's thank-you entry. Not a sync→SSE conversion — thank-you-note was already SSE; this is a structural refactor of the existing peer tool.

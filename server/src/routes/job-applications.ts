@@ -94,6 +94,8 @@ const createJobApplicationSchema = z.object({
   follow_up_email_enabled: z.boolean().nullable().optional(),
   // Phase 2.3e — Thank-You Note toggle. NULL defers to stage-derived default.
   thank_you_note_enabled: z.boolean().nullable().optional(),
+  // Phase 2.3f — Networking Message toggle. NULL defers to stage-derived default.
+  networking_enabled: z.boolean().nullable().optional(),
 });
 
 const updateJobApplicationSchema = createJobApplicationSchema.partial().extend({

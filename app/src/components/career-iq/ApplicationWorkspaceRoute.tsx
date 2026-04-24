@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Handshake, Mail, Mic, Plus, Send, type LucideIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, Handshake, Mail, MessageSquare, Mic, Plus, Send, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -33,7 +33,7 @@ import { API_BASE } from '@/lib/api';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
-import { NetworkingHubRoom } from '@/components/career-iq/NetworkingHubRoom';
+import { NetworkingRoom } from '@/components/career-iq/NetworkingRoom';
 import { InterviewLabRoom } from '@/components/career-iq/InterviewLabRoom';
 import { FollowUpEmailRoom } from '@/components/career-iq/FollowUpEmailRoom';
 import { SalaryNegotiationRoom } from '@/components/career-iq/SalaryNegotiationRoom';
@@ -77,6 +77,13 @@ interface ApplicationRecord {
    * closed_lost). TRUE/FALSE force the result.
    */
   thank_you_note_enabled?: boolean | null;
+  /**
+   * Phase 2.3f — explicit user override for the thin Networking
+   * Message tool. NULL defers to the stage-derived default (active on
+   * saved/researching/applied/screening/interviewing; inactive on
+   * offer/closed_won/closed_lost). TRUE/FALSE force the result.
+   */
+  networking_enabled?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -105,6 +112,23 @@ export function isOfferActive(
     return app.offer_enabled;
   }
   return app.stage === 'offer';
+}
+
+/**
+ * Phase 2.3f — effective active-state for the thin Networking Message
+ * tool. Explicit user toggle wins; otherwise derive from stage (active
+ * on every non-terminal stage; inactive on offer/closed_won/closed_lost).
+ */
+export function isNetworkingActive(
+  app: Pick<ApplicationRecord, 'stage' | 'networking_enabled'>,
+): boolean {
+  if (app.networking_enabled !== null && app.networking_enabled !== undefined) {
+    return app.networking_enabled;
+  }
+  if (app.stage === 'offer' || app.stage === 'closed_won' || app.stage === 'closed_lost') {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -248,6 +272,11 @@ export function ApplicationWorkspaceRoute({
     [applyToggle],
   );
 
+  const handleToggleNetworking = useCallback(
+    (enabled: boolean) => applyToggle({ networking_enabled: enabled }),
+    [applyToggle],
+  );
+
   useEffect(() => {
     if (!applicationId || !accessToken) {
       setLoading(false);
@@ -315,6 +344,7 @@ export function ApplicationWorkspaceRoute({
   const offerActive = isOfferActive(application);
   const followUpEmailActive = isFollowUpEmailActive(application);
   const thankYouNoteActive = isThankYouNoteActive(application);
+  const networkingActive = isNetworkingActive(application);
 
   const ApplicationHeader = (
     <GlassCard className="p-5">
@@ -345,6 +375,7 @@ export function ApplicationWorkspaceRoute({
               || (t === 'offer-negotiation' && !offerActive)
               || (t === 'follow-up-email' && !followUpEmailActive)
               || (t === 'thank-you-note' && !thankYouNoteActive)
+              || (t === 'networking' && !networkingActive)
             );
             return (
               <button
@@ -435,13 +466,38 @@ export function ApplicationWorkspaceRoute({
       );
     }
   } else if (tool === 'networking') {
-    body = (
-      <NetworkingHubRoom
-        key={applicationId}
-        initialJobApplicationId={applicationId}
-        initialTargetCompany={application.company_name}
-      />
-    );
+    // Phase 2.3f — thin peer-tool treatment. Swapped from NetworkingHubRoom
+    // (still alive inside SmartReferralsRoom's Outreach tab) to the new
+    // single-recipient, single-message NetworkingRoom. Toggle gates entry.
+    if (networkingActive) {
+      body = (
+        <>
+          <NetworkingRoom
+            key={applicationId}
+            applicationId={applicationId}
+            initialCompany={application.company_name}
+            initialRole={application.role_title}
+          />
+          <HideToolLink
+            label="Hide Networking Message for this application"
+            disabled={toggleInFlight}
+            onHide={() => handleToggleNetworking(false)}
+          />
+        </>
+      );
+    } else {
+      body = (
+        <ToolActivationScreen
+          icon={MessageSquare}
+          title="Draft a networking message"
+          description="Write a focused message to someone in your network for this application. Pick the recipient, set your goal, and we'll draft a clean, appropriately-toned opener — calibrated to a former colleague, a second-degree connection, a cold outreach, or a referrer. Turn it off once the application's past the networking window."
+          activateLabel="Activate Networking Message"
+          activating={toggleInFlight}
+          onActivate={() => handleToggleNetworking(true)}
+          onBack={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, 'resume'))}
+        />
+      );
+    }
   } else if (tool === 'interview-prep') {
     // Phase 2.3b — gate on activation state. Inactive applications render
     // the lightweight activation screen instead of the lab; clicking
