@@ -23,6 +23,7 @@ import { AlertTriangle, RefreshCw, Pencil, Undo2 } from 'lucide-react';
 import {
   useV3Pipeline,
   type StartV3PipelineInput,
+  type V3DiscoveryAnswer,
   type V3SuggestedPatch,
   type V3WrittenResume,
   type V3Bullet,
@@ -124,6 +125,26 @@ function applyPatchToWritten(
   return null;
 }
 
+function discoveryAnswerKey(answer: V3DiscoveryAnswer): string {
+  return `${answer.requirement.trim().toLowerCase()}::${answer.question.trim().toLowerCase()}`;
+}
+
+function mergeDiscoveryAnswers(
+  existing: V3DiscoveryAnswer[],
+  incoming: V3DiscoveryAnswer[],
+): V3DiscoveryAnswer[] {
+  const byQuestion = new Map<string, V3DiscoveryAnswer>();
+  for (const answer of [...existing, ...incoming]) {
+    const trimmedAnswer = answer.answer.trim();
+    if (!trimmedAnswer) continue;
+    byQuestion.set(discoveryAnswerKey(answer), {
+      ...answer,
+      answer: trimmedAnswer,
+    });
+  }
+  return [...byQuestion.values()];
+}
+
 export function V3PipelineScreen({
   accessToken,
   initialResumeText,
@@ -142,6 +163,8 @@ export function V3PipelineScreen({
   // v3 doesn't echo these back; we only know them at submit time.
   const [runJdTitle, setRunJdTitle] = useState<string | null>(null);
   const [runJdCompany, setRunJdCompany] = useState<string | null>(null);
+  const [lastStartInput, setLastStartInput] = useState<StartV3PipelineInput | null>(null);
+  const [confirmedDiscoveryAnswers, setConfirmedDiscoveryAnswers] = useState<V3DiscoveryAnswer[]>([]);
 
   // Three-panel cross-scroll state (Phase 2). Lives here so both the Resume
   // view (middle) and the Review panel (right) can react to the same events.
@@ -186,6 +209,7 @@ export function V3PipelineScreen({
       costs: pipeline.costs,
     },
     editedWritten,
+    discoveryAnswers: confirmedDiscoveryAnswers,
     jdTitle: runJdTitle,
     jdCompany: runJdCompany,
     applicationId,
@@ -218,7 +242,7 @@ export function V3PipelineScreen({
   const effectiveWritten = editedWritten ?? pipeline.written;
   const effectiveVerify = overrideVerify ?? pipeline.verify;
 
-  const handleStart = (input: StartV3PipelineInput) => {
+  const resetRunViewState = useCallback(() => {
     setEditedWritten(null);
     setFocusCue(null);
     setDismissedIssueKeys(new Set());
@@ -226,6 +250,10 @@ export function V3PipelineScreen({
     setStrategyFlash(null);
     setOverrideVerify(null);
     setLastVerifiedWritten(null);
+  }, []);
+
+  const handleStart = (input: StartV3PipelineInput) => {
+    resetRunViewState();
     setRunJdTitle(input.jdTitle ?? null);
     setRunJdCompany(input.jdCompany ?? null);
     // Discard the stored snapshot — once a new run starts, the old one is
@@ -236,20 +264,19 @@ export function V3PipelineScreen({
     // started from this screen when we're rendered under
     // /workspace/application/:id/resume. Intake form doesn't need to know
     // about the application; it's the screen's responsibility.
-    void pipeline.start({ ...input, applicationId });
+    const runInput = { ...input, applicationId };
+    setLastStartInput(runInput);
+    setConfirmedDiscoveryAnswers(input.discoveryAnswers ?? []);
+    void pipeline.start(runInput);
   };
 
   const handleReset = () => {
     pipeline.reset();
-    setEditedWritten(null);
-    setFocusCue(null);
-    setDismissedIssueKeys(new Set());
-    setAppliedIssueKeys(new Set());
-    setStrategyFlash(null);
-    setOverrideVerify(null);
-    setLastVerifiedWritten(null);
+    resetRunViewState();
     setRunJdTitle(null);
     setRunJdCompany(null);
+    setLastStartInput(null);
+    setConfirmedDiscoveryAnswers([]);
     persistence.clear();
   };
 
@@ -271,6 +298,8 @@ export function V3PipelineScreen({
     setEditedWritten(snap.editedWritten ?? null);
     setRunJdTitle(snap.jdTitle ?? null);
     setRunJdCompany(snap.jdCompany ?? null);
+    setLastStartInput(null);
+    setConfirmedDiscoveryAnswers(snap.discoveryAnswers ?? []);
     // Dismiss the banner but keep localStorage — if they refresh during
     // this hydrated session, they get the banner again next mount.
     persistence.acknowledge();
@@ -305,6 +334,28 @@ export function V3PipelineScreen({
   const handleSourceChipClick = useCallback((positionIndex: number) => {
     setStrategyFlash({ positionIndex, at: Date.now() });
   }, []);
+
+  const handleRunDiscoveryAnswers = useCallback(
+    (answers: V3DiscoveryAnswer[]) => {
+      if (!lastStartInput || answers.length === 0) return;
+      const mergedDiscoveryAnswers = mergeDiscoveryAnswers(
+        lastStartInput.discoveryAnswers ?? confirmedDiscoveryAnswers,
+        answers,
+      );
+      resetRunViewState();
+      setRunJdTitle(lastStartInput.jdTitle ?? null);
+      setRunJdCompany(lastStartInput.jdCompany ?? null);
+      persistence.clear();
+      const rerunInput = {
+        ...lastStartInput,
+        discoveryAnswers: mergedDiscoveryAnswers,
+      };
+      setLastStartInput(rerunInput);
+      setConfirmedDiscoveryAnswers(mergedDiscoveryAnswers);
+      void pipeline.start(rerunInput);
+    },
+    [confirmedDiscoveryAnswers, lastStartInput, persistence, pipeline, resetRunViewState],
+  );
 
   // Fire-and-forget re-verify after any resume-changing action (regenerate
   // bullet, regenerate position). Silent: no spinner, the Review panel's
@@ -652,6 +703,10 @@ export function V3PipelineScreen({
                 onRegeneratePosition={
                   pipeline.isComplete ? handleRegeneratePosition : undefined
                 }
+                onRunDiscoveryAnswers={
+                  pipeline.isComplete && lastStartInput ? handleRunDiscoveryAnswers : undefined
+                }
+                discoveryRunning={pipeline.isRunning}
                 pendingPositions={regen.pendingPositions}
               />
             </div>
@@ -694,6 +749,7 @@ export function V3PipelineScreen({
                   sessionId={sessionId}
                   written={editedWritten ?? pipeline.written}
                   structured={pipeline.structured}
+                  discoveryAnswers={confirmedDiscoveryAnswers}
                   master={master.summary}
                   onSaved={() => master.refresh()}
                 />

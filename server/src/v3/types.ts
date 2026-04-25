@@ -168,12 +168,38 @@ export interface PositionEmphasis {
   rationale: string;
 }
 
+export type EvidenceLadderLevel =
+  | 'direct_proof'
+  | 'reasonable_inference'
+  | 'adjacent_proof'
+  | 'candidate_discovery_needed'
+  | 'unsupported';
+
+export interface EvidenceOpportunity {
+  requirement: string;                 // JD/benchmark need being assessed
+  level: EvidenceLadderLevel;          // how strongly source evidence supports it
+  sourceSignal?: string;               // specific resume signal, if any
+  recommendedFraming: string;          // truthful wording or handling strategy
+  discoveryQuestion?: string;          // ask user when proof is plausible but missing
+  risk: 'low' | 'medium' | 'high';     // risk of overclaiming if mishandled
+}
+
+export interface EditorialAssessment {
+  callbackPower: number;               // 0-100 hiring-side judgment
+  strongestAngle: string;              // what should make the reader lean in
+  weakestAngle: string;                // likely bland/gap/friction point
+  hiringManagerQuestion: string;       // the question the resume must answer fast
+  recommendedMove: string;             // senior-editor next move for Stage 4/user
+}
+
 export interface Strategy {
   positioningFrame: string;            // e.g. "consolidator", "builder", "turnaround leader"
   targetDisciplinePhrase: string;      // branded-title phrase for the summary
   emphasizedAccomplishments: EmphasizedAccomplishment[];
   objections: Objection[];
   positionEmphasis: PositionEmphasis[];
+  evidenceOpportunities?: EvidenceOpportunity[];
+  editorialAssessment?: EditorialAssessment;
   notes?: string;
 }
 

@@ -21,6 +21,10 @@ import {
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
 } from '../../../contracts/shared-context-prompt.js';
+import {
+  EVIDENCE_LADDER_RULES,
+  HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+} from '../../shared-knowledge.js';
 
 type CoverLetterTool = AgentTool<CoverLetterState, CoverLetterSSEEvent>;
 
@@ -102,12 +106,16 @@ const writeLetterTool: CoverLetterTool = {
 
     const systemPrompt = `You are an expert executive cover letter writer. You write in the candidate's authentic voice — you never fabricate experience, inflate credentials, or misrepresent anyone. You better position real skills and genuine accomplishments so the reader immediately recognises this candidate as someone worth interviewing.
 
-EVIDENCE-BOUND RULE: Every claim in the cover letter must trace directly to the candidate data provided below. This means:
+EVIDENCE-BOUND RULE: Every factual claim in the cover letter must trace directly to the candidate data provided below. The JD can define the need; candidate data decides what can be claimed. This means:
 - Metrics must come from the source data. Use the exact figures provided — do not round up, inflate, or substitute different numbers.
 - Company names and role titles must match the work history exactly. Do not invent employers or titles.
 - Do not invent projects, outcomes, or experiences that are not listed in the candidate data.
-- When the candidate's background does not directly map to a JD requirement, bridge with a real transferable skill — do not fabricate direct experience.
+- When the candidate's background does not directly map to a JD requirement, look for reasonable inference or adjacent proof before dropping the angle. Bridge with a real transferable skill; do not fabricate direct experience.
 - Forbidden filler phrases: "passionate about", "proven track record", "results-oriented", "dynamic leader", "I am the perfect candidate", "I am confident I would be an asset", "leverage my expertise". Replace any of these with specific, sourced evidence.
+
+${EVIDENCE_LADDER_RULES}
+
+${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}
 
 Writing philosophy:
 - Executives are better suited for far more roles than they initially believe — your job is to surface that real fit.
@@ -117,7 +125,7 @@ Writing philosophy:
 
     const userMessage = `Write a complete, polished cover letter using ONLY the information provided below. Output the letter text only — no JSON, no commentary, no markdown fencing.
 
-Every claim must trace to the candidate data below. Do not add accomplishments, metrics, or experiences that do not appear in this data.
+Every factual claim must trace to the candidate data below. Do not add accomplishments, metrics, or experiences that do not appear in this data. Use reasonable inference and adjacent proof only when the source facts make the bridge honest and clear.
 
 CANDIDATE PROFILE
 Name: ${resume.name}

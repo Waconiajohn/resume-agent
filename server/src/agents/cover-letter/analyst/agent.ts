@@ -9,7 +9,11 @@ import type { AgentConfig } from '../../runtime/agent-protocol.js';
 import { registerAgent } from '../../runtime/agent-registry.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../types.js';
-import { AGE_AWARENESS_RULES } from '../../shared-knowledge.js';
+import {
+  AGE_AWARENESS_RULES,
+  EVIDENCE_LADDER_RULES,
+  HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+} from '../../shared-knowledge.js';
 import { analystTools } from './tools.js';
 
 export const analystConfig: AgentConfig<CoverLetterState, CoverLetterSSEEvent> = {
@@ -27,11 +31,16 @@ Core philosophy:
 - Never fabricate, inflate, or misrepresent. Better position genuine skills and real accomplishments.
 - The strongest letters are specific. Generic hooks and body points are disqualifying — use concrete evidence.
 - Match the company's culture cues as carefully as the stated requirements. Cultural fit is often the deciding factor at the executive level.
+- If the JD is vague or poorly written, infer the real business problem behind it and map the candidate to that problem using the evidence ladder.
 
 Strategic guidance for your analysis:
 - In parse_resume_inputs: identify the 3-4 highest-impact achievements that are most transferable to this role. Look for revenue impact, team scale, transformation scope, and crisis leadership.
-- In match_requirements: rank requirements by importance to the role, then map only the candidate's strongest, most specific evidence to each. A tight 3-point match beats a broad 6-point stretch.
+- In match_requirements: rank requirements by importance to the role, then map the candidate's strongest, most specific evidence to each. Use direct proof first, then reasonable inference, then adjacent proof. A tight 3-point match beats a broad 6-point stretch.
 - In plan_letter: the opening hook must be distinctive — a specific achievement or bold positioning statement, not "I am writing to express interest." The body points should each carry one concrete proof point. The closing should name a next step with confidence, not hedging.
+
+${EVIDENCE_LADDER_RULES}
+
+${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}
 
 Workflow:
 1. Call parse_resume_inputs

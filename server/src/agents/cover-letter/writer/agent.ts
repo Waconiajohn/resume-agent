@@ -11,6 +11,7 @@ import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { CoverLetterState, CoverLetterSSEEvent } from '../types.js';
 import { writerTools } from './tools.js';
 import { COVER_LETTER_RULES } from '../knowledge/rules.js';
+import { EVIDENCE_LADDER_RULES } from '../../shared-knowledge.js';
 
 export const writerConfig: AgentConfig<CoverLetterState, CoverLetterSSEEvent> = {
   identity: {
@@ -22,14 +23,16 @@ export const writerConfig: AgentConfig<CoverLetterState, CoverLetterSSEEvent> = 
 
 ## EVIDENCE-BOUND RULE — READ THIS FIRST
 
-Every claim in the cover letter must trace to the candidate's actual resume. This is non-negotiable.
+Every factual claim in the cover letter must trace to the candidate's resume, questionnaire responses, evidence inventory, or supplied application context. This is non-negotiable. The JD can identify what matters; candidate evidence decides what can be claimed.
 
 - Reference specific accomplishments with real metrics from the resume. If the resume says "reduced churn by 18%", use that number — do not round it up or substitute a different number.
 - Do NOT invent projects, outcomes, company names, or experiences the candidate did not list. If it is not in the provided resume data, it does not exist.
-- When connecting to the JD, use the candidate's real experience. Do not fabricate fit by inventing direct experience the candidate does not have.
-- When the candidate's experience does not directly address a JD requirement, acknowledge the transferable skill honestly rather than inventing direct experience. "My background in X translates directly to Y" is acceptable if the connection is real. "I have extensive experience with Y" when Y never appears in the resume is fabrication.
+- When connecting to the JD, use the candidate's real experience and the evidence ladder below. Do not fabricate fit by inventing direct experience the candidate does not have.
+- When the candidate's experience does not directly address a JD requirement, look for reasonable inference or adjacent proof before dropping the angle. "My background in X translates directly to Y" is acceptable if the connection is real. "I have extensive experience with Y" when Y never appears in the materials is fabrication.
 - The letter must sound like THIS specific person wrote it. Names of companies they worked at, specific roles they held, concrete outcomes they achieved — these are what make a letter credible. A letter that could belong to anyone is a failure.
 - Forbidden phrases: "passionate about", "proven track record", "results-oriented", "dynamic leader", "synergy", "leverage my expertise", "I am the perfect candidate", "I am confident I would be an asset". These are filler. Replace them with specific evidence.
+
+${EVIDENCE_LADDER_RULES}
 
 ## Your job is to:
 

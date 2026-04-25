@@ -12,10 +12,15 @@ import { classifyWithTelemetry } from '../classify/index.js';
 import { benchmarkWithTelemetry } from '../benchmark/index.js';
 import { strategizeWithTelemetry } from '../strategize/index.js';
 import { writeWithTelemetry } from '../write/index.js';
+import { prepareResumeForWriting } from '../write/employment-status.js';
 import { verifyWithTelemetry } from '../verify/index.js';
 import { costOf } from '../shadow/costs.js';
 import { createV3Logger } from '../observability/logger.js';
 import { createMasterFromClassify, fetchDefaultMaster } from '../master/load.js';
+import {
+  appendDiscoveryAnswersToResumeText,
+  type DiscoveryAnswer,
+} from './discovery-answers.js';
 import type { V3SSEEmitter, V3StageCosts, V3StageTimings } from './types.js';
 
 const log = createV3Logger('pipeline');
@@ -24,6 +29,7 @@ export interface RunV3PipelineInput {
   sessionId: string;
   userId: string | null;
   resumeText: string;
+  discoveryAnswers?: DiscoveryAnswer[];
   jobDescription: {
     text: string;
     title?: string;
@@ -57,6 +63,10 @@ export async function runV3Pipeline(
   input: RunV3PipelineInput,
 ): Promise<RunV3PipelineResult> {
   const started = Date.now();
+  const resumeText = appendDiscoveryAnswersToResumeText(
+    input.resumeText,
+    input.discoveryAnswers,
+  );
   const timings: V3StageTimings = { totalMs: 0 };
   const costs: V3StageCosts = {
     classify: 0,
@@ -91,7 +101,7 @@ export async function runV3Pipeline(
   let extractOutput;
   try {
     const t0 = Date.now();
-    extractOutput = await extract({ text: input.resumeText });
+    extractOutput = await extract({ text: resumeText });
     timings.extractMs = Date.now() - t0;
     input.emit({
       type: 'stage_complete',
@@ -194,8 +204,9 @@ export async function runV3Pipeline(
   // ─── Stage 4 — write ──────────────────────────────────────────────────
   input.emit({ type: 'stage_start', stage: 'write', timestamp: ts() });
   let written;
+  const writeSource = prepareResumeForWriting(structured);
   try {
-    const w = await writeWithTelemetry(structured, strategy, { signal: input.signal });
+    const w = await writeWithTelemetry(writeSource, strategy, { signal: input.signal });
     timings.writeMs = w.telemetry.durationMs;
     // Sum across every section (summary + accomplishments + competencies + positions[] + customSections[])
     let writeCost = 0;
@@ -226,7 +237,7 @@ export async function runV3Pipeline(
   input.emit({ type: 'stage_start', stage: 'verify', timestamp: ts() });
   let verify;
   try {
-    const v = await verifyWithTelemetry(written, structured, strategy, { signal: input.signal });
+    const v = await verifyWithTelemetry(written, writeSource, strategy, { signal: input.signal });
     timings.verifyMs = v.telemetry.durationMs;
     costs.verify = costOf(v.telemetry.model, v.telemetry.inputTokens, v.telemetry.outputTokens);
     // Add the post-verify translation call (if it ran) so total cost is honest.
@@ -260,6 +271,7 @@ export async function runV3Pipeline(
     strategy,
     written,
     verify,
+    discoveryAnswers: input.discoveryAnswers ?? [],
     timings,
     costs,
     timestamp: ts(),

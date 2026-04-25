@@ -14,6 +14,7 @@ import type {
   VerifyResult,
   BenchmarkProfile,
 } from '../types.js';
+import type { DiscoveryAnswer } from './discovery-answers.js';
 
 export type V3PipelineStage =
   | 'extract'
@@ -114,6 +115,7 @@ export interface V3PipelineCompleteEvent {
   strategy: Strategy;
   written: WrittenResume;
   verify: VerifyResult;
+  discoveryAnswers?: DiscoveryAnswer[];
   timings: V3StageTimings;
   costs: V3StageCosts;
   timestamp: string;

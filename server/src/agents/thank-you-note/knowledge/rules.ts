@@ -12,6 +12,11 @@
  * - No two notes in the same interview set should read alike
  */
 
+import {
+  EVIDENCE_LADDER_RULES,
+  HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+} from '../../shared-knowledge.js';
+
 // ─── Rule 0: Thank You Note Philosophy ─────────────────────────────
 
 export const RULE_0_PHILOSOPHY = `## RULE 0 — THANK YOU NOTE PHILOSOPHY
@@ -59,6 +64,12 @@ Personalization requirements:
 4. **Vary the personalization across interviewers** — If you met 4 people, each note must reference different topics and use different language. Copy-paste with name changes is immediately obvious and deeply off-putting.
 5. **Use their name and title correctly** — Triple-check spelling and title accuracy. Getting someone's name wrong in a thank-you note is disqualifying.
 6. **Match the interviewer's communication style** — If they were formal and structured, your note should be polished. If they were casual and story-driven, your note can be warmer. Mirror their energy.`;
+
+// Evidence and editorial guidance lives with personalization because the note's
+// value comes from choosing one strong, truthful callback rather than pitching.
+const NOTE_EVIDENCE_GUIDANCE = `${EVIDENCE_LADDER_RULES}
+
+${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}`;
 
 // ─── Rule 3: Executive Tone ────────────────────────────────────────
 
@@ -123,6 +134,8 @@ Never do these:
 export const RULE_6_SELF_REVIEW = `## RULE 6 — SELF-REVIEW CHECKLIST
 
 Before presenting any note to the user, verify every element against this checklist. A poorly written thank-you note can undo the positive impression from the interview itself.
+
+${NOTE_EVIDENCE_GUIDANCE}
 
 Verification criteria:
 

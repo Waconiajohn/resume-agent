@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useV3SessionPersistence } from '../useV3SessionPersistence';
 import type {
   V3BenchmarkProfile,
+  V3DiscoveryAnswer,
   V3Strategy,
   V3StructuredResume,
   V3VerifyResult,
@@ -57,6 +58,17 @@ const verifyFixture: V3VerifyResult = {
   issues: [],
 };
 
+const discoveryAnswersFixture: V3DiscoveryAnswer[] = [
+  {
+    requirement: 'Industry 4.0 / smart manufacturing technologies',
+    question: 'Have you led any IoT, predictive maintenance, or smart manufacturing work?',
+    answer: 'Sponsored a CMMS sensor-alert pilot using machine downtime data for preventive maintenance.',
+    level: 'candidate_discovery_needed',
+    risk: 'high',
+    recommendedFraming: 'Frame as smart-manufacturing exposure, not full digital twin ownership.',
+  },
+];
+
 const emptyPipeline = {
   isComplete: false,
   sessionId: null,
@@ -77,6 +89,7 @@ describe('useV3SessionPersistence', () => {
     window.localStorage.clear();
   });
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     window.localStorage.clear();
   });
@@ -131,6 +144,7 @@ describe('useV3SessionPersistence', () => {
                 strategy: strategyFixture,
                 written: writtenFixture,
                 verify: verifyFixture,
+                discoveryAnswers: discoveryAnswersFixture,
                 timings: null,
                 costs: null,
               },
@@ -156,6 +170,46 @@ describe('useV3SessionPersistence', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.lastSession?.sessionId).toBe('sess-2');
     expect(result.current.lastSession?.jdTitle).toBe('VP Ops');
+    expect(result.current.lastSession?.discoveryAnswers).toEqual(discoveryAnswersFixture);
+  });
+
+  it('writes discovery answers into the local resumable snapshot', async () => {
+    vi.useFakeTimers();
+
+    const completedPipeline = {
+      isComplete: true,
+      sessionId: 'sess-3',
+      structured: structuredFixture,
+      benchmark: benchmarkFixture,
+      strategy: strategyFixture,
+      written: writtenFixture,
+      verify: verifyFixture,
+      timings: null,
+      costs: null,
+    };
+
+    renderHook(() =>
+      useV3SessionPersistence({
+        accessToken: null,
+        userId: 'user-1',
+        pipeline: completedPipeline,
+        editedWritten: null,
+        discoveryAnswers: discoveryAnswersFixture,
+        jdTitle: 'VP Ops',
+        jdCompany: 'Globex',
+      }),
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}') as {
+      discoveryAnswers?: V3DiscoveryAnswer[];
+    };
+    expect(saved.discoveryAnswers).toEqual(discoveryAnswersFixture);
+
+    vi.useRealTimers();
   });
 
   it('ignores stale localStorage entries (>7 days old)', async () => {

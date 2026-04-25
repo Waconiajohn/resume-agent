@@ -11,6 +11,11 @@
  * - Executive-level communication standards
  */
 
+import {
+  EVIDENCE_LADDER_RULES,
+  HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+} from '../../shared-knowledge.js';
+
 // ─── Rule 0: Networking Philosophy ──────────────────────────────────
 
 export const RULE_0_PHILOSOPHY = `## RULE 0 — NETWORKING PHILOSOPHY
@@ -138,6 +143,10 @@ Rules:
 - Personalization should feel natural, not forced. "I noticed you posted about supply chain resilience last week..." is better than "As I was meticulously reviewing your LinkedIn activity, I couldn't help but notice..."
 - The Why-Me story and positioning strategy are goldmines for finding genuine common ground. Use them.`;
 
+const OUTREACH_EVIDENCE_GUIDANCE = `${EVIDENCE_LADDER_RULES}
+
+${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}`;
+
 // ─── Rule 6: Tone & Voice ───────────────────────────────────────────
 
 export const RULE_6_TONE = `## RULE 6 — TONE & VOICE
@@ -171,6 +180,8 @@ Words/phrases that WORK:
 export const RULE_7_SELF_REVIEW = `## RULE 7 — SELF-REVIEW CHECKLIST
 
 After generating each message, verify:
+
+${OUTREACH_EVIDENCE_GUIDANCE}
 
 1. **Character limit test**: Connection request ≤300 chars? Follow-ups ≤500 chars? If over, tighten — don't just truncate.
 2. **Personalization test**: Does this message contain at least ONE specific hook that couldn't apply to anyone else? If generic, add specificity.

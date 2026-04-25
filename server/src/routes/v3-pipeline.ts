@@ -38,6 +38,22 @@ import type {
   WrittenResume,
 } from '../v3/types.js';
 
+const discoveryAnswerSchema = z.object({
+  requirement: z.string().min(1).max(300),
+  question: z.string().max(600).optional().default(''),
+  answer: z.string().min(1).max(2_500),
+  level: z.enum([
+    'direct_proof',
+    'reasonable_inference',
+    'adjacent_proof',
+    'candidate_discovery_needed',
+    'unsupported',
+  ]).optional(),
+  risk: z.enum(['low', 'medium', 'high']).optional(),
+  recommendedFraming: z.string().max(800).optional(),
+  sourceSignal: z.string().max(800).optional(),
+});
+
 export const v3Pipeline = new Hono();
 
 const runSchema = z.object({
@@ -55,6 +71,10 @@ const runSchema = z.object({
   // created for billing so the output can be reopened from the job
   // workspace view.
   job_application_id: z.string().uuid().optional(),
+  // Candidate-provided answers to strategy discovery questions. These are
+  // appended to the resume source for this run only, so the entire v3
+  // pipeline can use them as auditable source evidence.
+  discovery_answers: z.array(discoveryAnswerSchema).max(12).optional(),
 }).refine(
   (d) => (d.use_master === true) || (typeof d.resume_text === 'string' && d.resume_text.length >= 50),
   { message: 'Either resume_text (min 50 chars) or use_master=true is required.' },
@@ -265,7 +285,14 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
     return c.json({ error: 'Invalid input', details: parsed.error.flatten() }, 400);
   }
 
-  const { resume_text: providedResumeText, use_master, job_description, jd_title, jd_company } = parsed.data;
+  const {
+    resume_text: providedResumeText,
+    use_master,
+    job_description,
+    jd_title,
+    jd_company,
+    discovery_answers,
+  } = parsed.data;
 
   // Resolve resume_text: prefer what the caller pasted; else load from the
   // user's default master. The schema refinement above guarantees at least
@@ -316,7 +343,17 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
   const sessionId = session.id;
   const pipelineStartedAt = Date.now();
 
-  logger.info({ sessionId, userId, resumeChars: resumeText.length, jdChars: job_description.length, source: use_master ? 'master' : 'paste' }, 'v3 pipeline start');
+  logger.info(
+    {
+      sessionId,
+      userId,
+      resumeChars: resumeText.length,
+      jdChars: job_description.length,
+      discoveryAnswerCount: discovery_answers?.length ?? 0,
+      source: use_master ? 'master' : 'paste',
+    },
+    'v3 pipeline start',
+  );
 
   // AbortController tied to the SSE stream — if the client disconnects,
   // we cancel in-flight LLM calls rather than burning them.
@@ -363,6 +400,7 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
         sessionId,
         userId,
         resumeText,
+        discoveryAnswers: discovery_answers,
         jobDescription: {
           text: job_description,
           title: jd_title,
@@ -415,6 +453,7 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
             strategy: payload.strategy,
             written: payload.written,
             verify: payload.verify,
+            discoveryAnswers: payload.discoveryAnswers ?? discovery_answers ?? [],
             timings: payload.timings,
             costs: payload.costs,
           };

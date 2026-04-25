@@ -27,6 +27,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { API_BASE } from '@/lib/api';
 import type {
   V3BenchmarkProfile,
+  V3DiscoveryAnswer,
   V3StageCosts,
   V3StageTimings,
   V3Strategy,
@@ -50,6 +51,8 @@ export interface V3SessionSnapshot {
   costs: V3StageCosts | null;
   /** Optional user-edited WrittenResume (click-to-edit + applied patches). */
   editedWritten?: V3WrittenResume | null;
+  /** Candidate-provided discovery proof collected during this run. */
+  discoveryAnswers?: V3DiscoveryAnswer[];
   /** Snapshot context so the banner can show "[title] at [company]". */
   jdTitle?: string | null;
   jdCompany?: string | null;
@@ -126,6 +129,8 @@ interface UseV3SessionPersistenceArgs {
   };
   /** The user's current edited-written state, if any. */
   editedWritten: V3WrittenResume | null;
+  /** Candidate-provided discovery proof collected during this run. */
+  discoveryAnswers?: V3DiscoveryAnswer[];
   /** Metadata captured at submit time so the banner can label the run. */
   jdTitle?: string | null;
   jdCompany?: string | null;
@@ -161,6 +166,7 @@ export function useV3SessionPersistence({
   userId,
   pipeline,
   editedWritten,
+  discoveryAnswers,
   jdTitle,
   jdCompany,
   applicationId,
@@ -224,6 +230,7 @@ export function useV3SessionPersistence({
               strategy: V3Strategy;
               written: V3WrittenResume;
               verify: V3VerifyResult;
+              discoveryAnswers?: V3DiscoveryAnswer[];
               timings: V3StageTimings | null;
               costs: V3StageCosts | null;
             };
@@ -249,6 +256,7 @@ export function useV3SessionPersistence({
           strategy: body.session.pipelineOutput.strategy,
           written: body.session.pipelineOutput.written,
           verify: body.session.pipelineOutput.verify,
+          discoveryAnswers: body.session.pipelineOutput.discoveryAnswers ?? [],
           timings: body.session.pipelineOutput.timings,
           costs: body.session.pipelineOutput.costs,
           editedWritten: body.session.editedWritten,
@@ -295,6 +303,7 @@ export function useV3SessionPersistence({
         strategy: pipeline.strategy!,
         written: pipeline.written!,
         verify: pipeline.verify!,
+        discoveryAnswers: discoveryAnswers ?? [],
         timings: pipeline.timings,
         costs: pipeline.costs,
         editedWritten,
@@ -323,6 +332,7 @@ export function useV3SessionPersistence({
     pipeline.timings,
     pipeline.costs,
     editedWritten,
+    discoveryAnswers,
     jdTitle,
     jdCompany,
     applicationId,

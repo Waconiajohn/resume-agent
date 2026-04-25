@@ -29,7 +29,12 @@ import {
 import { API_BASE } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { EditableText } from './EditableText';
-import type { V3WrittenResume, V3MasterSummary, V3StructuredResume } from '@/hooks/useV3Pipeline';
+import type {
+  V3DiscoveryAnswer,
+  V3WrittenResume,
+  V3MasterSummary,
+  V3StructuredResume,
+} from '@/hooks/useV3Pipeline';
 
 interface Props {
   accessToken: string | null;
@@ -42,17 +47,19 @@ interface Props {
    * master, and offering it for promotion would pollute the vault.
    */
   structured?: V3StructuredResume | null;
+  discoveryAnswers?: V3DiscoveryAnswer[];
   master: V3MasterSummary | null;
   /** Called after a successful save so the parent can refresh the master summary. */
   onSaved?: () => void | Promise<void>;
 }
 
-type PromoteKind = 'summary' | 'scope' | 'bullet';
+type PromoteKind = 'summary' | 'scope' | 'bullet' | 'evidence';
 interface PromoteItem {
   key: string;
   kind: PromoteKind;
   positionIndex?: number;
   text: string;
+  category?: string;
   confidenceBucket?: 'high' | 'medium' | 'low';
 }
 
@@ -62,7 +69,15 @@ function confidenceBucket(c: number): 'high' | 'medium' | 'low' {
   return 'low';
 }
 
-export function V3PromotePanel({ accessToken, sessionId, written, structured, master, onSaved }: Props) {
+export function V3PromotePanel({
+  accessToken,
+  sessionId,
+  written,
+  structured,
+  discoveryAnswers,
+  master,
+  onSaved,
+}: Props) {
   // ─── Build the promotable-item list ────────────────────────────────
   const items = useMemo<PromoteItem[]>(() => {
     if (!written) return [];
@@ -93,14 +108,25 @@ export function V3PromotePanel({ accessToken, sessionId, written, structured, ma
         });
       });
     });
+    (discoveryAnswers ?? []).forEach((answer, index) => {
+      const text = formatDiscoveryEvidenceText(answer);
+      if (!text) return;
+      out.push({
+        key: `evidence-${index}-${answer.requirement}`,
+        kind: 'evidence',
+        text,
+        category: 'candidate_discovery',
+        confidenceBucket: 'high',
+      });
+    });
     return out;
-  }, [written, structured]);
+  }, [written, structured, discoveryAnswers]);
 
   // Default selection — summary/scopes on, high-confidence bullets on.
   const defaultSelection = useMemo<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const it of items) {
-      if (it.kind === 'summary' || it.kind === 'scope') init[it.key] = true;
+      if (it.kind === 'summary' || it.kind === 'scope' || it.kind === 'evidence') init[it.key] = true;
       else if (it.kind === 'bullet') init[it.key] = it.confidenceBucket === 'high';
     }
     return init;
@@ -109,9 +135,15 @@ export function V3PromotePanel({ accessToken, sessionId, written, structured, ma
   const [selection, setSelection] = useState<Record<string, boolean>>(defaultSelection);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState(false);
-  const [sectionOpen, setSectionOpen] = useState<{ summary: boolean; scopes: boolean; bullets: boolean }>({
+  const [sectionOpen, setSectionOpen] = useState<{
+    summary: boolean;
+    scopes: boolean;
+    bullets: boolean;
+    evidence: boolean;
+  }>({
     summary: true,
     scopes: true,
+    evidence: true,
     bullets: false, // largest section — collapsed even within the expanded panel
   });
   const [saving, setSaving] = useState(false);
@@ -127,6 +159,7 @@ export function V3PromotePanel({ accessToken, sessionId, written, structured, ma
   const summaryItem = items.find((it) => it.kind === 'summary');
   const scopeItems = items.filter((it) => it.kind === 'scope');
   const bulletItems = items.filter((it) => it.kind === 'bullet');
+  const evidenceItems = items.filter((it) => it.kind === 'evidence');
 
   const selectedCount = Object.values(selection).filter(Boolean).length;
   const highConfidenceCount = items.filter((it) =>
@@ -137,6 +170,7 @@ export function V3PromotePanel({ accessToken, sessionId, written, structured, ma
     hasSummary: Boolean(summaryItem),
     scopeCount: scopeItems.length,
     bulletCount: bulletItems.length,
+    evidenceCount: evidenceItems.length,
   });
 
   const save = async (override?: Record<string, boolean>) => {
@@ -165,6 +199,14 @@ export function V3PromotePanel({ accessToken, sessionId, written, structured, ma
         source: 'crafted' as const,
       }));
     if (bullets.length > 0) body.bullets = bullets;
+
+    const evidence = selectedItems
+      .filter((it) => it.kind === 'evidence')
+      .map((it) => ({
+        text: edits[it.key] ?? it.text,
+        category: it.category ?? 'candidate_discovery',
+      }));
+    if (evidence.length > 0) body.evidence = evidence;
 
     try {
       const res = await fetch(`${API_BASE}/v3-pipeline/promote`, {
@@ -336,6 +378,28 @@ export function V3PromotePanel({ accessToken, sessionId, written, structured, ma
           </Section>
         )}
 
+        {evidenceItems.length > 0 && (
+          <Section
+            title="Confirmed evidence"
+            count={evidenceItems.length}
+            open={sectionOpen.evidence}
+            onToggle={() => setSectionOpen((s) => ({ ...s, evidence: !s.evidence }))}
+          >
+            <div className="space-y-3">
+              {evidenceItems.map((it) => (
+                <PromoteRow
+                  key={it.key}
+                  item={it}
+                  selected={selection[it.key] ?? false}
+                  onToggle={() => toggle(it.key)}
+                  editedText={edits[it.key]}
+                  onEdit={(next) => setEdits((e) => ({ ...e, [it.key]: next }))}
+                />
+              ))}
+            </div>
+          </Section>
+        )}
+
         {bulletItems.length > 0 && (
           <Section
             title="New accomplishments"
@@ -425,6 +489,8 @@ function PromoteRow({
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[var(--text-soft)] mb-1">
           {item.kind === 'summary'
             ? <span>Executive summary</span>
+            : item.kind === 'evidence'
+              ? <span>Confirmed evidence</span>
             : <span>Position {item.positionIndex}</span>}
           {item.kind === 'bullet' && item.confidenceBucket === 'low' && (
             <span className="text-[var(--badge-red-text)]">low confidence</span>
@@ -474,18 +540,28 @@ function normalizePromoteText(s: string): string {
   return s.trim().replace(/\s+/g, ' ');
 }
 
+function formatDiscoveryEvidenceText(answer: V3DiscoveryAnswer): string | null {
+  const cleanAnswer = answer.answer.trim();
+  const requirement = answer.requirement.trim();
+  if (!cleanAnswer || !requirement) return null;
+  return `Candidate confirmed for ${requirement}: ${cleanAnswer}`;
+}
+
 function buildSummaryLine({
   hasSummary,
   scopeCount,
   bulletCount,
+  evidenceCount,
 }: {
   hasSummary: boolean;
   scopeCount: number;
   bulletCount: number;
+  evidenceCount: number;
 }): string {
   const parts: string[] = [];
   if (bulletCount > 0) parts.push(`${bulletCount} new accomplishment${bulletCount === 1 ? '' : 's'}`);
   if (scopeCount > 0) parts.push(`${scopeCount} updated scope statement${scopeCount === 1 ? '' : 's'}`);
+  if (evidenceCount > 0) parts.push(`${evidenceCount} confirmed evidence note${evidenceCount === 1 ? '' : 's'}`);
   if (hasSummary) parts.push('a refreshed summary');
   if (parts.length === 0) return 'No changes to promote.';
   if (parts.length === 1) return `We wrote ${parts[0]}.`;

@@ -21,12 +21,37 @@ const positionEmphasis = z.object({
   rationale: z.string(),
 });
 
+const evidenceOpportunity = z.object({
+  requirement: z.string(),
+  level: z.union([
+    z.literal('direct_proof'),
+    z.literal('reasonable_inference'),
+    z.literal('adjacent_proof'),
+    z.literal('candidate_discovery_needed'),
+    z.literal('unsupported'),
+  ]),
+  sourceSignal: z.string().optional(),
+  recommendedFraming: z.string(),
+  discoveryQuestion: z.string().optional(),
+  risk: z.union([z.literal('low'), z.literal('medium'), z.literal('high')]),
+});
+
+const editorialAssessment = z.object({
+  callbackPower: z.number().min(0).max(100),
+  strongestAngle: z.string(),
+  weakestAngle: z.string(),
+  hiringManagerQuestion: z.string(),
+  recommendedMove: z.string(),
+});
+
 export const StrategySchema = z.object({
   positioningFrame: z.string(),
   targetDisciplinePhrase: z.string(),
   emphasizedAccomplishments: z.array(emphasizedAccomplishment),
   objections: z.array(objection),
   positionEmphasis: z.array(positionEmphasis),
+  evidenceOpportunities: z.array(evidenceOpportunity).optional(),
+  editorialAssessment: editorialAssessment.optional(),
   notes: z.string().optional(),
 });
 

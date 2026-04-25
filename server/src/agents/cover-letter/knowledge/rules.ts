@@ -12,7 +12,11 @@
  * - Age awareness protects executives 45+ from systemic bias
  */
 
-import { AGE_AWARENESS_RULES } from '../../shared-knowledge.js';
+import {
+  AGE_AWARENESS_RULES,
+  EVIDENCE_LADDER_RULES,
+  HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+} from '../../shared-knowledge.js';
 
 // ─── Rule 0: Cover Letter Philosophy ────────────────────────────────
 
@@ -26,6 +30,8 @@ Core principles:
 3. **The reader test** — Every sentence should pass this test: would a skeptical hiring executive find this meaningful and memorable? If a sentence could be deleted without losing anything, delete it. The letter should make the reader want to meet this person, not file the application.
 4. **300-400 words is the target** — Longer is not more impressive. An executive who can position themselves in 350 words signals stronger communication skills than one who rambles to 600. Trim ruthlessly.
 5. **Authenticity over embellishment** — We never fabricate experience, inflate metrics, or misrepresent accomplishments. We better position genuine skills and real achievements. A well-positioned truth is more compelling than any fabrication.
+
+${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}
 
 What this is NOT:
 - A transcript of the resume in paragraph form
@@ -65,6 +71,8 @@ Evidence standards for cover letter body paragraphs:
 3. **One proof point per paragraph** — Three strong, specific proof points beat five vague ones. Depth over breadth. Each paragraph should be 2-4 sentences: the claim, the evidence, and a sentence connecting it to why it matters for this specific role.
 4. **Specificity signals credibility** — Company names, system names, team structures, dollar figures — these details signal a real person describing real work. Vague claims signal a generic letter.
 5. **Evidence must be from the source material** — Use the resume data, questionnaire responses, and evidence library. Do not invent achievements not present in the source material. Flag gaps and ask rather than fabricate.
+
+${EVIDENCE_LADDER_RULES}
 
 The body section should contain 2-3 paragraphs. Each must pass this test: if the specific company name, metric, and action were removed, would the paragraph collapse into something meaningless? If not, it's specific enough.`;
 

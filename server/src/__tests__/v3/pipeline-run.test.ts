@@ -165,6 +165,36 @@ describe('runV3Pipeline', () => {
     }
   });
 
+  it('carries discovery answers through the final payload', async () => {
+    setupHappyPathMocks();
+    const discoveryAnswers = [
+      {
+        requirement: 'Industry 4.0 / smart manufacturing technologies',
+        question: 'Have you led predictive-maintenance or smart-manufacturing work?',
+        answer: 'Sponsored a CMMS sensor-alert pilot using downtime data for preventive maintenance.',
+        level: 'candidate_discovery_needed' as const,
+        risk: 'high' as const,
+        recommendedFraming: 'Frame as smart-manufacturing exposure, not full digital twin ownership.',
+      },
+    ];
+    const events: V3PipelineSSEEvent[] = [];
+    const result = await runV3Pipeline({
+      sessionId: 'test-discovery',
+      userId: 'user-1',
+      resumeText: 'resume text here, at least fifty characters long blah blah blah',
+      discoveryAnswers,
+      jobDescription: { text: 'jd text here' },
+      emit: (e) => events.push(e),
+    });
+
+    expect(result.success).toBe(true);
+    const final = events.find((e) => e.type === 'pipeline_complete');
+    expect(final?.type).toBe('pipeline_complete');
+    if (final?.type === 'pipeline_complete') {
+      expect(final.discoveryAnswers).toEqual(discoveryAnswers);
+    }
+  });
+
   it('computes write-stage cost as sum of all sub-sections on the correct models', async () => {
     setupHappyPathMocks();
     const events: V3PipelineSSEEvent[] = [];

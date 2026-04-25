@@ -148,9 +148,39 @@ export interface V3Strategy {
     weight: 'primary' | 'secondary' | 'brief';
     rationale?: string;
   }>;
+  evidenceOpportunities?: Array<{
+    requirement: string;
+    level:
+      | 'direct_proof'
+      | 'reasonable_inference'
+      | 'adjacent_proof'
+      | 'candidate_discovery_needed'
+      | 'unsupported';
+    sourceSignal?: string;
+    recommendedFraming: string;
+    discoveryQuestion?: string;
+    risk: 'low' | 'medium' | 'high';
+  }>;
+  editorialAssessment?: {
+    callbackPower: number;
+    strongestAngle: string;
+    weakestAngle: string;
+    hiringManagerQuestion: string;
+    recommendedMove: string;
+  };
   notes?: string;
   // additional fields tolerated but not typed
   [k: string]: unknown;
+}
+
+export interface V3DiscoveryAnswer {
+  requirement: string;
+  question: string;
+  answer: string;
+  level?: NonNullable<V3Strategy['evidenceOpportunities']>[number]['level'];
+  risk?: NonNullable<V3Strategy['evidenceOpportunities']>[number]['risk'];
+  recommendedFraming?: string;
+  sourceSignal?: string;
 }
 
 export interface V3VerifyIssue {
@@ -228,6 +258,7 @@ interface V3PipelineSSEEvent {
   strategy?: V3Strategy;
   written?: V3WrittenResume;
   verify?: V3VerifyResult;
+  discoveryAnswers?: V3DiscoveryAnswer[];
   timings?: V3StageTimings;
   costs?: V3StageCosts;
   // pipeline_error payload
@@ -293,6 +324,7 @@ export interface StartV3PipelineInput {
   jobDescription: string;
   jdTitle?: string;
   jdCompany?: string;
+  discoveryAnswers?: V3DiscoveryAnswer[];
   /**
    * Approach C Phase 1.3 — links this resume-generation run to a
    * job_applications row. When present, persisted on the coach_sessions
@@ -400,6 +432,19 @@ export function useV3Pipeline(accessToken: string | null) {
             job_description: input.jobDescription,
             jd_title: input.jdTitle,
             jd_company: input.jdCompany,
+            ...(input.discoveryAnswers && input.discoveryAnswers.length > 0
+              ? {
+                  discovery_answers: input.discoveryAnswers.map((answer) => ({
+                    requirement: answer.requirement,
+                    question: answer.question,
+                    answer: answer.answer,
+                    level: answer.level,
+                    risk: answer.risk,
+                    recommendedFraming: answer.recommendedFraming,
+                    sourceSignal: answer.sourceSignal,
+                  })),
+                }
+              : {}),
             // Approach C Phase 1.3 — when present, v3-pipeline route persists
             // this on the coach_sessions row it creates so the run is linked
             // to the application. Null/undefined = unscoped run, current behavior.

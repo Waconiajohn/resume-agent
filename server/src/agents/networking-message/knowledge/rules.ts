@@ -6,6 +6,11 @@
  * voice, the recipient-type hint, and the hard prohibitions.
  */
 
+import {
+  EVIDENCE_LADDER_RULES,
+  HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+} from '../../shared-knowledge.js';
+
 export const NETWORKING_MESSAGE_RULES = [
   `## RULE 1 — Peer, not supplicant
 These messages are written by mid-to-senior executives reaching out
@@ -47,7 +52,11 @@ The target_application block provides company, role, and optionally
 a JD excerpt. Use this to tie the outreach to a concrete opportunity
 when the goal references job search. When the goal is informational
 (learn about their work, build relationship), the application
-context is supporting — not the headline.`,
+context is supporting — not the headline.
+
+${EVIDENCE_LADDER_RULES}
+
+${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}`,
 
   `## RULE 5 — Hard prohibitions
 - No resume attachments, no inline resume bullets.

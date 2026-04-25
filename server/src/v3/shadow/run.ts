@@ -11,6 +11,7 @@ import { classifyWithTelemetry } from '../classify/index.js';
 import { benchmarkWithTelemetry } from '../benchmark/index.js';
 import { strategizeWithTelemetry } from '../strategize/index.js';
 import { writeWithTelemetry } from '../write/index.js';
+import { prepareResumeForWriting } from '../write/employment-status.js';
 import { verifyWithTelemetry } from '../verify/index.js';
 import type { WrittenResume, VerifyResult } from '../types.js';
 import { costOf } from './costs.js';
@@ -105,7 +106,8 @@ export async function runShadow(input: ShadowInput): Promise<ShadowResult> {
 
     // Stage 4 — write (parallel; fast-writer on Vertex + deep-writer on OpenAI).
     stage = 'write';
-    const w = await writeWithTelemetry(c.resume, s.strategy, { signal: input.signal });
+    const writeSource = prepareResumeForWriting(c.resume);
+    const w = await writeWithTelemetry(writeSource, s.strategy, { signal: input.signal });
     timings.writeMs = w.telemetry.durationMs;
     // Sum section costs across summary + accomplishments + competencies + positions + customSections.
     let writeCost = 0;
@@ -123,7 +125,7 @@ export async function runShadow(input: ShadowInput): Promise<ShadowResult> {
 
     // Stage 5 — verify (strong-reasoning; gpt-4.1 in production).
     stage = 'verify';
-    const v = await verifyWithTelemetry(w.written, c.resume, s.strategy, { signal: input.signal });
+    const v = await verifyWithTelemetry(w.written, writeSource, s.strategy, { signal: input.signal });
     timings.verifyMs = v.telemetry.durationMs;
     costs.verify = costOf(v.telemetry.model, v.telemetry.inputTokens, v.telemetry.outputTokens);
 

@@ -17,9 +17,15 @@ import { GlassCard } from '@/components/GlassCard';
 import {
   Target, AlertCircle, Sparkles, Layers,
   ShieldCheck, Microscope, TrendingUp, ChevronDown, ChevronRight, Loader2,
+  MessageSquare, RefreshCw, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { V3Strategy, V3BenchmarkProfile, V3BenchmarkGap } from '@/hooks/useV3Pipeline';
+import type {
+  V3Strategy,
+  V3BenchmarkProfile,
+  V3BenchmarkGap,
+  V3DiscoveryAnswer,
+} from '@/hooks/useV3Pipeline';
 import type { PositionWeight } from '@/hooks/useV3Regenerate';
 
 interface Props {
@@ -42,6 +48,12 @@ interface Props {
     positionIndex: number,
     weight?: PositionWeight,
   ) => void | Promise<void>;
+  /**
+   * Rerun the full pipeline with user-provided answers to strategy discovery
+   * questions appended to the source resume for this run.
+   */
+  onRunDiscoveryAnswers?: (answers: V3DiscoveryAnswer[]) => void;
+  discoveryRunning?: boolean;
   /** Position indices currently regenerating — spinner. */
   pendingPositions?: Set<number>;
 }
@@ -63,6 +75,41 @@ function severityBadgeClass(severity: V3BenchmarkGap['severity']): string {
   if (severity === 'disqualifying') return 'bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]';
   if (severity === 'manageable') return 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]';
   return 'bg-[var(--accent-muted)] text-[var(--text-soft)]';
+}
+
+type EvidenceOpportunity = NonNullable<V3Strategy['evidenceOpportunities']>[number];
+
+function evidenceLevelLabel(level: EvidenceOpportunity['level']): string {
+  if (level === 'direct_proof') return 'direct';
+  if (level === 'reasonable_inference') return 'inferred';
+  if (level === 'adjacent_proof') return 'adjacent';
+  if (level === 'candidate_discovery_needed') return 'ask';
+  return 'gap';
+}
+
+function evidenceLevelClass(level: EvidenceOpportunity['level']): string {
+  if (level === 'direct_proof') return 'bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)] border border-[var(--bullet-confirm-border)]';
+  if (level === 'reasonable_inference') return 'bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]';
+  if (level === 'adjacent_proof') return 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]';
+  if (level === 'candidate_discovery_needed') return 'bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--line-soft)]';
+  return 'bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]';
+}
+
+function riskLabel(risk: EvidenceOpportunity['risk']): string {
+  if (risk === 'low') return 'low risk';
+  if (risk === 'medium') return 'medium risk';
+  return 'high risk';
+}
+
+function shouldAskDiscoveryQuestion(item: EvidenceOpportunity): boolean {
+  if (!item.discoveryQuestion) return false;
+  if (item.level === 'candidate_discovery_needed') return true;
+  if (item.level === 'unsupported') return true;
+  return item.level === 'adjacent_proof' && item.risk !== 'low';
+}
+
+function discoveryKey(item: EvidenceOpportunity, index: number): string {
+  return `${index}:${item.requirement}:${item.discoveryQuestion ?? ''}`;
 }
 
 function SkeletonPulse({ rows = 3 }: { rows?: number }) {
@@ -222,12 +269,16 @@ function StrategyCard({
   flashPositionIndex,
   flashTick,
   onRegeneratePosition,
+  onRunDiscoveryAnswers,
+  discoveryRunning,
   pendingPositions,
 }: {
   strategy: V3Strategy | null;
   flashPositionIndex?: number | null;
   flashTick?: number;
   onRegeneratePosition?: (positionIndex: number, weight?: PositionWeight) => void | Promise<void>;
+  onRunDiscoveryAnswers?: (answers: V3DiscoveryAnswer[]) => void;
+  discoveryRunning?: boolean;
   pendingPositions?: Set<number>;
 }) {
   const emphasisRefs = useRef<Map<number, HTMLLIElement>>(new Map());
@@ -242,6 +293,21 @@ function StrategyCard({
   }, [strategy]);
 
   const hasPendingChanges = pendingWeights.size > 0;
+  const editorial = strategy?.editorialAssessment;
+  const evidenceOpportunities = strategy?.evidenceOpportunities ?? [];
+  const discoveryItems = useMemo(
+    () => evidenceOpportunities.filter(shouldAskDiscoveryQuestion),
+    [evidenceOpportunities],
+  );
+  const discoverySignature = useMemo(
+    () => discoveryItems.map((item, index) => discoveryKey(item, index)).join('|'),
+    [discoveryItems],
+  );
+  const [discoveryAnswers, setDiscoveryAnswers] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setDiscoveryAnswers({});
+  }, [discoverySignature]);
 
   const handleCycleWeight = (positionIndex: number) => {
     if (!onRegeneratePosition) return;
@@ -268,6 +334,43 @@ function StrategyCard({
       void onRegeneratePosition(positionIndex, weight);
     }
     setPendingWeights(new Map());
+  };
+
+  const answerCount = discoveryItems.reduce((count, item, index) => {
+    const key = discoveryKey(item, index);
+    return discoveryAnswers[key]?.trim() ? count + 1 : count;
+  }, 0);
+
+  const handleDiscoveryAnswerChange = (
+    item: EvidenceOpportunity,
+    index: number,
+    value: string,
+  ) => {
+    const key = discoveryKey(item, index);
+    setDiscoveryAnswers((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleClearDiscoveryAnswers = () => {
+    setDiscoveryAnswers({});
+  };
+
+  const handleRunDiscoveryAnswers = () => {
+    if (!onRunDiscoveryAnswers) return;
+    const answers = discoveryItems.flatMap((item, index): V3DiscoveryAnswer[] => {
+      const answer = discoveryAnswers[discoveryKey(item, index)]?.trim();
+      if (!answer) return [];
+      return [{
+        requirement: item.requirement,
+        question: item.discoveryQuestion ?? '',
+        answer,
+        level: item.level,
+        risk: item.risk,
+        recommendedFraming: item.recommendedFraming,
+        sourceSignal: item.sourceSignal,
+      }];
+    });
+    if (answers.length === 0) return;
+    onRunDiscoveryAnswers(answers);
   };
 
   useEffect(() => {
@@ -343,6 +446,158 @@ function StrategyCard({
               {strategy.targetDisciplinePhrase}
             </div>
           </div>
+
+          {/* Human editorial assessment */}
+          {editorial && (
+            <div className="pt-3 border-t border-[var(--line-soft)]">
+              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
+                <TrendingUp className="h-3 w-3" />
+                Strategist read
+                <span className="ml-auto text-[var(--text-muted)] tracking-normal">
+                  {Math.round(editorial.callbackPower)}/100
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-[var(--surface-2)] overflow-hidden mb-3">
+                <div
+                  className="h-full rounded-full bg-[var(--bullet-confirm)]"
+                  style={{ width: `${Math.max(0, Math.min(100, editorial.callbackPower))}%` }}
+                />
+              </div>
+              <dl className="space-y-2 text-[11px] leading-snug">
+                <div>
+                  <dt className="text-[var(--text-soft)]">Strongest angle</dt>
+                  <dd className="text-[var(--text-strong)]">{editorial.strongestAngle}</dd>
+                </div>
+                <div>
+                  <dt className="text-[var(--text-soft)]">Weak spot</dt>
+                  <dd className="text-[var(--text-muted)]">{editorial.weakestAngle}</dd>
+                </div>
+                <div>
+                  <dt className="text-[var(--text-soft)]">Question to answer</dt>
+                  <dd className="text-[var(--text-muted)]">{editorial.hiringManagerQuestion}</dd>
+                </div>
+                <div>
+                  <dt className="text-[var(--text-soft)]">Next move</dt>
+                  <dd className="text-[var(--bullet-confirm)]">{editorial.recommendedMove}</dd>
+                </div>
+              </dl>
+            </div>
+          )}
+
+          {/* Evidence opportunities */}
+          {evidenceOpportunities.length > 0 && (
+            <div className="pt-3 border-t border-[var(--line-soft)]">
+              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
+                <Microscope className="h-3 w-3" />
+                Evidence map ({evidenceOpportunities.length})
+              </div>
+              <ul className="space-y-2">
+                {evidenceOpportunities.map((item, i) => (
+                  <li key={`${item.requirement}-${i}`} className="text-[11px] leading-snug border-l-2 border-[var(--line-soft)] pl-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[var(--text-strong)]">{item.requirement}</span>
+                      <span className={cn('shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider', evidenceLevelClass(item.level))}>
+                        {evidenceLevelLabel(item.level)}
+                      </span>
+                    </div>
+                    {item.sourceSignal && (
+                      <div className="mt-1 text-[var(--text-soft)]">
+                        Proof: {item.sourceSignal}
+                      </div>
+                    )}
+                    <div className="mt-1 text-[var(--text-muted)]">
+                      {item.recommendedFraming}
+                    </div>
+                    {item.discoveryQuestion && (
+                      <div className="mt-1 text-[var(--badge-amber-text)]">
+                        Ask: {item.discoveryQuestion}
+                      </div>
+                    )}
+                    <div className="mt-1 text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)]">
+                      {riskLabel(item.risk)}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Candidate discovery answers */}
+          {onRunDiscoveryAnswers && discoveryItems.length > 0 && (
+            <div className="pt-3 border-t border-[var(--line-soft)]">
+              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
+                <MessageSquare className="h-3 w-3" />
+                Discovery ({discoveryItems.length})
+              </div>
+              <ul className="space-y-3">
+                {discoveryItems.map((item, index) => {
+                  const key = discoveryKey(item, index);
+                  return (
+                    <li
+                      key={key}
+                      className="text-[11px] leading-snug border-l-2 border-[var(--badge-amber-text)]/40 pl-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[var(--text-strong)]">{item.requirement}</span>
+                        <span className={cn('shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider', evidenceLevelClass(item.level))}>
+                          {evidenceLevelLabel(item.level)}
+                        </span>
+                      </div>
+                      <label
+                        htmlFor={`discovery-answer-${index}`}
+                        className="mt-1 block text-[var(--text-muted)]"
+                      >
+                        {item.discoveryQuestion}
+                      </label>
+                      <textarea
+                        id={`discovery-answer-${index}`}
+                        aria-label={`Answer for ${item.requirement}`}
+                        value={discoveryAnswers[key] ?? ''}
+                        onChange={(event) => handleDiscoveryAnswerChange(item, index, event.target.value)}
+                        rows={3}
+                        disabled={discoveryRunning}
+                        placeholder="Concrete detail, scope, tool, result, or 'No direct experience'."
+                        className="mt-2 min-h-[78px] w-full resize-y rounded border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-1.5 text-[11px] leading-snug text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus:ring-1 focus:ring-[var(--bullet-confirm)] disabled:cursor-wait disabled:opacity-60"
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)]">
+                  {answerCount} answered
+                </div>
+                <div className="flex items-center gap-2">
+                  {answerCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearDiscoveryAnswers}
+                      disabled={discoveryRunning}
+                      className="inline-flex h-8 items-center gap-1.5 rounded border border-[var(--line-soft)] px-2 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-strong)] disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRunDiscoveryAnswers}
+                    disabled={answerCount === 0 || discoveryRunning}
+                    className={cn(
+                      'inline-flex h-8 items-center gap-1.5 rounded border px-2 text-[11px] font-semibold',
+                      answerCount > 0
+                        ? 'border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)] hover:brightness-105'
+                        : 'border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-soft)]',
+                      discoveryRunning && 'cursor-wait opacity-60',
+                    )}
+                  >
+                    <RefreshCw className={cn('h-3 w-3', discoveryRunning && 'animate-spin')} />
+                    Re-run
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Emphasized accomplishments */}
           {strategy.emphasizedAccomplishments.length > 0 && (
@@ -485,6 +740,8 @@ export function V3StrategyPanel({
   flashPositionIndex,
   flashTick,
   onRegeneratePosition,
+  onRunDiscoveryAnswers,
+  discoveryRunning,
   pendingPositions,
 }: Props) {
   return (
@@ -495,6 +752,8 @@ export function V3StrategyPanel({
         flashPositionIndex={flashPositionIndex}
         flashTick={flashTick}
         onRegeneratePosition={onRegeneratePosition}
+        onRunDiscoveryAnswers={onRunDiscoveryAnswers}
+        discoveryRunning={discoveryRunning}
         pendingPositions={pendingPositions}
       />
     </div>

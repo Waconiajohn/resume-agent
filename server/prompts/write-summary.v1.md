@@ -1,11 +1,16 @@
 ---
 stage: write-summary
-version: "1.4"
+version: "1.5"
 capability: fast-writer
 temperature: 0.4
 last_edited: 2026-04-19
 last_editor: claude
 notes: |
+  v1.5 (2026-04-25 — strategy evidence ladder integration):
+    - Adds {{shared:evidence-ladder}} and tells the summary writer to use
+      strategy.evidenceOpportunities/editorialAssessment as the human
+      editorial intent, while keeping every factual claim sourced to the
+      structured resume.
   v1.4 (2026-04-19 — narrow forbidden-phrases fragment):
     - Adds {{shared:forbidden-phrases}} which consolidates
       write-position's Rule 0 lexicon (21 items) plus four audit
@@ -43,6 +48,8 @@ You are executing the Strategy; you are NOT re-strategizing. The positioning is 
 
 {{shared:json-rules}}
 
+{{shared:evidence-ladder}}
+
 Your output shape is:
 ```
 { "summary": string }
@@ -53,6 +60,8 @@ Your output shape is:
 ### Rule 1 — Anchor the summary to the positioning frame.
 
 `strategy.positioningFrame` is the one story the resume tells. Your summary must embody that frame. If the frame is "consolidator and automation scaler", the summary positions the candidate as exactly that — not as a "seasoned technology leader" (too generic) or an "operational innovator" (different frame).
+
+If `strategy.editorialAssessment` is present, use it as the human editor's read of what must land in the first 6 seconds. The summary should answer `hiringManagerQuestion` and foreground `strongestAngle` when the source supports it.
 
   ✓ (frame: "consolidator and automation scaler") "Quality engineering leader with 20+ years consolidating fragmented organizations into automation-driven delivery machines."
   ✗ (same frame) "Results-driven technology executive with a passion for operational excellence."
@@ -65,6 +74,8 @@ Your output shape is:
 Every number, scope, outcome, or named system in the summary must trace to a `positions[].bullets` entry, a `crossRoleHighlights` entry, or a `scope`, `discipline`, `education`, or `certifications` field in the structured resume. Do NOT invent.
 
 If `strategy.emphasizedAccomplishments` identifies specific accomplishments, include at least ONE of them in the summary (paraphrased, not quoted).
+
+Use `strategy.evidenceOpportunities` to understand which JD needs are direct proof, reasonable inference, adjacent proof, discovery needed, or unsupported. You may use reasonable-inference framing only when the source facts establish the bridge. Adjacent proof can be framed as transferable experience or exposure, not as direct ownership, certification, or expert status.
 
   ✓ "Delivered $26M in automation ROI through standardized CI/CD pipelines at Travelport." (source: positions[0].bullets)
   ✗ "Delivered $30M in savings across twelve product lines." (number not in source)

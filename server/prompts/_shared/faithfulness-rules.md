@@ -31,9 +31,9 @@ If you find yourself writing one of these, delete it and see what the text says 
 
 <!-- Why: Phase 3.5 and Phase A audits both found the same failure mode — write prompts at higher temperature and without a forbidden-phrases lexicon produce editorial tails that verify correctly flags as unsourced. The prose looks strong but doesn't tie to a specific claim. Banning the phrases outright removes the attractive nuisance before the self-check step. 2026-04-19. -->
 
-### Rule — Every claim must trace to the source resume.
+### Rule — Every factual claim must trace to candidate evidence.
 
-Every noun phrase in your output — every metric, named system, scope qualifier, industry term, and framing noun — must trace to the source resume's text. Acceptable sources of support:
+Every factual claim in your output — every metric, named system, credential, employer, title, scope qualifier, industry term, and outcome — must trace to candidate evidence. Acceptable sources of support:
 
 - A source position's `bullets[]` text
 - A source position's `scope`
@@ -41,19 +41,21 @@ Every noun phrase in your output — every metric, named system, scope qualifier
 - The resume's `discipline` field
 - `crossRoleHighlights`
 - `customSections` entries
+- User-supplied questionnaire or evidence-library answers when the calling prompt includes them
 
 Strategy inputs (`positioningFrame`, `targetDisciplinePhrase`, `emphasizedAccomplishments`) are positioning context. They tell you which angle to lean into and which source content to foreground. They do NOT supply claim material. If strategy says the frame is "multi-property hospitality leader" but the source resume never mentions hospitality, you may not write "multi-property hospitality" into the output — drop the industry qualifier and use a frame the source supports.
 
-The job description is not a source. The benchmark is not a source. The writer's general knowledge of the industry is not a source. Only the source resume is a source.
+The job description is not a source of candidate facts. The benchmark is not a source of candidate facts. They can identify needs, business problems, and terminology to mirror when candidate evidence supports it.
 
 You MAY:
 - Reorder and tighten source material
 - Swap verbs for stronger ones from the source's vocabulary
 - Combine two source claims into one sentence when they describe the same accomplishment
 - Mirror JD keywords when the source material already supports the claim
+- Use reasonable-inference framing when source facts clearly establish it (for example, "3 facilities" can support "multi-site")
 
 You MAY NOT:
-- Invent metrics, scope qualifiers, named systems, or industry terms
+- Invent metrics, credentials, direct experience, named systems, or industry terms
 - Add frequency/cadence/scope qualifiers the source doesn't state ("weekly", "with department heads", "across enterprise and education sectors")
 - Promote a strategy framing into a resume claim without source support
 - Expand an abbreviation the source uses only in abbreviated form
@@ -66,7 +68,7 @@ Before you emit the final JSON, reread each output field and perform this check 
 
 1. Metrics (dollar figures, percentages, staff counts, time reductions): does the exact figure appear in the source?
 2. Named systems, products, or tools: does the source name them?
-3. Scope qualifiers ("multi-property," "enterprise," "regional," "cross-functional"): does the source use this qualifier for this role or context?
+3. Scope qualifiers ("multi-property," "enterprise," "regional," "cross-functional"): does the source use this qualifier, or do concrete source facts establish it under the evidence ladder?
 4. Industry or discipline terms ("hospitality," "healthcare," "fintech," "HR operations"): does the source establish this industry or discipline?
 5. Framing nouns in opening sentences ("track record of," "leader who," "consultant with history of"): is this claim supported, or is it an editorial wrap around thinner content?
 

@@ -7,6 +7,11 @@
  * separate a useful nudge from a desperate one.
  */
 
+import {
+  EVIDENCE_LADDER_RULES,
+  HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+} from '../../shared-knowledge.js';
+
 export const FOLLOW_UP_EMAIL_RULES = [
   `## RULE 1 — Never desperate, always peer-to-peer
 These emails are written by senior executives (45+) to people who are
@@ -40,7 +45,11 @@ or specific_context from the caller), use it. Reference a real topic from
 the conversation — a question the interviewer asked, a roadmap item
 discussed, a concern the candidate promised to follow up on. Do not
 invent facts. If no context is available, keep the body generic but
-never fabricate a specific detail.`,
+never fabricate a specific detail.
+
+${EVIDENCE_LADDER_RULES}
+
+${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}`,
 
   `## RULE 5 — Subject-line discipline
 Subjects are short (<60 characters), specific, and useful. Prefer

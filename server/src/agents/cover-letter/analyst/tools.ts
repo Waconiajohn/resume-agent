@@ -13,6 +13,10 @@ import { createParseResumeInputs } from '../../runtime/shared-tools.js';
 import { llm, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import logger from '../../../lib/logger.js';
+import {
+  EVIDENCE_LADDER_RULES,
+  HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+} from '../../shared-knowledge.js';
 
 type CoverLetterTool = AgentTool<CoverLetterState, CoverLetterSSEEvent>;
 
@@ -154,7 +158,11 @@ const planLetterTool: CoverLetterTool = {
 
     const plannerPrompt = `You are a strategic cover letter planner. Your job is to select the strongest, most specific evidence from a candidate's resume and map it to a job description. You create letter plans that ground every talking point in real, verifiable accomplishments.
 
-EVIDENCE-BOUND RULE: Every point in the plan must reference a specific, real piece of evidence from the candidate data below. Do not invent accomplishments, inflate metrics, or create composite achievements. If a requirement cannot be addressed with real evidence, mark it as a transferable skill connection — do not fabricate direct experience.
+EVIDENCE-BOUND RULE: Every point in the plan must reference a specific, real piece of evidence from the candidate data below. Do not invent accomplishments, inflate metrics, or create composite achievements. If a requirement lacks exact-match evidence, use the evidence ladder before marking it as a gap.
+
+${EVIDENCE_LADDER_RULES}
+
+${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}
 
 CANDIDATE
 Name: ${resume.name}
