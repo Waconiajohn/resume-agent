@@ -102,6 +102,292 @@ async function loadReferralBonus(companyName: string | null): Promise<ReferralBo
 
 export const applicationTimelineRoutes = new Hono();
 
+// ─── Bulk endpoint (Phase 5 — Today view) ────────────────────────────────
+
+const TODAY_TERMINAL_STAGES = new Set(['offer', 'closed_won', 'closed_lost']);
+const TODAY_BULK_CAP = 50;
+
+interface NetworkingMessageRow {
+  job_application_id: string | null;
+  created_at: string;
+}
+
+interface CompanyDirectoryRow {
+  id: string;
+  name_normalized: string;
+}
+
+interface ReferralBonusRow {
+  company_id: string;
+  bonus_amount: string | null;
+  bonus_currency: string | null;
+  program_url: string | null;
+  source: string | null;
+  bonus_entry?: string | null;
+}
+
+/**
+ * GET /:userId-scoped/timeline/all — single round-trip for the cross-pursuit
+ * Today view. Filters applications to non-terminal (stage NOT IN
+ * offer/closed_won/closed_lost) and returns up to TODAY_BULK_CAP raw payloads,
+ * one per application. The client runs the rule engine on each payload, so the
+ * single source of truth for next/their-turn lives in one place.
+ *
+ * Uses bulk queries (~9 round-trips total) rather than N×9. Per-app payloads
+ * are assembled in JS from the bulk results.
+ */
+applicationTimelineRoutes.get(
+  '/timeline/all',
+  rateLimitMiddleware(60, 60_000),
+  async (c) => {
+    const user = c.get('user');
+
+    // 1) Applications — non-terminal, capped, ordered by recent activity.
+    const { data: appsData, error: appsErr } = await supabaseAdmin
+      .from('job_applications')
+      .select('id, stage, title, company, stage_history, created_at, applied_date')
+      .eq('user_id', user.id)
+      .is('archived_at', null)
+      .order('updated_at', { ascending: false })
+      .limit(TODAY_BULK_CAP);
+
+    if (appsErr) {
+      logger.error(
+        { error: appsErr.message, userId: user.id },
+        'application-timeline: bulk apps query failed',
+      );
+      return c.json({ error: 'Failed to load timelines' }, 500);
+    }
+
+    const apps = (appsData ?? []).filter(
+      (row) => !TODAY_TERMINAL_STAGES.has((row.stage as string) ?? ''),
+    );
+
+    if (apps.length === 0) {
+      return c.json({ pursuits: [] });
+    }
+
+    const appIds = apps.map((a) => a.id as string);
+
+    // 2..8) Bulk artifact + event lookups.
+    const [
+      coachSessionsRes,
+      coverLetterRes,
+      interviewPrepRes,
+      thankYouRes,
+      followUpRes,
+      networkingRes,
+      eventsRes,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('coach_sessions')
+        .select('id, job_application_id, updated_at')
+        .eq('user_id', user.id)
+        .in('job_application_id', appIds),
+      supabaseAdmin
+        .from('cover_letter_reports')
+        .select('id, job_application_id, updated_at')
+        .eq('user_id', user.id)
+        .in('job_application_id', appIds),
+      supabaseAdmin
+        .from('interview_prep_reports')
+        .select('id, job_application_id, updated_at')
+        .eq('user_id', user.id)
+        .in('job_application_id', appIds),
+      supabaseAdmin
+        .from('thank_you_note_reports')
+        .select('id, job_application_id, created_at')
+        .eq('user_id', user.id)
+        .in('job_application_id', appIds),
+      supabaseAdmin
+        .from('follow_up_email_reports')
+        .select('id, job_application_id, updated_at')
+        .eq('user_id', user.id)
+        .in('job_application_id', appIds),
+      supabaseAdmin
+        .from('networking_messages')
+        .select('job_application_id, created_at')
+        .eq('user_id', user.id)
+        .in('job_application_id', appIds),
+      supabaseAdmin
+        .from('application_events')
+        .select('id, job_application_id, type, occurred_at, metadata')
+        .eq('user_id', user.id)
+        .in('job_application_id', appIds)
+        .order('occurred_at', { ascending: false }),
+    ]);
+
+    // 9) Referral bonus lookups — group company names, normalize, batch.
+    const companyNames = Array.from(
+      new Set(
+        apps
+          .map((a) => (typeof a.company === 'string' ? a.company.trim() : ''))
+          .filter((c) => c.length > 0),
+      ),
+    );
+    const normalizedToCompany = new Map<string, string>();
+    for (const name of companyNames) {
+      const normalized = normalizeCompanyName(name).toLowerCase();
+      if (normalized) normalizedToCompany.set(normalized, name);
+    }
+    const normalizedNames = Array.from(normalizedToCompany.keys());
+
+    let companyDirectory: CompanyDirectoryRow[] = [];
+    let referralPrograms: ReferralBonusRow[] = [];
+    if (normalizedNames.length > 0) {
+      const { data: cdData } = await supabaseAdmin
+        .from('company_directory')
+        .select('id, name_normalized')
+        .in('name_normalized', normalizedNames);
+      companyDirectory = (cdData as CompanyDirectoryRow[] | null) ?? [];
+
+      if (companyDirectory.length > 0) {
+        const { data: rbData } = await supabaseAdmin
+          .from('referral_bonus_programs')
+          .select('company_id, bonus_amount, bonus_currency, program_url, source, bonus_entry')
+          .in('company_id', companyDirectory.map((c) => c.id));
+        referralPrograms = (rbData as ReferralBonusRow[] | null) ?? [];
+      }
+    }
+
+    // Build company name → referral signal lookup.
+    const companyNormalizedToId = new Map<string, string>();
+    for (const row of companyDirectory) {
+      companyNormalizedToId.set(row.name_normalized, row.id);
+    }
+    const companyIdToReferral = new Map<string, ReferralBonusRow>();
+    for (const row of referralPrograms) {
+      // Last write wins is fine — there's typically one row per company.
+      companyIdToReferral.set(row.company_id, row);
+    }
+
+    // ── Group bulk results by job_application_id ─────────────────────
+    function indexLatestByAppId<T extends { job_application_id: string | null; updated_at?: string; created_at?: string }>(
+      rows: T[] | null | undefined,
+      timestampField: 'updated_at' | 'created_at',
+    ): Map<string, T> {
+      const map = new Map<string, T>();
+      for (const row of rows ?? []) {
+        if (!row.job_application_id) continue;
+        const existing = map.get(row.job_application_id);
+        const rowTs = (row as Record<string, unknown>)[timestampField] as string | undefined;
+        const existingTs = existing
+          ? ((existing as Record<string, unknown>)[timestampField] as string | undefined)
+          : undefined;
+        if (!existing || (rowTs && existingTs && rowTs > existingTs)) {
+          map.set(row.job_application_id, row);
+        }
+      }
+      return map;
+    }
+
+    const resumeByApp = indexLatestByAppId(coachSessionsRes.data as Array<{ job_application_id: string | null; id: string; updated_at: string }> | null, 'updated_at');
+    const coverLetterByApp = indexLatestByAppId(coverLetterRes.data as Array<{ job_application_id: string | null; id: string; updated_at: string }> | null, 'updated_at');
+    const interviewPrepByApp = indexLatestByAppId(interviewPrepRes.data as Array<{ job_application_id: string | null; id: string; updated_at: string }> | null, 'updated_at');
+    const thankYouByApp = indexLatestByAppId(thankYouRes.data as Array<{ job_application_id: string | null; id: string; created_at: string }> | null, 'created_at');
+    const followUpByApp = indexLatestByAppId(followUpRes.data as Array<{ job_application_id: string | null; id: string; updated_at: string }> | null, 'updated_at');
+
+    // Networking — count + latest per app.
+    const networkingCount = new Map<string, number>();
+    const networkingLatest = new Map<string, string>();
+    for (const row of (networkingRes.data as NetworkingMessageRow[] | null) ?? []) {
+      if (!row.job_application_id) continue;
+      networkingCount.set(row.job_application_id, (networkingCount.get(row.job_application_id) ?? 0) + 1);
+      const existing = networkingLatest.get(row.job_application_id);
+      if (!existing || (row.created_at && row.created_at > existing)) {
+        networkingLatest.set(row.job_application_id, row.created_at);
+      }
+    }
+
+    // Events — group by app id (already sorted desc on occurred_at).
+    const eventsByApp = new Map<string, TimelineEvent[]>();
+    for (const row of (eventsRes.data as Array<Record<string, unknown>> | null) ?? []) {
+      const appId = row.job_application_id as string | null;
+      if (!appId) continue;
+      const list = eventsByApp.get(appId) ?? [];
+      list.push({
+        id: row.id as string,
+        type: row.type as TimelineEvent['type'],
+        occurred_at: row.occurred_at as string,
+        metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+      });
+      eventsByApp.set(appId, list);
+    }
+
+    // ── Assemble per-app payloads ────────────────────────────────────
+    const pursuits: ApplicationTimelinePayload[] = apps.map((appRow) => {
+      const id = appRow.id as string;
+      const company = (appRow.company as string | null) ?? null;
+
+      const application: ApplicationCore = {
+        id,
+        stage: appRow.stage as string,
+        role_title: (appRow.title as string | null) ?? null,
+        company_name: company,
+        stage_history: (appRow.stage_history as ApplicationCore['stage_history']) ?? null,
+        created_at: appRow.created_at as string,
+        applied_date: (appRow.applied_date as string | null) ?? null,
+      };
+
+      const resumeRow = resumeByApp.get(id);
+      const coverLetterRow = coverLetterByApp.get(id);
+      const interviewPrepRow = interviewPrepByApp.get(id);
+      const thankYouRow = thankYouByApp.get(id);
+      const followUpRow = followUpByApp.get(id);
+
+      // Referral bonus lookup.
+      let referralBonus: ReferralBonusSignal = { exists: false };
+      if (company) {
+        const normalized = normalizeCompanyName(company).toLowerCase();
+        const companyId = normalized ? companyNormalizedToId.get(normalized) : undefined;
+        const program = companyId ? companyIdToReferral.get(companyId) : undefined;
+        if (program && (program.bonus_amount || program.bonus_entry)) {
+          referralBonus = {
+            exists: true,
+            bonus_amount: program.bonus_amount ?? program.bonus_entry ?? null,
+            bonus_currency: program.bonus_currency,
+            program_url: program.program_url,
+            source: program.source,
+          };
+        }
+      }
+
+      return {
+        application,
+        resume: {
+          exists: !!resumeRow,
+          last_at: (resumeRow?.updated_at as string | undefined) ?? null,
+          session_id: (resumeRow?.id as string | undefined) ?? null,
+        },
+        cover_letter: {
+          exists: !!coverLetterRow,
+          last_at: (coverLetterRow?.updated_at as string | undefined) ?? null,
+        },
+        interview_prep: {
+          exists: !!interviewPrepRow,
+          last_at: (interviewPrepRow?.updated_at as string | undefined) ?? null,
+        },
+        thank_you: {
+          exists: !!thankYouRow,
+          last_at: (thankYouRow?.created_at as string | undefined) ?? null,
+        },
+        follow_up: {
+          exists: !!followUpRow,
+          last_at: (followUpRow?.updated_at as string | undefined) ?? null,
+        },
+        networking_messages: {
+          count: networkingCount.get(id) ?? 0,
+          last_at: networkingLatest.get(id) ?? null,
+        },
+        events: eventsByApp.get(id) ?? [],
+        referral_bonus: referralBonus,
+      };
+    });
+
+    return c.json({ pursuits });
+  },
+);
+
 applicationTimelineRoutes.get(
   '/:applicationId/timeline',
   rateLimitMiddleware(120, 60_000),

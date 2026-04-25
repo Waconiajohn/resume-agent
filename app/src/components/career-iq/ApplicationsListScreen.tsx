@@ -11,7 +11,8 @@
  * reach the new routing.
  */
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, ArrowRight, Briefcase, Archive, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
@@ -20,6 +21,7 @@ import { useJobApplications, type JobApplicationStage, type JobApplicationArchiv
 import { buildApplicationWorkspaceRoute } from '@/lib/app-routing';
 import { EducationStrip } from '@/components/shared/EducationStrip';
 import { IAppliedCTA } from '@/components/applications/IAppliedCTA';
+import { TodayView } from '@/components/applications/TodayView';
 
 // Phase 1 (pursuit timeline) — stages where the "I applied" CTA / indicator
 // is meaningful. Pre-application stages (saved/researching) hide it as
@@ -95,7 +97,29 @@ function formatRelative(iso: string): string {
   return `${Math.floor(diffDays / 365)}y ago`;
 }
 
+type AppsView = 'today' | 'pipeline';
+
+function parseView(raw: string | null): AppsView {
+  return raw === 'pipeline' ? 'pipeline' : 'today';
+}
+
 export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view: AppsView = parseView(searchParams.get('view'));
+
+  const setView = useCallback(
+    (next: AppsView) => {
+      const params = new URLSearchParams(searchParams);
+      if (next === 'today') {
+        params.delete('view');
+      } else {
+        params.set('view', next);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
   const [archivedFilter, setArchivedFilter] = useState<JobApplicationArchivedFilter>('active');
   const {
     applications,
@@ -196,37 +220,73 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {/* Sprint B4 — active/archived toggle. Archived applications stay
-              in the database; users restore from the archived view. */}
+          {/* Phase 5 — Today / Pipeline tab switcher. Today is default and
+              answers "what should I do right now"; Pipeline is the existing
+              kanban answering "what shape is my pipeline." URL persistence
+              via ?view=pipeline (today is default, no ?view= param). */}
           <div className="inline-flex rounded-full border border-[var(--line-soft)] p-0.5 text-[11px]">
             <button
               type="button"
-              onClick={() => {
-                setArchivedFilter('active');
-              }}
+              onClick={() => setView('today')}
+              data-testid="apps-view-tab-today"
+              aria-pressed={view === 'today'}
               className={
-                archivedFilter === 'active'
+                view === 'today'
                   ? 'rounded-full bg-[var(--link)] px-3 py-1 font-semibold text-[var(--link-on)]'
                   : 'rounded-full px-3 py-1 text-[var(--text-soft)] hover:text-[var(--text-strong)]'
               }
             >
-              Active
+              Today
             </button>
             <button
               type="button"
-              onClick={() => {
-                setArchivedFilter('archived');
-                setSelectedBucket(null);
-              }}
+              onClick={() => setView('pipeline')}
+              data-testid="apps-view-tab-pipeline"
+              aria-pressed={view === 'pipeline'}
               className={
-                archivedFilter === 'archived'
+                view === 'pipeline'
                   ? 'rounded-full bg-[var(--link)] px-3 py-1 font-semibold text-[var(--link-on)]'
                   : 'rounded-full px-3 py-1 text-[var(--text-soft)] hover:text-[var(--text-strong)]'
               }
             >
-              Archived
+              Pipeline
             </button>
           </div>
+          {view === 'pipeline' && (
+            <>
+              {/* Sprint B4 — active/archived toggle. Archived applications stay
+                  in the database; users restore from the archived view. */}
+              <div className="inline-flex rounded-full border border-[var(--line-soft)] p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArchivedFilter('active');
+                  }}
+                  className={
+                    archivedFilter === 'active'
+                      ? 'rounded-full bg-[var(--link)] px-3 py-1 font-semibold text-[var(--link-on)]'
+                      : 'rounded-full px-3 py-1 text-[var(--text-soft)] hover:text-[var(--text-strong)]'
+                  }
+                >
+                  Active
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArchivedFilter('archived');
+                    setSelectedBucket(null);
+                  }}
+                  className={
+                    archivedFilter === 'archived'
+                      ? 'rounded-full bg-[var(--link)] px-3 py-1 font-semibold text-[var(--link-on)]'
+                      : 'rounded-full px-3 py-1 text-[var(--text-soft)] hover:text-[var(--text-strong)]'
+                  }
+                >
+                  Archived
+                </button>
+              </div>
+            </>
+          )}
           <GlassButton
             variant={formOpen ? 'ghost' : 'primary'}
             onClick={() => setFormOpen((v) => !v)}
@@ -237,7 +297,9 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
         </div>
       </div>
 
-      {formOpen && (
+      {view === 'today' && <TodayView onNavigate={onNavigate} />}
+
+      {view === 'pipeline' && formOpen && (
         <EducationStrip
           screenId="new-application"
           title="New Application"
@@ -249,7 +311,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
         />
       )}
 
-      {formOpen && (
+      {view === 'pipeline' && formOpen && (
         <GlassCard className="p-5">
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
             <div className="grid gap-4 md:grid-cols-2">
@@ -313,11 +375,11 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
         </GlassCard>
       )}
 
-      {loading && applications.length === 0 && (
+      {view === 'pipeline' && loading && applications.length === 0 && (
         <GlassCard className="p-8 text-sm text-[var(--text-soft)]">Loading your applications…</GlassCard>
       )}
 
-      {!loading && applications.length === 0 && !formOpen && (
+      {view === 'pipeline' && !loading && applications.length === 0 && !formOpen && (
         <GlassCard className="p-8 text-center">
           <Briefcase size={24} className="mx-auto text-[var(--text-soft)]" />
           <h2 className="mt-3 text-lg font-semibold text-[var(--text-strong)]">No applications yet</h2>
@@ -334,7 +396,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
       {/* Phase 2.2 — 4-bucket pipeline summary. Active view only. Clicking a
           count filters the list below; clicking the selected count clears
           the filter. */}
-      {isActiveView && applications.length > 0 && (
+      {view === 'pipeline' && isActiveView && applications.length > 0 && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {BUCKET_DEFINITIONS.map((bucket) => {
             const count = bucketCounts[bucket.id];
@@ -367,7 +429,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
         </div>
       )}
 
-      {applications.length > 0 && (
+      {view === 'pipeline' && applications.length > 0 && (
         <div className="flex flex-col gap-6">
           {visibleStages.map((stage) => {
             const items = groupedByStage[stage] ?? [];
@@ -448,7 +510,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
         </div>
       )}
 
-      {error && (
+      {view === 'pipeline' && error && (
         <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 text-[13px] text-[var(--badge-red-text)]/80">
           {error}
         </div>
