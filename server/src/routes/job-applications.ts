@@ -27,6 +27,7 @@ import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { FF_APPLICATION_PIPELINE } from '../lib/feature-flags.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
+import { applicationEventsRoutes } from './application-events.js';
 
 export const jobApplicationsRoutes = new Hono();
 
@@ -415,3 +416,9 @@ jobApplicationsRoutes.delete('/:id', rateLimitMiddleware(10, 60_000), async (c) 
 
   return c.json({ deleted: true });
 });
+
+// ─── Sub-router: events ─────────────────────────────────────────────────
+//
+// Mounts /api/job-applications/:applicationId/events under the parent.
+// Auth + feature flag are inherited from the parent middleware chain.
+jobApplicationsRoutes.route('/', applicationEventsRoutes);

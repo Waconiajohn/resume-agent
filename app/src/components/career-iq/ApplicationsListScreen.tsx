@@ -19,6 +19,17 @@ import { GlassButton } from '@/components/GlassButton';
 import { useJobApplications, type JobApplicationStage, type JobApplicationArchivedFilter } from '@/hooks/useJobApplications';
 import { buildApplicationWorkspaceRoute } from '@/lib/app-routing';
 import { EducationStrip } from '@/components/shared/EducationStrip';
+import { IAppliedCTA } from '@/components/applications/IAppliedCTA';
+
+// Phase 1 (pursuit timeline) — stages where the "I applied" CTA / indicator
+// is meaningful. Pre-application stages (saved/researching) hide it as
+// premature; terminal stages (offer/closed_won/closed_lost) hide it as too
+// late to matter on this surface.
+const APPLIED_CTA_STAGES: ReadonlySet<JobApplicationStage> = new Set([
+  'applied',
+  'screening',
+  'interviewing',
+]);
 
 interface ApplicationsListScreenProps {
   onNavigate?: (route: string) => void;
@@ -400,6 +411,15 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
                         {app.next_action && (
                           <div className="mt-1 rounded-lg bg-[var(--accent-muted)] px-2.5 py-1 text-[12px] text-[var(--text-soft)]">
                             Next: {app.next_action}
+                          </div>
+                        )}
+                        {APPLIED_CTA_STAGES.has(app.stage) && (
+                          <div
+                            className="mt-1"
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            <IAppliedCTA applicationId={app.id} compact />
                           </div>
                         )}
                         <div className="mt-auto flex items-center justify-between gap-2 pt-1">

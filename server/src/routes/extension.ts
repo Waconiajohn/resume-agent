@@ -24,6 +24,7 @@ import { supabaseAdmin } from '../lib/supabase.js';
 import { normalizeJobUrl, detectPlatform } from '../lib/url-normalizer.js';
 import { llm, MODEL_LIGHT } from '../lib/llm.js';
 import logger from '../lib/logger.js';
+import { recordApplicationEvent } from './application-events.js';
 import { mergeJobMatchMetadata } from '../lib/ni/job-matches-store.js';
 import type { FeedbackMetadata } from '../agents/resume-v2/types.js';
 
@@ -387,6 +388,28 @@ extensionRoutes.post(
 
     if (!data) {
       return c.json({ updated: false, reason: 'no_matching_record' }, 200);
+    }
+
+    // Phase 1 (pursuit timeline) — fire an `applied` event in the same
+    // logical transaction as the stage update. Idempotency window (5 min
+    // for `applied`) absorbs double-fires from the extension polling
+    // alongside a manual button press. Failures here are logged and
+    // swallowed so the stage update remains the source of truth.
+    try {
+      await recordApplicationEvent({
+        userId: user.id,
+        jobApplicationId: data.id as string,
+        type: 'applied',
+        metadata: {
+          type: 'applied',
+          applied_via: 'extension',
+        },
+      });
+    } catch (eventErr) {
+      log.warn(
+        { error: eventErr instanceof Error ? eventErr.message : String(eventErr), userId: user.id, applicationId: data.id },
+        'extension: failed to record applied event (non-fatal)',
+      );
     }
 
     return c.json({ updated: true, data }, 200);

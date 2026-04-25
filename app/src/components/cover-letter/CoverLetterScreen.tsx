@@ -20,6 +20,7 @@ import type { CoverLetterTone } from './CoverLetterIntakeForm';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { useCoverLetter } from '@/hooks/useCoverLetter';
+import { IAppliedCTA } from '@/components/applications/IAppliedCTA';
 import { API_BASE } from '@/lib/api';
 import { buildResumeWorkspaceRoute } from '@/lib/app-routing';
 import { cn } from '@/lib/utils';
@@ -659,6 +660,12 @@ export function CoverLetterScreen({
                 Write Another
               </GlassButton>
             </div>
+
+            {applicationId && (
+              <div className="mt-4">
+                <IAppliedCTA applicationId={applicationId} />
+              </div>
+            )}
           </>
         )}
       </div>

@@ -1,5 +1,53 @@
 # Changelog — Resume Agent
 
+## 2026-04-24 — Phase 1 of pursuit timeline: events foundation
+**Sprint:** Pursuit timeline | **Story:** Phase 1 — `applied` and `interview_happened` event tracking
+**Summary:** Added `application_events` table — an append-only ledger of three discrete moments per pursuit (`applied` / `interview_happened` / `offer_received`). New route `POST/GET /api/job-applications/:id/events` with a Zod discriminated union over per-type metadata and idempotency windows split by type (5min for applied, 60s for the others). Wired "I applied" surfaces onto V3PipelineScreen complete state, CoverLetterScreen complete state, and ApplicationsListScreen rows. Wired "Had this interview" with a back-fill date picker (60-day floor, future dates rejected) onto the InterviewLab prep card; on record it suggests drafting the thank-you note. Chrome extension's `/apply-status` handler now fires the `applied` event in the same handler as the stage update, closing a pre-existing inconsistency. Foundation for Phases 2-5 — the timeline view, the cross-pursuit action list, and the cover-letter handoff all read from this ledger.
+
+### Changes Made
+- `supabase/migrations/20260425000002_application_events.sql` — new table. CHECK constraint on `type IN (applied, interview_happened, offer_received)`. Two indexes: `(job_application_id, type, occurred_at DESC)` for per-pursuit lookup (Phase 3), `(user_id, type, occurred_at DESC)` for cross-pursuit aggregation (Phase 5). User-scoped RLS for SELECT and INSERT only — append-only ledger; UPDATE/DELETE deliberately not exposed.
+- `server/src/routes/application-events.ts` — new sub-router. Zod discriminated union over `applied | interview_happened | offer_received` metadata. `applied_via` is required on every applied event (`'manual' | 'extension' | 'imported'`) — every call site declares its origin. `interview_happened` requires `interview_date` (yyyy-mm-dd) + `interview_type` (phone/video/onsite); `interviewer_names` optional for thank-you recipient pre-pop. `offer_received` mostly optional metadata. Top-level `type` and `metadata.type` must agree (Zod `.refine`). `recordApplicationEvent` exported as a server-side helper for non-route callers (the extension wires through it).
+- `server/src/routes/application-events.ts` — idempotency split per type:
+  - `applied`: 5min window (users will fumble this one — extension polling + manual button + bookmark recovery all converge)
+  - `interview_happened`: 60s
+  - `offer_received`: 60s
+- `server/src/routes/application-events.ts` — past-only guard on `interview_happened`: server returns 400 when `occurred_at > now()`. UI's date picker also caps at today, so the guard is a defense-in-depth.
+- `server/src/routes/job-applications.ts` — mounted the events sub-router under the existing `jobApplicationsRoutes`. Auth + `FF_APPLICATION_PIPELINE` feature flag inherited from the parent middleware chain.
+- `server/src/routes/extension.ts` — extension's `/apply-status` handler now calls `recordApplicationEvent` with `applied_via='extension'` immediately after the stage update succeeds. Failures here log-and-swallow (the stage update is the source of truth; the event is a parallel ledger). Idempotency window absorbs double-fires from extension polling alongside a manual button press.
+- `app/src/hooks/useApplicationEvents.ts` — new hook mirroring `useApplicationEvents`. Auto-fetches on `applicationId` change (with `skip` opt-out). Three recorders (`recordApplied`, `recordInterviewHappened`, `recordOfferReceived`) plus convenience helpers (`hasEvent`, `latestEvent`).
+- `app/src/components/applications/IAppliedCTA.tsx` — small reusable component. Two states: button when no applied event exists, "Applied N days ago" badge when one does. Compact variant for list rows; full variant for completion screens.
+- `app/src/components/applications/HadThisInterviewButton.tsx` — inline date-picker form. Defaults today, allows back-fill to 60 days, rejects future dates client-side. After recording, switches to "Interview happened on {date}" with a one-click "Draft thank-you note" deep link to `/workspace/application/:id/thank-you-note`.
+- `app/src/components/resume-v3/V3PipelineScreen.tsx` — added `IAppliedCTA` to the complete-state body. Threads `sessionId` through as `resumeSessionId` metadata so the timeline can later cite which resume version was applied.
+- `app/src/components/cover-letter/CoverLetterScreen.tsx` — added `IAppliedCTA` to the complete-state body when an `applicationId` is present.
+- `app/src/components/career-iq/ApplicationsListScreen.tsx` — added compact `IAppliedCTA` to row footers when `stage IN (applied, screening, interviewing)`. Hidden on `saved`/`researching` (premature) and `offer`/`closed_won`/`closed_lost` (terminal).
+- `app/src/components/career-iq/InterviewLabRoom.tsx` — added `HadThisInterviewButton` below the "Generate Interview Prep" CTA on each upcoming interview card when `jobApplicationId` is present. Defaults the form's date and type from the interview metadata.
+- `server/src/__tests__/application-events-route.test.ts` — 15 tests covering happy paths, Zod rejections, mismatched type/metadata.type, ownership 404, forward-date guard, back-fill acceptance, idempotency split (5min vs 60s, verified by inspecting the `gte()` window argument), each event type's insert payload.
+- `server/src/__tests__/extension-routes.test.ts` — 2 new tests: extension `applied` event fires with `applied_via='extension'` in the same handler as the stage update; non-fatal event-write failure keeps the response success.
+- `app/src/__tests__/hooks/useApplicationEvents.test.ts` — 7 tests: idle state, auto-fetch, `skip`, `hasEvent`/`latestEvent`, `recordApplied` POST body, `recordInterviewHappened` POST body, error path.
+
+### Decisions Made
+- **Events table, not an extension of `stage_history`.** `stage_history` records stage transitions only; `interview_happened` isn't a stage transition (the application is already in `interviewing`). Cleaner separation, also gives us indexes optimized for the timeline reads.
+- **`applied_via` is required on every applied event.** No defaulting. Every call site declares its origin (`manual | extension | imported`). Means a future analytics view can answer "what fraction of users fire applied via the Chrome extension?" without ambiguity.
+- **`occurred_at` semantics.** For `applied`, defaults to `now()`. For `interview_happened`, callers can pass an explicit `occurred_at` for back-fills (the spec allows this). The `HadThisInterviewButton` form passes `occurred_at` as start-of-day UTC for the chosen date so the past-only guard accepts back-dates entered later in the day.
+- **Past-only guard on `interview_happened` lives in BOTH the route handler AND the UI date picker.** The handler's check is the source of truth; the picker's `max=today` is a UX nicety.
+- **Append-only ledger; no UPDATE/DELETE exposed.** Edits live on the parent artifacts (`interview_debriefs` for the rich post-interview record). The events table is a tombstone-free record of what happened, when.
+- **Idempotency check uses `created_at`, not `occurred_at`.** The window is "this event was recorded in the last N seconds" — orthogonal to back-fills. A user can record a back-dated interview today and another back-dated interview tomorrow without either deduplicating the other.
+- **Extension applied event fires from the route handler, not the extension itself.** Means the extension's contract doesn't have to know about events — when /apply-status fires successfully, the event is auto-created. Future-proofing: if we move the extension to a different protocol, the event guarantee stays at the route layer.
+- **Extension event-write failure is non-fatal.** The stage update is the source of truth; the events table is a parallel ledger. If the events insert fails, the stage update has already succeeded and the response is `200 / updated:true`.
+- **Back-fill horizon: 60 days.** Empirically wide enough for "I forgot to record last month's interview" but narrow enough that a recovery flow at 6 months would surface as obviously off in the UI.
+- **JSON-parse pattern in tools.** Followed the corrected idiom from 2.3f (`repairJSON<T>(text)` directly, no double-parse). Not exercised here since the route uses Zod, not a JSON-parsing LLM tool, but worth flagging for future event-shape evolution.
+- **Followup-email and thank-you-note timing rules NOT migrated to events in this commit.** They still read from `interview_debriefs.interview_date`. Migrating those is a deliberate Phase 5+ cleanup once the event signal has wider coverage.
+
+### Known Issues
+- None introduced. Server tests: **2714 / 0 failing** (+17 from this change, +63 over the 2.3f baseline of 2697 if you count the new test files end-to-end). App tests: **1981 / 10 failing / 10 skipped** — matches the pre-existing baseline exactly. No new regressions.
+- The extension's `/apply-status` writes `stage='applied'` directly without appending to `stage_history` (pre-existing — flagged in Phase 1 audit). Closing that loop would also make the extension applied path appear in the kanban journal. Not in scope for this commit; tracked for a future cleanup.
+
+### Next Steps
+- **Phase 2** — kill the standalone resume path. Audit every entry point that goes to `/resume-builder/session`; classify TAILOR vs MASTER-EDIT; route TAILOR through a new picker modal that creates or selects an application; preserve master-resume editing as a fully separate code path.
+- **Phase 3** — pursuit timeline (Done / Next / Their turn) as the default workspace overview tab.
+- **Phase 4** — completion-CTA bars on resume / cover-letter / thank-you that route directly to the next likely step.
+- **Phase 5** — cross-pursuit "Today" view aggregating Next + Their turn signals across all open pursuits.
+
 ## 2026-04-24 — Phase 2.3f: Networking messages as peer tool (thin version)
 **Sprint:** Applications workspace peer tools | **Story:** Phase 2.3f — networking message thin peer tool
 **Summary:** Added a thin, single-agent networking-message peer tool at `/api/networking-message/*` and swapped the Applications workspace `networking` slot from the heavy `NetworkingHubRoom` to the new `NetworkingRoom`. Path A (pure add): the existing `networking-outreach` pipeline, `networking-contacts` CRUD, `NetworkingHubRoom`, `useNetworkingOutreach`, and `SmartReferralsRoom` are unchanged. Pre-commit hook made `$CLAUDE_PROJECT_DIR`-relative so it fires reliably from any cwd.

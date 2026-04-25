@@ -40,6 +40,7 @@ import { V3VerifyPanel } from './V3VerifyPanel';
 import { V3PromotePanel } from './V3PromotePanel';
 import { V3ResumeBanner } from './V3ResumeBanner';
 import { V3ExportBar } from './V3ExportBar';
+import { IAppliedCTA } from '@/components/applications/IAppliedCTA';
 
 interface V3PipelineScreenProps {
   accessToken: string | null;
@@ -664,6 +665,12 @@ export function V3PipelineScreen({
                   structured={pipeline.structured}
                   master={master.summary}
                   onSaved={() => master.refresh()}
+                />
+              )}
+              {pipeline.isComplete && !pipeline.error && applicationId && (
+                <IAppliedCTA
+                  applicationId={applicationId}
+                  resumeSessionId={sessionId ?? undefined}
                 />
               )}
             </div>

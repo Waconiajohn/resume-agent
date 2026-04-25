@@ -442,6 +442,84 @@ describe('POST /apply-status', () => {
     });
     expect(res.status).toBe(500);
   });
+
+  // Phase 1 (pursuit timeline) — extension-applied path also fires an event.
+  it('fires applied event in same handler (applied_via = extension)', async () => {
+    const updated = { id: 'pipe-1', stage: 'applied', applied_via: 'extension' };
+
+    // Mocks in order: update → idempotency check → insert.
+    mockFrom.mockReturnValueOnce(buildMaybeChain({ data: updated, error: null }));
+
+    // Idempotency check: no recent duplicate.
+    const idempChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    mockFrom.mockReturnValueOnce(idempChain);
+
+    // Insert returns the new event row.
+    const insertChain = {
+      insert: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: {
+          id: 'evt-1', user_id: 'user-abc', job_application_id: 'pipe-1',
+          type: 'applied', occurred_at: new Date().toISOString(),
+          metadata: { type: 'applied', applied_via: 'extension' },
+          created_at: new Date().toISOString(),
+        },
+        error: null,
+      }),
+    };
+    mockFrom.mockReturnValueOnce(insertChain);
+
+    const res = await app.request('/api/extension/apply-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_url: 'https://www.linkedin.com/jobs/view/55555', platform: 'LINKEDIN' }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(insertChain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'applied',
+        job_application_id: 'pipe-1',
+        metadata: expect.objectContaining({ type: 'applied', applied_via: 'extension' }),
+      }),
+    );
+  });
+
+  it('keeps response success even when event write fails (non-fatal)', async () => {
+    const updated = { id: 'pipe-1', stage: 'applied', applied_via: 'extension' };
+    mockFrom.mockReturnValueOnce(buildMaybeChain({ data: updated, error: null }));
+
+    // Idempotency check throws — simulates a DB hiccup mid-handler.
+    const failingChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockRejectedValue(new Error('event-store down')),
+    };
+    mockFrom.mockReturnValueOnce(failingChain);
+
+    const res = await app.request('/api/extension/apply-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_url: 'https://www.linkedin.com/jobs/view/55556', platform: 'LINKEDIN' }),
+    });
+
+    // The stage update succeeded, so the response stays 200/updated:true
+    // even though the event write blew up. Logged, swallowed.
+    expect(res.status).toBe(200);
+    const body = await res.json() as { updated: boolean };
+    expect(body.updated).toBe(true);
+  });
 });
 
 // ─── POST /infer-field ────────────────────────────────────────────────────────
