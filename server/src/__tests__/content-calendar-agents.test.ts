@@ -218,6 +218,12 @@ describe('Content Calendar Knowledge Rules', () => {
     expect(RULE_2_HOOKS).toContain('210');
   });
 
+  it('RULE_3_STRUCTURE uses the 250-word article target', () => {
+    expect(RULE_3_STRUCTURE).toContain('250 words');
+    expect(RULE_3_STRUCTURE).toContain('200-275');
+    expect(RULE_3_STRUCTURE).toContain('never over 300');
+  });
+
   it('RULE_4_HASHTAGS mentions 3-5 hashtags', () => {
     expect(RULE_4_HASHTAGS).toContain('3-5');
   });

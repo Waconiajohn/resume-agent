@@ -157,6 +157,12 @@ function buildStableExternalId(
   return `serper_${digest}`;
 }
 
+function queryForWorkMode(query: string, remoteType: SearchFilters['remoteType']): string {
+  if (!remoteType || remoteType === 'any') return query;
+  const workModeTerm = remoteType === 'onsite' ? 'on-site' : remoteType;
+  return `${query} ${workModeTerm}`;
+}
+
 // ─── Adapter ──────────────────────────────────────────────────────────────────
 
 export class SerperJobsAdapter implements SearchAdapter {
@@ -176,8 +182,9 @@ export class SerperJobsAdapter implements SearchAdapter {
       return [];
     }
 
+    const searchQuery = queryForWorkMode(query, filters.remoteType);
     const requestBody: Record<string, unknown> = {
-      q: query,
+      q: searchQuery,
       gl: 'us',
       num: 20,
     };
@@ -204,7 +211,7 @@ export class SerperJobsAdapter implements SearchAdapter {
 
       if (!response.ok) {
         logger.warn(
-          { adapter: this.name, status: response.status, query },
+          { adapter: this.name, status: response.status, query: searchQuery },
           'Serper Jobs API returned non-OK status',
         );
         return [];
@@ -214,7 +221,7 @@ export class SerperJobsAdapter implements SearchAdapter {
       const jobs = data.jobs ?? [];
 
       logger.info(
-        { adapter: this.name, query, location, jobCount: jobs.length },
+        { adapter: this.name, query: searchQuery, location, jobCount: jobs.length },
         'Serper Jobs adapter returned results',
       );
 
@@ -254,7 +261,7 @@ export class SerperJobsAdapter implements SearchAdapter {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.warn(
-        { adapter: this.name, error: message, query },
+        { adapter: this.name, error: message, query: searchQuery },
         'Serper Jobs adapter error',
       );
       return [];

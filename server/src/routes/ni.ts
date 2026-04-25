@@ -93,8 +93,10 @@ const scrapeStartSchema = z.object({
   target_titles: z.array(z.string().min(1).max(200)).max(20).optional(),
   search_context: z.enum(['network_connections', 'bonus_search']).optional().default('network_connections'),
   location: z.string().max(200).optional(),
+  radius_miles: z.number().int().min(1).max(250).optional(),
   remote_only: z.boolean().optional().default(false),
-  max_days_old: z.number().int().min(1).max(14).optional().default(7),
+  work_modes: z.array(z.enum(['remote', 'hybrid', 'onsite'])).min(1).max(3).optional(),
+  max_days_old: z.number().int().min(1).max(30).optional().default(7),
 });
 
 // ─── CSV Upload ───────────────────────────────────────────────────────────────
@@ -320,11 +322,22 @@ ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
   }
 
   const userId = c.get('user').id;
-  const { company_ids, target_titles = [], search_context, location, remote_only, max_days_old } = parsed.data;
+  const {
+    company_ids,
+    target_titles = [],
+    search_context,
+    location,
+    radius_miles,
+    remote_only,
+    work_modes,
+    max_days_old,
+  } = parsed.data;
 
   const scrapeFilters: NiScrapeFilters = {
     location,
+    radius_miles,
     remote_only: remote_only ?? false,
+    work_modes,
     max_days_old: max_days_old ?? 7,
   };
 

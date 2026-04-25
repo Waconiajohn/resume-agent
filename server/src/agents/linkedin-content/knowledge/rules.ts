@@ -99,7 +99,7 @@ LinkedIn is a specific platform with specific mechanics. Ignoring those mechanic
 
 Format standards:
 1. **Line breaks are mandatory** — Dense paragraph text on LinkedIn is not read. Every 1-3 sentences should have a line break. The visual cadence of the post signals readability before the reader even begins.
-2. **1200-1500 characters is the sweet spot** — Long enough to develop an idea with evidence. Short enough to be read in a single sitting without losing the thread. Under 800 characters is usually too thin for executive-level insight. Over 2000 characters is too long for the format.
+2. **1,000-1,300 characters is the sweet spot** — Long enough to develop an idea with evidence. Short enough to be read in a single sitting without losing the thread. Under 800 characters is usually too thin for executive-level insight. Over 1,500 characters is too long for the format.
 3. **Native content over links** — LinkedIn's algorithm suppresses posts with external links. If the executive wants to share an article, reference it in text ("HBR published research on this last year") rather than dropping the URL into the post body. Put links in comments if needed.
 4. **No hashtag spam** — 3-5 relevant hashtags maximum. Hashtags in the middle of sentences are distracting. Place them at the end of the post. Generic hashtags (#leadership, #management, #success) add no value and signal unfamiliarity with the platform. Use specific, relevant ones.
 5. **Personal stories outperform corporate messaging** — The LinkedIn algorithm rewards personal, authentic content. Posts that sound like press releases or corporate communications consistently underperform. First-person narratives outperform third-person authority statements.
@@ -154,7 +154,7 @@ export const RULE_6_360BREW = `## RULE 6 — 360BREW ALGORITHM OPTIMIZATION
 
 **Format optimization:**
 4. **TEXT POST LENGTH: 1,000–1,300 characters** — This range is the 360Brew sweet spot for text posts. Under 800 characters delivers less reach. Over 1,500 characters shows diminishing returns. Count the characters and target this band.
-5. **CAROUSEL DEPTH: 8–12 slides** — Document carousels in this range outperform shorter ones. Each slide must carry real insight, not filler. Under 8 slides and over 12 slides are both penalized in the algorithm's ranking.
+5. **CAROUSEL DEPTH: 8–12 slides** — Document carousels in this range outperform shorter ones. Each slide must carry real insight in a few words: one short headline plus, at most, 1–2 micro-bullets. Under 8 slides and over 12 slides are both penalized in the algorithm's ranking.
 6. **DEPTH OVER BREVITY** — A 1,100-character post with one well-developed idea outperforms a 200-character post every time. LinkedIn rewards time-on-post. Give readers something worth staying for.
 
 **Topic consistency:**

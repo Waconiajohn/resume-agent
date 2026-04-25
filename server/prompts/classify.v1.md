@@ -1,11 +1,25 @@
 ---
 stage: classify
-version: "1.4"
+version: "1.6"
 capability: strong-reasoning
 temperature: 0.2
-last_edited: 2026-04-20
-last_editor: claude
+last_edited: 2026-04-25
+last_editor: codex
 notes: |
+  v1.6 (2026-04-25 — candidate discovery answers):
+    - Adds Rule 16 for the post-strategy discovery loop. User answers to
+      evidence questions are appended to the source text under a dedicated
+      "DISCOVERY ANSWERS" heading. They are candidate-provided source
+      evidence, not employment history, and must be parsed into the existing
+      schema without inventing certifications, dates, employers, or metrics.
+  v1.5 (2026-04-25 — preserve layoff/current-search transition notes):
+    - Live VP Operations validation showed gpt-5.4-mini dropping an explicit
+      top-summary transition note ("recently laid off... currently seeking")
+      while retaining the most recent role as Present. That produces
+      downstream present-tense bullets for a candidate who is no longer in
+      role. Rule 1 now names layoff / role-elimination / currently-seeking
+      language as career-gap/transition context and requires a flag when it
+      conflicts with a Present-dated role.
   v1.4 (2026-04-20 pm — Rule 7 explicit handling for "no dates at all"):
     - Addresses a gpt-5.4-mini-only regression surfaced in the
       2026-04-20 morning 19-fixture validation (commit b43686b6):
@@ -75,9 +89,12 @@ A `careerGaps` entry exists only when the resume text **explicitly narrates** a 
 
 - First- or third-person narration describing the break: "took time off", "stepped away", "paused career", "cared for", "recovered from", "sabbatical", "pursued education full-time"
 - An "Actively pursuing new leadership roles" / "Open to work" / "Available for short-term consulting" block at the top of the resume with **no client names, no dates on specific engagements, and no bullets describing delivered work** — this is a job-search narrative framed as a current position
+- A transition note saying the candidate was "laid off", "role eliminated", "position eliminated", "restructured out", "impacted by consolidation", or "currently seeking" / "seeking next role" with no client names or delivered-work bullets — this is job-search context, not a position
 - A block labeled "Career Break", "Sabbatical", "Personal Leave", or similar
 
 When the source narrates a gap, do NOT create a `positions` entry from it. Do NOT invent a `title` or `company` from the sentences describing the gap. Emit a `careerGaps` entry with `description` paraphrased from the source and `dates` if the source gives them.
+
+If the source also lists the most recent role as "Present" but separately says the candidate was laid off / is currently seeking, preserve the date text exactly in `positions[N].dates.raw`, but DO NOT silently drop the transition note. Emit a `careerGaps` entry for the transition/job-search context and add a low- or medium-severity flag on `positions[N].dates` explaining the employment-status ambiguity.
 
 **Do NOT create a careerGaps entry for any of the following:**
 
@@ -86,6 +103,7 @@ When the source narrates a gap, do NOT create a `positions` entry from it. Do NO
 - Military service, graduate education, or other clearly-employed activity. Those are positions or education, not gaps.
 
   ✓ "Took time off 2022-2024 to care for an aging parent." → careerGaps entry, no position
+  ✓ "Recently laid off after private-equity ownership consolidated two divisions; currently seeking next VP Operations role." → careerGaps entry + flag if the most recent role still says Present
   ✗ Position at A ends 2012, position at B starts 2014, no narrative → SILENCE, not a gap
   ✗ "Proudest life accomplishment: general-contracted my mother's retirement home" → sidebar, not a gap
 
@@ -396,6 +414,29 @@ Do NOT emit customSections for:
   ✗ Drop the section entirely because it doesn't fit the standard schema
 
 <!-- Why: v2 supported custom sections via its CUSTOM_SECTIONS writer; v3's initial design (Phase 4) assumed a fixed section set and dropped them, which would have shipped a regression for the target executive market. Phase 3.5 adds customSections as a first-class schema field per docs/v3-rebuild/04-Decision-Log.md 2026-04-18. -->
+
+### Rule 16 — Discovery answers are candidate-provided source evidence, not positions.
+
+The source text may end with a section titled:
+
+`DISCOVERY ANSWERS PROVIDED BY CANDIDATE FOR THIS TAILORING RUN`
+
+This section contains answers the candidate typed after the first strategy pass. Treat these answers as source evidence for this run, but with careful calibration:
+
+- Do NOT create a new `positions` entry from the discovery section itself.
+- If an answer names an existing employer or role and gives a concrete accomplishment, tool exposure, scope, metric, certification, or regulated-environment detail, add the relevant fact to that existing position's bullets or scope only when the association is clear.
+- If the answer gives a concrete career-level fact but does not clearly belong to one role, preserve it in `crossRoleHighlights` with `sourceContext: "Discovery Answers"`.
+- If the answer confirms a tool, methodology, certification, or domain exposure, add the exact confirmed item to `skills` or `certifications` only when the answer explicitly states it.
+- If the answer says "no", "not directly", "limited", or otherwise declines proof, do not turn it into positive evidence. Add a flag only if the answer creates ambiguity the user should review.
+- Keep confidence calibrated. A specific answer with named scope can be `0.8-0.95`; a vague answer should be lower and may belong in `flags`.
+
+Never infer beyond the answer. "Worked around SAP reports" is not "SAP implementation lead." "Lean tools used informally" is not "Lean Six Sigma certified." "Medical device suppliers" is not "FDA manufacturing experience" unless FDA/regulated manufacturing is explicitly stated.
+
+  ✓ Discovery answer: "I was an SAP MM power user during a 2021 inventory migration at Northstar." → add `SAP MM` to skills and a sourced Northstar bullet or cross-role highlight with calibrated confidence.
+  ✓ Discovery answer: "No FDA manufacturing exposure." → no FDA skill, no regulated-manufacturing claim.
+  ✗ Discovery answer: "Some SAP exposure" → emit "Led SAP implementation" or "SAP-certified".
+
+<!-- Why: Strategy v1.7 now asks discovery questions for adjacent or uncertain evidence. The answers need to strengthen the next run without bypassing the source-of-truth model. 2026-04-25. -->
 
 ## Output schema
 

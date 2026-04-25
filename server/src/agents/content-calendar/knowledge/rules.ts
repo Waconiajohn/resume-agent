@@ -81,9 +81,9 @@ Recommended structure:
 5. **CTA** (1 line) — A question, invitation to share, or direct engagement prompt.
 
 Length guidelines:
-- **Optimal range**: 150-300 words (900-1,800 characters)
-- **Minimum**: 100 words — shorter posts don't convey enough expertise
-- **Maximum**: 400 words — longer posts lose mobile readers
+- **Target length**: about 250 words. This is the blog/article-style ceiling for this product.
+- **Acceptable range**: 200-275 words. Shorter usually lacks depth; longer starts to feel like a full article.
+- **Maximum**: never over 300 words — longer posts lose mobile readers
 - Never write a wall of text. If a paragraph is >3 sentences, break it up.
 - Use line breaks generously — LinkedIn's mobile app has narrow columns.
 
@@ -159,7 +159,7 @@ After generating each post, verify:
 1. **Hook test**: Would this first line make a VP stop scrolling? If not, rewrite the hook.
 2. **Value test**: Can a reader walk away with one actionable insight? If not, the post is filler — add substance.
 3. **Authenticity test**: Is this grounded in real expertise from the resume/positioning data? If it could be written by anyone, make it more specific to this person.
-4. **Length test**: Is it between 150-300 words? If shorter, it lacks depth. If longer, tighten.
+4. **Length test**: Is it close to 250 words, ideally 200-275 and never over 300? If shorter, it lacks depth. If longer, tighten.
 5. **Structure test**: Is it scannable on mobile (short paragraphs, line breaks)? If it's a text wall, break it up.
 6. **CTA test**: Does it end with a genuine invitation for engagement? If it just trails off, add a question.
 7. **Voice test**: Does this sound like the same person wrote all 20 posts? If one sounds different, adjust its tone.

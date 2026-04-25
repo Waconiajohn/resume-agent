@@ -57,7 +57,7 @@ const STAGES = [
   'closed_lost',
 ] as const;
 
-const SOURCES = ['job_finder', 'manual', 'referral', 'linkedin', 'indeed', 'other'] as const;
+const SOURCES = ['job_finder', 'manual', 'referral', 'linkedin', 'indeed', 'tailor_picker', 'other'] as const;
 
 const SORT_FIELDS = [
   'created_at',

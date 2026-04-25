@@ -38,7 +38,7 @@ jobSearchRoutes.use('*', async (c, next) => {
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const searchFiltersSchema = z.object({
-  datePosted: z.enum(['24h', '3d', '7d', '14d']).optional().default('7d'),
+  datePosted: z.enum(['24h', '3d', '7d', '14d', '30d']).optional().default('7d'),
   remoteType: z.enum(['remote', 'hybrid', 'onsite', 'any']).optional(),
   employmentType: z.enum(['full-time', 'contract', 'freelance', 'any']).optional(),
   salaryMin: z.number().int().min(0).optional(),
@@ -161,7 +161,7 @@ jobSearchRoutes.get(
     // Freshness window: honour the filter stored with the scan, default 7d.
     const scanFilters = (scan as Record<string, unknown>).filters as { datePosted?: string } | null;
     const datePosted = scanFilters?.datePosted ?? '7d';
-    const freshnessMap: Record<string, number> = { '24h': 1, '3d': 3, '7d': 7, '14d': 14 };
+    const freshnessMap: Record<string, number> = { '24h': 1, '3d': 3, '7d': 7, '14d': 14, '30d': 30 };
     const freshnessDays = freshnessMap[datePosted] ?? 7;
     const freshnessThreshold = new Date(Date.now() - freshnessDays * 24 * 60 * 60 * 1000).toISOString();
 

@@ -213,7 +213,7 @@ const suggestTopicsTool: LinkedInContentTool = {
       '- Be rooted in a real experience or accomplishment from their evidence',
       '- Position them as a thought leader, not a generic advice giver',
       '- Have a specific, attention-grabbing hook that will stop the scroll',
-      '- Be achievable in a 300-500 word post',
+      '- Be achievable in a focused 250-word article/post or a sparse carousel',
       '',
       'Return ONLY valid JSON array:',
       `[

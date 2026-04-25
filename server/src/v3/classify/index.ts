@@ -12,11 +12,13 @@
 // docs/v3-rebuild/04-Decision-Log.md 2026-04-18 entry on Vertex-DeepSeek.
 //
 // 2026-04-21 — migrated to the shared structured-llm-call primitive
-// (commit 2 of the structured-llm plan). Classify keeps its pre-Fix-5 policy
-// of retrying ONLY on Zod schema failure (not JSON.parse — that's an
-// LLM-side structural failure, not a schema-compliance one) by passing
-// retryOn: ['zod-schema']. The ClassifyError type + disableSchemaRetry
-// option are preserved for backward compatibility.
+// (commit 2 of the structured-llm plan).
+//
+// 2026-04-25 — live VP Ops validation showed classify can emit transient
+// malformed JSON after prompt hardening. Classify now uses the primitive's
+// default structural retry policy (JSON.parse + Zod schema failure), while
+// preserving the ClassifyError type + disableSchemaRetry option for backward
+// compatibility. There is still no silent JSON repair or coercion.
 
 import type { ZodIssue } from 'zod';
 import { loadPrompt } from '../prompts/loader.js';
@@ -43,7 +45,7 @@ export interface ClassifyOptions {
   /** Optional caller-supplied abort signal. */
   signal?: AbortSignal;
   /**
-   * Disable the schema-failure one-shot retry loop. Default: false (retry on).
+   * Disable the structural one-shot retry loop. Default: false (retry on).
    * Primarily for tests that mock the LLM and don't want a second call.
    * Originally added 2026-04-20 pm as Fix 5 of "Option 4" — preserved across
    * the 2026-04-21 migration to the shared structured-llm-call primitive.
@@ -75,9 +77,9 @@ export interface ClassifyTelemetry {
   outputTokens: number;
   durationMs: number;
   /**
-   * True iff the one-shot schema-failure retry fired. Retry is a loud,
-   * visible recovery mechanism — NOT a silent fallback. If the retry's
-   * output also fails validation, classify throws.
+   * True iff the one-shot structural retry fired. Retry is a loud, visible
+   * recovery mechanism — NOT a silent fallback. If the retry's output also
+   * fails validation, classify throws.
    */
   schemaRetryFired: boolean;
 }
@@ -141,10 +143,6 @@ export async function classifyWithTelemetry(
       maxTokens: MAX_OUTPUT_TOKENS,
       signal: options.signal,
       schema: StructuredResumeSchema,
-      // Classify retries only on schema failure, not on JSON.parse — a
-      // response that isn't JSON at all is an LLM-side structural failure,
-      // not a schema-compliance one (preserves pre-migration policy).
-      retryOn: ['zod-schema'],
       maxStructuralAttempts: options.disableSchemaRetry ? 1 : 2,
       buildRetryAddendum: buildClassifyRetryAddendum,
       stage: 'classify',
@@ -207,8 +205,6 @@ export async function classifyWithTelemetry(
  */
 function buildClassifyRetryAddendum(error: StructuralError): string {
   if (error.kind === 'json-parse') {
-    // Should not occur — classify opts out of JSON-parse retry via retryOn.
-    // Include a defensive addendum anyway.
     return [
       `RETRY: Your previous response was not valid JSON — the parser reported: ${error.message}.`,
       '',
@@ -242,9 +238,10 @@ function buildZodRetryAddendum(issues: ReadonlyArray<ZodIssue>): string {
 
 /**
  * Translate a StructuredLlmCallError into the ClassifyError shape existing
- * catch-sites (and tests) expect. Single-attempt failure (disableSchemaRetry
- * path) yields the "did not match the StructuredResume schema" message.
- * Two-attempt failure yields the "schema validation failed on BOTH" message.
+ * catch-sites (and tests) expect. Single-attempt schema failure
+ * (disableSchemaRetry path) yields the "did not match the StructuredResume
+ * schema" message. Two-attempt failure yields the "structural validation
+ * failed on BOTH" message.
  */
 function wrapAsClassifyError(
   err: StructuredLlmCallError,
@@ -288,7 +285,7 @@ function wrapAsClassifyError(
       : undefined;
 
   return new ClassifyError(
-    `Classify schema validation failed on BOTH the first attempt AND the retry (prompt ${promptName} v${promptVersion}). ` +
+    `Classify structural validation failed on BOTH the first attempt AND the retry (prompt ${promptName} v${promptVersion}). ` +
       `This indicates a systemic prompt/model compliance issue, not a one-off flake. ` +
       `First attempt (${firstCount} issues): ${firstSummary}. ` +
       `Retry (${retryCount} issues): ${retrySummary}. ` +

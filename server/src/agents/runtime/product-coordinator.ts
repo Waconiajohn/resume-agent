@@ -246,7 +246,7 @@ export async function runProductPipeline<
         for (const gate of phase.gates) {
           const shouldFire = !gate.condition || gate.condition(state);
           if (shouldFire) {
-            const MAX_GATE_RERUNS = 3;
+            const maxGateReruns = gate.maxReruns ?? 3;
             let rerunCount = 0;
 
             // Gate loop: wait → onResponse → optionally re-run agent → re-fire gate
@@ -263,7 +263,7 @@ export async function runProductPipeline<
               }
 
               // Check if agent needs to re-run (e.g., user provided feedback)
-              if (gate.requiresRerun?.(state) && rerunCount < MAX_GATE_RERUNS) {
+              if (gate.requiresRerun?.(state) && rerunCount < maxGateReruns) {
                 rerunCount++;
                 log.info(
                   { gate: gate.name, agent: phase.name, rerunCount },

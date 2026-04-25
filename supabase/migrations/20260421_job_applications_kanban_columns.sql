@@ -49,6 +49,7 @@ ALTER TABLE public.job_applications
       'referral',
       'linkedin',
       'indeed',
+      'tailor_picker',
       'other'
     )),
   ADD COLUMN IF NOT EXISTS applied_date TIMESTAMPTZ,

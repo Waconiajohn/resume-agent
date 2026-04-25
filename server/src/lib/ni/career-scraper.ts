@@ -17,7 +17,7 @@ import { extractJobsFromCareerPage } from './json-ld-extractor.js';
 import { searchJobsViaSerper } from './serper-job-search.js';
 import { classifyWorkMode } from '../job-search/work-mode-classifier.js';
 import logger from '../logger.js';
-import type { ATSJob, CompanyInfo, NiSearchContext, NiScrapeFilters, ScrapeResult, ScrapeSource } from './types.js';
+import type { ATSJob, CompanyInfo, NiSearchContext, NiScrapeFilters, NiWorkMode, ScrapeResult, ScrapeSource } from './types.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -160,34 +160,87 @@ interface CompanyScanResult {
 
 // ─── Post-fetch filtering ─────────────────────────────────────────────────────
 
+interface ParsedLocationIntent {
+  city: string | null;
+  state: string | null;
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function parseLocationIntent(location: string | undefined): ParsedLocationIntent | null {
+  const raw = location?.trim().toLowerCase();
+  if (!raw) return null;
+
+  const commaParts = raw.split(',').map((part) => part.trim()).filter(Boolean);
+  const trailingState = raw.match(/(?:,|\s)([a-z]{2})$/)?.[1] ?? null;
+  const state = commaParts.length > 1 && /^[a-z]{2}$/.test(commaParts[commaParts.length - 1] ?? '')
+    ? commaParts[commaParts.length - 1]!
+    : trailingState;
+  const citySource = commaParts.length > 1
+    ? commaParts.slice(0, -1).join(' ')
+    : raw.replace(/(?:,|\s)[a-z]{2}$/, '').trim();
+  const city = citySource.length > 0 && citySource !== state ? citySource : null;
+
+  return city || state ? { city, state } : null;
+}
+
+function hasWholePlaceName(haystack: string, needle: string): boolean {
+  return new RegExp(`(?:^|[^a-z])${escapeRegex(needle)}(?:$|[^a-z])`, 'i').test(haystack);
+}
+
+function hasStateToken(location: string, state: string): boolean {
+  return new RegExp(`(?:^|[^a-z])${escapeRegex(state)}(?:$|[^a-z])`, 'i').test(location);
+}
+
+function locationMatchesIntent(jobLocation: string | null, intent: ParsedLocationIntent | null): boolean {
+  if (!intent) return true;
+  if (!jobLocation) return true; // unknown location — include
+
+  const normalized = jobLocation.toLowerCase();
+  if (normalized.includes('remote')) return true; // remote is not tied to a city
+
+  const cityMatches = intent.city ? hasWholePlaceName(normalized, intent.city) : true;
+  const stateMatches = intent.state ? hasStateToken(normalized, intent.state) : true;
+
+  if (intent.city && intent.state) {
+    // If the job only says "Portland" without a state, keep it. If it says
+    // "Portland, ME", do not let a city-only match pass for "Portland, OR".
+    return cityMatches && (stateMatches || !/\b[a-z]{2}\b/i.test(normalized));
+  }
+
+  return cityMatches && stateMatches;
+}
+
 /**
- * Apply location, remote-only, and date filters to a raw job list.
+ * Apply work-mode, location, and date filters to a raw job list.
  * Inclusion is additive: null/missing values pass through by default.
  */
 function applyFilters(jobs: ATSJob[], filters: NiScrapeFilters): ATSJob[] {
   let result = jobs;
 
-  // Remote-only filter — applied before location so remote jobs aren't excluded
-  // by a city-specific location filter.
-  if (filters.remote_only) {
+  // Work mode filter — applied before location so remote jobs aren't excluded
+  // by a city-specific location filter when Remote is selected.
+  const selectedModes = filters.work_modes?.length
+    ? new Set<NiWorkMode>(filters.work_modes)
+    : filters.remote_only
+      ? new Set<NiWorkMode>(['remote'])
+      : null;
+
+  if (selectedModes && selectedModes.size < 3) {
     result = result.filter((job) => {
       const mode = classifyWorkMode(job.title, job.descriptionSnippet ?? '', job.location ?? undefined);
-      return mode === 'remote';
+      return mode !== 'unknown' && selectedModes.has(mode);
     });
   }
 
-  // Location filter — case-insensitive partial match on city name or state abbreviation.
+  // Location filter — city/state-aware matching. Avoid substring matches such
+  // as "OR" matching "New York".
   // "Remote" jobs always pass through (remote is not a place).
-  if (filters.location && filters.location.trim().length > 0) {
-    const loc = filters.location.trim().toLowerCase();
-    // Extract city and state parts (e.g. "Portland, OR" → ["portland", "or"])
-    const parts = loc.split(/[,\s]+/).filter((p) => p.length > 0);
-    result = result.filter((job) => {
-      if (!job.location) return true; // unknown location — include
-      const jobLoc = job.location.toLowerCase();
-      if (jobLoc.includes('remote')) return true; // remote always passes
-      return parts.some((part) => jobLoc.includes(part));
-    });
+  const locationIntent = parseLocationIntent(filters.location);
+  if (locationIntent) {
+    result = result.filter((job) => locationMatchesIntent(job.location, locationIntent));
   }
 
   // Date filter — only applied when the job has a known postedOn date.
@@ -258,7 +311,14 @@ async function scanCompany(
   // Tier 2: Serper Google Jobs search fallback
   if (allJobs.length === 0) {
     try {
-      allJobs = await searchJobsViaSerper(company.name, targetTitles, filters.location, filters.max_days_old);
+      allJobs = await searchJobsViaSerper(
+        company.name,
+        targetTitles,
+        filters.location,
+        filters.max_days_old,
+        filters.radius_miles,
+        filters.work_modes,
+      );
       source = 'serper';
       if (allJobs.length > 0) {
         logger.info(

@@ -335,16 +335,13 @@ describe('LinkedInStudioRoom — Profile Audit results section', () => {
     });
   });
 
-  it('renders profile metrics in the Profile Audit tab', async () => {
+  it('hides profile metrics until there is a profile score', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
     await waitFor(() => {
-      // ResultsSnapshot renders inside the profile tab
-      const metrics =
-        screen.queryByText(/Current Profile Score/i) ||
-        screen.queryByText(/Platform Metrics/i) ||
-        screen.queryByText(/Total Posts/i);
-      expect(metrics).toBeTruthy();
+      expect(screen.getByText('Your Current LinkedIn Profile')).toBeInTheDocument();
     });
+    expect(screen.queryByText(/Current Profile Score/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Platform Metrics/i)).not.toBeInTheDocument();
   });
 });
 
@@ -398,6 +395,7 @@ describe('LinkedInStudioRoom — Profile Audit input fields', () => {
   it('renders the Profile Audit tab as active by default', async () => {
     render(<LinkedInStudioRoom signals={makeSignals()} />);
     const profileAuditBtn = screen.getByRole('button', { name: 'Profile Audit' });
-    expect(profileAuditBtn.className).toContain('bg-blue-600');
+    expect(profileAuditBtn.className).toContain('text-[var(--link)]');
+    expect(profileAuditBtn.className).toContain('border-[var(--link)]');
   });
 });

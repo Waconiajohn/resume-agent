@@ -71,6 +71,58 @@ export interface ApplicationEvent {
   created_at: string;
 }
 
+const LOCAL_EVENTS_PREFIX = 'career-iq:application-events:';
+
+function localEventsKey(applicationId: string): string {
+  return `${LOCAL_EVENTS_PREFIX}${applicationId}`;
+}
+
+function isApplicationEvent(value: unknown): value is ApplicationEvent {
+  if (!value || typeof value !== 'object') return false;
+  const event = value as Partial<ApplicationEvent>;
+  return (
+    typeof event.id === 'string'
+    && typeof event.job_application_id === 'string'
+    && typeof event.type === 'string'
+    && typeof event.occurred_at === 'string'
+    && typeof event.created_at === 'string'
+  );
+}
+
+function readLocalEvents(applicationId: string): ApplicationEvent[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(localEventsKey(applicationId)) ?? '[]') as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter(isApplicationEvent).filter((event) => event.job_application_id === applicationId)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalEvent(event: ApplicationEvent) {
+  if (typeof window === 'undefined') return;
+  const existing = readLocalEvents(event.job_application_id);
+  const next = [event, ...existing.filter((item) => item.id !== event.id)].slice(0, 100);
+  try {
+    window.localStorage.setItem(localEventsKey(event.job_application_id), JSON.stringify(next));
+  } catch {
+    // Restricted storage should not make the visible user action fail.
+  }
+}
+
+function mergeEvents(remote: ApplicationEvent[], local: ApplicationEvent[]): ApplicationEvent[] {
+  const seen = new Set<string>();
+  return [...local, ...remote]
+    .filter((event) => {
+      if (seen.has(event.id)) return false;
+      seen.add(event.id);
+      return true;
+    })
+    .sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at));
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────
 
 interface UseApplicationEventsOptions {
@@ -107,23 +159,28 @@ export function useApplicationEvents(options: UseApplicationEventsOptions = {}) 
       setLoading(true);
       setError(null);
       try {
+        const localEvents = readLocalEvents(id);
         const res = await fetch(
           `${API_BASE}/job-applications/${encodeURIComponent(id)}/events`,
           { headers },
         );
         if (!res.ok) {
           if (mountedRef.current) setError(`Failed to load events (${res.status})`);
-          return [];
+          if (mountedRef.current) setEvents(localEvents);
+          return localEvents;
         }
         const body = (await res.json()) as { events?: ApplicationEvent[] };
-        const list = Array.isArray(body.events) ? body.events : [];
+        const remote = Array.isArray(body.events) ? body.events : [];
+        const list = mergeEvents(remote, localEvents);
         if (mountedRef.current) setEvents(list);
         return list;
       } catch (err) {
+        const localEvents = readLocalEvents(id);
         if (mountedRef.current) {
           setError(err instanceof Error ? err.message : 'Failed to load events');
+          setEvents(localEvents);
         }
-        return [];
+        return localEvents;
       } finally {
         if (mountedRef.current) setLoading(false);
       }
@@ -183,42 +240,124 @@ export function useApplicationEvents(options: UseApplicationEventsOptions = {}) 
   );
 
   const recordApplied = useCallback(
-    (input: {
+    async (input: {
       applicationId: string;
       resumeSessionId?: string;
       coverLetterSessionId?: string;
       appliedVia?: AppliedVia;
-    }) =>
-      recordEvent({
+    }): Promise<{ event: ApplicationEvent; deduplicated: boolean } | null> => {
+      const metadata: AppliedMetadata = {
+        type: 'applied',
+        resume_session_id: input.resumeSessionId,
+        cover_letter_session_id: input.coverLetterSessionId,
+        applied_via: input.appliedVia ?? 'manual',
+      };
+      const recorded = await recordEvent({
         applicationId: input.applicationId,
-        metadata: {
+        metadata,
+      });
+      if (recorded) return recorded;
+
+      // Fallback for environments where the append-only events table is not
+      // migrated yet: persist the canonical application stage/date so the UI
+      // can advance instead of making "I applied" feel like a dead button.
+      const headers = await authHeader();
+      if (!headers) return null;
+      const now = new Date();
+      const appliedDate = now.toISOString().slice(0, 10);
+      try {
+        const res = await fetch(
+          `${API_BASE}/job-applications/${encodeURIComponent(input.applicationId)}`,
+          {
+            method: 'PATCH',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stage: 'applied', applied_date: appliedDate }),
+          },
+        );
+        if (!res.ok) {
+          if (mountedRef.current) setError(`Failed to record applied state (${res.status})`);
+          return null;
+        }
+        const syntheticEvent: ApplicationEvent = {
+          id: `applied-${input.applicationId}-${appliedDate}`,
+          user_id: '',
+          job_application_id: input.applicationId,
           type: 'applied',
-          resume_session_id: input.resumeSessionId,
-          cover_letter_session_id: input.coverLetterSessionId,
-          applied_via: input.appliedVia ?? 'manual',
-        },
-      }),
-    [recordEvent],
+          occurred_at: now.toISOString(),
+          metadata,
+          created_at: now.toISOString(),
+        };
+        if (mountedRef.current) {
+          setError(null);
+          if (applicationId === input.applicationId) {
+            setEvents((prev) => (
+              prev.some((event) => event.type === 'applied')
+                ? prev
+                : [syntheticEvent, ...prev]
+            ));
+          }
+        }
+        return { event: syntheticEvent, deduplicated: false };
+      } catch (err) {
+        if (mountedRef.current) {
+          setError(err instanceof Error ? err.message : 'Failed to record applied state');
+        }
+        return null;
+      }
+    },
+    [authHeader, applicationId, recordEvent],
+  );
+
+  const recordLocalFallback = useCallback(
+    (
+      targetApplicationId: string,
+      metadata: ApplicationEventMetadata,
+      occurredAt?: string,
+    ): { event: ApplicationEvent; deduplicated: boolean } => {
+      const nowIso = new Date().toISOString();
+      const event: ApplicationEvent = {
+        id: `local-${metadata.type}-${targetApplicationId}-${Date.now()}`,
+        user_id: '',
+        job_application_id: targetApplicationId,
+        type: metadata.type,
+        occurred_at: occurredAt ?? nowIso,
+        metadata,
+        created_at: nowIso,
+      };
+      writeLocalEvent(event);
+      if (mountedRef.current) {
+        setError(null);
+        if (applicationId === targetApplicationId) {
+          setEvents((prev) => mergeEvents(prev, [event]));
+        }
+      }
+      return { event, deduplicated: false };
+    },
+    [applicationId],
   );
 
   const recordInterviewHappened = useCallback(
-    (input: {
+    async (input: {
       applicationId: string;
       interviewDate: string;
       interviewType: InterviewType;
       interviewerNames?: string[];
       occurredAt?: string;
-    }) =>
-      recordEvent({
+    }) => {
+      const metadata: InterviewHappenedMetadata = {
+        type: 'interview_happened',
+        interview_date: input.interviewDate,
+        interview_type: input.interviewType,
+        interviewer_names: input.interviewerNames,
+      };
+      const recorded = await recordEvent({
         applicationId: input.applicationId,
         occurredAt: input.occurredAt,
-        metadata: {
-          type: 'interview_happened',
-          interview_date: input.interviewDate,
-          interview_type: input.interviewType,
-          interviewer_names: input.interviewerNames,
-        },
-      }),
+        metadata,
+      });
+      if (recorded) return recorded;
+      return recordLocalFallback(input.applicationId, metadata, input.occurredAt);
+    },
     [recordEvent],
   );
 
@@ -240,28 +379,32 @@ export function useApplicationEvents(options: UseApplicationEventsOptions = {}) 
           role_title: input.roleTitle,
         },
       }),
-    [recordEvent],
+    [recordEvent, recordLocalFallback],
   );
 
   const recordInterviewScheduled = useCallback(
-    (input: {
+    async (input: {
       applicationId: string;
       scheduledDate: string;
       interviewType: InterviewType;
       round?: string;
       withWhom?: string[];
-    }) =>
-      recordEvent({
+    }) => {
+      const metadata: InterviewScheduledMetadata = {
+        type: 'interview_scheduled',
+        scheduled_date: input.scheduledDate,
+        interview_type: input.interviewType,
+        round: input.round,
+        with_whom: input.withWhom,
+      };
+      const recorded = await recordEvent({
         applicationId: input.applicationId,
-        metadata: {
-          type: 'interview_scheduled',
-          scheduled_date: input.scheduledDate,
-          interview_type: input.interviewType,
-          round: input.round,
-          with_whom: input.withWhom,
-        },
-      }),
-    [recordEvent],
+        metadata,
+      });
+      if (recorded) return recorded;
+      return recordLocalFallback(input.applicationId, metadata);
+    },
+    [recordEvent, recordLocalFallback],
   );
 
   /** Convenience: has an event of the given type been recorded for this app? */

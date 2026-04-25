@@ -103,6 +103,19 @@ function latestEventOf(payload: TimelinePayload, type: TimelineEvent['type']): T
   return payload.events.find((e) => e.type === type);
 }
 
+function appliedSignal(payload: TimelinePayload): TimelineEvent | undefined {
+  const event = latestEventOf(payload, 'applied');
+  if (event) return event;
+  const appliedDate = payload.application.applied_date;
+  if (!appliedDate) return undefined;
+  return {
+    id: 'applied-date',
+    type: 'applied',
+    occurred_at: appliedDate,
+    metadata: { type: 'applied', applied_via: 'manual' },
+  };
+}
+
 function latestScheduledInterview(payload: TimelinePayload, nowMs: number): TimelineEvent | undefined {
   // Decision 4: when multiple interview_scheduled events exist, the latest
   // scheduled_date wins. We also drop past-dated rows so N5 only fires for
@@ -161,7 +174,7 @@ export function computeTimelineRules(
   const hasInterviewPrep = payload.interview_prep.exists;
   const hasThankYou = payload.thank_you.exists;
 
-  const appliedEvent = latestEventOf(payload, 'applied');
+  const appliedEvent = appliedSignal(payload);
   const offerEvent = latestEventOf(payload, 'offer_received');
   const interviewHappenedEvent = latestEventOf(payload, 'interview_happened');
   const upcomingInterview = latestScheduledInterview(payload, nowMs);

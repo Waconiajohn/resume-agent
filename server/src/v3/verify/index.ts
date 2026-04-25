@@ -27,9 +27,11 @@ import { VerifyResultSchema } from './schema.js';
 import { checkAttributionMechanically } from './attribution.js';
 import { checkIntraResumeConsistency } from './consistency.js';
 import { translateVerifyIssues, type TranslateTelemetry } from './translate.js';
+import { BANNED_PRONOUNS, detectBannedPronouns } from '../write/pronoun-retry.js';
 import type {
   Strategy,
   StructuredResume,
+  VerifyIssue,
   VerifyResult,
   WrittenResume,
 } from '../types.js';
@@ -197,6 +199,26 @@ export async function verifyWithTelemetry(
     }
   }
 
+  const droppedUnsupportedPronounIssues = dropUnsupportedPronounIssues(validated, written);
+  if (droppedUnsupportedPronounIssues > 0) {
+    logger.info(
+      { promptName, droppedUnsupportedPronounIssues },
+      'verify dropped unsupported pronoun issue(s)',
+    );
+  }
+  const droppedUnsupportedFrameIssues = dropUnsupportedSummaryFrameIssues(
+    validated,
+    written,
+    strategy,
+  );
+  if (droppedUnsupportedFrameIssues > 0) {
+    logger.info(
+      { promptName, droppedUnsupportedFrameIssues },
+      'verify dropped unsupported summary-frame issue(s)',
+    );
+  }
+  normalizePassedFromIssueSeverities(validated);
+
   const durationMs = Date.now() - start;
   logger.info(
     {
@@ -248,6 +270,140 @@ export async function verifyWithTelemetry(
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
+
+function dropUnsupportedPronounIssues(result: VerifyResult, written: WrittenResume): number {
+  const before = result.issues.length;
+  result.issues = result.issues.filter((issue) => shouldKeepVerifyIssue(issue, written));
+  return before - result.issues.length;
+}
+
+function dropUnsupportedSummaryFrameIssues(
+  result: VerifyResult,
+  written: WrittenResume,
+  strategy: Strategy,
+): number {
+  const before = result.issues.length;
+  result.issues = result.issues.filter((issue) =>
+    shouldKeepSummaryFrameIssue(issue, written, strategy),
+  );
+  return before - result.issues.length;
+}
+
+function normalizePassedFromIssueSeverities(result: VerifyResult): void {
+  result.passed = !result.issues.some((issue) => issue.severity === 'error');
+}
+
+function shouldKeepVerifyIssue(issue: VerifyIssue, written: WrittenResume): boolean {
+  if (!isPronounIssue(issue)) return true;
+
+  const sectionText = getWrittenSectionText(written, issue.section);
+  if (sectionText === null) return true;
+
+  const found = detectBannedPronouns(sectionText).found;
+  if (found.length === 0) return false;
+
+  const mentioned = extractMentionedBannedPronouns(issue.message);
+  if (mentioned.length === 0) return true;
+  return mentioned.some((pronoun) => found.includes(pronoun));
+}
+
+function isPronounIssue(issue: VerifyIssue): boolean {
+  return /\bpronoun\b/i.test(issue.message);
+}
+
+function shouldKeepSummaryFrameIssue(
+  issue: VerifyIssue,
+  written: WrittenResume,
+  strategy: Strategy,
+): boolean {
+  if (!isSummaryFrameIssue(issue)) return true;
+  return !summaryAlreadySignalsFrame(written.summary, strategy.positioningFrame);
+}
+
+function isSummaryFrameIssue(issue: VerifyIssue): boolean {
+  return (
+    issue.section === 'summary' &&
+    /\b(positioning|frame|framing|signal)\b/i.test(issue.message)
+  );
+}
+
+function summaryAlreadySignalsFrame(summary: string, frame: string): boolean {
+  const normalizedSummary = normalizeWords(summary).join(' ');
+  const normalizedFrame = normalizeWords(frame).join(' ');
+  if (!normalizedFrame) return false;
+  if (normalizedSummary.includes(normalizedFrame)) return true;
+
+  const summaryWords = new Set(normalizeContentWords(summary));
+  const frameWords = normalizeContentWords(frame);
+  return frameWords.length > 0 && frameWords.every((word) => summaryWords.has(word));
+}
+
+function normalizeWords(text: string): string[] {
+  return text.toLowerCase().match(/[a-z0-9]+(?:-[a-z0-9]+)?/g) ?? [];
+}
+
+function normalizeContentWords(text: string): string[] {
+  const stop = new Set([
+    'a',
+    'an',
+    'and',
+    'as',
+    'at',
+    'by',
+    'for',
+    'in',
+    'of',
+    'on',
+    'or',
+    'the',
+    'to',
+    'with',
+  ]);
+  return normalizeWords(text).filter((word) => word.length > 2 && !stop.has(word));
+}
+
+function extractMentionedBannedPronouns(message: string): string[] {
+  const mentioned = new Set<string>();
+  const quotedRe = /["'“”]([a-z']+)["'“”]/gi;
+  for (const match of message.matchAll(quotedRe)) {
+    const word = match[1].toLowerCase();
+    if (BANNED_PRONOUNS.has(word) || word === 'who') mentioned.add(word);
+  }
+  if (mentioned.size > 0) return [...mentioned];
+
+  const words = message.toLowerCase().match(/\b[a-z']+\b/g) ?? [];
+  for (const word of words) {
+    if (BANNED_PRONOUNS.has(word) || word === 'who') mentioned.add(word);
+  }
+  return [...mentioned];
+}
+
+function getWrittenSectionText(written: WrittenResume, section: string): string | null {
+  if (section === 'summary') return written.summary;
+  if (section.startsWith('selectedAccomplishments')) {
+    return written.selectedAccomplishments.join('\n');
+  }
+  if (section.startsWith('coreCompetencies')) {
+    return written.coreCompetencies.join('\n');
+  }
+
+  const positionMatch = /^positions\[(\d+)\](?:\.bullets\[(\d+)\])?/.exec(section);
+  if (positionMatch) {
+    const position = written.positions[Number(positionMatch[1])];
+    if (!position) return null;
+    if (positionMatch[2] !== undefined) {
+      return position.bullets[Number(positionMatch[2])]?.text ?? null;
+    }
+    return [
+      position.title,
+      position.company,
+      position.scope ?? '',
+      ...position.bullets.map((bullet) => bullet.text),
+    ].join('\n');
+  }
+
+  return null;
+}
 
 /**
  * Verify retry addendum. Phrasing is preserved from the Fix 8 implementation

@@ -35,6 +35,11 @@ import {
   buildForbiddenPhraseRetryAddendum,
   detectForbiddenPhrases,
 } from './forbidden-phrase-retry.js';
+import { prepareResumeForWriting } from './employment-status.js';
+import {
+  buildPositionSourceAttributionRetryAddendum,
+  checkPositionSourceAttribution,
+} from './source-attribution.js';
 import type {
   CustomSection,
   Position,
@@ -180,12 +185,13 @@ export async function writeWithTelemetry(
 ): Promise<WriteResult> {
   const variant = options.variant ?? 'v1';
   const start = Date.now();
+  const writeResume = prepareResumeForWriting(resume);
 
   logger.info(
     {
       variant,
-      positions: resume.positions.length,
-      customSections: resume.customSections.length,
+      positions: writeResume.positions.length,
+      customSections: writeResume.customSections.length,
       positionEmphasis: strategy.positionEmphasis.length,
       emphasizedAccomplishments: strategy.emphasizedAccomplishments.length,
       positioningFrame: strategy.positioningFrame,
@@ -194,13 +200,13 @@ export async function writeWithTelemetry(
   );
 
   const strategyJson = JSON.stringify(strategy, null, 2);
-  const resumeJson = JSON.stringify(resume, null, 2);
+  const resumeJson = JSON.stringify(writeResume, null, 2);
 
   // Bounded-concurrency fan-out. Tasks run in a FIFO queue capped at
   // getWriteConcurrency() simultaneous calls; see DEFAULT_WRITE_CONCURRENCY
   // for rationale.
-  const positionCount = resume.positions.length;
-  const customSectionCount = resume.customSections.length;
+  const positionCount = writeResume.positions.length;
+  const customSectionCount = writeResume.customSections.length;
   type WriteTask =
     | { kind: 'summary'; run: () => ReturnType<typeof runSummary> }
     | { kind: 'accomplishments'; run: () => ReturnType<typeof runAccomplishments> }
@@ -217,13 +223,21 @@ export async function writeWithTelemetry(
       kind: 'competencies',
       run: () => runCompetencies(variant, strategyJson, resumeJson, options.signal),
     },
-    ...resume.positions.map(
+    ...writeResume.positions.map(
       (position, idx): WriteTask => ({
         kind: 'position',
-        run: () => runPosition(position, idx, variant, strategyJson, resumeJson, options.signal),
+        run: () => runPosition(
+          position,
+          idx,
+          variant,
+          strategyJson,
+          resumeJson,
+          writeResume,
+          options.signal,
+        ),
       }),
     ),
-    ...resume.customSections.map(
+    ...writeResume.customSections.map(
       (section, idx): WriteTask => ({
         kind: 'customSection',
         run: () => runCustomSection(section, idx, variant, strategyJson, options.signal),
@@ -508,21 +522,61 @@ async function runPosition(
   variant: string,
   strategyJson: string,
   resumeJson: string,
+  sourceResume: StructuredResume,
   signal?: AbortSignal,
 ): Promise<{ position: WrittenPosition; telemetry: SectionTelemetry }> {
   const positionJson = JSON.stringify(position, null, 2);
-  const out = await runSection<WrittenPosition>(
+  const promptName = `write-position.${variant}`;
+  const replacements = {
+    strategy_json: strategyJson,
+    resume_json: resumeJson,
+    position_json: positionJson,
+    position_index: String(positionIndex),
+  };
+  let out = await runSection<WrittenPosition>(
     `position[${positionIndex}]`,
-    `write-position.${variant}`,
-    {
-      strategy_json: strategyJson,
-      resume_json: resumeJson,
-      position_json: positionJson,
-      position_index: String(positionIndex),
-    },
+    promptName,
+    replacements,
     WrittenPositionSchema,
     signal,
   );
+
+  const attribution = checkPositionSourceAttribution(out.parsed, sourceResume);
+  if (!attribution.verified) {
+    logger.info(
+      {
+        section: `position[${positionIndex}]`,
+        promptName,
+        issueCount: attribution.issues.length,
+        firstMissing: attribution.issues[0]?.missingTokens.slice(0, 5),
+        retry: 1,
+      },
+      'position source-attribution retry triggered',
+    );
+    const retry = await runSection<WrittenPosition>(
+      `position[${positionIndex}]`,
+      promptName,
+      replacements,
+      WrittenPositionSchema,
+      signal,
+      buildPositionSourceAttributionRetryAddendum(attribution),
+    );
+    const retryAttribution = checkPositionSourceAttribution(retry.parsed, sourceResume);
+    if (!retryAttribution.verified) {
+      logger.warn(
+        {
+          section: `position[${positionIndex}]`,
+          promptName,
+          initialIssueCount: attribution.issues.length,
+          retryIssueCount: retryAttribution.issues.length,
+          retryFirstMissing: retryAttribution.issues[0]?.missingTokens.slice(0, 5),
+        },
+        'position source-attribution retry failed to fully clear — verify will surface remaining issues',
+      );
+    }
+    out = retry;
+  }
+
   return { position: out.parsed, telemetry: out.telemetry };
 }
 

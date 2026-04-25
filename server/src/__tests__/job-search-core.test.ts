@@ -159,6 +159,34 @@ describe('searchAllSources', () => {
     expect(adapter.search).toHaveBeenCalledWith('CTO', 'US', baseFilters);
   });
 
+  it('enforces a requested remoteType across adapters', async () => {
+    const remoteJob = makeJob({
+      external_id: 'remote_1',
+      title: 'VP Operations',
+      remote_type: 'remote',
+    });
+    const hybridJob = makeJob({
+      external_id: 'hybrid_1',
+      title: 'VP Operations',
+      remote_type: 'hybrid',
+    });
+    const unknownJob = makeJob({
+      external_id: 'unknown_1',
+      title: 'VP Operations',
+      remote_type: null,
+    });
+    const adapter = makeAdapter('a', [remoteJob, hybridJob, unknownJob]);
+
+    const result = await searchAllSources(
+      'VP Operations',
+      'Dallas, TX',
+      { datePosted: '7d', remoteType: 'hybrid' },
+      [adapter],
+    );
+
+    expect(result.jobs).toEqual([hybridJob]);
+  });
+
   it('deduplication is case-insensitive for title/company/location', async () => {
     const jobA = makeJob({ title: 'CTO', company: 'ACME CORP', location: 'New York', source: 'a' });
     const jobB = makeJob({ title: 'cto', company: 'Acme Corp', location: 'new york', source: 'b', external_id: 'b_2' });

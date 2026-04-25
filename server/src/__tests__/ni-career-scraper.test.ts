@@ -150,9 +150,8 @@ describe('scrapeCareerPages', () => {
     const result = await scrapeCareerPages([COMPANY_NO_ATS], ['VP'], 'user-1');
 
     expect(mockFetchFromATS).not.toHaveBeenCalled();
-    // scrapeCareerPages now passes filters.location + filters.max_days_old as
-    // trailing args. Default filters = { max_days_old: 7 }, so the 4th arg is 7.
-    expect(mockSearchViaSerper).toHaveBeenCalledWith('Mystery Inc', ['VP'], undefined, 7);
+    // scrapeCareerPages passes filter details through to the Serper fallback.
+    expect(mockSearchViaSerper).toHaveBeenCalledWith('Mystery Inc', ['VP'], undefined, 7, undefined, undefined);
     expect(result.jobsFound).toBeGreaterThan(0);
   });
 
@@ -248,6 +247,117 @@ describe('scrapeCareerPages', () => {
 
     expect(result.sourceBreakdown).toBeDefined();
     expect(result.sourceBreakdown.greenhouse).toBeGreaterThan(0);
+  });
+
+  it('filters city/state without treating state abbreviations as substrings', async () => {
+    mockFetchFromATS.mockResolvedValue([
+      {
+        title: 'VP Operations',
+        url: 'https://example.com/jobs/portland',
+        location: 'Portland, OR',
+        salaryRange: null,
+        descriptionSnippet: null,
+        postedOn: new Date().toISOString(),
+        source: 'greenhouse',
+      },
+      {
+        title: 'VP Operations',
+        url: 'https://example.com/jobs/new-york',
+        location: 'New York, NY',
+        salaryRange: null,
+        descriptionSnippet: null,
+        postedOn: new Date().toISOString(),
+        source: 'greenhouse',
+      },
+      {
+        title: 'VP Operations',
+        url: 'https://example.com/jobs/orlando',
+        location: 'Orlando, FL',
+        salaryRange: null,
+        descriptionSnippet: null,
+        postedOn: new Date().toISOString(),
+        source: 'greenhouse',
+      },
+      {
+        title: 'VP Operations',
+        url: 'https://example.com/jobs/remote',
+        location: 'Remote',
+        salaryRange: null,
+        descriptionSnippet: null,
+        postedOn: new Date().toISOString(),
+        source: 'greenhouse',
+      },
+    ] satisfies ATSJob[]);
+
+    const result = await scrapeCareerPages(
+      [COMPANY_WITH_ATS],
+      ['VP Operations'],
+      'user-1',
+      'network_connections',
+      undefined,
+      { location: 'Portland, OR', radius_miles: 25, remote_only: false, max_days_old: 7 },
+    );
+
+    const insertedLocations = vi.mocked(insertJobMatch).mock.calls.map(([, match]) => match.location);
+    expect(result.matchingJobs).toBe(2);
+    expect(insertedLocations).toContain('Portland, OR');
+    expect(insertedLocations).toContain('Remote');
+    expect(insertedLocations).not.toContain('New York, NY');
+    expect(insertedLocations).not.toContain('Orlando, FL');
+  });
+
+  it('filters jobs by explicit hybrid work mode during the scan', async () => {
+    mockFetchFromATS.mockResolvedValue([
+      {
+        title: 'VP Operations - Remote',
+        url: 'https://example.com/jobs/remote',
+        location: 'Remote',
+        salaryRange: null,
+        descriptionSnippet: 'Fully remote operations leadership role.',
+        postedOn: new Date().toISOString(),
+        source: 'greenhouse',
+      },
+      {
+        title: 'VP Operations - Hybrid',
+        url: 'https://example.com/jobs/hybrid',
+        location: 'Dallas, TX',
+        salaryRange: null,
+        descriptionSnippet: 'Hybrid schedule with 3 days in-office.',
+        postedOn: new Date().toISOString(),
+        source: 'greenhouse',
+      },
+      {
+        title: 'VP Operations - On-site',
+        url: 'https://example.com/jobs/onsite',
+        location: 'Dallas, TX',
+        salaryRange: null,
+        descriptionSnippet: 'On-site role with relocation assistance.',
+        postedOn: new Date().toISOString(),
+        source: 'greenhouse',
+      },
+      {
+        title: 'VP Operations - Unknown',
+        url: 'https://example.com/jobs/unknown',
+        location: 'Dallas, TX',
+        salaryRange: null,
+        descriptionSnippet: null,
+        postedOn: new Date().toISOString(),
+        source: 'greenhouse',
+      },
+    ] satisfies ATSJob[]);
+
+    const result = await scrapeCareerPages(
+      [COMPANY_WITH_ATS],
+      ['VP Operations'],
+      'user-1',
+      'network_connections',
+      undefined,
+      { remote_only: false, work_modes: ['hybrid'], max_days_old: 7 },
+    );
+
+    const insertedTitles = vi.mocked(insertJobMatch).mock.calls.map(([, match]) => match.title);
+    expect(result.matchingJobs).toBe(1);
+    expect(insertedTitles).toEqual(['VP Operations - Hybrid']);
   });
 });
 

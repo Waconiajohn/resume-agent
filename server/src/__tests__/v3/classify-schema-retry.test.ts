@@ -1,4 +1,5 @@
-// Classify schema retry tests (Fix 5, 2026-04-20 pm).
+// Classify structural retry tests (Fix 5, 2026-04-20 pm; JSON-parse retry
+// enabled after the 2026-04-25 live VP Ops validation).
 //
 // The 2026-04-20 am 19-fixture validation (commit b43686b6) showed
 // gpt-5.4-mini produces schema-invalid classify output on two distinct
@@ -7,9 +8,10 @@
 // closes the first; a retry path handles the general class.
 //
 // These tests exercise the retry wiring itself — the state machine is
-//   first attempt valid               → no retry, single call
-//   first invalid, retry valid        → two calls, second output returned
-//   first invalid, retry also invalid → throws with both errors
+//   first attempt valid                    → no retry, single call
+//   first schema-invalid, retry valid      → two calls, second output returned
+//   first malformed JSON, retry valid      → two calls, second output returned
+//   first invalid, retry also invalid      → throws with both errors
 //
 // The LLM is mocked at the provider factory so the tests are deterministic.
 
@@ -65,6 +67,11 @@ const INVALID_RESUME_BOOLEAN_CONFIDENCE = {
     },
   ],
 };
+
+const MALFORMED_JSON = JSON.stringify(VALID_RESUME).replace(
+  '"careerGaps":[]',
+  '"careerGaps":[',
+);
 
 const EXTRACT_INPUT: ExtractResult = {
   plaintext: 'Test Candidate\n\nSenior Engineer at Acme 2020-2024\nShipped the thing.',
@@ -169,6 +176,46 @@ describe('classify schema retry', () => {
     expect(retrySystemMessage).toMatch(/confidence/i);
   });
 
+  it('malformed-json-first-valid-retry: fires retry, returns the valid second output', async () => {
+    const streamFn = vi
+      .fn()
+      // First attempt: malformed JSON — the live VP Ops v1.5 failure class.
+      .mockImplementationOnce(streamOf(MALFORMED_JSON))
+      // Second attempt: valid.
+      .mockImplementationOnce(streamOf(JSON.stringify(VALID_RESUME)));
+
+    vi.doMock('../../v3/prompts/loader.js', () => ({
+      loadPrompt: vi.fn().mockReturnValue({
+        systemMessage: 'You are the classify agent.',
+        userMessageTemplate: 'Resume: {{resume_text}}',
+        version: '1.5',
+        capability: 'strong-reasoning',
+        temperature: 0.2,
+      }),
+    }));
+    vi.doMock('../../v3/providers/factory.js', () => ({
+      getProvider: vi.fn().mockReturnValue({
+        provider: { name: 'mock', stream: streamFn },
+        model: 'gpt-5.4-mini',
+        backend: 'openai',
+        capability: 'strong-reasoning',
+      }),
+      _resetProviderCache: vi.fn(),
+    }));
+
+    const mod = await import('../../v3/classify/index.js');
+    const { resume, telemetry } = await mod.classifyWithTelemetry(EXTRACT_INPUT);
+
+    expect(resume.positions[0].bullets[0].confidence).toBe(0.9);
+    expect(telemetry.schemaRetryFired).toBe(true);
+    expect(streamFn).toHaveBeenCalledTimes(2);
+
+    const retrySystemMessage = streamFn.mock.calls[1][0].system as string;
+    expect(retrySystemMessage).toMatch(/RETRY/);
+    expect(retrySystemMessage).toMatch(/not valid JSON/i);
+    expect(retrySystemMessage).toMatch(/Return ONLY the complete StructuredResume JSON object/);
+  });
+
   it('invalid-both: throws a specific error naming both attempts', async () => {
     const streamFn = vi
       .fn()
@@ -196,7 +243,7 @@ describe('classify schema retry', () => {
 
     const mod = await import('../../v3/classify/index.js');
     await expect(mod.classifyWithTelemetry(EXTRACT_INPUT)).rejects.toThrow(
-      /schema validation failed on BOTH/i,
+      /structural validation failed on BOTH/i,
     );
 
     expect(streamFn).toHaveBeenCalledTimes(2);

@@ -47,6 +47,16 @@ const MEDIUM_POST = [
 /** 16 paragraphs — above the 12-slide cap, so mergeShortParagraphs should trim. */
 const LONG_POST = Array.from({ length: 16 }, (_, i) => `Paragraph ${i + 1} describing one specific observation about scaling operations.`).join('\n\n') + '\n\n#Operations';
 
+function wordCount(text: string | undefined): number {
+  return (text ?? '').trim().split(/\s+/).filter(Boolean).length;
+}
+
+function slideWordCount(slide: CarouselSlide): number {
+  return wordCount(slide.headline)
+    + wordCount(slide.body)
+    + (slide.bulletPoints ?? []).reduce((sum, bullet) => sum + wordCount(bullet), 0);
+}
+
 // ─── Tests ─────────────────────────────────────────────────────────────
 
 describe('buildCarouselSlides — structure', () => {
@@ -151,8 +161,8 @@ describe('buildCarouselSlides — body handling', () => {
     expect(anyContentHasHashtag).toBe(false);
   });
 
-  it('content slides use bullet points when the chunk has multiple sentences', () => {
-    const slides = buildCarouselSlides(MEDIUM_POST, TOPIC, AUTHOR, HASHTAGS);
+  it('content slides use micro-bullets when the chunk has multiple sentences', () => {
+    const slides = buildCarouselSlides(SHORT_POST, TOPIC, AUTHOR, HASHTAGS);
     const contentSlides = slides.filter((s) => s.type === 'content');
 
     // At least one content slide produced from a multi-sentence chunk should carry bullets.
@@ -167,6 +177,19 @@ describe('buildCarouselSlides — body handling', () => {
     for (const slide of contentSlides) {
       expect(slide.headline).toBeTruthy();
       expect(slide.headline.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('keeps each content slide sparse enough for carousel reading', () => {
+    const slides = buildCarouselSlides(SHORT_POST, TOPIC, AUTHOR, HASHTAGS);
+    const contentSlides = slides.filter((s) => s.type === 'content');
+
+    for (const slide of contentSlides) {
+      expect(wordCount(slide.headline)).toBeLessThanOrEqual(7);
+      expect(slideWordCount(slide)).toBeLessThanOrEqual(20);
+      for (const bullet of slide.bulletPoints ?? []) {
+        expect(wordCount(bullet)).toBeLessThanOrEqual(6);
+      }
     }
   });
 });

@@ -301,6 +301,23 @@ describe('checkAttributionMechanically — fix regressions', () => {
     expect(result.bullets[0].missingTokens).not.toContain('Enterprise DevOps Transformation');
   });
 
+  it('does not treat sentence-start action verbs as part of proper-noun claims', () => {
+    const src = resume({
+      positionBullets: [
+        'Sponsored Oracle ERP rollout for production scheduling, inventory accuracy, and finance reporting; stabilized adoption across plant leadership teams.',
+      ],
+    });
+    const w = written([
+      'Sponsor Oracle ERP rollout for production scheduling, inventory accuracy, and finance reporting; stabilize adoption across plant leadership teams.',
+      'Sponsors Oracle ERP rollout for production scheduling, inventory accuracy, and finance reporting; stabilizes adoption across plant leadership teams.',
+    ]);
+    const result = checkAttributionMechanically(w, src);
+    expect(result.bullets[0].verified).toBe(true);
+    expect(result.bullets[0].missingTokens).not.toContain('Sponsor Oracle ERP');
+    expect(result.bullets[1].verified).toBe(true);
+    expect(result.bullets[1].missingTokens).not.toContain('Sponsors Oracle ERP');
+  });
+
   // ─── Fix 3 (2026-04-19): strategize field-grounding checks ─────────
 
   function minimalStrategy(frame: string, discipline: string): Strategy {

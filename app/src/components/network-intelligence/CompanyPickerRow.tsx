@@ -27,12 +27,18 @@ export function CompanyPickerRow({
 
   const eligible = company.companyId !== null;
   const displayName = company.companyDisplayName ?? company.companyRaw;
+  const canToggle = eligible && !disabled && (selected || !atLimit);
 
   const handleRowClick = useCallback(() => {
-    if (disabled || !eligible) return;
-    if (!selected && atLimit) return;
+    if (!canToggle) return;
     onToggle(company.companyRaw);
-  }, [disabled, eligible, selected, atLimit, onToggle, company.companyRaw]);
+  }, [canToggle, onToggle, company.companyRaw]);
+
+  const handleRowKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    handleRowClick();
+  }, [handleRowClick]);
 
   const handleBadgeClick = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -73,17 +79,26 @@ export function CompanyPickerRow({
   return (
     <div>
       <div
+        role="button"
+        tabIndex={canToggle ? 0 : -1}
+        aria-label={`${selected ? 'Deselect' : 'Select'} ${displayName}`}
+        aria-pressed={selected}
+        aria-disabled={!canToggle}
         onClick={handleRowClick}
+        onKeyDown={handleRowKeyDown}
         className={cn(
-          'flex items-center gap-2.5 px-3 py-2 transition-colors',
-          eligible && !disabled ? 'cursor-pointer hover:bg-[var(--accent-muted)]/40' : '',
+          'flex items-center gap-2.5 px-3 py-2 outline-none transition-[background-color,box-shadow,color]',
+          selected && 'bg-[var(--link)]/10 shadow-[inset_3px_0_0_var(--link)] ring-1 ring-inset ring-[var(--link)]/35',
+          canToggle
+            ? 'cursor-pointer hover:bg-[var(--accent-muted)]/40 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]'
+            : '',
           !eligible && 'opacity-40',
         )}
       >
         {/* Selection indicator */}
         <div className="shrink-0">
           {selected ? (
-            <CheckCircle2 className="h-4 w-4 text-[var(--link)]/80" />
+            <CheckCircle2 className="h-4 w-4 text-[var(--link)]" />
           ) : (
             <Circle className={cn('h-4 w-4', eligible ? 'text-[var(--text-soft)]' : 'text-[var(--text-soft)]/40')} />
           )}
@@ -96,6 +111,12 @@ export function CompanyPickerRow({
         )}>
           {displayName}
         </span>
+
+        {selected && (
+          <span className="shrink-0 rounded-full border border-[var(--link)]/35 bg-[var(--link)]/15 px-2 py-0.5 text-[11px] font-semibold text-[var(--link)]">
+            Selected
+          </span>
+        )}
 
         {/* Connection count badge — clickable */}
         <button

@@ -20,6 +20,11 @@ import {
   renderPositioningStrategySection,
 } from '../../../contracts/shared-context-prompt.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
+import {
+  AGE_AWARENESS_RULES,
+  EVIDENCE_LADDER_RULES,
+  HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+} from '../../shared-knowledge.js';
 
 // ─── Section writing prompts ───────────────────────────────────────────
 
@@ -30,6 +35,20 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
   const analysis = state.analysis;
 
   const parts: string[] = [`Write the LinkedIn ${section} for this professional.`, ''];
+
+  parts.push(
+    '## Evidence and Editorial Standard',
+    'Every factual claim must trace to the current LinkedIn profile, shared career context, positioning strategy, or evidence inventory. Use adjacent proof creatively when it is honest; never invent credentials, employers, certifications, metrics, tools, or outcomes.',
+    '',
+    EVIDENCE_LADDER_RULES,
+    '',
+    HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+    '',
+    '## Age Awareness',
+    AGE_AWARENESS_RULES,
+    'For LinkedIn, avoid unnecessary age signals. Do not include graduation years or early-career chronology unless the user explicitly asks for it or the date is recent and strategically useful.',
+    '',
+  );
 
   // Approved sections for tone adaptation
   const approvedEntries = Object.entries(approvedSections ?? {}) as [ProfileSection, string][];
@@ -117,8 +136,9 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
   } else if (section === 'education') {
     parts.push(
       '## Education Section Requirements',
-      '- Degree, institution, year',
-      '- Add any executive education, certifications, or notable coursework',
+      '- Degree and institution; omit graduation years by default for executives 45+',
+      '- Add executive education, certifications, or notable coursework only when supported by source evidence',
+      '- Include a year only if it is recent/current, user-provided, and strategically useful',
       '- Keep concise — education matters less for executives than impact',
     );
   }
@@ -178,6 +198,7 @@ const writeSectionTool: LinkedInEditorTool = {
       system:
         'You are a LinkedIn profile writer for executives. You write in the executive\'s authentic ' +
         'voice, using specific evidence and metrics. You never use buzzwords or generic corporate speak. ' +
+        'You avoid age-bias signals such as unnecessary graduation years. ' +
         'Return ONLY valid JSON, no markdown fencing.',
       messages: [
         {

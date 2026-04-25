@@ -170,6 +170,7 @@ export async function strategizeWithTelemetry(
         unverifiedFieldCount: attribution.summary.fieldsUnverifiedCount,
         totalMissingTokens: attribution.summary.totalMissingTokens,
         firstSummaryMissing: unverifiedSummaries[0]?.missingTokens.slice(0, 5),
+        firstSummaryLocationIssue: unverifiedSummaries[0]?.locationIssue ?? null,
         firstFieldMissing: unverifiedFields[0]
           ? `${unverifiedFields[0].field}: ${unverifiedFields[0].missingWords.slice(0, 5).join(', ')}`
           : null,
@@ -213,8 +214,18 @@ export async function strategizeWithTelemetry(
       const failingFields = attribution.fields.filter((f) => !f.verified);
       const summaryDetail = failingSummaries
         .map(
-          (s) =>
-            `  [${s.summaryIndex}] pos=${s.positionIndex} text="${s.text.slice(0, 120)}" missing=[${s.missingTokens.slice(0, 6).join('; ')}]`,
+          (s) => {
+            const parts = [
+              `  [${s.summaryIndex}] pos=${s.positionIndex} text="${s.text.slice(0, 120)}"`,
+            ];
+            if (s.missingTokens.length > 0) {
+              parts.push(`missing=[${s.missingTokens.slice(0, 6).join('; ')}]`);
+            }
+            if (s.locationIssue) {
+              parts.push(`locationIssue="${s.locationIssue}"`);
+            }
+            return parts.join(' ');
+          },
         )
         .join('\n');
       const fieldDetail = failingFields
@@ -462,9 +473,17 @@ function buildAttributionRetryAddendum(
     for (const s of unverifiedSummaries) {
       lines.push(`  [${s.summaryIndex}] positionIndex=${s.positionIndex}`);
       lines.push(`    current summary: "${s.text}"`);
-      lines.push(
-        `    phrases not in source (rewrite or remove these): ${s.missingTokens.map((t) => `"${t}"`).join(', ')}`,
-      );
+      if (s.missingTokens.length > 0) {
+        lines.push(
+          `    phrases not in source (rewrite or remove these): ${s.missingTokens.map((t) => `"${t}"`).join(', ')}`,
+        );
+      }
+      if (s.locationIssue) {
+        lines.push(`    source-location issue: ${s.locationIssue}`);
+        lines.push(
+          '    (fix: set positionIndex to the source position that contains the claim, or rewrite the summary from explicit crossRoleHighlights/customSections if it is truly cross-role)',
+        );
+      }
     }
   }
   lines.push('');

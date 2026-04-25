@@ -174,6 +174,122 @@ describe('bigram leak detection — the bshook pattern', () => {
     expect(targetField!.leakedPhrases).not.toContain('senior manager');
   });
 
+  it('PASSES VP/Vice President equivalence and comma-separated discipline lists', () => {
+    const atlasJd: JobDescription = {
+      text: `Vice President of Operations for Atlas Manufacturing Group. Lead operations
+      across manufacturing facilities, supply chain, distribution, quality, and
+      continuous improvement.`,
+      title: 'Vice President of Operations',
+      company: 'Atlas Manufacturing Group',
+    };
+    const src = resume([
+      {
+        title: 'VP Operations',
+        company: 'Northstar Components',
+        bullets: [
+          'Led manufacturing operations, supply chain, and distribution across three plants.',
+        ],
+      },
+    ]);
+    const strat = strategy(
+      'manufacturing operations leader',
+      'Vice President of Operations, Manufacturing, Supply Chain, and Distribution',
+    );
+
+    const result = checkStrategizeAttribution(strat, src, atlasJd);
+    const targetField = result.fields.find((f) => f.field === 'targetDisciplinePhrase');
+
+    expect(targetField).toBeDefined();
+    expect(targetField!.verified).toBe(true);
+    expect(targetField!.missingWords).not.toContain('vice');
+    expect(targetField!.leakedPhrases).not.toContain('operations manufacturing');
+    expect(targetField!.leakedPhrases).not.toContain('manufacturing supply');
+  });
+
+  it('PASSES hyphenated scope when source and strategy use equivalent spacing', () => {
+    const jdWithMultiSite: JobDescription = {
+      text: 'Seeking a multi-site manufacturing operations executive for five facilities.',
+      title: 'VP Operations',
+      company: 'Atlas',
+    };
+    const src = resume([
+      {
+        title: 'Vice President of Operations',
+        company: 'Manufacturing Co',
+        bullets: [
+          'Led multi-site manufacturing operations across 3 facilities with 420 employees.',
+        ],
+      },
+    ]);
+    const strat = strategy(
+      'multi site manufacturing operations',
+      'Manufacturing Operations',
+    );
+    const result = checkStrategizeAttribution(strat, src, jdWithMultiSite);
+    const posField = result.fields.find((f) => f.field === 'positioningFrame');
+
+    expect(posField!.verified).toBe(true);
+    expect(posField!.missingWords).not.toContain('multi');
+    expect(posField!.leakedPhrases).not.toContain('multi site');
+  });
+
+  it('PASSES supportable multi-site inference when source proves multiple facilities', () => {
+    const jdWithMultiSite: JobDescription = {
+      text: 'Seeking a multi-site manufacturing operations executive to lead standardized plant performance.',
+      title: 'VP Operations',
+      company: 'Atlas',
+    };
+    const src = resume([
+      {
+        title: 'Vice President of Operations',
+        company: 'Manufacturing Co',
+        bullets: [
+          'Led operations across 3 manufacturing facilities with 420 employees.',
+        ],
+      },
+    ]);
+    const strat = strategy(
+      'multi-site manufacturing operations',
+      'Multi-Site Manufacturing Operations Leader',
+    );
+    const result = checkStrategizeAttribution(strat, src, jdWithMultiSite);
+    const posField = result.fields.find((f) => f.field === 'positioningFrame');
+    const targetField = result.fields.find((f) => f.field === 'targetDisciplinePhrase');
+
+    expect(posField!.verified).toBe(true);
+    expect(targetField!.verified).toBe(true);
+    expect(posField!.missingWords).toEqual([]);
+    expect(targetField!.missingWords).toEqual([]);
+    expect(posField!.leakedPhrases).not.toContain('multi site');
+    expect(targetField!.leakedPhrases).not.toContain('multi site');
+  });
+
+  it('still FAILS unsupported multi-site inference when source lacks multi-location proof', () => {
+    const jdWithMultiSite: JobDescription = {
+      text: 'Seeking a multi-site manufacturing operations executive to lead standardized plant performance.',
+      title: 'VP Operations',
+      company: 'Atlas',
+    };
+    const src = resume([
+      {
+        title: 'Vice President of Operations',
+        company: 'Manufacturing Co',
+        bullets: [
+          'Led operations for a manufacturing facility with 420 employees.',
+        ],
+      },
+    ]);
+    const strat = strategy(
+      'multi-site manufacturing operations',
+      'Multi-Site Manufacturing Operations Leader',
+    );
+    const result = checkStrategizeAttribution(strat, src, jdWithMultiSite);
+    const posField = result.fields.find((f) => f.field === 'positioningFrame');
+
+    expect(posField!.verified).toBe(false);
+    expect(posField!.leakedPhrases).toContain('multi site');
+  });
+
   it('does NOT flag a bigram when not present in the JD (falls through to word-level only)', () => {
     const src = resume([
       {

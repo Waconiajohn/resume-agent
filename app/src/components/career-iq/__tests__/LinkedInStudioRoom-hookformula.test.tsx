@@ -281,8 +281,8 @@ describe('LinkedInStudioRoom — hook score badge visibility', () => {
     setPostReviewState({ hookScore: 82 });
     renderWriteTab();
     expect(screen.getByText('Hook 82')).toBeInTheDocument();
-    expect(screen.getByText('Auth 85')).toBeInTheDocument();
-    expect(screen.getByText('Engage 78')).toBeInTheDocument();
+    expect(screen.getByText('Authenticity 85')).toBeInTheDocument();
+    expect(screen.getByText('Engagement 78')).toBeInTheDocument();
   });
 });
 

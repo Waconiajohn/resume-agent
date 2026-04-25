@@ -6,7 +6,7 @@
  */
 
 import logger from '../logger.js';
-import type { ATSJob } from './types.js';
+import type { ATSJob, NiWorkMode } from './types.js';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const SERPER_API_URL = 'https://google.serper.dev/search';
@@ -24,6 +24,8 @@ export async function searchJobsViaSerper(
   targetTitles: string[],
   location?: string,
   maxDaysOld?: number,
+  radiusMiles?: number,
+  workModes?: NiWorkMode[],
 ): Promise<ATSJob[]> {
   const apiKey = process.env.SERPER_API_KEY;
   if (!apiKey) {
@@ -35,19 +37,21 @@ export async function searchJobsViaSerper(
 
   // One search per target title (or one generic search if no titles)
   const queries = targetTitles.length > 0
-    ? targetTitles.map((title) => buildQuery(companyName, title, location))
-    : [buildQuery(companyName, null, location)];
+    ? targetTitles.map((title) => buildQuery(companyName, title, location, radiusMiles, workModes))
+    : [buildQuery(companyName, null, location, radiusMiles, workModes)];
 
   for (const query of queries) {
     try {
       // Build Serper request body with optional time filter
       const serperBody: Record<string, unknown> = { q: query, num: 10 };
       if (maxDaysOld && maxDaysOld > 0) {
-        // Google tbs parameter: qdr:d = past day, qdr:d3 = past 3 days, qdr:w = past week, qdr:w2 = past 2 weeks
+        // Google tbs parameter: qdr:d = past day, qdr:d3 = past 3 days, qdr:w = past week,
+        // qdr:w2 = past 2 weeks, qdr:m = past month.
         if (maxDaysOld <= 1) serperBody.tbs = 'qdr:d';
         else if (maxDaysOld <= 3) serperBody.tbs = 'qdr:d3';
         else if (maxDaysOld <= 7) serperBody.tbs = 'qdr:w';
         else if (maxDaysOld <= 14) serperBody.tbs = 'qdr:w2';
+        else if (maxDaysOld <= 30) serperBody.tbs = 'qdr:m';
       }
 
       const res = await fetch(SERPER_API_URL, {
@@ -86,12 +90,33 @@ export async function searchJobsViaSerper(
 
 // ─── Query Building ─────────────────────────────────────────────────────────
 
-function buildQuery(companyName: string, targetTitle: string | null, location?: string): string {
+function buildQuery(
+  companyName: string,
+  targetTitle: string | null,
+  location?: string,
+  radiusMiles?: number,
+  workModes?: NiWorkMode[],
+): string {
   const company = `"${companyName}"`;
   const title = targetTitle ? ` "${targetTitle}"` : '';
-  const locationPart = location && location.trim().length > 0 ? ` near "${location.trim()}"` : '';
+  const workModePart = buildWorkModePart(workModes);
+  const locationPart = location && location.trim().length > 0
+    ? radiusMiles && radiusMiles > 0
+      ? ` within ${radiusMiles} miles of "${location.trim()}"`
+      : ` near "${location.trim()}"`
+    : '';
   const atsSites = 'site:boards.greenhouse.io OR site:jobs.lever.co OR site:myworkdayjobs.com OR site:jobs.ashbyhq.com OR site:icims.com OR site:recruitee.com OR site:apply.workable.com OR site:jobs.personio.de OR site:jobs.personio.com';
-  return `${company}${title}${locationPart} (${atsSites})`;
+  return `${company}${title}${workModePart}${locationPart} (${atsSites})`;
+}
+
+function buildWorkModePart(workModes?: NiWorkMode[]): string {
+  if (!workModes?.length || workModes.length >= 3) return '';
+
+  const uniqueModes = [...new Set(workModes)];
+  if (uniqueModes.length >= 3) return '';
+
+  const terms = uniqueModes.map((mode) => (mode === 'onsite' ? 'on-site' : mode));
+  return terms.length === 1 ? ` ${terms[0]}` : ` (${terms.join(' OR ')})`;
 }
 
 // ─── Serper Response Parsing ────────────────────────────────────────────────

@@ -29,6 +29,12 @@ import {
 } from '../../contracts/shared-context-prompt.js';
 import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 
+function pendingReviewSection(state: LinkedInEditorState): ProfileSection | null {
+  return PROFILE_SECTION_ORDER.find((section) =>
+    !!state.section_drafts[section] && !state.sections_completed.includes(section)
+  ) ?? null;
+}
+
 export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEditorState, LinkedInEditorSSEEvent> {
   return {
     domain: 'linkedin-editor',
@@ -40,20 +46,21 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
         stageMessage: {
           startStage: 'editing',
           start: 'Starting your LinkedIn profile optimization...',
-          complete: 'LinkedIn profile complete',
+          complete: 'LinkedIn section ready for review',
         },
-        gates: PROFILE_SECTION_ORDER.map((section) => ({
-          name: `section_review_${section}`,
+        gates: [{
+          name: 'section_review',
           condition: (state: LinkedInEditorState) => {
-            // Gate fires when the section has been drafted but not yet approved
-            return (
-              !!state.section_drafts[section] &&
-              !state.sections_completed.includes(section)
-            );
+            // Gate fires when the current section has been drafted but not yet approved.
+            return pendingReviewSection(state) !== null;
           },
           onResponse: (response: unknown, state: LinkedInEditorState, emit?: (event: LinkedInEditorSSEEvent) => void) => {
+            const section = pendingReviewSection(state);
+            if (!section) return;
             const approve = () => {
-              state.sections_completed = [...state.sections_completed, section];
+              if (!state.sections_completed.includes(section)) {
+                state.sections_completed = [...state.sections_completed, section];
+              }
               if (emit) {
                 emit({
                   type: 'section_approved',
@@ -77,12 +84,19 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
               }
             }
           },
-        })),
+          requiresRerun: (state: LinkedInEditorState) =>
+            pendingReviewSection(state) !== null
+            || PROFILE_SECTION_ORDER.some((section) => !state.sections_completed.includes(section)),
+          maxReruns: PROFILE_SECTION_ORDER.length + 2,
+        }],
         onComplete: (scratchpad, state) => {
           // Transfer all approved section drafts from scratchpad to state
           for (const section of PROFILE_SECTION_ORDER) {
             const key = `draft_${section}`;
-            if (typeof scratchpad[key] === 'string' && !state.section_drafts[section]) {
+            if (
+              typeof scratchpad[key] === 'string'
+              && (!state.section_drafts[section] || !state.sections_completed.includes(section))
+            ) {
               state.section_drafts = {
                 ...state.section_drafts,
                 [section]: scratchpad[key],
@@ -90,7 +104,10 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
             }
 
             const scoresKey = `scores_${section}`;
-            if (scratchpad[scoresKey] && !state.quality_scores[section]) {
+            if (
+              scratchpad[scoresKey]
+              && (!state.quality_scores[section] || !state.sections_completed.includes(section))
+            ) {
               state.quality_scores = {
                 ...state.quality_scores,
                 [section]: scratchpad[scoresKey] as SectionQualityScores,

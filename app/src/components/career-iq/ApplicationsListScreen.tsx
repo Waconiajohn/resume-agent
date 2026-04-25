@@ -11,7 +11,7 @@
  * reach the new routing.
  */
 
-import { useCallback, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, ArrowRight, Briefcase, Archive, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -106,14 +106,20 @@ function parseView(raw: string | null): AppsView {
 export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const view: AppsView = parseView(searchParams.get('view'));
+  const shouldOpenNewApplication = searchParams.get('new') === '1';
 
   const setView = useCallback(
-    (next: AppsView) => {
+    (next: AppsView, options: { newApplication?: boolean } = {}) => {
       const params = new URLSearchParams(searchParams);
       if (next === 'today') {
         params.delete('view');
       } else {
         params.set('view', next);
+      }
+      if (options.newApplication) {
+        params.set('new', '1');
+      } else {
+        params.delete('new');
       }
       setSearchParams(params, { replace: true });
     },
@@ -138,6 +144,28 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
   const [jdText, setJdText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (view === 'pipeline' && shouldOpenNewApplication) {
+      setArchivedFilter('active');
+      setSelectedBucket(null);
+      setFormOpen(true);
+    }
+  }, [shouldOpenNewApplication, view]);
+
+  const handleToggleNewApplication = useCallback(() => {
+    if (formOpen) {
+      setFormOpen(false);
+      if (shouldOpenNewApplication) {
+        setView(view);
+      }
+      return;
+    }
+    setView('pipeline', { newApplication: true });
+    setArchivedFilter('active');
+    setSelectedBucket(null);
+    setFormOpen(true);
+  }, [formOpen, setView, shouldOpenNewApplication, view]);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -289,7 +317,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
           )}
           <GlassButton
             variant={formOpen ? 'ghost' : 'primary'}
-            onClick={() => setFormOpen((v) => !v)}
+            onClick={handleToggleNewApplication}
           >
             <Plus size={14} className="mr-1.5" />
             {formOpen ? 'Cancel' : 'New application'}
@@ -386,7 +414,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
           <p className="mt-2 text-sm text-[var(--text-soft)]">
             Start a new application to group its resume, cover letter, and interview prep in one place.
           </p>
-          <GlassButton variant="primary" className="mt-4" onClick={() => setFormOpen(true)}>
+          <GlassButton variant="primary" className="mt-4" onClick={handleToggleNewApplication}>
             <Plus size={14} className="mr-1.5" />
             New application
           </GlassButton>

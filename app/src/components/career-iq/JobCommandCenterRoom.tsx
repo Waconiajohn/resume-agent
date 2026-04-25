@@ -25,7 +25,7 @@ import { useJobFinder, type RankedMatch, type JobEvaluation } from '@/hooks/useJ
 import { useJobApplications } from '@/hooks/useJobApplications';
 import { useRadarSearch } from '@/hooks/useRadarSearch';
 import type { RadarJob } from '@/hooks/useRadarSearch';
-import type { WorkModes } from '@/hooks/useJobFilters';
+import type { JobFilters, WorkModes } from '@/hooks/useJobFilters';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobFilters } from '@/hooks/useJobFilters';
@@ -410,16 +410,6 @@ function SmartMatches({
 
 type JCCMode = 'broad-search' | 'insider-jobs';
 
-/**
- * Flatten the outer JobFilterPanel's multi-select Work Mode chips into the
- * single remoteType value that radar.search / tracking events consume.
- *
- * The outer UI lets users pick any combination of Remote / Hybrid / On-site.
- * The radar API takes one value. Exactly-one selection wins; zero or two+
- * selections collapse to 'any'. Preserving this behavior is intentional in
- * Phase 2.2.1 — the multi-to-single lossy mapping is a known limit of the
- * current API and is out of scope for this phase.
- */
 function deriveRemoteType(
   workModes: WorkModes,
 ): 'remote' | 'hybrid' | 'onsite' | 'any' {
@@ -427,6 +417,11 @@ function deriveRemoteType(
   if (workModes.hybrid && !workModes.remote && !workModes.onsite) return 'hybrid';
   if (workModes.onsite && !workModes.remote && !workModes.hybrid) return 'onsite';
   return 'any';
+}
+
+function getBroadSearchLocation(filters: JobFilters): string {
+  const remoteType = deriveRemoteType(filters.workModes);
+  return remoteType === 'remote' ? '' : filters.location;
 }
 
 const JCC_MODES: Array<{
@@ -500,14 +495,15 @@ export function JobCommandCenterRoom({
   const handleSearchCompany = useCallback(
     (companyName: string) => {
       const remoteType = deriveRemoteType(jobFilters.workModes);
+      const searchLocation = getBroadSearchLocation(jobFilters);
       trackProductEvent('job_board_search_run', {
         query: companyName,
-        location: jobFilters.location || null,
+        location: searchLocation || null,
         date_posted: jobFilters.postedWithin,
         remote_type: remoteType,
         source: 'watchlist',
       });
-      radar.search(companyName, jobFilters.location, {
+      radar.search(companyName, searchLocation, {
         datePosted: jobFilters.postedWithin,
         remoteType,
       });
@@ -628,6 +624,7 @@ export function JobCommandCenterRoom({
             onWorkModesChange={setJobFilterWorkModes}
             postedWithin={jobFilters.postedWithin}
             onPostedWithinChange={setJobFilterPostedWithin}
+            workModeSelection="single"
           />
 
           <RadarSection
@@ -638,7 +635,7 @@ export function JobCommandCenterRoom({
             onDismiss={radar.dismissJob}
             onPromote={handlePromoteRadarJob}
             onBuildResume={(job) => handleBuildResumeRequest('job_board', job.title, job.company)}
-            location={jobFilters.location}
+            location={getBroadSearchLocation(jobFilters)}
             datePosted={jobFilters.postedWithin}
             remoteType={deriveRemoteType(jobFilters.workModes)}
           />

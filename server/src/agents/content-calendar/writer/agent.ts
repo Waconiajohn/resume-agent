@@ -37,7 +37,7 @@ Your goal is to produce a complete 30-day content calendar with all posts writte
 5. After all posts are written and scheduled, call assemble_calendar to produce the final report.
 
 CRITICAL QUALITY RULES:
-- Every post: 150-300 words, strong hook in first 2 lines, scannable structure, clear CTA
+- Every post: about 250 words, strong hook in first 2 lines, scannable structure, clear CTA
 - Hooks must stop the scroll — use contrarian openers, specific numbers, story openers, or direct challenges
 - Hashtags: exactly 3-5 per post (1 broad, 1-2 medium, 1-2 niche), placed at the END
 - Content mix: vary types across weeks — never post the same type twice in a row

@@ -101,7 +101,7 @@ function buildPostRequirements(state: LinkedInContentState, isRevision: boolean)
     '- Use line breaks after every 1-3 sentences. LinkedIn rewards visual scannability.',
     '- CTA: End with a genuine question that invites disagreement or experience-sharing.',
     '- Hashtags: 3-5 relevant hashtags, placed at the end.',
-    '- Total length: 800-1200 words. This is substantial -- longer than a typical post. Develop the idea fully.',
+    '- Total length: 1,000-1,300 characters. Develop one idea fully, then stop.',
     '- Voice: Sound like a practitioner sharing hard-won insight, not a content creator.',
     '- Be specific: name companies, projects, dollar figures, team sizes where relevant.',
   ];
@@ -144,7 +144,7 @@ function buildPostRequirements(state: LinkedInContentState, isRevision: boolean)
 const writePostTool: LinkedInContentTool = {
   name: 'write_post',
   description:
-    'Drafts a full LinkedIn post (800-1200 words) with hook, body, CTA, and hashtags. ' +
+    'Drafts a full LinkedIn post (1,000-1,300 characters) with hook, body, CTA, and hashtags. ' +
     'In series mode, incorporates series context: "Part X of Y" reference, callback to ' +
     'the previous post\'s theme, and teaser for the next. Stores draft in scratchpad.',
   model_tier: 'primary',
@@ -614,6 +614,7 @@ const generateCarouselTool: LinkedInContentTool = {
   name: 'generate_carousel',
   description:
     'Convert the drafted post into a multi-slide document carousel for LinkedIn. ' +
+    'Slides should use sparse presentation copy: a short headline and only a few words per slide. ' +
     'Call this AFTER the post draft is finalized and the user has approved it. ' +
     'Emits a carousel_ready SSE event with the structured slide data.',
   model_tier: 'light',

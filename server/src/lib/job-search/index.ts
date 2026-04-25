@@ -20,6 +20,12 @@ function dedupeKey(job: JobResult): string {
   return `${title}|${company}|${location}`;
 }
 
+function matchesRemoteType(job: JobResult, filters: SearchFilters): boolean {
+  const remoteType = filters.remoteType;
+  if (!remoteType || remoteType === 'any') return true;
+  return (job.remote_type ?? '').toLowerCase().trim() === remoteType;
+}
+
 /**
  * Parse boolean search strings like "(VP of Engineering OR CTO)" and return
  * the first title group as the effective query for adapters that don't
@@ -73,6 +79,8 @@ export async function searchAllSources(
     }
 
     for (const job of result.value) {
+      if (!matchesRemoteType(job, filters)) continue;
+
       const key = dedupeKey(job);
       if (!seen.has(key)) {
         seen.add(key);

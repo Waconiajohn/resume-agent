@@ -173,6 +173,7 @@ applicationTimelineRoutes.get(
     const [
       coachSessionsRes,
       coverLetterRes,
+      coverLetterSessionsRes,
       interviewPrepRes,
       thankYouRes,
       followUpRes,
@@ -183,11 +184,20 @@ applicationTimelineRoutes.get(
         .from('coach_sessions')
         .select('id, job_application_id, updated_at')
         .eq('user_id', user.id)
+        .eq('product_type', 'resume_v3')
+        .not('v3_pipeline_output', 'is', null)
         .in('job_application_id', appIds),
       supabaseAdmin
         .from('cover_letter_reports')
         .select('id, job_application_id, updated_at')
         .eq('user_id', user.id)
+        .in('job_application_id', appIds),
+      supabaseAdmin
+        .from('coach_sessions')
+        .select('id, job_application_id, updated_at')
+        .eq('user_id', user.id)
+        .eq('product_type', 'cover_letter')
+        .eq('pipeline_status', 'completed')
         .in('job_application_id', appIds),
       supabaseAdmin
         .from('interview_prep_reports')
@@ -282,7 +292,11 @@ applicationTimelineRoutes.get(
     }
 
     const resumeByApp = indexLatestByAppId(coachSessionsRes.data as Array<{ job_application_id: string | null; id: string; updated_at: string }> | null, 'updated_at');
-    const coverLetterByApp = indexLatestByAppId(coverLetterRes.data as Array<{ job_application_id: string | null; id: string; updated_at: string }> | null, 'updated_at');
+    const coverLetterRows = [
+      ...((coverLetterRes.data as Array<{ job_application_id: string | null; id: string; updated_at: string }> | null) ?? []),
+      ...((coverLetterSessionsRes.data as Array<{ job_application_id: string | null; id: string; updated_at: string }> | null) ?? []),
+    ];
+    const coverLetterByApp = indexLatestByAppId(coverLetterRows, 'updated_at');
     const interviewPrepByApp = indexLatestByAppId(interviewPrepRes.data as Array<{ job_application_id: string | null; id: string; updated_at: string }> | null, 'updated_at');
     const thankYouByApp = indexLatestByAppId(thankYouRes.data as Array<{ job_application_id: string | null; id: string; created_at: string }> | null, 'created_at');
     const followUpByApp = indexLatestByAppId(followUpRes.data as Array<{ job_application_id: string | null; id: string; updated_at: string }> | null, 'updated_at');
@@ -429,6 +443,7 @@ applicationTimelineRoutes.get(
     const [
       resumeResult,
       coverLetterResult,
+      coverLetterSessionResult,
       interviewPrepResult,
       thankYouResult,
       followUpResult,
@@ -441,6 +456,8 @@ applicationTimelineRoutes.get(
         .from('coach_sessions')
         .select('id, updated_at')
         .eq('user_id', user.id)
+        .eq('product_type', 'resume_v3')
+        .not('v3_pipeline_output', 'is', null)
         .eq('job_application_id', applicationId)
         .order('updated_at', { ascending: false })
         .limit(1)
@@ -449,6 +466,16 @@ applicationTimelineRoutes.get(
         .from('cover_letter_reports')
         .select('id, updated_at')
         .eq('user_id', user.id)
+        .eq('job_application_id', applicationId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('coach_sessions')
+        .select('id, updated_at')
+        .eq('user_id', user.id)
+        .eq('product_type', 'cover_letter')
+        .eq('pipeline_status', 'completed')
         .eq('job_application_id', applicationId)
         .order('updated_at', { ascending: false })
         .limit(1)
@@ -505,8 +532,12 @@ applicationTimelineRoutes.get(
       session_id: (resumeResult.data?.id as string | undefined) ?? null,
     };
     const cover_letter: ArtifactSignal = {
-      exists: !!coverLetterResult.data,
-      last_at: (coverLetterResult.data?.updated_at as string | undefined) ?? null,
+      exists: !!(coverLetterResult.data ?? coverLetterSessionResult.data),
+      last_at: (
+        (coverLetterResult.data?.updated_at as string | undefined)
+        ?? (coverLetterSessionResult.data?.updated_at as string | undefined)
+        ?? null
+      ),
     };
     const interview_prep: ArtifactSignal = {
       exists: !!interviewPrepResult.data,

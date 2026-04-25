@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { API_BASE } from '@/lib/api';
 import type { JobMatchSearchContext } from '@/types/ni';
+import type { WorkModeKey } from '@/hooks/useJobFilters';
 
 const SCAN_TIMEOUT_MS = 5 * 60_000; // 5 minutes
 const STALE_THRESHOLD_MS = 10 * 60_000; // 10 minutes
@@ -34,7 +35,9 @@ interface StartNiScrapeOptions {
   searchContext: JobMatchSearchContext;
   emptyMessage: string;
   location?: string;
+  radiusMiles?: number;
   remoteOnly?: boolean;
+  workModes?: WorkModeKey[];
   maxDaysOld?: number;
 }
 
@@ -141,7 +144,9 @@ export function useNiScrapeRunner(accessToken: string | null) {
     searchContext,
     emptyMessage,
     location,
+    radiusMiles,
     remoteOnly,
+    workModes,
     maxDaysOld,
   }: StartNiScrapeOptions) => {
     if (!accessToken) {
@@ -176,7 +181,9 @@ export function useNiScrapeRunner(accessToken: string | null) {
           target_titles: targetTitles,
           search_context: searchContext,
           ...(location ? { location } : {}),
+          ...(radiusMiles !== undefined ? { radius_miles: radiusMiles } : {}),
           ...(remoteOnly !== undefined ? { remote_only: remoteOnly } : {}),
+          ...(workModes && workModes.length > 0 ? { work_modes: workModes } : {}),
           ...(maxDaysOld !== undefined ? { max_days_old: maxDaysOld } : {}),
         }),
       });

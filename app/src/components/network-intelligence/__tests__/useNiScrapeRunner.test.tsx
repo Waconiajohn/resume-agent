@@ -142,4 +142,101 @@ describe('useNiScrapeRunner', () => {
     expect(result.current.running).toBe(false);
     expect(result.current.error).toBeNull();
   });
+
+  it('sends location, radius, work-mode, and freshness filters when starting a scan', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ scrape_log_id: 'scrape-1' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          log: {
+            id: 'scrape-1',
+            status: 'completed',
+            output_summary: {
+              companies_scanned: 1,
+              jobs_found: 2,
+              matching_jobs: 1,
+              referral_available: 0,
+              error_count: 0,
+            },
+            error_message: null,
+          },
+        }),
+      });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useNiScrapeRunner('token-1'));
+
+    await act(async () => {
+      await result.current.startScan({
+        companyIds: ['company-1'],
+        targetTitles: ['VP Operations'],
+        searchContext: 'network_connections',
+        emptyMessage: 'No companies available.',
+        location: 'Dallas, TX',
+        radiusMiles: 50,
+        remoteOnly: false,
+        workModes: ['hybrid'],
+        maxDaysOld: 7,
+      });
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3001/api/ni/scrape/start',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          company_ids: ['company-1'],
+          target_titles: ['VP Operations'],
+          search_context: 'network_connections',
+          location: 'Dallas, TX',
+          radius_miles: 50,
+          remote_only: false,
+          work_modes: ['hybrid'],
+          max_days_old: 7,
+        }),
+      }),
+    );
+  });
+
+  it('can send a 30-day freshness window', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ scrape_log_id: 'scrape-1' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          log: {
+            id: 'scrape-1',
+            status: 'completed',
+            output_summary: { companies_scanned: 1 },
+            error_message: null,
+          },
+        }),
+      });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useNiScrapeRunner('token-1'));
+
+    await act(async () => {
+      await result.current.startScan({
+        companyIds: ['company-1'],
+        searchContext: 'network_connections',
+        emptyMessage: 'No companies available.',
+        maxDaysOld: 30,
+      });
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual(
+      expect.objectContaining({ max_days_old: 30 }),
+    );
+  });
 });

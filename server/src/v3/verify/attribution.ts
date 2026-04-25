@@ -8,7 +8,9 @@
 //
 //   checkStrategizeAttribution    — Phase 4.6: checks every entry in
 //     Strategy.emphasizedAccomplishments.summary against the WHOLE source
-//     resume (any position's bullets + scope + title + crossRoleHighlights).
+//     resume (any position's bullets + scope + title + crossRoleHighlights),
+//     then verifies that positionIndex points at the source bucket that
+//     actually contains the summary's claim tokens.
 //     Runs INSIDE strategize's pipeline AFTER the LLM call; if any summary
 //     contains unsourced claim tokens, strategize retries once with the
 //     offending phrases flagged. This stops DeepSeek strategize from
@@ -171,6 +173,8 @@ export interface SummaryAttributionCheck {
   missingTokens: string[];
   /** Tokens found (diagnostic). */
   foundTokens: string[];
+  /** Source-location mismatch, e.g. positionIndex=null for a position-specific metric. */
+  locationIssue?: string;
 }
 
 /**
@@ -219,13 +223,12 @@ export interface StrategizeAttributionResult {
 /**
  * Mechanical attribution check for Strategy.emphasizedAccomplishments[].summary.
  * Claim tokens (dollar amounts, percentages, number+unit phrases, proper
- * nouns, acronyms) are extracted from each summary and checked for substring
- * presence in the candidate resume's ENTIRE source text — any position's
- * bullets/scope/title plus crossRoleHighlights.
- *
- * The haystack is resume-wide (not position-scoped) because strategize can
- * legitimately pull from any source bullet regardless of positionIndex; it
- * summarizes accomplishments across the candidate's career.
+ * nouns, acronyms) are extracted from each summary and first checked for
+ * substring presence in the candidate resume's ENTIRE source text — any
+ * position's bullets/scope/title plus crossRoleHighlights. A second,
+ * location-scoped check verifies that the emitted positionIndex points to the
+ * source bucket containing those tokens. positionIndex=null is reserved for
+ * crossRoleHighlights/customSections, not position-specific bullets.
  *
  * Used by strategize/index.ts for the one-retry attribution loop. If any
  * summary is unverified, strategize retries once with the missing tokens
@@ -252,13 +255,16 @@ export function checkStrategizeAttribution(
         missing.push(tok.text);
       }
     }
+    const locationIssue =
+      missing.length === 0 ? checkSummarySourceLocation(e, tokens, source) : undefined;
     summaries.push({
       summaryIndex: i,
       text: e.summary,
       positionIndex: e.positionIndex,
-      verified: missing.length === 0,
+      verified: missing.length === 0 && !locationIssue,
       missingTokens: missing,
       foundTokens: found,
+      ...(locationIssue ? { locationIssue } : {}),
     });
   }
 
@@ -339,7 +345,7 @@ const ROLE_SHAPE_STOPWORDS = new Set<string>([
   'consolidator', 'consolidators',
   'owner', 'owners',
   'head', 'lead',
-  'vp', 'svp', 'evp',
+  'vp', 'svp', 'evp', 'vice',
   'chief', 'officer',
   'president', 'ceo', 'cfo', 'coo', 'cto', 'cio',
   'senior', 'principal', 'staff',
@@ -385,8 +391,13 @@ function checkPhraseAgainstHaystack(
     .filter((w) => w.length > 0)
     .filter((w) => !ROLE_SHAPE_STOPWORDS.has(w));
   const missingWords: string[] = [];
+  const haystackHyphenAsSpace = haystack.replace(/-/g, ' ');
   for (const w of words) {
-    if (!haystack.includes(w)) missingWords.push(w);
+    const variants = w.includes('-') ? [w, w.replace(/-/g, ' ')] : [w];
+    if (!variants.some((variant) => haystack.includes(variant) || haystackHyphenAsSpace.includes(variant))) {
+      if (isSupportedFrameInferenceWord(w, phrase, haystack)) continue;
+      missingWords.push(w);
+    }
   }
 
   // (b) Phrase-level n-gram leak check (Fix 2 of 2026-04-20 pm).
@@ -407,10 +418,11 @@ function checkPhraseAgainstHaystack(
   // account", "commercial account" — must appear in source to pass.
   const leakedPhrases: string[] = [];
   if (sourceNgrams && jdNgrams) {
-    const phraseNgrams = buildNgramSet(normalize(phrase));
+    const phraseNgrams = buildFieldPhraseNgramSet(phrase);
     for (const bg of phraseNgrams.bigrams) {
       if (sourceNgrams.bigrams.has(bg)) continue;
       if (!jdNgrams.bigrams.has(bg)) continue;
+      if (isSupportedFrameInferenceNgram(bg, phrase, haystack)) continue;
       if (isPureRoleShapeNgram(bg)) continue;
       if (containsFrameStopword(bg)) continue;
       leakedPhrases.push(bg);
@@ -418,6 +430,7 @@ function checkPhraseAgainstHaystack(
     for (const tg of phraseNgrams.trigrams) {
       if (sourceNgrams.trigrams.has(tg)) continue;
       if (!jdNgrams.trigrams.has(tg)) continue;
+      if (isSupportedFrameInferenceNgram(tg, phrase, haystack)) continue;
       if (isPureRoleShapeNgram(tg)) continue;
       if (containsFrameStopword(tg)) continue;
       // Avoid double-reporting when a flagged bigram already covers the
@@ -465,6 +478,23 @@ function buildNgramSet(normalizedText: string): { bigrams: Set<string>; trigrams
 }
 
 /**
+ * Build n-grams for short strategy fields without manufacturing phrases
+ * across list punctuation. "Operations, Manufacturing, Supply Chain" should
+ * yield "supply chain", not the imaginary bigrams "operations manufacturing"
+ * or "manufacturing supply".
+ */
+function buildFieldPhraseNgramSet(phrase: string): { bigrams: Set<string>; trigrams: Set<string> } {
+  const bigrams = new Set<string>();
+  const trigrams = new Set<string>();
+  for (const segment of phrase.split(/[,;|•\n\r]+/)) {
+    const segmentNgrams = buildNgramSet(normalize(segment));
+    for (const bg of segmentNgrams.bigrams) bigrams.add(bg);
+    for (const tg of segmentNgrams.trigrams) trigrams.add(tg);
+  }
+  return { bigrams, trigrams };
+}
+
+/**
  * A pure-role-shape n-gram has every word in ROLE_SHAPE_STOPWORDS. These
  * are generic seniority/role descriptors ("senior manager", "vice
  * president", "senior director") that are acceptable in a framing field
@@ -498,6 +528,59 @@ function isPureRoleShapeNgram(ngram: string): boolean {
 function containsFrameStopword(ngram: string): boolean {
   const words = ngram.split(' ');
   return words.some((w) => FRAME_STOPWORDS.has(w));
+}
+
+const SITE_SCOPE_WORDS = new Set<string>([
+  'site', 'sites',
+  'facility', 'facilities',
+  'plant', 'plants',
+  'location', 'locations',
+  'property', 'properties',
+  'office', 'offices',
+  'store', 'stores',
+  'branch', 'branches',
+]);
+
+function phraseHasMultiLocationFrame(phrase: string): boolean {
+  const normalized = normalize(phrase).replace(/-/g, ' ');
+  return /\bmulti\s+(?:site|sites|facility|facilities|plant|plants|location|locations|property|properties|office|offices|store|stores|branch|branches)\b/.test(normalized);
+}
+
+function sourceHasMultiLocationEvidence(haystack: string): boolean {
+  const scopeNoun = '(?:sites?|facilities|plants?|locations|properties|offices|stores|branches)';
+  const count =
+    '(?:[2-9]|[1-9]\\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|multiple|several)';
+  const directMulti = new RegExp(`\\b(?:multi|multiple|several)\\s+(?:site|sites|facility|facilities|plant|plants|location|locations|property|properties|office|offices|store|stores|branch|branches)\\b`);
+  const countBefore = new RegExp(`\\b${count}\\s+(?:[a-z0-9&/-]+\\s+){0,4}${scopeNoun}\\b`);
+  return directMulti.test(haystack) || countBefore.test(haystack);
+}
+
+function isSupportedFrameInferenceWord(word: string, phrase: string, haystack: string): boolean {
+  if (!phraseHasMultiLocationFrame(phrase)) return false;
+  if (!sourceHasMultiLocationEvidence(haystack)) return false;
+  const normalizedWord = word.replace(/-/g, ' ');
+  if (normalizedWord === 'multi') return true;
+  if (normalizedWord.startsWith('multi ')) {
+    const [, scope] = normalizedWord.split(/\s+/, 2);
+    return scope ? SITE_SCOPE_WORDS.has(scope) : false;
+  }
+  return SITE_SCOPE_WORDS.has(normalizedWord);
+}
+
+function isSupportedFrameInferenceNgram(ngram: string, phrase: string, haystack: string): boolean {
+  if (!phraseHasMultiLocationFrame(phrase)) return false;
+  if (!sourceHasMultiLocationEvidence(haystack)) return false;
+
+  const words = ngram.split(' ');
+  const haystackHyphenAsSpace = haystack.replace(/-/g, ' ');
+  const nonScopeWords = words.filter(
+    (w) =>
+      w !== 'multi' &&
+      !SITE_SCOPE_WORDS.has(w) &&
+      !FRAME_STOPWORDS.has(w) &&
+      !ROLE_SHAPE_STOPWORDS.has(w),
+  );
+  return nonScopeWords.every((w) => haystack.includes(w) || haystackHyphenAsSpace.includes(w));
 }
 
 // -----------------------------------------------------------------------------
@@ -550,8 +633,8 @@ export function extractClaimTokensTyped(text: string): ClaimToken[] {
   // 5. Proper-noun phrases (2+ consecutive capitalized words)
   const properRe = /\b([A-Z][a-zA-Z]+(?:\s+(?:[A-Z][a-zA-Z]+|of|the|and|&)\s+)*(?:\s+[A-Z][a-zA-Z]+)+)\b/g;
   for (const m of text.matchAll(properRe)) {
-    const p = m[1].trim();
-    if (p.length < 6) continue;
+    const p = stripLeadingActionWordFromProperNoun(m[1].trim());
+    if (!p || p.length < 6) continue;
     precise.add(p);
   }
 
@@ -591,6 +674,60 @@ export function extractClaimTokensTyped(text: string): ClaimToken[] {
  */
 export function extractClaimTokens(text: string): string[] {
   return extractClaimTokensTyped(text).map((t) => t.text);
+}
+
+const PROPER_NOUN_LEADING_ACTION_WORDS = new Set<string>([
+  'accelerated',
+  'achieved',
+  'added',
+  'built',
+  'championed',
+  'consolidated',
+  'created',
+  'cut',
+  'delivered',
+  'designed',
+  'directed',
+  'drove',
+  'established',
+  'expanded',
+  'generated',
+  'grew',
+  'implemented',
+  'improved',
+  'launched',
+  'led',
+  'managed',
+  'negotiated',
+  'optimized',
+  'oversaw',
+  'owned',
+  'partnered',
+  'promoted',
+  'reduced',
+  'saved',
+  'secured',
+  'sponsor',
+  'sponsored',
+  'sponsors',
+  'stabilized',
+  'stabilizes',
+  'standardized',
+  'strengthened',
+  'supported',
+  'transformed',
+]);
+
+function stripLeadingActionWordFromProperNoun(phrase: string): string | null {
+  const words = phrase.split(/\s+/);
+  if (words.length < 2) return phrase;
+
+  const first = words[0].replace(/^[^A-Za-z]+|[^A-Za-z]+$/g, '').toLowerCase();
+  if (!PROPER_NOUN_LEADING_ACTION_WORDS.has(first)) return phrase;
+
+  const remainder = words.slice(1).join(' ').trim();
+  if (!remainder.includes(' ')) return null;
+  return remainder;
 }
 
 // -----------------------------------------------------------------------------
@@ -657,6 +794,52 @@ function haystackContainsToken(haystack: string, token: ClaimToken): boolean {
   return haystackContains(haystack, token.text);
 }
 
+function tokensFoundInHaystack(tokens: ClaimToken[], haystack: string): boolean {
+  return tokens.every((tok) => haystackContainsToken(haystack, tok));
+}
+
+function checkSummarySourceLocation(
+  accomplishment: Strategy['emphasizedAccomplishments'][number],
+  tokens: ClaimToken[],
+  source: StructuredResume,
+): string | undefined {
+  if (tokens.length === 0) return undefined;
+
+  if (accomplishment.positionIndex === null) {
+    const crossRoleHaystack = buildCrossRoleHaystack(source);
+    if (tokensFoundInHaystack(tokens, crossRoleHaystack)) return undefined;
+
+    const likelyPositionIndex = findPositionContainingTokens(tokens, source);
+    if (likelyPositionIndex !== null) {
+      return `positionIndex is null, but summary evidence appears in positions[${likelyPositionIndex}]`;
+    }
+    return 'positionIndex is null, but summary evidence was not found in cross-role source material';
+  }
+
+  const sourcePos = source.positions[accomplishment.positionIndex];
+  if (!sourcePos) {
+    return `positionIndex ${accomplishment.positionIndex} does not exist in the source resume`;
+  }
+
+  const positionHaystack = buildPositionOnlyHaystack(sourcePos);
+  if (tokensFoundInHaystack(tokens, positionHaystack)) return undefined;
+
+  const likelyPositionIndex = findPositionContainingTokens(tokens, source);
+  if (likelyPositionIndex !== null) {
+    return `positionIndex ${accomplishment.positionIndex} does not contain the summary evidence; evidence appears in positions[${likelyPositionIndex}]`;
+  }
+  return `positionIndex ${accomplishment.positionIndex} does not contain the summary evidence`;
+}
+
+function findPositionContainingTokens(tokens: ClaimToken[], source: StructuredResume): number | null {
+  for (let i = 0; i < source.positions.length; i++) {
+    if (tokensFoundInHaystack(tokens, buildPositionOnlyHaystack(source.positions[i]))) {
+      return i;
+    }
+  }
+  return null;
+}
+
 // -----------------------------------------------------------------------------
 // Haystack construction
 // -----------------------------------------------------------------------------
@@ -686,6 +869,7 @@ function buildPositionHaystack(sourcePos: Position, source: StructuredResume): s
   const parts: string[] = [];
   parts.push(sourcePos.title ?? '');
   parts.push(sourcePos.company ?? '');
+  if (sourcePos.parentCompany) parts.push(sourcePos.parentCompany);
   if (sourcePos.dates?.raw) parts.push(sourcePos.dates.raw);
   if (sourcePos.location) parts.push(sourcePos.location);
   if (sourcePos.scope) parts.push(sourcePos.scope);
@@ -695,6 +879,45 @@ function buildPositionHaystack(sourcePos: Position, source: StructuredResume): s
   for (const cs of source.customSections) {
     parts.push(cs.title);
     for (const e of cs.entries) parts.push(e.text);
+  }
+  return normalize(parts.join('\n'));
+}
+
+/**
+ * Position-only haystack for source-location anchoring. Unlike
+ * buildPositionHaystack, this intentionally excludes resume-level cross-role
+ * and custom-section material so positionIndex must point at the position that
+ * actually contains the summary's claim tokens.
+ */
+function buildPositionOnlyHaystack(sourcePos: Position): string {
+  const parts: string[] = [];
+  parts.push(sourcePos.title ?? '');
+  parts.push(sourcePos.company ?? '');
+  if (sourcePos.parentCompany) parts.push(sourcePos.parentCompany);
+  if (sourcePos.dates?.raw) parts.push(sourcePos.dates.raw);
+  if (sourcePos.location) parts.push(sourcePos.location);
+  if (sourcePos.scope) parts.push(sourcePos.scope);
+  for (const b of sourcePos.bullets) parts.push(b.text);
+  return normalize(parts.join('\n'));
+}
+
+/**
+ * Cross-role haystack for positionIndex=null strategy summaries. Null means
+ * the accomplishment is sourced from explicit cross-role or custom-section
+ * material, not merely from a bullet that happens to live in any position.
+ */
+function buildCrossRoleHaystack(source: StructuredResume): string {
+  const parts: string[] = [];
+  for (const h of source.crossRoleHighlights) {
+    parts.push(h.text);
+    parts.push(h.sourceContext);
+  }
+  for (const cs of source.customSections) {
+    parts.push(cs.title);
+    for (const e of cs.entries) {
+      parts.push(e.text);
+      if (e.source) parts.push(e.source);
+    }
   }
   return normalize(parts.join('\n'));
 }
@@ -712,9 +935,13 @@ function buildResumeHaystack(source: StructuredResume): string {
     if (p.scope) parts.push(p.scope);
     if (p.location) parts.push(p.location);
     if (p.company) parts.push(p.company);
+    if (p.parentCompany) parts.push(p.parentCompany);
     for (const b of p.bullets) parts.push(b.text);
   }
-  for (const h of source.crossRoleHighlights) parts.push(h.text);
+  for (const h of source.crossRoleHighlights) {
+    parts.push(h.text);
+    parts.push(h.sourceContext);
+  }
   // customSections count as source material — executives list board seats,
   // patents, etc. that strategize can legitimately cite.
   for (const cs of source.customSections) {

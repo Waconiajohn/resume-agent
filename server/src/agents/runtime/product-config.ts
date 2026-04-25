@@ -36,9 +36,11 @@ export interface GateDef<TState extends BaseState = BaseState> {
    * When true, the coordinator rebuilds the agent message (which now includes
    * revision_feedback from onResponse), re-runs the agent loop, then re-fires
    * this gate so the user can approve the revision.
-   * Max 3 re-runs to prevent infinite loops.
+   * Defaults to 3 re-runs to prevent infinite loops. Products with intentional
+   * multi-step gates may raise this with maxReruns.
    */
   requiresRerun?: (state: TState) => boolean;
+  maxReruns?: number;
 }
 
 // ─── Agent Phase ─────────────────────────────────────────────────────

@@ -7,6 +7,7 @@
  * sequence optimized for that format.
  *
  * Target: 8-12 content slides between the cover and CTA (10-14 total).
+ * Copy target: presentation-style microcopy, not paragraphs on slides.
  */
 
 export interface CarouselSlide {
@@ -27,6 +28,17 @@ export interface CarouselOptions {
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
+const CONTENT_HEADLINE_MAX_WORDS = 7;
+const CONTENT_HEADLINE_MAX_CHARS = 52;
+const CONTENT_BODY_MAX_WORDS = 8;
+const CONTENT_BODY_MAX_CHARS = 56;
+const CONTENT_BULLET_MAX_WORDS = 6;
+const CONTENT_BULLET_MAX_CHARS = 44;
+const COVER_BODY_MAX_WORDS = 12;
+const COVER_BODY_MAX_CHARS = 80;
+const CTA_BODY_MAX_WORDS = 8;
+const CTA_BODY_MAX_CHARS = 60;
+
 /**
  * Splits text on sentence boundaries (. ! ?) while preserving the delimiter.
  * Returns only non-empty trimmed sentences.
@@ -36,6 +48,22 @@ function splitSentences(text: string): string[] {
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+function truncateMicrocopy(text: string, maxWords: number, maxChars: number): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+
+  const words = normalized.split(/\s+/);
+  let result = '';
+  for (const word of words) {
+    const next = result ? `${result} ${word}` : word;
+    if (next.length > maxChars || next.split(/\s+/).length > maxWords) break;
+    result = next;
+  }
+
+  const trimmed = result || normalized.slice(0, maxChars).trim();
+  return trimmed.replace(/[,:;.!?]+$/g, '');
 }
 
 /**
@@ -104,41 +132,32 @@ function expandParagraphs(paragraphs: string[], minCount: number): string[] {
 
 /**
  * Derives a short headline from a chunk of text.
- * Uses the first complete sentence (up to 80 chars), otherwise truncates with ellipsis.
+ * Uses presentation-style microcopy so each slide can be read at a glance.
  */
 function deriveHeadline(text: string): string {
   const sentences = splitSentences(text);
-  if (sentences.length === 0) return text.slice(0, 60);
-
-  const first = sentences[0];
-  if (first.length <= 80) return first;
-
-  // Truncate at word boundary
-  const words = first.split(' ');
-  let headline = '';
-  for (const word of words) {
-    if ((headline + ' ' + word).trim().length > 77) break;
-    headline = (headline + ' ' + word).trim();
-  }
-  return headline ? `${headline}...` : first.slice(0, 77) + '...';
+  const source = sentences[0] ?? text;
+  return truncateMicrocopy(source, CONTENT_HEADLINE_MAX_WORDS, CONTENT_HEADLINE_MAX_CHARS);
 }
 
 /**
- * Converts a text chunk into 2-3 bullet points.
- * Splits on sentence boundaries and groups into up to 3 bullets.
+ * Converts a text chunk into 1-2 very short bullet points.
+ * Carousel slides should carry the idea in a few words, not paragraphs.
  */
 function chunkToBullets(text: string): string[] {
   const sentences = splitSentences(text);
-  if (sentences.length <= 3) return sentences.filter(Boolean);
+  const source = sentences.length > 1 ? sentences.slice(1) : sentences;
+  const seen = new Set<string>();
 
-  // Group sentences into at most 3 bullets
-  const groupSize = Math.ceil(sentences.length / 3);
-  const bullets: string[] = [];
-  for (let i = 0; i < sentences.length; i += groupSize) {
-    const group = sentences.slice(i, i + groupSize).join(' ').trim();
-    if (group) bullets.push(group);
-  }
-  return bullets.slice(0, 3);
+  return source
+    .map((sentence) => truncateMicrocopy(sentence, CONTENT_BULLET_MAX_WORDS, CONTENT_BULLET_MAX_CHARS))
+    .filter((bullet) => {
+      const key = bullet.toLowerCase();
+      if (!bullet || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 2);
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -147,8 +166,9 @@ function chunkToBullets(text: string): string[] {
  * Converts a finalized LinkedIn post into a structured carousel slide sequence.
  *
  * Slide structure:
- * - Slide 1: Cover — topic as headline, hook sentence as body
- * - Slides 2..N-1: Content — one main idea per slide, 2-3 bullets or short body
+ * - Slide 1: Cover — topic as headline, hook sentence as short body
+ * - Slides 2..N-1: Content — one main idea per slide, usually a headline plus
+ *   0-2 micro-bullets
  * - Slide N: CTA — follow prompt + hashtags
  *
  * The function targets 8-12 content slides between cover and CTA. With the
@@ -199,20 +219,24 @@ export function buildCarouselSlides(
       const headline = deriveHeadline(chunk);
       const sentences = splitSentences(chunk);
 
-      // If the chunk has multiple sentences, render as bullet points
-      // If it's a single sentence or very short, render as body text
-      if (sentences.length >= 2) {
+      const bullets = sentences.length >= 2 ? chunkToBullets(chunk) : [];
+
+      if (bullets.length > 0) {
         return {
           type: 'content' as const,
           headline,
-          bulletPoints: chunkToBullets(chunk),
+          bulletPoints: bullets,
         };
       }
+
+      const body = truncateMicrocopy(chunk, CONTENT_BODY_MAX_WORDS, CONTENT_BODY_MAX_CHARS);
+      const normalizedHeadline = headline.toLowerCase();
+      const normalizedBody = body.toLowerCase();
 
       return {
         type: 'content' as const,
         headline,
-        body: chunk,
+        ...(body && normalizedBody !== normalizedHeadline ? { body } : {}),
       };
     },
   );
@@ -227,7 +251,7 @@ export function buildCarouselSlides(
   const ctaSlide: Omit<CarouselSlide, 'slideNumber' | 'totalSlides'> = {
     type: 'cta',
     headline: ctaHeadline,
-    body: `Follow for more insights on ${topicArea}`,
+    body: truncateMicrocopy(`Follow for more insights on ${topicArea}`, CTA_BODY_MAX_WORDS, CTA_BODY_MAX_CHARS),
     bulletPoints: hashtags.length > 0 ? hashtags : undefined,
   };
 
@@ -236,7 +260,9 @@ export function buildCarouselSlides(
     {
       type: 'cover',
       headline: coverHeadline,
-      body: coverSubtitle ? `${coverSubtitle}\n\n${hookSentence}` : hookSentence,
+      body: coverSubtitle
+        ? `${coverSubtitle}\n\n${truncateMicrocopy(hookSentence, COVER_BODY_MAX_WORDS, COVER_BODY_MAX_CHARS)}`
+        : truncateMicrocopy(hookSentence, COVER_BODY_MAX_WORDS, COVER_BODY_MAX_CHARS),
     },
     ...contentSlides,
     ctaSlide,

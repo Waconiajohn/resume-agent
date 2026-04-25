@@ -220,7 +220,7 @@ ${themeContext}
 
 Requirements:
 - Hook: 1-2 lines that stop the scroll. Use a pattern from Rule 2 (contrarian, specific number, story opener, direct challenge, observation, or vulnerable admission).
-- Body: 150-300 words total (including hook). Scannable structure — short paragraphs, line breaks, optional bullets.
+- Body: about 250 words total (including hook). Keep it within 200-275 words and never over 300. Scannable structure — short paragraphs, line breaks, optional bullets.
 - CTA: End with a genuine engagement prompt — a real question, not "Thoughts?"
 - Hashtags: 3-5 hashtags (1 broad, 1-2 medium, 1-2 niche). Placed at end.
 - Posting time: Suggest optimal time based on Rule 5.
@@ -267,10 +267,11 @@ Return JSON:
     if (hook.length < 30) qualityScore -= 15;
     if (/^(I'm excited|Happy Monday|Here's a thought)/i.test(hook)) qualityScore -= 20;
 
-    // Body length: penalize outside optimal range
-    if (wc < 100) qualityScore -= 20;
-    else if (wc < 150) qualityScore -= 10;
-    if (wc > 400) qualityScore -= 10;
+    // Body length: target the product's 250-word blog/article contract.
+    if (wc < 150) qualityScore -= 20;
+    else if (wc < 200) qualityScore -= 10;
+    if (wc > 300) qualityScore -= 20;
+    else if (wc > 275) qualityScore -= 10;
 
     // CTA presence
     if (!cta || cta.length < 10) qualityScore -= 10;

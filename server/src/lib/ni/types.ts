@@ -167,12 +167,18 @@ export type NiSearchContext = 'network_connections' | 'bonus_search';
 
 // ─── Scrape Filters ───────────────────────────────────────────────────────────
 
+export type NiWorkMode = 'remote' | 'hybrid' | 'onsite';
+
 export interface NiScrapeFilters {
   /** City/state string for location filtering, e.g. "Portland, OR" */
   location?: string;
+  /** Search radius in miles around the requested location. */
+  radius_miles?: number;
   /** When true, only return jobs classified as remote */
   remote_only: boolean;
-  /** Maximum age in days for jobs with a known postedOn date (1–14) */
+  /** Explicit work-mode filters selected by the user. */
+  work_modes?: NiWorkMode[];
+  /** Maximum age in days for jobs with a known postedOn date (1–30) */
   max_days_old: number;
 }
 

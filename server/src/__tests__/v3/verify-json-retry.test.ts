@@ -220,4 +220,106 @@ describe('verify JSON/schema retry', () => {
     const retrySystem = streamFn.mock.calls[1][0].system as string;
     expect(retrySystem).toMatch(/schema validation/i);
   });
+
+  it('drops pronoun issues when the named pronoun is not present in the written section', async () => {
+    const verifyWithFalsePronounIssue: VerifyResult = {
+      passed: false,
+      issues: [
+        {
+          severity: 'error',
+          section: 'summary',
+          message: 'Personal pronoun "our" appears in the summary.',
+        },
+      ],
+    };
+    const streamFn = vi.fn(streamOf(JSON.stringify(verifyWithFalsePronounIssue)));
+    mockAllDeps(streamFn);
+
+    const mod = await import('../../v3/verify/index.js');
+    const { result } = await mod.verifyWithTelemetry(WRITTEN, SOURCE, STRATEGY);
+
+    expect(result.passed).toBe(true);
+    expect(result.issues).toEqual([]);
+  });
+
+  it('keeps pronoun issues when the named pronoun is present in the written section', async () => {
+    const writtenWithPronoun: WrittenResume = {
+      ...WRITTEN,
+      summary: 'Our senior engineer.',
+    };
+    const verifyWithTruePronounIssue: VerifyResult = {
+      passed: false,
+      issues: [
+        {
+          severity: 'error',
+          section: 'summary',
+          message: 'Personal pronoun "our" appears in the summary.',
+        },
+      ],
+    };
+    const streamFn = vi.fn(streamOf(JSON.stringify(verifyWithTruePronounIssue)));
+    mockAllDeps(streamFn);
+
+    const mod = await import('../../v3/verify/index.js');
+    const { result } = await mod.verifyWithTelemetry(writtenWithPronoun, SOURCE, STRATEGY);
+
+    expect(result.passed).toBe(false);
+    expect(result.issues).toHaveLength(1);
+  });
+
+  it('normalizes passed=true when verify returns warnings only', async () => {
+    const verifyWithWarningOnly: VerifyResult = {
+      passed: false,
+      issues: [
+        {
+          severity: 'warning',
+          section: 'summary',
+          message: 'Summary could be sharper.',
+        },
+      ],
+    };
+    const streamFn = vi.fn(streamOf(JSON.stringify(verifyWithWarningOnly)));
+    mockAllDeps(streamFn);
+
+    const mod = await import('../../v3/verify/index.js');
+    const { result } = await mod.verifyWithTelemetry(WRITTEN, SOURCE, STRATEGY);
+
+    expect(result.passed).toBe(true);
+    expect(result.issues).toHaveLength(1);
+  });
+
+  it('drops summary-frame warnings when the summary already contains the positioning frame', async () => {
+    const writtenWithExactFrame: WrittenResume = {
+      ...WRITTEN,
+      summary:
+        'Multi-site manufacturing operations leader with deep experience running plant networks.',
+    };
+    const strategyWithExactFrame: Strategy = {
+      ...STRATEGY,
+      positioningFrame: 'multi-site manufacturing operations leader',
+    };
+    const verifyWithFalseFrameIssue: VerifyResult = {
+      passed: true,
+      issues: [
+        {
+          severity: 'warning',
+          section: 'summary',
+          message:
+            "The summary centers multi-site manufacturing leadership and operational scale, but it does not clearly signal the strategy's positioning frame of a multi-site manufacturing operations leader.",
+        },
+      ],
+    };
+    const streamFn = vi.fn(streamOf(JSON.stringify(verifyWithFalseFrameIssue)));
+    mockAllDeps(streamFn);
+
+    const mod = await import('../../v3/verify/index.js');
+    const { result } = await mod.verifyWithTelemetry(
+      writtenWithExactFrame,
+      SOURCE,
+      strategyWithExactFrame,
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.issues).toEqual([]);
+  });
 });

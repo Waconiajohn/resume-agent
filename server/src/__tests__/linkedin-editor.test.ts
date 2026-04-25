@@ -180,18 +180,23 @@ describe('createLinkedInEditorProductConfig', () => {
     expect(config.agents[0].name).toBe('editor');
   });
 
-  it('has 5 per-section gates', () => {
+  it('has one reusable section review gate', () => {
     const config = createLinkedInEditorProductConfig();
     const editorPhase = config.agents[0];
-    expect(editorPhase.gates).toHaveLength(5);
+    expect(editorPhase.gates).toHaveLength(1);
   });
 
-  it('gate names follow section_review_{section} pattern', () => {
+  it('uses a stable section_review gate name', () => {
     const config = createLinkedInEditorProductConfig();
     const gates = config.agents[0].gates ?? [];
-    for (const gate of gates) {
-      expect(gate.name).toMatch(/^section_review_(headline|about|experience|skills|education)$/);
-    }
+    expect(gates[0].name).toBe('section_review');
+  });
+
+  it('editor prompt avoids age-bias signals and includes evidence rules', async () => {
+    const { editorConfig } = await import('../agents/linkedin-editor/editor/agent.js');
+    expect(editorConfig.system_prompt).toContain('Every factual claim must trace');
+    expect(editorConfig.system_prompt).toContain('Evidence Ladder');
+    expect(editorConfig.system_prompt).toContain('Do not include graduation years');
   });
 });
 
@@ -311,13 +316,13 @@ describe('createLinkedInEditorProductConfig().buildAgentMessage', () => {
 describe('section_review gates', () => {
   const config = createLinkedInEditorProductConfig();
   const gates = config.agents[0].gates ?? [];
-  const headlineGate = gates.find((g) => g.name === 'section_review_headline');
+  const sectionReviewGate = gates.find((g) => g.name === 'section_review');
 
   it('marks section as completed on approval', () => {
     const state = makeState({
       section_drafts: { headline: 'VP Engineering | Scale' },
     });
-    headlineGate?.onResponse?.(true, state);
+    sectionReviewGate?.onResponse?.(true, state);
     expect(state.sections_completed).toContain('headline');
   });
 
@@ -325,7 +330,7 @@ describe('section_review gates', () => {
     const state = makeState({
       section_drafts: { headline: 'VP Engineering | Scale' },
     });
-    headlineGate?.onResponse?.('approved', state);
+    sectionReviewGate?.onResponse?.('approved', state);
     expect(state.sections_completed).toContain('headline');
   });
 
@@ -333,14 +338,14 @@ describe('section_review gates', () => {
     const state = makeState({
       section_drafts: { headline: 'VP Engineering | Scale' },
     });
-    headlineGate?.onResponse?.({ feedback: 'Add industry keywords' }, state);
+    sectionReviewGate?.onResponse?.({ feedback: 'Add industry keywords' }, state);
     expect(state.section_feedback?.headline).toBe('Add industry keywords');
     expect(state.sections_completed).not.toContain('headline');
   });
 
   it('gate condition is false when section has no draft', () => {
     const state = makeState({ section_drafts: {} });
-    const fires = headlineGate?.condition?.(state);
+    const fires = sectionReviewGate?.condition?.(state);
     expect(fires).toBe(false);
   });
 
@@ -349,7 +354,7 @@ describe('section_review gates', () => {
       section_drafts: { headline: 'VP Engineering | Scale Expert' },
       sections_completed: [],
     });
-    const fires = headlineGate?.condition?.(state);
+    const fires = sectionReviewGate?.condition?.(state);
     expect(fires).toBe(true);
   });
 
@@ -358,8 +363,31 @@ describe('section_review gates', () => {
       section_drafts: { headline: 'VP Engineering | Scale Expert' },
       sections_completed: ['headline'],
     });
-    const fires = headlineGate?.condition?.(state);
+    const fires = sectionReviewGate?.condition?.(state);
     expect(fires).toBe(false);
+  });
+
+  it('requires another editor pass after approval while sections remain', () => {
+    const state = makeState({
+      section_drafts: { headline: 'VP Engineering | Scale Expert' },
+      sections_completed: [],
+    });
+    sectionReviewGate?.onResponse?.({ approved: true }, state);
+    expect(sectionReviewGate?.requiresRerun?.(state)).toBe(true);
+  });
+
+  it('does not require another editor pass when all sections are approved', () => {
+    const state = makeState({
+      section_drafts: {
+        headline: 'VP Engineering | Scale Expert',
+        about: 'About content',
+        experience: 'Experience content',
+        skills: 'Skills content',
+        education: 'Education content',
+      },
+      sections_completed: [...PROFILE_SECTION_ORDER],
+    });
+    expect(sectionReviewGate?.requiresRerun?.(state)).toBe(false);
   });
 });
 
@@ -409,6 +437,36 @@ describe('write_section tool', () => {
       ctx as unknown as Parameters<typeof tool.execute>[1],
     );
     expect(result).toHaveProperty('success', false);
+  });
+
+  it('education prompt omits graduation years by default for older executives', async () => {
+    const { editorTools } = await import('../agents/linkedin-editor/editor/tools.js');
+    const tool = editorTools.find((t) => t.name === 'write_section');
+    if (!tool) throw new Error('write_section tool not found');
+
+    const state = makeState();
+    const ctx = makeCtx(state);
+
+    const { llm } = await import('../lib/llm.js');
+    const llmMock = llm.chat as ReturnType<typeof vi.fn>;
+    llmMock.mockResolvedValue({
+      text: JSON.stringify({
+        education_content: 'MBA, Northwestern University',
+        keywords_used: ['MBA'],
+      }),
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    await tool.execute(
+      { section: 'education' },
+      ctx as unknown as Parameters<typeof tool.execute>[1],
+    );
+
+    const callArgs = llmMock.mock.calls.at(-1)?.[0];
+    const userContent = callArgs?.messages?.[0]?.content as string;
+    expect(userContent).toContain('omit graduation years by default');
+    expect(userContent).not.toContain('Degree, institution, year');
   });
 });
 

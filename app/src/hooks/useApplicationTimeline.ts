@@ -27,6 +27,54 @@ import {
 } from '@/lib/timeline/rules';
 import type { ApplicationWorkspaceTool } from '@/lib/app-routing';
 
+const LOCAL_EVENTS_PREFIX = 'career-iq:application-events:';
+
+function localEventsKey(applicationId: string): string {
+  return `${LOCAL_EVENTS_PREFIX}${applicationId}`;
+}
+
+function readLocalTimelineEvents(applicationId: string): TimelineEvent[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(localEventsKey(applicationId)) ?? '[]') as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((value): value is TimelineEvent & { job_application_id?: string } => {
+        if (!value || typeof value !== 'object') return false;
+        const event = value as Record<string, unknown>;
+        return (
+          typeof event.id === 'string'
+          && typeof event.type === 'string'
+          && typeof event.occurred_at === 'string'
+          && (event.metadata === null || typeof event.metadata === 'object')
+          && event.job_application_id === applicationId
+        );
+      })
+      .map((event) => ({
+        id: event.id,
+        type: event.type,
+        occurred_at: event.occurred_at,
+        metadata: event.metadata,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function withLocalTimelineEvents(payload: TimelinePayload, applicationId: string): TimelinePayload {
+  const localEvents = readLocalTimelineEvents(applicationId);
+  if (localEvents.length === 0) return payload;
+  const seen = new Set<string>();
+  const events = [...localEvents, ...payload.events]
+    .filter((event) => {
+      if (seen.has(event.id)) return false;
+      seen.add(event.id);
+      return true;
+    })
+    .sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at));
+  return { ...payload, events };
+}
+
 // ─── Done item shape (derived from payload) ───────────────────────────
 
 export type DoneItemId =
@@ -88,7 +136,15 @@ function deriveDoneItems(payload: TimelinePayload): DoneItem[] {
     };
   }
 
-  const appliedEvent = payload.events.find((e) => e.type === 'applied');
+  const appliedEvent = payload.events.find((e) => e.type === 'applied')
+    ?? (payload.application.applied_date
+      ? {
+          id: 'applied-date',
+          type: 'applied' as const,
+          occurred_at: payload.application.applied_date,
+          metadata: { type: 'applied', applied_via: 'manual' },
+        }
+      : undefined);
   if (appliedEvent) {
     items.applied = {
       id: 'applied',
@@ -249,7 +305,7 @@ export function useApplicationTimeline(
         return;
       }
       const body = (await res.json()) as TimelinePayload;
-      if (mountedRef.current) setPayload(body);
+      if (mountedRef.current) setPayload(withLocalTimelineEvents(body, id));
     } catch (err) {
       if (mountedRef.current) {
         setError(err instanceof Error ? err.message : 'Failed to load timeline');

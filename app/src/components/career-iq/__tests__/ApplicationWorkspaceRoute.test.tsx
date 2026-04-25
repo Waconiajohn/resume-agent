@@ -78,6 +78,7 @@ const baseApp: FakeApplication = {
 
 let currentApp: FakeApplication;
 const patchCalls: Array<{ url: string; body: unknown }> = [];
+let patchShouldFail = false;
 
 function installFetchStub() {
   global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -92,6 +93,12 @@ function installFetchStub() {
       if (init.method === 'PATCH') {
         const body = JSON.parse(String(init.body)) as Record<string, unknown>;
         patchCalls.push({ url, body });
+        if (patchShouldFail) {
+          return new Response(JSON.stringify({ error: 'schema mismatch' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
         currentApp = { ...currentApp, ...(body as Partial<FakeApplication>) };
         return new Response(JSON.stringify(currentApp), {
           status: 200,
@@ -136,8 +143,10 @@ function renderAt(url: string) {
 
 describe('ApplicationWorkspaceRoute — Interview Prep toggle', () => {
   beforeEach(() => {
+    window.localStorage.clear();
     currentApp = { ...baseApp };
     patchCalls.length = 0;
+    patchShouldFail = false;
     installFetchStub();
   });
 
@@ -187,12 +196,46 @@ describe('ApplicationWorkspaceRoute — Interview Prep toggle', () => {
 
     await screen.findByTestId('interview-lab-room');
   });
+
+  it('clicking Activate re-renders the lab even when PATCH fails', async () => {
+    patchShouldFail = true;
+    currentApp = { ...baseApp, stage: 'applied', interview_prep_enabled: null };
+    renderAt('/workspace/application/app-1/interview-prep');
+
+    const activate = await screen.findByRole('button', { name: /Activate Interview Prep/i });
+    fireEvent.click(activate);
+
+    await waitFor(() => {
+      expect(patchCalls.some((c) => c.url.includes('/job-applications/app-1'))).toBe(true);
+    });
+    expect(patchCalls[0]?.body).toMatchObject({ interview_prep_enabled: true });
+
+    await screen.findByTestId('interview-lab-room');
+  });
+
+  it('remembers activation after remount when PATCH fails', async () => {
+    patchShouldFail = true;
+    currentApp = { ...baseApp, stage: 'applied', interview_prep_enabled: null };
+    const firstRender = renderAt('/workspace/application/app-1/interview-prep');
+
+    const activate = await screen.findByRole('button', { name: /Activate Interview Prep/i });
+    fireEvent.click(activate);
+    await screen.findByTestId('interview-lab-room');
+
+    firstRender.unmount();
+    renderAt('/workspace/application/app-1/interview-prep');
+
+    await screen.findByTestId('interview-lab-room');
+    expect(screen.queryByRole('button', { name: /Activate Interview Prep/i })).toBeNull();
+  });
 });
 
 describe('ApplicationWorkspaceRoute — Offer / Negotiation toggle', () => {
   beforeEach(() => {
+    window.localStorage.clear();
     currentApp = { ...baseApp };
     patchCalls.length = 0;
+    patchShouldFail = false;
     installFetchStub();
   });
 
@@ -247,8 +290,10 @@ describe('ApplicationWorkspaceRoute — Offer / Negotiation toggle', () => {
 
 describe('ApplicationWorkspaceRoute — Thank-You Note toggle', () => {
   beforeEach(() => {
+    window.localStorage.clear();
     currentApp = { ...baseApp };
     patchCalls.length = 0;
+    patchShouldFail = false;
     installFetchStub();
   });
 
@@ -325,8 +370,10 @@ describe('ApplicationWorkspaceRoute — Thank-You Note toggle', () => {
 
 describe('ApplicationWorkspaceRoute — Networking Message toggle', () => {
   beforeEach(() => {
+    window.localStorage.clear();
     currentApp = { ...baseApp };
     patchCalls.length = 0;
+    patchShouldFail = false;
     installFetchStub();
   });
 

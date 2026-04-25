@@ -53,6 +53,7 @@ function eventRow(type: 'applied' | 'interview_happened' | 'offer_received', ove
 describe('useApplicationEvents', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     vi.stubGlobal('fetch', vi.fn());
   });
 
@@ -151,6 +152,37 @@ describe('useApplicationEvents', () => {
     expect(result.current.hasEvent('applied')).toBe(true);
   });
 
+  it('recordApplied falls back to PATCH and updates local state when event recording fails', async () => {
+    const mockFetch = vi.fn()
+      // initial GET
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ events: [], count: 0 }) })
+      // POST event route unavailable
+      .mockResolvedValueOnce({ ok: false, status: 500 })
+      // PATCH application fallback
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ stage: 'applied' }) });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { result } = renderHook(() => useApplicationEvents({ applicationId: APP_ID }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    let outcome: unknown = null;
+    await act(async () => {
+      outcome = await result.current.recordApplied({ applicationId: APP_ID });
+    });
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      `http://localhost:3001/api/job-applications/${encodeURIComponent(APP_ID)}`,
+      expect.objectContaining({
+        method: 'PATCH',
+        body: expect.stringContaining('"stage":"applied"'),
+      }),
+    );
+    expect(outcome).toMatchObject({ event: { type: 'applied' }, deduplicated: false });
+    await waitFor(() => expect(result.current.events).toHaveLength(1));
+    expect(result.current.error).toBeNull();
+  });
+
   it('recordInterviewHappened POSTs the right body', async () => {
     const newEvent = eventRow('interview_happened', { id: 'evt-int' });
     const mockFetch = vi.fn()
@@ -181,10 +213,47 @@ describe('useApplicationEvents', () => {
     );
   });
 
+  it('recordInterviewScheduled falls back to a local event when POST fails', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ events: [], count: 0 }) })
+      .mockResolvedValueOnce({ ok: false, status: 500 });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { result, unmount } = renderHook(() => useApplicationEvents({ applicationId: APP_ID }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await result.current.recordInterviewScheduled({
+        applicationId: APP_ID,
+        scheduledDate: '2026-04-27T14:00:00.000Z',
+        interviewType: 'video',
+        round: 'Panel',
+      });
+    });
+
+    await waitFor(() => expect(result.current.events).toHaveLength(1));
+    expect(result.current.events[0]).toMatchObject({
+      type: 'interview_scheduled',
+      metadata: expect.objectContaining({
+        scheduled_date: '2026-04-27T14:00:00.000Z',
+        round: 'Panel',
+      }),
+    });
+    expect(result.current.error).toBeNull();
+
+    unmount();
+    const reloadFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ events: [], count: 0 }) });
+    vi.stubGlobal('fetch', reloadFetch);
+    const reloaded = renderHook(() => useApplicationEvents({ applicationId: APP_ID }));
+    await waitFor(() => expect(reloaded.result.current.events).toHaveLength(1));
+  });
+
   it('sets error on failed POST and does not throw', async () => {
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ events: [], count: 0 }) })
-      .mockResolvedValueOnce({ ok: false, status: 400 });
+      .mockResolvedValueOnce({ ok: false, status: 400 })
+      .mockResolvedValueOnce({ ok: false, status: 503 });
     vi.stubGlobal('fetch', mockFetch);
 
     const { result } = renderHook(() => useApplicationEvents({ applicationId: APP_ID }));
@@ -196,6 +265,6 @@ describe('useApplicationEvents', () => {
     });
 
     expect(outcome).toBeNull();
-    await waitFor(() => expect(result.current.error).toContain('400'));
+    await waitFor(() => expect(result.current.error).toContain('503'));
   });
 });

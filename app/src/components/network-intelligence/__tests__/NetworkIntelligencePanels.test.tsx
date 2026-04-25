@@ -9,10 +9,12 @@ vi.mock('@/lib/api', () => ({
 import { JobMatchesList } from '../JobMatchesList';
 import { CompanyCard } from '../CompanyCard';
 import { ScrapeJobsPanel } from '../ScrapeJobsPanel';
+import { JobFilterPanel } from '@/components/shared/JobFilterPanel';
 
 describe('network intelligence panels', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -213,6 +215,240 @@ describe('network intelligence panels', () => {
       screen.getByText(/Import LinkedIn connections first/i),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Scan for Jobs/i })).toBeDisabled();
+  });
+
+  it('makes selected scan companies obvious and enables the scan action', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            companies: [
+              {
+                companyRaw: 'Acme Corp',
+                companyDisplayName: 'Acme Corp',
+                companyId: '550e8400-e29b-41d4-a716-446655440000',
+                connectionCount: 3,
+                topPositions: ['VP Operations'],
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ titles: [{ id: 'title-1', title: 'VP Operations', priority: 1 }] }), {
+          status: 200,
+        }),
+      );
+
+    render(<ScrapeJobsPanel accessToken="test-token" />);
+
+    const scanButton = await screen.findByRole('button', { name: /Scan for Jobs/i });
+    expect(scanButton).toBeDisabled();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Select Acme Corp/i }));
+
+    expect(screen.getByText('Selected')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Deselect Acme Corp/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(scanButton).toBeEnabled();
+  });
+
+  it('explains clean Insider Jobs scan shapes and offers the 30-day freshness option', () => {
+    render(
+      <JobFilterPanel
+        location=""
+        onLocationChange={vi.fn()}
+        radiusMiles={25}
+        onRadiusMilesChange={vi.fn()}
+        workModes={{ remote: true, hybrid: true, onsite: false }}
+        onWorkModesChange={vi.fn()}
+        postedWithin="7d"
+        onPostedWithinChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/For clean results, run one search shape at a time/i)).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Today' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Last 3 days' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Last 7 days' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Last 14 days' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Last 30 days' })).toBeInTheDocument();
+  });
+
+  it('supports a single-select work-mode control for Broad Search', () => {
+    const onWorkModesChange = vi.fn();
+
+    render(
+      <JobFilterPanel
+        location=""
+        onLocationChange={vi.fn()}
+        radiusMiles={25}
+        onRadiusMilesChange={vi.fn()}
+        workModes={{ remote: true, hybrid: true, onsite: false }}
+        onWorkModesChange={onWorkModesChange}
+        postedWithin="7d"
+        onPostedWithinChange={vi.fn()}
+        workModeSelection="single"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Any' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(/Broad Search runs one work mode at a time/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remote' }));
+    expect(onWorkModesChange).toHaveBeenLastCalledWith({ remote: true, hybrid: false, onsite: false });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Any' }));
+    expect(onWorkModesChange).toHaveBeenLastCalledWith({ remote: false, hybrid: false, onsite: false });
+  });
+
+  it('starts a remote-only scan without tying it to city/radius', async () => {
+    localStorage.setItem(
+      'ni-job-filters',
+      JSON.stringify({
+        location: 'Dallas, TX',
+        radiusMiles: 50,
+        workModes: { remote: true, hybrid: false, onsite: false },
+        postedWithin: '30d',
+      }),
+    );
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            companies: [
+              {
+                companyRaw: 'Acme Corp',
+                companyDisplayName: 'Acme Corp',
+                companyId: '550e8400-e29b-41d4-a716-446655440000',
+                connectionCount: 3,
+                topPositions: ['VP Operations'],
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ titles: [{ id: 'title-1', title: 'VP Operations', priority: 1 }] }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ scrape_log_id: 'scrape-1' }), { status: 202 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            log: {
+              id: 'scrape-1',
+              status: 'completed',
+              output_summary: { companies_scanned: 1 },
+              error_message: null,
+            },
+          }),
+          { status: 200 },
+        ),
+      );
+
+    render(<ScrapeJobsPanel accessToken="test-token" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Select Acme Corp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Scan for Jobs/i }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/ni/scrape/start',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    const startCall = vi.mocked(fetch).mock.calls.find(([url]) =>
+      String(url).includes('/ni/scrape/start'),
+    );
+    const body = JSON.parse((startCall?.[1] as RequestInit).body as string);
+    expect(body).toEqual(
+      expect.objectContaining({
+        remote_only: true,
+        work_modes: ['remote'],
+        max_days_old: 30,
+      }),
+    );
+    expect(body).not.toHaveProperty('location');
+    expect(body).not.toHaveProperty('radius_miles');
+  });
+
+  it('starts a hybrid scan with city/radius and hybrid work mode', async () => {
+    localStorage.setItem(
+      'ni-job-filters',
+      JSON.stringify({
+        location: 'Dallas, TX',
+        radiusMiles: 50,
+        workModes: { remote: false, hybrid: true, onsite: false },
+        postedWithin: '14d',
+      }),
+    );
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            companies: [
+              {
+                companyRaw: 'Acme Corp',
+                companyDisplayName: 'Acme Corp',
+                companyId: '550e8400-e29b-41d4-a716-446655440000',
+                connectionCount: 3,
+                topPositions: ['VP Operations'],
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ titles: [{ id: 'title-1', title: 'VP Operations', priority: 1 }] }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ scrape_log_id: 'scrape-1' }), { status: 202 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            log: {
+              id: 'scrape-1',
+              status: 'completed',
+              output_summary: { companies_scanned: 1 },
+              error_message: null,
+            },
+          }),
+          { status: 200 },
+        ),
+      );
+
+    render(<ScrapeJobsPanel accessToken="test-token" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Select Acme Corp/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Scan for Jobs/i }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/ni/scrape/start',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    const startCall = vi.mocked(fetch).mock.calls.find(([url]) =>
+      String(url).includes('/ni/scrape/start'),
+    );
+    expect(JSON.parse((startCall?.[1] as RequestInit).body as string)).toEqual(
+      expect.objectContaining({
+        location: 'Dallas, TX',
+        radius_miles: 50,
+        remote_only: false,
+        work_modes: ['hybrid'],
+        max_days_old: 14,
+      }),
+    );
   });
 
   it('explains normalization is still running when connections exist but no companies are scan-ready yet', async () => {

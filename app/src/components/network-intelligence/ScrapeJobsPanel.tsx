@@ -7,8 +7,9 @@ import type { CompanySummary, TargetTitle } from '@/types/ni';
 import { useNiScrapeRunner } from './useNiScrapeRunner';
 import { useCompanySelection } from './useCompanySelection';
 import { CompanyPickerList } from './CompanyPickerList';
+import { JobFilterPanel } from '@/components/shared/JobFilterPanel';
 
-import { useJobFilters } from '@/hooks/useJobFilters';
+import { useJobFilters, type WorkModeKey } from '@/hooks/useJobFilters';
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 
@@ -184,16 +185,22 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
 
   const handleScan = useCallback(async () => {
     const companyIds = selection.getSelectedCompanyIds();
-    const maxDaysOldMap: Record<string, number> = { '24h': 1, '3d': 3, '7d': 7, '14d': 14 };
-    const remoteOnly =
-      filters.workModes.remote && !filters.workModes.hybrid && !filters.workModes.onsite;
+    const maxDaysOldMap: Record<string, number> = { '24h': 1, '3d': 3, '7d': 7, '14d': 14, '30d': 30 };
+    const workModes = (Object.entries(filters.workModes) as Array<[WorkModeKey, boolean]>)
+      .filter(([, enabled]) => enabled)
+      .map(([mode]) => mode);
+    const remoteOnly = workModes.length === 1 && workModes[0] === 'remote';
+    const location = filters.location.trim();
+    const useLocation = location.length > 0 && !remoteOnly;
     await startScan({
       companyIds,
       targetTitles: titles.map((t) => t.title),
       searchContext: 'network_connections',
       emptyMessage: 'Select at least one company to scan.',
-      location: filters.location || undefined,
+      location: useLocation ? location : undefined,
+      radiusMiles: useLocation ? filters.radiusMiles : undefined,
       remoteOnly,
+      workModes,
       maxDaysOld: maxDaysOldMap[filters.postedWithin],
     });
   }, [filters, selection, startScan, titles]);
@@ -299,6 +306,17 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
           </div>
         )}
       </GlassCard>
+
+      <JobFilterPanel
+        location={filters.location}
+        onLocationChange={setLocation}
+        radiusMiles={filters.radiusMiles}
+        onRadiusMilesChange={setRadiusMiles}
+        workModes={filters.workModes}
+        onWorkModesChange={setWorkModes}
+        postedWithin={filters.postedWithin}
+        onPostedWithinChange={setPostedWithin}
+      />
 
       {/* Company picker */}
       {eligibleCompanyCount > 0 && (

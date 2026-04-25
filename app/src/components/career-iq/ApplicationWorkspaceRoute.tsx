@@ -90,6 +90,57 @@ interface ApplicationRecord {
   updated_at: string;
 }
 
+const TOOL_TOGGLE_FIELDS = [
+  'interview_prep_enabled',
+  'offer_enabled',
+  'follow_up_email_enabled',
+  'thank_you_note_enabled',
+  'networking_enabled',
+] as const;
+
+type ToolToggleField = (typeof TOOL_TOGGLE_FIELDS)[number];
+type ToolToggleOverrides = Partial<Record<ToolToggleField, boolean>>;
+
+function toggleOverrideKey(applicationId: string): string {
+  return `career-iq:application-tool-toggles:${applicationId}`;
+}
+
+function readToolToggleOverrides(applicationId: string): ToolToggleOverrides {
+  if (typeof window === 'undefined') return {};
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(toggleOverrideKey(applicationId)) ?? '{}') as Record<string, unknown>;
+    const overrides: ToolToggleOverrides = {};
+    for (const field of TOOL_TOGGLE_FIELDS) {
+      if (typeof parsed[field] === 'boolean') overrides[field] = parsed[field];
+    }
+    return overrides;
+  } catch {
+    return {};
+  }
+}
+
+function writeToolToggleOverrides(applicationId: string, patch: Partial<ApplicationRecord>) {
+  if (typeof window === 'undefined') return;
+  const next = readToolToggleOverrides(applicationId);
+  let hasToggle = false;
+  for (const field of TOOL_TOGGLE_FIELDS) {
+    if (typeof patch[field] === 'boolean') {
+      next[field] = patch[field];
+      hasToggle = true;
+    }
+  }
+  if (!hasToggle) return;
+  try {
+    window.localStorage.setItem(toggleOverrideKey(applicationId), JSON.stringify(next));
+  } catch {
+    // localStorage can be unavailable in private or restricted contexts.
+  }
+}
+
+function applyToolToggleOverrides(app: ApplicationRecord): ApplicationRecord {
+  return { ...app, ...readToolToggleOverrides(app.id) };
+}
+
 /**
  * Phase 2.3b — effective active-state for Interview Prep on this application.
  * Explicit user toggle wins; otherwise derive from stage.
@@ -246,11 +297,13 @@ export function ApplicationWorkspaceRoute({
   const applyToggle = useCallback(
     async (patch: Partial<ApplicationRecord>) => {
       if (!accessToken || !application) return;
+      writeToolToggleOverrides(application.id, patch);
+      setApplication((current) => (current ? { ...current, ...patch } : current));
       setToggleInFlight(true);
       try {
         const result = await patchApplication(application.id, accessToken, patch);
         if (result.ok) {
-          setApplication(result.data);
+          setApplication(applyToolToggleOverrides(result.data));
         }
       } finally {
         setToggleInFlight(false);
@@ -303,7 +356,7 @@ export function ApplicationWorkspaceRoute({
       .then((res) => {
         if (cancelled) return;
         if (res.ok) {
-          setApplication(res.data);
+          setApplication(applyToolToggleOverrides(res.data));
         } else if (res.status === 404) {
           setError('Application not found');
         } else {

@@ -3,8 +3,8 @@
 // Covers the core contract: summaries are verified iff every claim token
 // (dollar amount, percentage, number+unit, proper noun, acronym, or
 // "by/through ..." framing phrase) appears as a substring in the candidate
-// resume's full-resume haystack (any position's bullets/scope + custom
-// sections + crossRoleHighlights).
+// resume's full-resume haystack and positionIndex points at the source bucket
+// containing those tokens.
 //
 // The fixture-09 case is reproduced in the final test as the canonical
 // regression this work was designed to catch.
@@ -13,7 +13,12 @@ import { describe, expect, it } from 'vitest';
 import { checkStrategizeAttribution, extractClaimTokens } from '../../v3/verify/attribution.js';
 import type { Strategy, StructuredResume } from '../../v3/types.js';
 
-function resume(positions: Array<{ title: string; company: string; bullets: string[] }>): StructuredResume {
+function resume(
+  positions: Array<{ title: string; company: string; bullets: string[] }>,
+  opts: {
+    crossRoleHighlights?: string[];
+  } = {},
+): StructuredResume {
   return {
     contact: { fullName: 'Test Candidate' },
     discipline: 'test discipline',
@@ -33,7 +38,11 @@ function resume(positions: Array<{ title: string; company: string; bullets: stri
     certifications: [],
     skills: [],
     careerGaps: [],
-    crossRoleHighlights: [],
+    crossRoleHighlights: (opts.crossRoleHighlights ?? []).map((text) => ({
+      text,
+      sourceContext: text,
+      confidence: 1.0,
+    })),
     customSections: [],
     pronoun: null,
     flags: [],
@@ -100,15 +109,86 @@ describe('checkStrategizeAttribution', () => {
     expect(result.summaries[0].verified).toBe(true);
   });
 
-  it('checks against resume-wide haystack (positionIndex=null cross-role summaries)', () => {
+  it('flags positionIndex=null when summary evidence only appears in a position', () => {
     const src = resume([
       { title: 'Director', company: 'Acme', bullets: ['Led team.'] },
       { title: 'VP', company: 'Beta', bullets: ['Delivered $15M in savings.'] },
     ]);
-    // Cross-role summary citing a metric from position[1] but strategy positionIndex=null
+    // Cross-role summary citing a metric from position[1] but strategy positionIndex=null.
+    const strat = strategy([{ positionIndex: null, summary: 'Delivered $15M in savings across career.' }]);
+    const result = checkStrategizeAttribution(strat, src);
+    expect(result.summaries[0].verified).toBe(false);
+    expect(result.summaries[0].missingTokens).toEqual([]);
+    expect(result.summaries[0].locationIssue).toContain('positions[1]');
+  });
+
+  it('accepts positionIndex=null when summary evidence appears in cross-role highlights', () => {
+    const src = resume(
+      [
+        { title: 'Director', company: 'Acme', bullets: ['Led team.'] },
+        { title: 'VP', company: 'Beta', bullets: ['Led operations.'] },
+      ],
+      {
+        crossRoleHighlights: ['Delivered $15M in savings across career.'],
+      },
+    );
     const strat = strategy([{ positionIndex: null, summary: 'Delivered $15M in savings across career.' }]);
     const result = checkStrategizeAttribution(strat, src);
     expect(result.summaries[0].verified).toBe(true);
+  });
+
+  it('flags a strategy summary whose positionIndex points at the wrong source position', () => {
+    const src = resume([
+      { title: 'Director', company: 'Acme', bullets: ['Led team.'] },
+      { title: 'VP', company: 'Beta', bullets: ['Promoted 7 internal leaders into expanded roles.'] },
+    ]);
+    const strat = strategy([{ positionIndex: 0, summary: 'Promoted 7 internal leaders into expanded roles.' }]);
+    const result = checkStrategizeAttribution(strat, src);
+    expect(result.summaries[0].verified).toBe(false);
+    expect(result.summaries[0].locationIssue).toContain('positions[1]');
+  });
+
+  it('accepts the VP Ops succession-bench accomplishment when anchored to its source position', () => {
+    const src = resume([
+      {
+        title: 'Vice President of Operations',
+        company: 'Northstar Components',
+        bullets: [
+          'Built succession bench for plant managers and supervisors, promoting 7 internal leaders into expanded operational roles.',
+        ],
+      },
+    ]);
+    const strat = strategy([
+      {
+        positionIndex: 0,
+        summary:
+          'Built succession bench for plant managers and supervisors, promoting 7 internal leaders into expanded operational roles.',
+      },
+    ]);
+    const result = checkStrategizeAttribution(strat, src);
+    expect(result.summaries[0].verified).toBe(true);
+  });
+
+  it('flags the VP Ops succession-bench accomplishment when misclassified as cross-role', () => {
+    const src = resume([
+      {
+        title: 'Vice President of Operations',
+        company: 'Northstar Components',
+        bullets: [
+          'Built succession bench for plant managers and supervisors, promoting 7 internal leaders into expanded operational roles.',
+        ],
+      },
+    ]);
+    const strat = strategy([
+      {
+        positionIndex: null,
+        summary:
+          'Built succession bench for plant managers and supervisors, promoting 7 internal leaders into expanded operational roles.',
+      },
+    ]);
+    const result = checkStrategizeAttribution(strat, src);
+    expect(result.summaries[0].verified).toBe(false);
+    expect(result.summaries[0].locationIssue).toContain('positions[0]');
   });
 
   it('normalizes dashes and case during matching', () => {

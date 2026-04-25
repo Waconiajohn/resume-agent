@@ -190,6 +190,26 @@ describe('POST /api/job-search', () => {
     expect(res.status).toBe(400);
   });
 
+  it('accepts the 30-day datePosted filter', async () => {
+    mockFrom.mockReturnValueOnce(
+      buildScanChain({ data: { id: 'scan-001' }, error: null }),
+    );
+
+    const res = await app.request('/api/job-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok' },
+      body: validBody({ filters: { datePosted: '30d' } }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockSearchAllSources).toHaveBeenCalledWith(
+      'Chief Technology Officer',
+      'San Francisco, CA',
+      { datePosted: '30d' },
+      expect.any(Array),
+    );
+  });
+
   it('returns 500 when scan insert fails', async () => {
     mockFrom.mockReturnValueOnce(
       buildScanChain({ data: null, error: { message: 'DB write failed' } }),

@@ -62,7 +62,7 @@ interface ChainResult<T = unknown> {
 function buildChain<T>(result: ChainResult<T>) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: any = {};
-  const passthrough = ['select', 'eq', 'in', 'gte', 'order', 'is', 'limit'];
+  const passthrough = ['select', 'eq', 'in', 'gte', 'order', 'is', 'not', 'limit'];
   for (const m of passthrough) {
     chain[m] = vi.fn().mockReturnValue(chain);
   }
@@ -122,7 +122,7 @@ describe('GET /api/job-applications/timeline/all', () => {
       if (table === 'job_applications') {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const chain: any = {};
-        const passthrough = ['select', 'eq', 'in', 'gte', 'order', 'is'];
+        const passthrough = ['select', 'eq', 'in', 'gte', 'order', 'is', 'not'];
         for (const m of passthrough) chain[m] = vi.fn().mockReturnValue(chain);
         chain.limit = limitSpy.mockReturnValue(chain);
         chain.then = (resolve: (v: ChainResult<unknown>) => unknown) =>

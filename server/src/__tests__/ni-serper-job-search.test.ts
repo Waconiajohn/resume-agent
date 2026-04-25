@@ -106,6 +106,53 @@ describe('searchJobsViaSerper', () => {
     expect(parsed.q).toContain('"VP of Engineering"');
   });
 
+  it('includes radius intent when location and radius are provided', async () => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ organic: [] }) });
+    });
+
+    await searchJobsViaSerper('Acme Corp', ['VP Operations'], 'Dallas, TX', 7, 50);
+
+    const parsed = JSON.parse(capturedBody!);
+    expect(parsed.q).toContain('within 50 miles of "Dallas, TX"');
+    expect(parsed.tbs).toBe('qdr:w');
+  });
+
+  it.each([
+    [1, 'qdr:d'],
+    [3, 'qdr:d3'],
+    [7, 'qdr:w'],
+    [14, 'qdr:w2'],
+    [30, 'qdr:m'],
+  ])('uses the expected Serper freshness filter for %i day(s)', async (maxDaysOld, expectedTbs) => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ organic: [] }) });
+    });
+
+    await searchJobsViaSerper('Acme Corp', ['VP Operations'], undefined, maxDaysOld);
+
+    const parsed = JSON.parse(capturedBody!);
+    expect(parsed.tbs).toBe(expectedTbs);
+  });
+
+  it('adds explicit work-mode intent to the fallback query', async () => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ organic: [] }) });
+    });
+
+    await searchJobsViaSerper('Acme Corp', ['VP Operations'], 'Dallas, TX', 30, 25, ['hybrid']);
+
+    const parsed = JSON.parse(capturedBody!);
+    expect(parsed.q).toContain('"VP Operations" hybrid within 25 miles of "Dallas, TX"');
+    expect(parsed.tbs).toBe('qdr:m');
+  });
+
   it('filters results to known ATS domains only', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
