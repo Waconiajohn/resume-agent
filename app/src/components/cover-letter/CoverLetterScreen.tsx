@@ -21,6 +21,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { useCoverLetter } from '@/hooks/useCoverLetter';
 import { IAppliedCTA } from '@/components/applications/IAppliedCTA';
+import { WhatsNextCTABar } from '@/components/applications/WhatsNextCTABar';
 import { API_BASE } from '@/lib/api';
 import { buildResumeWorkspaceRoute } from '@/lib/app-routing';
 import { cn } from '@/lib/utils';
@@ -665,6 +666,12 @@ export function CoverLetterScreen({
               <div className="mt-4">
                 <IAppliedCTA applicationId={applicationId} />
               </div>
+            )}
+            {applicationId && (
+              <WhatsNextCTABar
+                applicationId={applicationId}
+                className="mt-4"
+              />
             )}
           </>
         )}

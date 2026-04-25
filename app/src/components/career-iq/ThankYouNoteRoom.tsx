@@ -12,6 +12,7 @@
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { ContextLoadedBadge } from '@/components/career-iq/ContextLoadedBadge';
+import { WhatsNextCTABar } from '@/components/applications/WhatsNextCTABar';
 import {
   Mail,
   Plus,
@@ -727,6 +728,7 @@ function ReportView({
   company,
   role,
   onReset,
+  applicationId,
 }: {
   report: string;
   qualityScore: number | null;
@@ -734,6 +736,7 @@ function ReportView({
   role: string;
   interviewType: string;
   onReset: () => void;
+  applicationId?: string;
 }) {
   const [copiedAll, setCopiedAll] = useState(false);
 
@@ -804,6 +807,10 @@ function ReportView({
           dangerouslySetInnerHTML={{ __html: markdownToHtml(report) }}
         />
       </GlassCard>
+
+      {applicationId && (
+        <WhatsNextCTABar applicationId={applicationId} />
+      )}
     </div>
   );
 }
@@ -1078,6 +1085,7 @@ export function ThankYouNoteRoom({
           role={role}
           interviewType={interviewType}
           onReset={handleReset}
+          applicationId={initialJobApplicationId}
         />
       </div>
     );
@@ -1092,6 +1100,7 @@ export function ThankYouNoteRoom({
           company={company}
           role={role}
           interviewType={interviewType}
+          applicationId={initialJobApplicationId}
           onReset={() => {
             clearPrior();
             handleReset();

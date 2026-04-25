@@ -41,6 +41,7 @@ import { V3PromotePanel } from './V3PromotePanel';
 import { V3ResumeBanner } from './V3ResumeBanner';
 import { V3ExportBar } from './V3ExportBar';
 import { IAppliedCTA } from '@/components/applications/IAppliedCTA';
+import { WhatsNextCTABar } from '@/components/applications/WhatsNextCTABar';
 import {
   OrphanSessionBanner,
   StaleApplicationBanner,
@@ -701,6 +702,13 @@ export function V3PipelineScreen({
                 <IAppliedCTA
                   applicationId={applicationId}
                   resumeSessionId={sessionId ?? undefined}
+                />
+              )}
+              {pipeline.isComplete && !pipeline.error && applicationId && (
+                <WhatsNextCTABar
+                  applicationId={applicationId}
+                  resumeSessionId={sessionId ?? undefined}
+                  className="mt-4"
                 />
               )}
             </div>
