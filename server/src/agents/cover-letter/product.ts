@@ -112,6 +112,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
       session_id: sessionId,
       user_id: userId,
       current_stage: 'analysis',
+      job_application_id: typeof input.job_application_id === 'string' ? input.job_application_id : undefined,
       platform_context: input.platform_context as CoverLetterState['platform_context'],
       shared_context: input.shared_context as CoverLetterState['shared_context'],
       tone: (input.tone as CoverLetterState['tone']) ?? 'formal',
@@ -330,6 +331,37 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
           { error: err instanceof Error ? err.message : String(err), session_id: state.session_id },
           'Cover letter: failed to persist result (non-fatal)',
         );
+      }
+
+      // Phase 3: persist the canonical "cover letter for this pursuit" row.
+      // UPSERT keyed by (user_id, job_application_id) — latest approved state
+      // wins, single row per pursuit. The pursuit timeline reads this to fire
+      // the "Cover letter drafted" Done card and the N2 Next-rule.
+      if (state.job_application_id && data.letter && data.letter.length > 0) {
+        try {
+          const { error } = await supabaseAdmin
+            .from('cover_letter_reports')
+            .upsert(
+              {
+                user_id: state.user_id,
+                job_application_id: state.job_application_id,
+                content: data.letter,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'user_id,job_application_id' },
+            );
+          if (error) {
+            logger.warn(
+              { error: error.message, session_id: state.session_id },
+              'Cover letter: failed to upsert cover_letter_reports (non-fatal)',
+            );
+          }
+        } catch (err) {
+          logger.warn(
+            { error: err instanceof Error ? err.message : String(err), session_id: state.session_id },
+            'Cover letter: cover_letter_reports upsert threw (non-fatal)',
+          );
+        }
       }
     },
 

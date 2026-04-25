@@ -379,6 +379,108 @@ describe('POST /api/job-applications/:id/events', () => {
   });
 });
 
+describe('POST interview_scheduled — Phase 3', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFrom.mockReset();
+  });
+
+  it('accepts a future-dated interview_scheduled event', async () => {
+    const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const inserted = {
+      id: 'evt-sched-1', user_id: 'user-abc', job_application_id: APP_ID,
+      type: 'interview_scheduled', occurred_at: new Date().toISOString(),
+      metadata: { type: 'interview_scheduled', scheduled_date: future, interview_type: 'video' },
+      created_at: new Date().toISOString(),
+    };
+    mockFrom
+      .mockReturnValueOnce(buildOwnershipChain(true))
+      .mockReturnValueOnce(buildIdempotencyChain(null))
+      .mockReturnValueOnce(buildInsertChain(inserted));
+
+    const res = await app.request(`/job-applications/${APP_ID}/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'interview_scheduled',
+        metadata: {
+          type: 'interview_scheduled',
+          scheduled_date: future,
+          interview_type: 'video',
+          round: 'First round',
+        },
+      }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.event.type).toBe('interview_scheduled');
+    expect(body.deduplicated).toBe(false);
+  });
+
+  it('idempotency dedups on (app, type, scheduled_date)', async () => {
+    const future = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
+    const existing = {
+      id: 'evt-sched-existing', user_id: 'user-abc', job_application_id: APP_ID,
+      type: 'interview_scheduled', occurred_at: new Date().toISOString(),
+      metadata: { type: 'interview_scheduled', scheduled_date: future, interview_type: 'phone' },
+      created_at: new Date().toISOString(),
+    };
+    const idemChain = buildIdempotencyChain(existing);
+    mockFrom
+      .mockReturnValueOnce(buildOwnershipChain(true))
+      .mockReturnValueOnce(idemChain);
+
+    const res = await app.request(`/job-applications/${APP_ID}/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'interview_scheduled',
+        metadata: {
+          type: 'interview_scheduled',
+          scheduled_date: future,
+          interview_type: 'phone',
+        },
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.deduplicated).toBe(true);
+    // The dedup chain must have been keyed on metadata->>scheduled_date so
+    // multi-round interviews remain distinct.
+    const eqArgs = idemChain.eq.mock.calls.map((c) => c[0]);
+    expect(eqArgs).toContain('metadata->>scheduled_date');
+  });
+
+  it('rejects when interview_type is missing on metadata', async () => {
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const res = await app.request(`/job-applications/${APP_ID}/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'interview_scheduled',
+        metadata: { type: 'interview_scheduled', scheduled_date: future },
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects when scheduled_date is not an ISO datetime', async () => {
+    const res = await app.request(`/job-applications/${APP_ID}/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'interview_scheduled',
+        metadata: {
+          type: 'interview_scheduled',
+          scheduled_date: 'not-a-date',
+          interview_type: 'video',
+        },
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('GET /api/job-applications/:id/events', () => {
   beforeEach(() => {
     vi.clearAllMocks();

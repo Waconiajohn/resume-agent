@@ -389,7 +389,48 @@ export function createThankYouNoteProductConfig(): ProductConfig<ThankYouNoteSta
         notes: unknown;
       };
 
+      // Phase 3: latest approved state wins, single row per pursuit. When the
+      // application id is set, prefer update-existing over insert so multi-
+      // approval cycles don't litter the table; without an application id we
+      // fall back to insert (the row is orphaned and only reachable from the
+      // session it came from).
       try {
+        if (state.job_application_id) {
+          const { data: existing, error: lookupError } = await supabaseAdmin
+            .from('thank_you_note_reports')
+            .select('id')
+            .eq('user_id', state.user_id)
+            .eq('job_application_id', state.job_application_id)
+            .maybeSingle();
+
+          if (lookupError) {
+            logger.warn(
+              { error: lookupError.message, userId: state.user_id },
+              'Thank-you note: lookup before persist failed (falling through to insert)',
+            );
+          }
+
+          if (existing?.id) {
+            const { error: updateError } = await supabaseAdmin
+              .from('thank_you_note_reports')
+              .update({
+                session_id: state.session_id,
+                report_markdown: data.report,
+                quality_score: data.quality_score,
+                notes: data.notes,
+                interview_context: state.interview_context,
+              })
+              .eq('id', existing.id);
+            if (updateError) {
+              logger.warn(
+                { error: updateError.message, userId: state.user_id },
+                'Thank-you note: update failed (non-fatal)',
+              );
+            }
+            return;
+          }
+        }
+
         await supabaseAdmin
           .from('thank_you_note_reports')
           .insert({

@@ -16,7 +16,11 @@ import { supabase } from '@/lib/supabase';
 
 // ─── Types (mirror server discriminated union) ────────────────────────
 
-export type ApplicationEventType = 'applied' | 'interview_happened' | 'offer_received';
+export type ApplicationEventType =
+  | 'applied'
+  | 'interview_happened'
+  | 'offer_received'
+  | 'interview_scheduled';
 
 export type AppliedVia = 'manual' | 'extension' | 'imported';
 export type InterviewType = 'phone' | 'video' | 'onsite';
@@ -43,10 +47,19 @@ export interface OfferReceivedMetadata {
   role_title?: string;
 }
 
+export interface InterviewScheduledMetadata {
+  type: 'interview_scheduled';
+  scheduled_date: string;
+  interview_type: InterviewType;
+  round?: string;
+  with_whom?: string[];
+}
+
 export type ApplicationEventMetadata =
   | AppliedMetadata
   | InterviewHappenedMetadata
-  | OfferReceivedMetadata;
+  | OfferReceivedMetadata
+  | InterviewScheduledMetadata;
 
 export interface ApplicationEvent {
   id: string;
@@ -230,6 +243,27 @@ export function useApplicationEvents(options: UseApplicationEventsOptions = {}) 
     [recordEvent],
   );
 
+  const recordInterviewScheduled = useCallback(
+    (input: {
+      applicationId: string;
+      scheduledDate: string;
+      interviewType: InterviewType;
+      round?: string;
+      withWhom?: string[];
+    }) =>
+      recordEvent({
+        applicationId: input.applicationId,
+        metadata: {
+          type: 'interview_scheduled',
+          scheduled_date: input.scheduledDate,
+          interview_type: input.interviewType,
+          round: input.round,
+          with_whom: input.withWhom,
+        },
+      }),
+    [recordEvent],
+  );
+
   /** Convenience: has an event of the given type been recorded for this app? */
   const hasEvent = useCallback(
     (type: ApplicationEventType): boolean => events.some((e) => e.type === type),
@@ -251,6 +285,7 @@ export function useApplicationEvents(options: UseApplicationEventsOptions = {}) 
     recordApplied,
     recordInterviewHappened,
     recordOfferReceived,
+    recordInterviewScheduled,
     hasEvent,
     latestEvent,
   };

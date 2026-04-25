@@ -80,7 +80,11 @@ export function buildResumeWorkspaceRoute(
 // → offer (outcome). `offer-negotiation` sits last because most applications
 // never reach it. `follow-up-email` sits between thank-you and offer because
 // it's the natural next post-interview step when the offer hasn't landed yet.
+// Phase 3 — `overview` is the pursuit-timeline view (Done / Next / Their turn)
+// and prepends the rail. Smart-default routes here when any Done content
+// exists; otherwise routes the user to the highest-priority Next rule.
 export const APPLICATION_WORKSPACE_TOOLS = [
+  'overview',
   'resume',
   'cover-letter',
   'networking',
@@ -94,7 +98,7 @@ export type ApplicationWorkspaceTool = (typeof APPLICATION_WORKSPACE_TOOLS)[numb
 
 export function buildApplicationWorkspaceRoute(
   applicationId: string,
-  tool: ApplicationWorkspaceTool = 'resume',
+  tool: ApplicationWorkspaceTool = 'overview',
   params?: Record<string, string | number | boolean | null | undefined>,
 ): string {
   const search = new URLSearchParams();

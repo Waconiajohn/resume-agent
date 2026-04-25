@@ -28,6 +28,7 @@ import { FF_APPLICATION_PIPELINE } from '../lib/feature-flags.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 import { applicationEventsRoutes } from './application-events.js';
+import { applicationTimelineRoutes } from './application-timeline.js';
 
 export const jobApplicationsRoutes = new Hono();
 
@@ -417,8 +418,10 @@ jobApplicationsRoutes.delete('/:id', rateLimitMiddleware(10, 60_000), async (c) 
   return c.json({ deleted: true });
 });
 
-// ─── Sub-router: events ─────────────────────────────────────────────────
+// ─── Sub-routers: events + timeline ─────────────────────────────────────
 //
-// Mounts /api/job-applications/:applicationId/events under the parent.
+// Mounts /api/job-applications/:applicationId/events and
+//        /api/job-applications/:applicationId/timeline under the parent.
 // Auth + feature flag are inherited from the parent middleware chain.
 jobApplicationsRoutes.route('/', applicationEventsRoutes);
+jobApplicationsRoutes.route('/', applicationTimelineRoutes);

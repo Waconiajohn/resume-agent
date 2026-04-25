@@ -43,6 +43,7 @@ import { DebriefForm } from '@/components/career-iq/DebriefForm';
 import { MockInterviewView } from '@/components/career-iq/MockInterviewView';
 import { ThankYouNoteRoom } from '@/components/career-iq/ThankYouNoteRoom';
 import { HadThisInterviewButton } from '@/components/applications/HadThisInterviewButton';
+import { ScheduleInterviewButton } from '@/components/applications/ScheduleInterviewButton';
 import { SalaryNegotiationRoom } from '@/components/career-iq/SalaryNegotiationRoom';
 import { NinetyDayPlanRoom } from '@/components/career-iq/NinetyDayPlanRoom';
 import {
@@ -592,15 +593,21 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
                     Generate Interview Prep
                   </GlassButton>
                   {interview.jobApplicationId && (
-                    <HadThisInterviewButton
-                      applicationId={interview.jobApplicationId}
-                      defaultInterviewType={interview.type}
-                      defaultInterviewDate={
-                        interview.date && interview.date !== 'TBD'
-                          ? interview.date
-                          : undefined
-                      }
-                    />
+                    <>
+                      <ScheduleInterviewButton
+                        applicationId={interview.jobApplicationId}
+                        defaultInterviewType={interview.type}
+                      />
+                      <HadThisInterviewButton
+                        applicationId={interview.jobApplicationId}
+                        defaultInterviewType={interview.type}
+                        defaultInterviewDate={
+                          interview.date && interview.date !== 'TBD'
+                            ? interview.date
+                            : undefined
+                        }
+                      />
+                    </>
                   )}
                 </div>
               )}

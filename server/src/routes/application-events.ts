@@ -2,7 +2,8 @@
  * Application Events Routes — /api/job-applications/:applicationId/events
  *
  * Phase 1 of the pursuit timeline. Append-only ledger of discrete moments
- * (applied / interview_happened / offer_received) per application.
+ * (applied / interview_happened / offer_received / interview_scheduled) per
+ * application.
  *
  * Mounted as a sub-router under `jobApplicationsRoutes`. The parent route
  * already enforces authMiddleware + the FF_APPLICATION_PIPELINE feature
@@ -20,6 +21,13 @@ import logger from '../lib/logger.js';
 
 const APPLIED_VIA_VALUES = ['manual', 'extension', 'imported'] as const;
 const INTERVIEW_TYPE_VALUES = ['phone', 'video', 'onsite'] as const;
+const EVENT_TYPE_VALUES = [
+  'applied',
+  'interview_happened',
+  'offer_received',
+  'interview_scheduled',
+] as const;
+type EventType = (typeof EVENT_TYPE_VALUES)[number];
 
 /** Discriminated union over per-type event metadata. Server enforces shape. */
 const appliedMetaSchema = z.object({
@@ -44,14 +52,23 @@ const offerReceivedMetaSchema = z.object({
   role_title: z.string().min(1).max(500).optional(),
 });
 
+const interviewScheduledMetaSchema = z.object({
+  type: z.literal('interview_scheduled'),
+  scheduled_date: z.string().datetime(),
+  interview_type: z.enum(INTERVIEW_TYPE_VALUES),
+  round: z.string().min(1).max(100).optional(),
+  with_whom: z.array(z.string().min(1).max(200)).max(20).optional(),
+});
+
 const eventMetadataSchema = z.discriminatedUnion('type', [
   appliedMetaSchema,
   interviewHappenedMetaSchema,
   offerReceivedMetaSchema,
+  interviewScheduledMetaSchema,
 ]);
 
 const createEventSchema = z.object({
-  type: z.enum(['applied', 'interview_happened', 'offer_received']),
+  type: z.enum(EVENT_TYPE_VALUES),
   occurred_at: z.string().datetime().optional(),
   metadata: eventMetadataSchema,
 }).refine(
@@ -61,10 +78,11 @@ const createEventSchema = z.object({
 
 // ─── Idempotency windows (per type) ──────────────────────────────────────
 
-const IDEMPOTENCY_WINDOW_MS: Record<'applied' | 'interview_happened' | 'offer_received', number> = {
+const IDEMPOTENCY_WINDOW_MS: Record<EventType, number> = {
   applied: 5 * 60 * 1000, // users will fumble this one
   interview_happened: 60 * 1000,
   offer_received: 60 * 1000,
+  interview_scheduled: 60 * 1000,
 };
 
 // ─── DB row type ─────────────────────────────────────────────────────────
@@ -73,7 +91,7 @@ interface ApplicationEventRow {
   id: string;
   user_id: string;
   job_application_id: string;
-  type: 'applied' | 'interview_happened' | 'offer_received';
+  type: EventType;
   occurred_at: string;
   metadata: unknown;
   created_at: string;
@@ -87,23 +105,29 @@ interface ApplicationEventRow {
  * out-of-band). Returns the existing event row when within the
  * idempotency window for `(application, type)`, otherwise inserts.
  *
+ * For `interview_scheduled`, the dedup key is
+ * `(application, type, scheduled_date)` so multi-round interviews don't
+ * collapse into one event. Other types dedup on `(application, type)`.
+ *
  * Throws on DB error; callers should wrap in try/catch and decide whether
  * the parent operation should fail or log-and-continue.
  */
 export async function recordApplicationEvent(input: {
   userId: string;
   jobApplicationId: string;
-  type: 'applied' | 'interview_happened' | 'offer_received';
+  type: EventType;
   occurredAt?: string; // ISO datetime
   metadata: z.infer<typeof eventMetadataSchema>;
 }): Promise<{ event: ApplicationEventRow; deduplicated: boolean }> {
   const { userId, jobApplicationId, type, occurredAt, metadata } = input;
 
   // Idempotency check — same (application, type) within the window.
+  // For interview_scheduled, additionally key on scheduled_date so reschedules
+  // and multi-round interviews remain distinct events.
   const windowMs = IDEMPOTENCY_WINDOW_MS[type];
   const since = new Date(Date.now() - windowMs).toISOString();
 
-  const { data: recent } = await supabaseAdmin
+  let recentQuery = supabaseAdmin
     .from('application_events')
     .select('*')
     .eq('user_id', userId)
@@ -111,8 +135,13 @@ export async function recordApplicationEvent(input: {
     .eq('type', type)
     .gte('created_at', since)
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+
+  if (type === 'interview_scheduled' && metadata.type === 'interview_scheduled') {
+    recentQuery = recentQuery.eq('metadata->>scheduled_date', metadata.scheduled_date);
+  }
+
+  const { data: recent } = await recentQuery.maybeSingle();
 
   if (recent) {
     return { event: recent as ApplicationEventRow, deduplicated: true };

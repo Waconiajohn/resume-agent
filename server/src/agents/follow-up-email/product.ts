@@ -23,6 +23,13 @@ import {
   defaultToneForFollowUpNumber,
   defaultSituationForFollowUpNumber,
 } from './types.js';
+import { supabaseAdmin } from '../../lib/supabase.js';
+import logger from '../../lib/logger.js';
+
+function serializeFollowUpDraft(draft: FollowUpEmailDraft): string {
+  const subject = draft.subject ? `Subject: ${draft.subject}\n\n` : '';
+  return `${subject}${draft.body ?? ''}`.trim();
+}
 
 const VALID_TONES: readonly FollowUpTone[] = ['warm', 'direct', 'value-add'];
 const VALID_SITUATIONS: readonly FollowUpSituation[] = [
@@ -227,6 +234,38 @@ export function createFollowUpEmailProductConfig(): ProductConfig<
         });
       }
       return { draft: state.draft };
+    },
+
+    persistResult: async (state, _result) => {
+      // Phase 3: persist the canonical "follow-up email for this pursuit" row.
+      // UPSERT keyed by (user_id, job_application_id) — latest approved state
+      // wins, single row per pursuit. The pursuit timeline reads this to fire
+      // the "Follow-up sent" Done card.
+      if (!state.job_application_id || !state.draft) return;
+      try {
+        const { error } = await supabaseAdmin
+          .from('follow_up_email_reports')
+          .upsert(
+            {
+              user_id: state.user_id,
+              job_application_id: state.job_application_id,
+              content: serializeFollowUpDraft(state.draft),
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,job_application_id' },
+          );
+        if (error) {
+          logger.warn(
+            { error: error.message, session_id: state.session_id },
+            'Follow-up email: failed to upsert follow_up_email_reports (non-fatal)',
+          );
+        }
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err.message : String(err), session_id: state.session_id },
+          'Follow-up email: follow_up_email_reports upsert threw (non-fatal)',
+        );
+      }
     },
 
     validateAfterAgent: (agentName, state) => {

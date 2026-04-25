@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Handshake, Mail, MessageSquare, Mic, Plus, Send, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Handshake, Mail, MessageSquare, Mic, Plus, Send, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -29,6 +29,8 @@ import {
   buildApplicationWorkspaceRoute,
   type ApplicationWorkspaceTool,
 } from '@/lib/app-routing';
+import { PursuitTimeline } from '@/components/applications/PursuitTimeline';
+import { useApplicationTimeline } from '@/hooks/useApplicationTimeline';
 import { API_BASE } from '@/lib/api';
 import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
@@ -221,12 +223,17 @@ export function ApplicationWorkspaceRoute({
   onNavigate,
   onGetDefaultResume,
 }: ApplicationWorkspaceRouteProps) {
-  const { applicationId = '', tool = 'resume' } = useParams();
+  // Phase 3 — when :tool is absent we run the smart-default resolver below
+  // (fetches the timeline payload, then redirects to overview or the highest-
+  // priority Next rule). When :tool is present we trust it and dispatch.
+  const { applicationId = '', tool: rawTool } = useParams();
+  const isSmartDefault = rawTool === undefined;
+  const tool: ApplicationWorkspaceTool = isSmartDefault ? 'overview' : (rawTool as ApplicationWorkspaceTool);
 
   // Validate the tool before rendering anything — a bad URL segment should
-  // fall back to the default rather than crash a product screen.
-  if (!isValidTool(tool)) {
-    return <Navigate to={`/workspace/application/${encodeURIComponent(applicationId)}/resume`} replace />;
+  // fall back to overview rather than crash a product screen.
+  if (!isSmartDefault && !isValidTool(rawTool)) {
+    return <Navigate to={`/workspace/application/${encodeURIComponent(applicationId)}/overview`} replace />;
   }
 
   const [loading, setLoading] = useState(true);
@@ -276,6 +283,11 @@ export function ApplicationWorkspaceRoute({
     (enabled: boolean) => applyToggle({ networking_enabled: enabled }),
     [applyToggle],
   );
+
+  // Phase 3 — always fetch the timeline payload alongside the application.
+  // The overview body needs Done/Next/Their-turn; the smart-default resolver
+  // needs hasAnyDone + the highest-priority Next rule's target.
+  const timeline = useApplicationTimeline({ applicationId });
 
   useEffect(() => {
     if (!applicationId || !accessToken) {
@@ -331,6 +343,43 @@ export function ApplicationWorkspaceRoute({
           </GlassButton>
         </GlassCard>
       </div>
+    );
+  }
+
+  // Phase 3 — smart-default resolver. When the URL has no :tool, decide
+  // where to land based on Done content. If anything is done, render
+  // overview. If nothing is done, route to the highest-priority Next rule
+  // (so a brand-new pursuit lands on the action that matters most). Falls
+  // through to overview when neither signal fires. Explicit ?tool= URLs
+  // always bypass this — the user's choice wins.
+  if (isSmartDefault) {
+    if (timeline.loading) {
+      return (
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-6 p-6">
+          <PursuitTimeline
+            applicationId={applicationId}
+            stage={application.stage}
+            done={[]}
+            next={[]}
+            theirTurn={[]}
+            loading
+          />
+        </div>
+      );
+    }
+    if (timeline.hasAnyDone || timeline.next.length === 0) {
+      return (
+        <Navigate
+          to={buildApplicationWorkspaceRoute(applicationId, 'overview')}
+          replace
+        />
+      );
+    }
+    return (
+      <Navigate
+        to={buildApplicationWorkspaceRoute(applicationId, timeline.next[0].target)}
+        replace
+      />
     );
   }
 
@@ -408,7 +457,19 @@ export function ApplicationWorkspaceRoute({
   // what they entered at app creation. Each tool's own `initial*` props are
   // optional; missing values degrade to empty-form behavior.
   let body: ReactElement;
-  if (tool === 'resume') {
+  if (tool === 'overview') {
+    body = (
+      <PursuitTimeline
+        applicationId={applicationId}
+        stage={application.stage}
+        done={timeline.done}
+        next={timeline.next}
+        theirTurn={timeline.theirTurn}
+        loading={timeline.loading}
+        onNavigate={onNavigate}
+      />
+    );
+  } else if (tool === 'resume') {
     body = (
       <V3PipelineScreen
         accessToken={accessToken}
@@ -631,6 +692,16 @@ export function ApplicationWorkspaceRoute({
         </span>
       </nav>
       {ApplicationHeader}
+      {tool !== 'overview' && (
+        <button
+          type="button"
+          onClick={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, 'overview'))}
+          className="-mt-2 inline-flex w-fit items-center gap-1.5 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)]"
+        >
+          <ArrowLeft className="h-3 w-3" aria-hidden="true" />
+          Back to overview
+        </button>
+      )}
       {body}
     </div>
   );

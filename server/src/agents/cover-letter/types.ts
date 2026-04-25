@@ -37,6 +37,10 @@ export interface CoverLetterState extends BaseState {
   user_id: string;
   current_stage: string;
 
+  /** Job application this letter is being written for. Required for the
+   * pursuit timeline's "cover letter drafted" Done card. */
+  job_application_id?: string;
+
   /** Cross-product context from resume strategist (positioning + evidence) */
   platform_context?: {
     career_profile?: CareerProfileV2;
