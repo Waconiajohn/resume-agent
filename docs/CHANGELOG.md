@@ -1,5 +1,32 @@
 # Changelog — Resume Agent
 
+## 2026-04-25 — fix: production schema drift on application_events + silent-failure masking in timeline endpoints
+**Sprint:** Pursuit timeline | **Story:** Production-grade fix — root-cause the events 500 instead of relying on the localStorage fallback
+**Summary:** End-to-end testing surfaced consistent 500s on `GET/POST /api/job-applications/:id/events`. Investigation found the hosted Supabase DB was missing every migration from `20260424000000` onward — 12 in total — including the table that backs the entire pursuit-events ledger. The picker provider was hardcoding `source: 'manual'` even after the source-enum migration widened the CHECK to allow `'tailor_picker'`. And the bulk timeline endpoint was silently masking per-query errors as empty signals, which is the exact mechanism that allowed the schema drift to go undetected in CI and through Phase 1–5 work.
+
+### Root cause
+1. **Production schema drift.** `supabase_migrations.schema_migrations` showed `20260422195436` as the most recent applied migration; nothing from Phase 2.3b/c/d/e/f or Phase 1–5 of the pursuit timeline had landed on the hosted DB. The `localStorage` fallback I shipped in Phase 3 was meant as belt-and-suspenders launch resilience, but it ended up masking that the entire events ledger had never been functional in production.
+2. **Silent-failure design flaw.** `application-timeline.ts` issued ~9 parallel sub-queries via `Promise.all` and read each `result.data ?? []`. When `result.error` was non-null (table missing, RLS regression, etc.), the `?? []` discarded the error and returned a structurally-correct payload with empty signals. The bulk timeline endpoint returned `200 OK` for users whose underlying queries were all failing.
+3. **Picker `source` regression.** The Phase 2 migration added `'tailor_picker'` to the source-enum CHECK constraint, but `TailorPickerProvider.tsx:141` reverted to sending `'manual'`. Picker-created apps were mislabeled in the database; the migration was unused for its stated purpose.
+
+### Fix
+- **DB:** applied all 12 missing migrations transactionally to the hosted Supabase DB (`postgres.pvmfgfnbtqlipnnoeixu`), using idempotent guards (`IF NOT EXISTS` for tables/columns/indexes; `DO $$ … pg_policy $$` blocks for RLS policies; `pg_trigger` checks for triggers). Recorded each in `supabase_migrations.schema_migrations`. Sent `NOTIFY pgrst, 'reload schema'` so PostgREST picks up the new tables across all instances.
+- **`server/src/routes/application-timeline.ts`** — bulk endpoint and per-app endpoint now collect `[label, result]` pairs, filter for errors, and return a `500` with a `failures: [{ source, code }]` array when any sub-query fails. Schema drift now surfaces immediately in monitoring instead of degrading silently into empty timelines.
+- **`server/src/routes/application-timeline.ts`** — `loadReferralBonus` helper now logs warnings (with code + message + companyName) when its sub-queries fail, instead of returning a clean `{ exists: false }` that hides the underlying error.
+- **`app/src/components/applications/TailorPickerProvider.tsx`** — picker now sends `source: 'tailor_picker'` (was `'manual'`). The migration that widened the CHECK constraint is now actually used for its stated purpose.
+
+### Verification
+- Direct DB query against production confirms `application_events`, `cover_letter_reports`, `follow_up_email_reports`, `networking_messages`, and the new toggle columns + widened CHECK now exist.
+- `POST /api/job-applications/:id/events` with `interview_scheduled` now returns 201 and persists; row visible in `application_events` via direct DB query.
+- `GET /api/job-applications/:id/events` returns `200 OK` with the correct event list.
+- Server tsc clean. App tsc clean. Server tests: **2775 / 0 failing**. App tests: **2059 passing / 7 failing / 10 skipped** — 3 previously-flaky tests now stable, no new regressions.
+
+### What this means for the localStorage fallback
+The localStorage fallback in `useApplicationEvents` and `useApplicationTimeline` stays. It's still good launch resilience for transient PostgREST schema-cache hiccups (which I observed in the same session — the same `application_events` query intermittently returned `PGRST205` from one instance even after migrations applied, until cache propagation completed) and for offline-first UX. It's no longer covering for a production-DB drift, which is what it was accidentally doing.
+
+### Why this took an E2E session to catch
+The localStorage fallback made the surface UX work perfectly. Without an E2E test that reads back from the server-of-truth (not the local cache), the drift was invisible. The new error-propagation in the timeline endpoints means that future drift will surface as `500`s in monitoring instead of degraded-but-OK responses.
+
 ## 2026-04-25 — Phase 5 of pursuit timeline: cross-pursuit Today view
 **Sprint:** Pursuit timeline | **Story:** Phase 5 — daily-focus view aggregating Next + Their-turn signals across all open pursuits
 **Summary:** Added a `TodayView` tab on `/workspace/applications` answering "what should I do right now" across every non-terminal pursuit. New bulk endpoint `GET /api/job-applications/timeline/all` returns raw timeline payloads for up to 50 non-terminal applications in a single round-trip via ~9 batched bulk queries (not N×9). New aggregator `aggregateTodaySignals` walks each payload and emits tier-grouped action cards: Tier A (overdue thank-yous, today/tomorrow's interviews, imminent prep), Tier B (pursuit-blocking N1/N2/N3/N4 from the rule engine), Tier C (T1/T2/T3 from the rule engine). The aggregator reuses `computeTimelineRules` for tier B/C, so a change to the rule engine flows through the per-pursuit overview, the WhatsNextCTABar, and Today simultaneously. Tab switcher on `ApplicationsListScreen` toggles Today (default) ↔ Pipeline (existing kanban). URL persistence via `?view=pipeline` (Today is default, no param).

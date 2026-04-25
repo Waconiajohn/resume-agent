@@ -78,7 +78,14 @@ async function loadReferralBonus(companyName: string | null): Promise<ReferralBo
     .eq('name_normalized', normalized)
     .maybeSingle();
 
-  if (companyErr || !company?.id) return { exists: false };
+  if (companyErr) {
+    logger.warn(
+      { source: 'company_directory', code: companyErr.code, message: companyErr.message, companyName },
+      'application-timeline: referral bonus lookup degraded (company_directory)',
+    );
+    return { exists: false };
+  }
+  if (!company?.id) return { exists: false };
 
   const { data: program, error: programErr } = await supabaseAdmin
     .from('referral_bonus_programs')
@@ -86,7 +93,14 @@ async function loadReferralBonus(companyName: string | null): Promise<ReferralBo
     .eq('company_id', company.id)
     .maybeSingle();
 
-  if (programErr || !program) return { exists: false };
+  if (programErr) {
+    logger.warn(
+      { source: 'referral_bonus_programs', code: programErr.code, message: programErr.message, companyId: company.id },
+      'application-timeline: referral bonus lookup degraded (referral_bonus_programs)',
+    );
+    return { exists: false };
+  }
+  if (!program) return { exists: false };
 
   const hasAmount = !!(program.bonus_amount || program.bonus_entry);
   if (!hasAmount) return { exists: false };
@@ -169,7 +183,9 @@ applicationTimelineRoutes.get(
 
     const appIds = apps.map((a) => a.id as string);
 
-    // 2..8) Bulk artifact + event lookups.
+    // 2..8) Bulk artifact + event lookups. Per-query errors are surfaced
+    // (not silently absorbed into empty signals) so schema drift / RLS
+    // regressions fail loud instead of silent.
     const [
       coachSessionsRes,
       coverLetterRes,
@@ -226,6 +242,41 @@ applicationTimelineRoutes.get(
         .in('job_application_id', appIds)
         .order('occurred_at', { ascending: false }),
     ]);
+
+    const labeledResults: Array<[string, { error: { message: string; code?: string } | null }]> = [
+      ['coach_sessions(resume_v3)', coachSessionsRes],
+      ['cover_letter_reports', coverLetterRes],
+      ['coach_sessions(cover_letter)', coverLetterSessionsRes],
+      ['interview_prep_reports', interviewPrepRes],
+      ['thank_you_note_reports', thankYouRes],
+      ['follow_up_email_reports', followUpRes],
+      ['networking_messages', networkingRes],
+      ['application_events', eventsRes],
+    ];
+    const failures = labeledResults
+      .filter(([, res]) => res.error)
+      .map(([label, res]) => ({ source: label, error: res.error! }));
+    if (failures.length > 0) {
+      logger.error(
+        {
+          userId: user.id,
+          appCount: apps.length,
+          failures: failures.map((f) => ({
+            source: f.source,
+            code: f.error.code,
+            message: f.error.message,
+          })),
+        },
+        'application-timeline/all: one or more sub-queries failed',
+      );
+      return c.json(
+        {
+          error: 'Failed to load timelines',
+          failures: failures.map((f) => ({ source: f.source, code: f.error.code })),
+        },
+        500,
+      );
+    }
 
     // 9) Referral bonus lookups — group company names, normalize, batch.
     const companyNames = Array.from(
@@ -439,7 +490,9 @@ applicationTimelineRoutes.get(
     };
 
     // Parallel artifact lookups. Each query has an index on job_application_id
-    // so this batch resolves in a single round-trip's wall-clock latency.
+    // so this batch resolves in a single round-trip's wall-clock latency. Per-
+    // query errors are surfaced (not silently absorbed into empty signals) so
+    // schema drift / RLS regressions fail loud instead of silent.
     const [
       resumeResult,
       coverLetterResult,
@@ -450,7 +503,6 @@ applicationTimelineRoutes.get(
       networkingCountResult,
       networkingLastResult,
       eventsResult,
-      referralBonusResult,
     ] = await Promise.all([
       supabaseAdmin
         .from('coach_sessions')
@@ -523,8 +575,47 @@ applicationTimelineRoutes.get(
         .eq('user_id', user.id)
         .eq('job_application_id', applicationId)
         .order('occurred_at', { ascending: false }),
-      loadReferralBonus(application.company_name),
     ]);
+
+    const labeledResults: Array<[string, { error: { message: string; code?: string } | null }]> = [
+      ['coach_sessions(resume_v3)', resumeResult],
+      ['cover_letter_reports', coverLetterResult],
+      ['coach_sessions(cover_letter)', coverLetterSessionResult],
+      ['interview_prep_reports', interviewPrepResult],
+      ['thank_you_note_reports', thankYouResult],
+      ['follow_up_email_reports', followUpResult],
+      ['networking_messages(count)', networkingCountResult],
+      ['networking_messages(latest)', networkingLastResult],
+      ['application_events', eventsResult],
+    ];
+    const failures = labeledResults
+      .filter(([, res]) => res.error)
+      .map(([label, res]) => ({ source: label, error: res.error! }));
+    if (failures.length > 0) {
+      logger.error(
+        {
+          userId: user.id,
+          applicationId,
+          failures: failures.map((f) => ({
+            source: f.source,
+            code: f.error.code,
+            message: f.error.message,
+          })),
+        },
+        'application-timeline: one or more sub-queries failed',
+      );
+      return c.json(
+        {
+          error: 'Failed to load timeline',
+          failures: failures.map((f) => ({ source: f.source, code: f.error.code })),
+        },
+        500,
+      );
+    }
+
+    // Referral bonus is its own helper that already returns a degraded value
+    // on failure (logged inside loadReferralBonus). Treat it as best-effort.
+    const referralBonusResult = await loadReferralBonus(application.company_name);
 
     const resume = {
       exists: !!resumeResult.data,

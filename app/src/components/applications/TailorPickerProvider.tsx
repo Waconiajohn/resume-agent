@@ -138,7 +138,7 @@ export function TailorPickerProvider({ children }: TailorPickerProviderProps) {
         jd_text: input.jdText,
         url: input.url,
         stage: 'researching',
-        source: 'manual',
+        source: 'tailor_picker',
       });
       if (!created) {
         return { ok: false, error: 'Failed to create application' };
