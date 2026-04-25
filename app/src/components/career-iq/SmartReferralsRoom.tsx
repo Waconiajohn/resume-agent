@@ -15,6 +15,7 @@ import { API_BASE } from '@/lib/api';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobFilters } from '@/hooks/useJobFilters';
+import { useTailorPicker } from '@/components/applications/TailorPickerProvider';
 import type { CsvUploadSummary } from '@/types/ni';
 import { Upload, Users, Target, ScanLine, UserCircle, Handshake, Briefcase, Coins } from 'lucide-react';
 
@@ -164,6 +165,7 @@ function NetworkSetupPanel({
 }
 
 export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartReferralsRoomProps) {
+  const { openPicker } = useTailorPicker();
   const { user, session, loading: authLoading } = useAuth();
   const { filters: niFilters, setLocation: setNiLocation, setRadiusMiles: setNiRadiusMiles, setWorkModes: setNiWorkModes, setPostedWithin: setNiPostedWithin } = useJobFilters('ni-job-filters');
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');

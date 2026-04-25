@@ -2,8 +2,8 @@ import { BriefcaseBusiness, Clock3, ExternalLink, FileText, Loader2, Mail, Mic, 
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import type { Application, PipelineStage } from '@/hooks/useJobApplications';
-import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 import type { SessionJobRecord } from '@/lib/job-workspace';
+import { useTailorPicker } from '@/components/applications/TailorPickerProvider';
 import {
   JOB_WORKSPACE_STAGES,
   buildWorkspaceRoomRoute,
@@ -38,6 +38,7 @@ export function JobWorkspaceView({
   onViewResume,
   onViewCoverLetter,
 }: JobWorkspaceViewProps) {
+  const { openPicker } = useTailorPicker();
   const resumeAsset = record.assets.find((session) => isResumeProductType(productTypeForSession(session))) ?? null;
   const coverLetterAsset = record.assets.find((session) => productTypeForSession(session) === 'cover_letter') ?? null;
   const interviewPrepAsset = record.assets.find((session) => productTypeForSession(session) === 'interview_prep') ?? null;
@@ -157,7 +158,11 @@ export function JobWorkspaceView({
                       </GlassButton>
                     </>
                   ) : (
-                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => onNavigate?.(RESUME_BUILDER_SESSION_ROUTE)}>
+                    <GlassButton size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={() => openPicker({
+                      source: 'dashboard_job_workspace',
+                      companyName: record.company ?? undefined,
+                      roleTitle: record.role ?? undefined,
+                    })}>
                       <FileText size={12} className="mr-1.5" />
                       Open Resume Builder
                     </GlassButton>

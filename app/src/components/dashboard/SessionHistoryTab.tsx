@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BriefcaseBusiness, ExternalLink, Trash2 } from 'lucide-react';
+import { BriefcaseBusiness, ExternalLink, Link2, Trash2, X } from 'lucide-react';
+import { useTailorPicker } from '@/components/applications/TailorPickerProvider';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
 import { GlassCard } from '@/components/GlassCard';
@@ -59,6 +60,61 @@ function matchesStatusFilter(session: CoachSession, filter: StatusFilter): boole
   }
 
   return rawStatus !== 'complete' && rawStatus !== 'completed' && rawStatus !== 'error';
+}
+
+// Phase 2 (pursuit timeline) — small inline prompt for orphan resume_v3
+// sessions (no job_application_id). Per-row dismissible via localStorage;
+// no global banner, no "you have N items" interruption.
+const ORPHAN_DISMISS_PREFIX = 'resume-agent:orphan-row-dismissed:';
+
+function isOrphanDismissed(sessionKey: string): boolean {
+  try {
+    return window.localStorage.getItem(`${ORPHAN_DISMISS_PREFIX}${sessionKey}`) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function dismissOrphan(sessionKey: string): void {
+  try {
+    window.localStorage.setItem(`${ORPHAN_DISMISS_PREFIX}${sessionKey}`, '1');
+  } catch {
+    /* ignore */
+  }
+}
+
+function OrphanLinkPrompt({ sessionKey }: { sessionKey: string }) {
+  const { openPicker } = useTailorPicker();
+  const [hidden, setHidden] = useState(() => isOrphanDismissed(sessionKey));
+
+  if (hidden) return null;
+
+  return (
+    <div className="mt-3 flex items-center gap-2 rounded-md border border-[var(--link)]/15 bg-[var(--link)]/[0.04] px-3 py-2 text-[12px]">
+      <Link2 size={11} className="text-[var(--link)] flex-shrink-0" />
+      <span className="text-[var(--text-soft)]">
+        Not linked to an application yet.
+      </span>
+      <button
+        type="button"
+        onClick={() => openPicker({ source: 'session_history_orphan' })}
+        className="ml-1 text-[var(--link)] hover:underline"
+      >
+        Link →
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          dismissOrphan(sessionKey);
+          setHidden(true);
+        }}
+        aria-label="Dismiss"
+        className="ml-auto p-0.5 rounded text-[var(--text-soft)] hover:text-[var(--text-strong)]"
+      >
+        <X size={11} />
+      </button>
+    </div>
+  );
 }
 
 export function SessionHistoryTab({
@@ -260,6 +316,8 @@ export function SessionHistoryTab({
               const isConfirmingDelete = confirmDeleteKey === record.key;
               const isDeleting = deletingKey === record.key;
 
+              const showOrphanPrompt = !record.jobApplicationId && resumeAsset !== null;
+
               return (
                 <div key={record.key} className="px-5 py-4">
                   <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2fr)_120px_140px_180px] lg:items-center">
@@ -346,6 +404,9 @@ export function SessionHistoryTab({
                       )}
                     </div>
                   </div>
+                  {showOrphanPrompt && (
+                    <OrphanLinkPrompt sessionKey={record.key} />
+                  )}
                 </div>
               );
             })}

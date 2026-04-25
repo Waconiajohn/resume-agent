@@ -8,6 +8,7 @@ import { CoverLetterScreen } from '@/components/cover-letter/CoverLetterScreen';
 import { useApplicationPipeline } from '@/hooks/useJobApplications';
 import { useV3Master } from '@/hooks/useV3Master';
 import { buildResumeWorkspaceRoute } from '@/lib/app-routing';
+import { useTailorPicker } from '@/components/applications/TailorPickerProvider';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 
@@ -69,6 +70,11 @@ export function ResumeWorkshopRoom({
   );
   const applicationPipeline = useApplicationPipeline();
   const { applications: jobApplications, moveToStage, fetchApplications } = applicationPipeline;
+  const { openPicker } = useTailorPicker();
+  // Phase 2 (pursuit timeline) — the "New Role-Specific Resume" CTA always
+  // opens the picker. The legacy onNewSession prop is kept on the
+  // signature for back-compat with mocks/tests but unused at runtime.
+  const handleStartTailor = () => openPicker({ source: 'workshop_landing' });
   const defaultResume = useMemo(() => resumes.find((item) => item.is_default), [resumes]);
   // Sprint B5 — the v3 pipeline keeps its own master (the "knowledge base")
   // at /api/v3-pipeline/master, which is what the resume intake form reads.
@@ -171,7 +177,7 @@ export function ResumeWorkshopRoom({
             meta={`Saved workspaces: ${tailoredCount}`}
             icon={FilePlus2}
             actionLabel="Start Role-Specific Resume"
-            onAction={onNewSession}
+            onAction={handleStartTailor}
             accent="primary"
           />
           <ResumeToolCard

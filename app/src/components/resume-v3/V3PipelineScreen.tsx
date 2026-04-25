@@ -41,6 +41,11 @@ import { V3PromotePanel } from './V3PromotePanel';
 import { V3ResumeBanner } from './V3ResumeBanner';
 import { V3ExportBar } from './V3ExportBar';
 import { IAppliedCTA } from '@/components/applications/IAppliedCTA';
+import {
+  OrphanSessionBanner,
+  StaleApplicationBanner,
+  StandaloneDeprecationBanner,
+} from '@/components/applications/StandalonePathBanners';
 
 interface V3PipelineScreenProps {
   accessToken: string | null;
@@ -195,6 +200,16 @@ export function V3PipelineScreen({
   const initialJobUrl = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.get('jdUrl')?.trim() ?? undefined;
+  }, [location.search]);
+
+  // Phase 2 (pursuit timeline) — stale-FK marker. App.tsx redirects an
+  // in-flight session to the standalone path with `?staleApplicationId=...`
+  // when the original application was deleted. We render a banner so the
+  // user knows their session isn't lost; from here they can finish work
+  // and re-link via SessionHistoryTab.
+  const staleApplicationId = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('staleApplicationId')?.trim() ?? undefined;
   }, [location.search]);
 
   const showIntake = !pipeline.isRunning && !pipeline.isComplete && !pipeline.error;
@@ -489,6 +504,21 @@ export function V3PipelineScreen({
           the pipeline completes and the card auto-collapses, they see
           the content zone below. */}
       <div className="mx-auto w-full max-w-7xl px-4 pt-6 pb-3 space-y-4">
+        {/* Phase 2 (pursuit timeline) — banners only on the standalone path
+            (no applicationId from the parent route). When this screen is
+            rendered inside /workspace/application/:id/resume it's already
+            in the right place; banners are noise. */}
+        {!applicationId && (
+          <>
+            {staleApplicationId ? (
+              <StaleApplicationBanner staleApplicationId={staleApplicationId} />
+            ) : sessionId ? (
+              <OrphanSessionBanner sessionId={sessionId} />
+            ) : (
+              <StandaloneDeprecationBanner />
+            )}
+          </>
+        )}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-[var(--bullet-confirm)]">

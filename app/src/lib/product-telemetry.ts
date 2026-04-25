@@ -37,6 +37,16 @@ export interface ProductTelemetryPayloadMap {
   };
   resume_builder_session_started: {
     source: string;
+    /**
+     * Phase 2 (pursuit timeline) — picker resolution outcome. Optional for
+     * back-compat with existing call sites that fire this event without the
+     * picker (legacy paths during the deprecation window).
+     */
+    resolution?:
+      | 'existing_app'
+      | 'new_app_jd_url'
+      | 'new_app_jd_text'
+      | 'cancelled';
   };
   resume_rewrite_stalled: {
     session_id: string;

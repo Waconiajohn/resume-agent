@@ -15,6 +15,7 @@ import { AffiliateDashboard } from '@/components/AffiliateDashboard';
 import { CareerIQScreen } from '@/components/career-iq/CareerIQScreen';
 import { CareerProfileProvider } from '@/components/career-iq/CareerProfileContext';
 import { WorkspaceLayout } from '@/components/career-iq/WorkspaceLayout';
+import { TailorPickerProvider } from '@/components/applications/TailorPickerProvider';
 import { ApplicationWorkspaceRoute } from '@/components/career-iq/ApplicationWorkspaceRoute';
 import { ApplicationsListScreen } from '@/components/career-iq/ApplicationsListScreen';
 import { V3PipelineScreen } from '@/components/resume-v3/V3PipelineScreen';
@@ -35,6 +36,7 @@ import { resumeDraftToFinalResume } from '@/lib/resume-v2-export';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { flushProductTelemetryEvents } from '@/lib/product-telemetry-sync';
 import {
+  buildApplicationWorkspaceRoute,
   buildResumeBuilderSessionRoute,
   buildResumeWorkspaceRoute,
   getAppView,
@@ -45,6 +47,7 @@ import {
   RESUME_BUILDER_SESSION_ROUTE,
   resolveNavigationTarget,
 } from '@/lib/app-routing';
+import { API_BASE } from '@/lib/api';
 import type { ClarificationMemoryEntry, MasterPromotionItem, ResumeDraft } from '@/types/resume-v2';
 
 export default function App() {
@@ -246,11 +249,49 @@ export default function App() {
     }
   }, [getDefaultResume, listResumes, navigate]);
 
+  // Phase 2 (pursuit timeline) — three-way redirect.
+  //   1. Session has job_application_id AND that app exists →
+  //      /workspace/application/:id/resume (state hydrates from sessionId)
+  //   2. Session has job_application_id but app was deleted →
+  //      standalone path with ?staleApplicationId so V3 renders the banner
+  //   3. Session has no job_application_id →
+  //      standalone path; V3PipelineScreen surfaces the link-to-app prompt
   const handleResumeSession = useCallback(
-    (sessionId: string) => {
-      navigate(buildResumeBuilderSessionRoute({ sessionId }));
+    async (sessionId: string) => {
+      // Look the session up in our cached list first (cheaper than re-fetch).
+      const session = sessions.find((s) => s.id === sessionId);
+      const jobApplicationId = session?.job_application_id ?? null;
+
+      if (!jobApplicationId) {
+        navigate(buildResumeBuilderSessionRoute({ sessionId }));
+        return;
+      }
+
+      // Verify the application still exists. 404 → render standalone with
+      // stale-FK banner. Network errors fall through to standalone too.
+      try {
+        const token = accessToken;
+        if (!token) {
+          navigate(buildResumeBuilderSessionRoute({ sessionId }));
+          return;
+        }
+        const res = await fetch(`${API_BASE}/job-applications/${encodeURIComponent(jobApplicationId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          navigate(`${buildApplicationWorkspaceRoute(jobApplicationId, 'resume')}?sessionId=${encodeURIComponent(sessionId)}`);
+          return;
+        }
+        if (res.status === 404) {
+          navigate(buildResumeBuilderSessionRoute({ sessionId, staleApplicationId: jobApplicationId }));
+          return;
+        }
+        navigate(buildResumeBuilderSessionRoute({ sessionId }));
+      } catch {
+        navigate(buildResumeBuilderSessionRoute({ sessionId }));
+      }
     },
-    [navigate],
+    [accessToken, navigate, sessions],
   );
 
   const handleDeleteSession = useCallback(
@@ -597,6 +638,7 @@ export default function App() {
             )}
 
             <main id="main-content">
+            <TailorPickerProvider>
             <Routes>
               <Route path="/" element={<Navigate to="/workspace" replace />} />
               <Route path="/sales" element={<Navigate to="/workspace" replace />} />
@@ -751,6 +793,7 @@ export default function App() {
               <Route path="/contact" element={<Contact />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            </TailorPickerProvider>
             </main>
           </div>
         </ErrorBoundary>

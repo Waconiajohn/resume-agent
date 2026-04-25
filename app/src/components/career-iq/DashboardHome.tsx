@@ -7,6 +7,7 @@ import type { DashboardState } from './useWhyMeStory';
 import type { JobApplication } from '@/hooks/useJobApplications';
 import type { CoachSession } from '@/types/session';
 import { buildApplicationWorkspaceRoute } from '@/lib/app-routing';
+import { useTailorPicker } from '@/components/applications/TailorPickerProvider';
 
 interface DashboardHomeProps {
   dashboardState: DashboardState;
@@ -244,6 +245,7 @@ function ApplicationsSection({
   sessions: CoachSession[];
   onNavigateRoute?: (route: string) => void;
 }) {
+  const { openPicker } = useTailorPicker();
   const activeApplications = useMemo(
     () => applications.filter((app) => !app.archived_at),
     [applications],
@@ -278,8 +280,10 @@ function ApplicationsSection({
     onNavigateRoute?.('/workspace/applications');
   };
 
+  // Phase 2 (pursuit timeline) — opens the tailor-picker modal so the
+  // user picks (or creates) an application before tailoring.
   const openTailoredResume = () => {
-    onNavigateRoute?.('/resume-builder/session');
+    openPicker({ source: 'dashboard_home' });
   };
 
   return (

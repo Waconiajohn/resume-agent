@@ -326,8 +326,8 @@ export function ApplicationWorkspaceRoute({
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--text-soft)]">
             {error ?? 'This application could not be loaded. It may have been deleted or you may not have access.'}
           </p>
-          <GlassButton variant="ghost" className="mt-5" onClick={() => onNavigate?.(RESUME_BUILDER_SESSION_ROUTE)}>
-            Back to workspace
+          <GlassButton variant="ghost" className="mt-5" onClick={() => onNavigate?.('/workspace/applications')}>
+            Back to applications
           </GlassButton>
         </GlassCard>
       </div>

@@ -18,8 +18,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { RESUME_BUILDER_SESSION_ROUTE } from '@/lib/app-routing';
 import { trackProductEvent } from '@/lib/product-telemetry';
+import { useTailorPicker } from '@/components/applications/TailorPickerProvider';
 import { useState, useCallback, useEffect } from 'react';
 import { useJobFinder, type RankedMatch, type JobEvaluation } from '@/hooks/useJobFinder';
 import { useJobApplications } from '@/hooks/useJobApplications';
@@ -392,10 +392,7 @@ function SmartMatches({
               <div className="flex flex-col gap-1.5 flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => {
-                    onBuildResume(job);
-                    onNavigate(RESUME_BUILDER_SESSION_ROUTE);
-                  }}
+                  onClick={() => onBuildResume(job)}
                   className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--accent-muted)] transition-colors"
                 >
                   Build Resume
@@ -447,6 +444,7 @@ export function JobCommandCenterRoom({
   onNavigate,
   onNavigateRoom: _onNavigateRoom,
 }: JobCommandCenterRoomProps) {
+  const { openPicker } = useTailorPicker();
   const { session, loading: authLoading } = useAuth();
   const { resumeText: masterResumeText, loading: loadingMasterResume } = useLatestMasterResumeText();
   const jobFinder = useJobFinder();
@@ -555,9 +553,15 @@ export function JobCommandCenterRoom({
         company_name: companyName,
         role_title: roleTitle,
       });
-      onNavigate(RESUME_BUILDER_SESSION_ROUTE);
+      // Phase 2 (pursuit timeline) — funnel through picker. Pass JCC's
+      // role/company context as picker prefills.
+      openPicker({
+        source: source === 'job_board' ? 'jcc_job_board' : 'jcc_suggestions',
+        companyName: companyName ?? undefined,
+        roleTitle: roleTitle ?? undefined,
+      });
     },
-    [onNavigate],
+    [openPicker],
   );
 
   return (
