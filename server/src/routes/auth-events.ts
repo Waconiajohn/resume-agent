@@ -91,12 +91,27 @@ authEventsRoutes.get('/', rateLimitMiddleware(120, 60_000), async (c) => {
   const limitParam = Number(c.req.query('limit') ?? '50');
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 200) : 50;
 
-  const { data, error } = await supabaseAdmin
+  // Cursor pagination — caller passes the occurred_at of the last row they
+  // already have as `?before=<iso>` to fetch the next page. Keyset on
+  // (occurred_at desc) is correct because (user_id, occurred_at) is indexed.
+  const beforeParam = c.req.query('before');
+  let before: string | null = null;
+  if (beforeParam) {
+    const d = new Date(beforeParam);
+    if (Number.isNaN(d.getTime())) {
+      return c.json({ error: 'Invalid before cursor (must be ISO timestamp)' }, 400);
+    }
+    before = d.toISOString();
+  }
+
+  let q = supabaseAdmin
     .from('auth_audit_log')
     .select('id, event_type, ip_address, user_agent, metadata, occurred_at')
     .eq('user_id', user.id)
-    .order('occurred_at', { ascending: false })
-    .limit(limit);
+    .order('occurred_at', { ascending: false });
+  if (before) q = q.lt('occurred_at', before);
+
+  const { data, error } = await q.limit(limit);
 
   if (error) {
     logger.error(
@@ -106,5 +121,10 @@ authEventsRoutes.get('/', rateLimitMiddleware(120, 60_000), async (c) => {
     return c.json({ error: 'Failed to load activity log' }, 500);
   }
 
-  return c.json({ events: data ?? [] });
+  const events = data ?? [];
+  // Caller knows there's more when the page came back full. nextCursor is
+  // the occurred_at of the last row, which they pass back as `?before=`.
+  const nextCursor = events.length === limit ? events[events.length - 1].occurred_at : null;
+
+  return c.json({ events, nextCursor });
 });

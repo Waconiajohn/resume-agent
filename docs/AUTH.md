@@ -187,3 +187,5 @@ Backlog items deferred to later sprints:
 - **Email change flow** — `supabase.auth.updateUser({ email })` works but no UI yet.
 - **SAML SSO for B2B** — Supabase Pro feature; needs UI in the B2B admin portal.
 - **Suspicious-login detection** — new-device email, geolocation flag, Cloudflare Turnstile in front of signup.
+- **Playwright E2E coverage of the Sprint B surfaces** — current coverage is unit + route-integration tests; a real-browser pass through enroll → sign-out-with-MFA → revoke session → activity log audit row would close the loop.
+- **Soft-delete window for account deletion** — Sprint A ships a hard cascade; the 7-day "I clicked it by accident" recovery window planned in the original spec is deferred until we have a cron path and a per-user `deleted_at` column on the cascade target tables.

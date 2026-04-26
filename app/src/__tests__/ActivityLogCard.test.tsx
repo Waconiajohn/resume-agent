@@ -91,4 +91,35 @@ describe('ActivityLogCard', () => {
     await waitFor(() => expect(screen.getByText('Signed in')).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it('appends rows when Load more is clicked using the cursor', async () => {
+    const firstPage = {
+      events: [
+        { id: 'e1', event_type: 'signed_in', ip_address: null, user_agent: null, metadata: null, occurred_at: '2026-04-26T10:00:00Z' },
+      ],
+      nextCursor: '2026-04-26T10:00:00Z',
+    };
+    const secondPage = {
+      events: [
+        { id: 'e2', event_type: 'signed_out', ip_address: null, user_agent: null, metadata: null, occurred_at: '2026-04-25T09:00:00Z' },
+      ],
+      nextCursor: null,
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(firstPage), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(secondPage), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ActivityLogCard />);
+
+    await waitFor(() => expect(screen.getByText('Signed in')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('activity-log-load-more'));
+
+    await waitFor(() => expect(screen.getByText('Signed out')).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const secondCallUrl = fetchMock.mock.calls[1][0] as string;
+    expect(secondCallUrl).toContain('before=2026-04-26T10%3A00%3A00Z');
+    expect(screen.queryByTestId('activity-log-load-more')).not.toBeInTheDocument();
+  });
 });

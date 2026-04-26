@@ -19,6 +19,7 @@ import { MfaEnrollFlow } from '@/components/auth/MfaEnrollFlow';
 import { listVerifiedFactors, unenrollFactor, type VerifiedFactor } from '@/lib/mfa';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
+import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus';
 
 export function SecurityCard() {
   const [factors, setFactors] = useState<VerifiedFactor[]>([]);
@@ -45,6 +46,10 @@ export function SecurityCard() {
   useEffect(() => {
     void refresh();
   }, []);
+
+  // Sprint B.3 — refresh on tab focus so cross-tab enroll/disable
+  // changes surface here without a manual refresh.
+  useRefreshOnFocus(refresh);
 
   const handleEnrolled = async () => {
     setEnrolling(false);

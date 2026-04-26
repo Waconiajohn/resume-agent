@@ -10,9 +10,11 @@
 import { useEffect, useState } from 'react';
 import { Activity, Loader2, RefreshCw } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
+import { GlassButton } from '@/components/GlassButton';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
 import { AUTH_EVENT_LABELS, type AuthEventType } from '@/types/auth-events';
+import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus';
 
 interface AuthEvent {
   id: string;
@@ -57,43 +59,65 @@ function shortenUserAgent(ua: string | null): string | null {
   return ua.slice(0, 40);
 }
 
+const PAGE_SIZE = 50;
+
 export function ActivityLogCard() {
   const [events, setEvents] = useState<AuthEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
+  // `mode='refresh'` resets the list (initial load + manual refresh + focus
+  // refresh); `mode='more'` appends the next page using nextCursor.
+  const fetchPage = async (mode: 'refresh' | 'more'): Promise<void> => {
+    if (mode === 'refresh') {
+      setLoading(true);
+    } else {
+      if (!nextCursor) return;
+      setLoadingMore(true);
+    }
     setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
         setError('Not authenticated');
-        setLoading(false);
         return;
       }
-      const res = await fetch(`${API_BASE}/auth/events?limit=50`, {
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+      if (mode === 'more' && nextCursor) params.set('before', nextCursor);
+      const res = await fetch(`${API_BASE}/auth/events?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
         setError(body.error ?? `Failed to load activity (${res.status})`);
-        setLoading(false);
         return;
       }
-      const body = await res.json() as { events: AuthEvent[] };
-      setEvents(body.events ?? []);
+      const body = await res.json() as { events: AuthEvent[]; nextCursor: string | null };
+      const fetched = body.events ?? [];
+      setEvents((prev) => (mode === 'more' ? [...prev, ...fetched] : fetched));
+      setNextCursor(body.nextCursor ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load activity');
     } finally {
-      setLoading(false);
+      if (mode === 'refresh') setLoading(false);
+      else setLoadingMore(false);
     }
   };
+
+  const load = () => fetchPage('refresh');
+  const loadMore = () => fetchPage('more');
 
   useEffect(() => {
     void load();
   }, []);
+
+  // Sprint B.3 — refresh on tab focus so a sign-in or password change made
+  // in another tab surfaces here instead of the user having to manually
+  // hit Refresh.
+  useRefreshOnFocus(load);
 
   return (
     <GlassCard className="p-5">
@@ -105,7 +129,7 @@ export function ActivityLogCard() {
         <button
           type="button"
           onClick={() => void load()}
-          disabled={loading}
+          disabled={loading || loadingMore}
           aria-label="Refresh activity"
           className="rounded-md p-1.5 text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)] disabled:opacity-50"
         >
@@ -115,7 +139,7 @@ export function ActivityLogCard() {
         </button>
       </div>
       <p className="text-[12px] text-[var(--text-muted)]">
-        The last 50 sign-ins and account changes. If anything here looks unfamiliar, change your
+        Recent sign-ins and account changes. If anything here looks unfamiliar, change your
         password right away.
       </p>
 
@@ -130,7 +154,7 @@ export function ActivityLogCard() {
       )}
 
       {events.length > 0 && (
-        <ul className="mt-4 divide-y divide-[var(--line-soft)]">
+        <ul className="mt-4 divide-y divide-[var(--line-soft)]" data-testid="activity-log-list">
           {events.map((e) => {
             const label = labelFor(e.event_type);
             const ua = shortenUserAgent(e.user_agent);
@@ -151,6 +175,22 @@ export function ActivityLogCard() {
             );
           })}
         </ul>
+      )}
+
+      {nextCursor && (
+        <div className="mt-4 flex justify-center">
+          <GlassButton
+            variant="ghost"
+            onClick={() => void loadMore()}
+            disabled={loading || loadingMore}
+            data-testid="activity-log-load-more"
+          >
+            {loadingMore
+              ? <Loader2 size={13} className="mr-1.5 motion-safe:animate-spin" />
+              : null}
+            Load more
+          </GlassButton>
+        </div>
       )}
     </GlassCard>
   );

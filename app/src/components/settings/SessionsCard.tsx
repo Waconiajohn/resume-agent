@@ -15,6 +15,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
+import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus';
 
 interface SessionRow {
   id: string;
@@ -93,6 +94,8 @@ export function SessionsCard() {
   useEffect(() => {
     void refresh();
   }, []);
+
+  useRefreshOnFocus(refresh);
 
   const handleRevoke = async (id: string) => {
     setRevokingId(id);

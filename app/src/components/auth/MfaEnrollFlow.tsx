@@ -60,6 +60,9 @@ export function MfaEnrollFlow({ onEnrolled, onCancel }: MfaEnrollFlowProps) {
     setError(null);
     try {
       await verifyEnrollment(enrollment.factorId, code);
+      // recordMfaEvent is best-effort but no longer silent — if the
+      // audit row didn't land, we don't block enrollment, but a
+      // console warn surfaces in dev.
       void recordMfaEvent('mfa_enrolled');
       setStep('done');
     } catch (err) {

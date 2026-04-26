@@ -131,25 +131,32 @@ export async function unenrollFactor(factorId: string): Promise<void> {
 }
 
 /**
- * Best-effort audit-log emission for MFA events. We don't currently route
- * MFA events through AuthEventEmitter (the onAuthStateChange callbacks
- * don't fire distinct events for them), so we post directly here.
- * Failures are intentionally swallowed.
+ * Audit-log emission for MFA events. supabase-js doesn't fire distinct
+ * onAuthStateChange events for these (enroll/unenroll/verify), so we
+ * post directly. Returns whether the event landed so callers can warn
+ * the user if the audit row is missing — earlier this was fully
+ * silent, which made debugging audit-log gaps painful.
  */
 export type MfaAuditEvent = Extract<AuthEventType, 'mfa_enrolled' | 'mfa_challenge_passed' | 'mfa_challenge_failed'>;
 
-export async function recordMfaEvent(event_type: MfaAuditEvent): Promise<void> {
+export async function recordMfaEvent(event_type: MfaAuditEvent): Promise<{ ok: boolean }> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
-    if (!token) return;
-    await fetch(`${API_BASE}/auth/events`, {
+    if (!token) return { ok: false };
+    const res = await fetch(`${API_BASE}/auth/events`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ event_type }),
       keepalive: true,
     });
-  } catch {
-    // Audit log is best-effort; never block the MFA flow on it.
+    if (!res.ok) {
+      console.warn(`recordMfaEvent: ${event_type} returned ${res.status}`);
+      return { ok: false };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.warn(`recordMfaEvent: ${event_type} threw`, err);
+    return { ok: false };
   }
 }

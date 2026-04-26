@@ -44,6 +44,7 @@ function buildSelectChain(rows: unknown[] | null, error: { message: string; code
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
+    lt: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue({ data: rows, error }),
   };
   return chain;
@@ -175,5 +176,44 @@ describe('GET /api/auth/events', () => {
     mockFrom.mockReturnValueOnce(buildSelectChain(null, { message: 'rls denied', code: 'PGRST301' }));
     const res = await app.request('/auth/events');
     expect(res.status).toBe(500);
+  });
+
+  it('returns nextCursor when the page comes back full', async () => {
+    // Full page (limit=2) → caller should get the last row's occurred_at as
+    // nextCursor so they can fetch the next page.
+    const rows = [
+      { id: 'e1', event_type: 'signed_in', occurred_at: '2026-04-26T10:00:00Z', ip_address: null, user_agent: null, metadata: null },
+      { id: 'e2', event_type: 'signed_out', occurred_at: '2026-04-26T09:00:00Z', ip_address: null, user_agent: null, metadata: null },
+    ];
+    mockFrom.mockReturnValueOnce(buildSelectChain(rows));
+    const res = await app.request('/auth/events?limit=2');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.events).toHaveLength(2);
+    expect(body.nextCursor).toBe('2026-04-26T09:00:00Z');
+  });
+
+  it('returns null nextCursor when the page is short', async () => {
+    const rows = [
+      { id: 'e1', event_type: 'signed_in', occurred_at: '2026-04-26T10:00:00Z', ip_address: null, user_agent: null, metadata: null },
+    ];
+    mockFrom.mockReturnValueOnce(buildSelectChain(rows));
+    const res = await app.request('/auth/events?limit=50');
+    const body = await res.json();
+    expect(body.nextCursor).toBeNull();
+  });
+
+  it('applies before= cursor as `lt` on occurred_at', async () => {
+    const chain = buildSelectChain([]);
+    mockFrom.mockReturnValueOnce(chain);
+    const res = await app.request('/auth/events?limit=10&before=2026-04-26T08:00:00.000Z');
+    expect(res.status).toBe(200);
+    expect(chain.lt).toHaveBeenCalledWith('occurred_at', '2026-04-26T08:00:00.000Z');
+    expect(chain.limit).toHaveBeenCalledWith(10);
+  });
+
+  it('rejects non-ISO before cursor with 400', async () => {
+    const res = await app.request('/auth/events?before=not-a-date');
+    expect(res.status).toBe(400);
   });
 });
