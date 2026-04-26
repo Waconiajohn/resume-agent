@@ -13,6 +13,11 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  // True when a token refresh failed and the session is still hanging on but
+  // about to expire. Surfaced via SessionDegradedBanner so the user can sign
+  // in again proactively instead of being booted mid-task by the next 401.
+  // Cleared on TOKEN_REFRESHED or sign-out.
+  const [sessionDegraded, setSessionDegraded] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -29,11 +34,14 @@ export function useAuth() {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mountedRef.current) return;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        setSessionDegraded(false);
+      }
     });
 
     return () => {
@@ -49,11 +57,17 @@ export function useAuth() {
     const interval = setInterval(async () => {
       try {
         const { error } = await supabase.auth.refreshSession();
+        if (!mountedRef.current) return;
         if (error) {
           console.warn('Session refresh failed:', error.message);
+          setSessionDegraded(true);
+        } else {
+          setSessionDegraded(false);
         }
       } catch (err) {
+        if (!mountedRef.current) return;
         console.warn('Session refresh error:', err);
+        setSessionDegraded(true);
       }
     }, REFRESH_INTERVAL_MS);
 
@@ -70,11 +84,20 @@ export function useAuth() {
         const { data } = await supabase.auth.getSession();
         if (!data.session) return;
         const expiresAt = data.session.expires_at;
-        if (expiresAt !== undefined && expiresAt * 1000 - Date.now() < REFRESH_THRESHOLD_MS) {
-          await supabase.auth.refreshSession();
+        if (expiresAt === undefined) return;
+        if (expiresAt * 1000 - Date.now() >= REFRESH_THRESHOLD_MS) return;
+        const { error } = await supabase.auth.refreshSession();
+        if (!mountedRef.current) return;
+        if (error) {
+          console.warn('Visibility refresh failed:', error.message);
+          setSessionDegraded(true);
+        } else {
+          setSessionDegraded(false);
         }
-      } catch {
-        // Intentionally silent — best-effort refresh on tab focus.
+      } catch (err) {
+        if (!mountedRef.current) return;
+        console.warn('Visibility refresh error:', err);
+        setSessionDegraded(true);
       }
     };
 
@@ -134,7 +157,10 @@ export function useAuth() {
     if (!mountedRef.current) return;
     setSession(null);
     setUser(null);
+    setSessionDegraded(false);
   };
+
+  const clearSessionDegraded = () => setSessionDegraded(false);
 
   const displayName = user?.user_metadata?.full_name
     ?? user?.email?.split('@')[0]
@@ -145,6 +171,8 @@ export function useAuth() {
     session,
     loading,
     displayName,
+    sessionDegraded,
+    clearSessionDegraded,
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,

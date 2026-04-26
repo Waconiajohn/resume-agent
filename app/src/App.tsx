@@ -25,6 +25,7 @@ import { ToastProvider } from '@/components/Toast';
 import { ApiErrorToaster } from '@/components/ApiErrorToaster';
 import { SessionExpiryToaster } from '@/components/SessionExpiryToaster';
 import { EmailVerificationBanner } from '@/components/EmailVerificationBanner';
+import { SessionDegradedBanner } from '@/components/SessionDegradedBanner';
 import { TermsOfService } from '@/components/legal/TermsOfService';
 import { PrivacyPolicy } from '@/components/legal/PrivacyPolicy';
 import { Contact } from '@/components/legal/Contact';
@@ -53,8 +54,18 @@ import type { ClarificationMemoryEntry, MasterPromotionItem, ResumeDraft } from 
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, session, loading, displayName, signInWithEmail, signUpWithEmail, signInWithGoogle, updateProfile, signOut } =
-    useAuth();
+  const {
+    user,
+    session,
+    loading,
+    displayName,
+    sessionDegraded,
+    signInWithEmail,
+    signUpWithEmail,
+    signInWithGoogle,
+    updateProfile,
+    signOut,
+  } = useAuth();
   const accessToken = session?.access_token ?? null;
   const {
     sessions,
@@ -590,6 +601,8 @@ export default function App() {
       <SessionExpiryToaster />
       {/* Sprint E1 — nags users who haven't confirmed their email. */}
       <EmailVerificationBanner user={user} />
+      {/* Sprint B (auth hardening) — surfaces silent token-refresh failures. */}
+      <SessionDegradedBanner degraded={sessionDegraded} onSignInAgain={handleSignOut} />
       <CareerProfileProvider>
         <ErrorBoundary key={`${currentSession?.id ?? 'no-session'}:${location.pathname}${location.search}`}>
           <a
