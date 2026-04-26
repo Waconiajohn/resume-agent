@@ -47,6 +47,60 @@ No abbreviations unless they are project-standard (SSE, LLM, RLS, ATS, JD, ADR).
 - LLM calls use `withRetry()` wrapper for resilience against Z.AI timeouts.
 - Abort signals: use `createCombinedAbortSignal(userSignal, timeoutMs)` — never `AbortSignal.any` or `AbortSignal.timeout` directly.
 
+### Supabase query handling — never silently absorb errors
+
+`supabase-js` returns `{ data, error }` instead of throwing. The most common
+anti-pattern is reading `data ?? []` (or `data?.x ?? null`) without checking
+`error`. When the table is missing, RLS rejects the query, or the network
+is down, `data` is `null` and `error` is non-null — and the `?? []` makes
+the route silently return "no rows" as if everything was fine.
+
+This bug class hid a 12-migration prod-DB schema drift for an entire week
+(see `git log --oneline | grep "schema drift"`). Both the application_events
+table and three peer-tool tables didn't exist on production, and every
+timeline endpoint silently returned "you have no events" because of this
+pattern.
+
+**Bad:**
+```ts
+const { data } = await supabaseAdmin.from('application_events').select('*');
+return c.json({ events: data ?? [] }); // hides every error
+```
+
+**Good (single-query route):**
+```ts
+const { data, error } = await supabaseAdmin.from('application_events').select('*');
+if (error) {
+  logger.error({ source: 'application_events', code: error.code, message: error.message }, 'query failed');
+  return c.json({ error: 'Failed to load events' }, 500);
+}
+return c.json({ events: data ?? [] });
+```
+
+**Good (parallel sub-queries):** label each sub-query, then collect failures.
+See `server/src/routes/application-timeline.ts` for the canonical pattern:
+```ts
+const labeledResults: Array<[string, { error: { message: string; code?: string } | null }]> = [
+  ['coach_sessions(resume_v3)', resumeResult],
+  // ...
+];
+const failures = labeledResults
+  .filter(([, res]) => res.error)
+  .map(([label, res]) => ({ source: label, error: res.error! }));
+if (failures.length > 0) {
+  logger.error({ failures: ... }, 'one or more sub-queries failed');
+  return c.json({ error: '...', failures: failures.map(f => ({ source: f.source, code: f.error.code })) }, 500);
+}
+```
+
+The labeled pattern matters because a generic 500 hides which sub-query
+broke. Including `failures: [{ source, code }]` in the 500 response gives
+monitoring (and the next person debugging) a fast path to the offending table.
+
+Best-effort sub-queries (referral bonus, telemetry, things that should never
+break the user-visible flow) are an exception: log a warning, return a
+degraded value, and continue. Document the exception inline.
+
 ## React / Frontend
 
 - **Functional components only** — no class components.
