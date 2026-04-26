@@ -31,6 +31,7 @@ import { linkedInContentRoutes } from './routes/linkedin-content.js';
 import { linkedInEditorRoutes } from './routes/linkedin-editor.js';
 import { jobApplicationsRoutes } from './routes/job-applications.js';
 import { accountRoutes } from './routes/account.js';
+import { authEventsRoutes } from './routes/auth-events.js';
 import { mockInterviewRoutes } from './routes/mock-interview.js';
 import { negotiationSimulationRoutes } from './routes/negotiation-simulation.js';
 import { interviewDebriefRoutes } from './routes/interview-debrief.js';
@@ -342,6 +343,7 @@ app.route('/api/linkedin-editor', linkedInEditorRoutes);
 // the application_pipeline table. All consumers now use /api/job-applications.
 app.route('/api/job-applications', jobApplicationsRoutes);
 app.route('/api/account', accountRoutes);
+app.route('/api/auth/events', authEventsRoutes);
 app.route('/api/mock-interview', mockInterviewRoutes);
 app.route('/api/negotiation-simulation', negotiationSimulationRoutes);
 app.route('/api/interview-debriefs', interviewDebriefRoutes);

@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
 import type { User } from '@supabase/supabase-js';
 
 const supabaseSignOut = vi.hoisted(() => vi.fn());
@@ -79,9 +79,14 @@ describe('SettingsPage — delete account', () => {
 
   it('calls DELETE /api/account with bearer token and navigates on success', async () => {
     const onNavigate = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ deleted: true }), { status: 200 }),
-    );
+    // SettingsPage also fetches /auth/events on mount via ActivityLogCard;
+    // dispatch by URL so the delete-account assertion is unambiguous.
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/auth/events')) {
+        return Promise.resolve(new Response(JSON.stringify({ events: [] }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ deleted: true }), { status: 200 }));
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<SettingsPage user={fakeUser} onNavigate={onNavigate} />);
@@ -103,12 +108,15 @@ describe('SettingsPage — delete account', () => {
 
   it('shows server error inline and does NOT navigate on 502', async () => {
     const onNavigate = vi.fn();
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/auth/events')) {
+        return Promise.resolve(new Response(JSON.stringify({ events: [] }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(
         JSON.stringify({ error: 'Failed to cancel subscription before account deletion. Please try again or contact support.' }),
         { status: 502 },
-      ),
-    );
+      ));
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<SettingsPage user={fakeUser} onNavigate={onNavigate} />);
@@ -116,9 +124,10 @@ describe('SettingsPage — delete account', () => {
     fireEvent.change(screen.getByTestId('delete-account-confirm-input'), { target: { value: 'DELETE' } });
     fireEvent.click(screen.getByTestId('delete-account-confirm-button'));
 
-    await waitFor(() =>
-      expect(screen.getByRole('alert').textContent).toMatch(/Failed to cancel subscription/),
-    );
+    await waitFor(() => {
+      const panel = screen.getByTestId('delete-account-confirm-panel');
+      expect(within(panel).getByRole('alert').textContent).toMatch(/Failed to cancel subscription/);
+    });
     expect(onNavigate).not.toHaveBeenCalled();
   });
 

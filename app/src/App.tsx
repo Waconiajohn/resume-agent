@@ -26,6 +26,7 @@ import { ApiErrorToaster } from '@/components/ApiErrorToaster';
 import { SessionExpiryToaster } from '@/components/SessionExpiryToaster';
 import { EmailVerificationBanner } from '@/components/EmailVerificationBanner';
 import { SessionDegradedBanner } from '@/components/SessionDegradedBanner';
+import { AuthEventEmitter } from '@/components/AuthEventEmitter';
 import { TermsOfService } from '@/components/legal/TermsOfService';
 import { PrivacyPolicy } from '@/components/legal/PrivacyPolicy';
 import { Contact } from '@/components/legal/Contact';
@@ -603,6 +604,8 @@ export default function App() {
       <EmailVerificationBanner user={user} />
       {/* Sprint B (auth hardening) — surfaces silent token-refresh failures. */}
       <SessionDegradedBanner degraded={sessionDegraded} onSignInAgain={handleSignOut} />
+      {/* Sprint B (auth hardening) — writes auth events to the activity log. */}
+      <AuthEventEmitter />
       <CareerProfileProvider>
         <ErrorBoundary key={`${currentSession?.id ?? 'no-session'}:${location.pathname}${location.search}`}>
           <a

@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { GlassInput } from '@/components/GlassInput';
+import { ActivityLogCard } from '@/components/settings/ActivityLogCard';
 import { AlertTriangle, CreditCard, ExternalLink, LifeBuoy, Loader2, LogOut, Mail, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
@@ -180,6 +181,9 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
           </a>
         </div>
       </GlassCard>
+
+      {/* Activity log — Sprint B (auth hardening) */}
+      <ActivityLogCard />
 
       {/* Danger zone — account deletion */}
       <GlassCard className="p-6 border-[var(--badge-red-text)]/20">
