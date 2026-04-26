@@ -10,10 +10,13 @@
  * sprint since it requires reverification).
  */
 
+import { useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { CreditCard, ExternalLink, LifeBuoy, LogOut, Mail, User } from 'lucide-react';
+import { GlassInput } from '@/components/GlassInput';
+import { AlertTriangle, CreditCard, ExternalLink, LifeBuoy, Loader2, LogOut, Mail, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { API_BASE } from '@/lib/api';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface SettingsPageProps {
@@ -41,6 +44,49 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
     }
     await supabase.auth.signOut();
     onNavigate('/sales');
+  };
+
+  // Account deletion — type-to-confirm gate. Hard-delete; cascades through
+  // every public-schema FK to auth.users. Cancels the user's Stripe
+  // subscription first so they don't keep getting billed.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const deleteEnabled = deleteConfirm.trim().toUpperCase() === 'DELETE';
+
+  const handleDeleteAccount = async () => {
+    if (!deleteEnabled || deleteLoading) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setDeleteError('Not authenticated. Please sign in again.');
+        setDeleteLoading(false);
+        return;
+      }
+      const res = await fetch(`${API_BASE}/account`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        setDeleteError(body.error ?? `Failed to delete account (${res.status})`);
+        setDeleteLoading(false);
+        return;
+      }
+      // Sign out client-side and redirect to the sales page. The auth.users
+      // row is already deleted server-side; we're just clearing the local
+      // cached session.
+      await supabase.auth.signOut().catch(() => undefined);
+      onNavigate('/sales');
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete account');
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -132,6 +178,78 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
             <span>Privacy Policy</span>
             <ExternalLink size={13} className="text-[var(--text-soft)] group-hover:text-[var(--text-strong)]" />
           </a>
+        </div>
+      </GlassCard>
+
+      {/* Danger zone — account deletion */}
+      <GlassCard className="p-6 border-[var(--badge-red-text)]/20">
+        <div className="flex items-start gap-3">
+          <AlertTriangle size={18} className="mt-0.5 text-[var(--badge-red-text)]" />
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-semibold text-[var(--text-strong)]">Delete account</h2>
+            <p className="mt-1 text-xs text-[var(--text-soft)]">
+              Permanently removes your account and every artifact tied to it: your Career Vault,
+              all applications and resumes, cover letters, interview prep, networking history, and
+              any active subscription. This cannot be undone.
+            </p>
+            {!deleteOpen && (
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(true)}
+                className="mt-3 text-xs text-[var(--badge-red-text)] hover:underline"
+              >
+                I understand — start deletion
+              </button>
+            )}
+            {deleteOpen && (
+              <div className="mt-3 space-y-3" data-testid="delete-account-confirm-panel">
+                <p className="text-xs text-[var(--text-strong)]">
+                  Type <span className="font-mono font-semibold">DELETE</span> in the box below to
+                  confirm. Your subscription will be cancelled before the account is removed.
+                </p>
+                <GlassInput
+                  type="text"
+                  value={deleteConfirm}
+                  onChange={(e) => setDeleteConfirm(e.target.value)}
+                  placeholder="Type DELETE to confirm"
+                  autoComplete="off"
+                  data-testid="delete-account-confirm-input"
+                />
+                {deleteError && (
+                  <p className="text-xs text-[var(--badge-red-text)]" role="alert">{deleteError}</p>
+                )}
+                <div className="flex gap-2">
+                  <GlassButton
+                    variant="ghost"
+                    onClick={() => {
+                      setDeleteOpen(false);
+                      setDeleteConfirm('');
+                      setDeleteError(null);
+                    }}
+                    disabled={deleteLoading}
+                  >
+                    Cancel
+                  </GlassButton>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteAccount()}
+                    disabled={!deleteEnabled || deleteLoading}
+                    data-testid="delete-account-confirm-button"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--badge-red-text)]/40 bg-[var(--badge-red-text)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--badge-red-text)] disabled:opacity-40"
+                  >
+                    {deleteLoading ? (
+                      <>
+                        <Loader2 size={13} className="motion-safe:animate-spin" />
+                        Deleting…
+                      </>
+                    ) : (
+                      'Delete my account'
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </GlassCard>
 
