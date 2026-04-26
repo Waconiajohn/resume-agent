@@ -24,6 +24,7 @@ interface AuthEvent {
 
 const EVENT_LABELS: Record<string, string> = {
   signed_in: 'Signed in',
+  signed_in_failed: 'Sign-in attempt failed',
   signed_out: 'Signed out',
   password_recovery_started: 'Password reset requested',
   password_changed: 'Password changed',

@@ -159,7 +159,24 @@ The CHECK constraint pins this list; adding a new event type requires both a mig
 
 The frontend skips `TOKEN_REFRESHED` (noisy, every 45 min) and de-dupes back-to-back duplicates inside 5s for the OAuth-redirect double-fire case.
 
-A future Supabase Auth Hook will also POST server-side events (failed-login attempts) to the same route — Sprint C.
+### Server-side events via Supabase Auth Hook
+
+`POST /api/auth/webhook` receives Standard-Webhooks-signed events from Supabase Auth Hooks and writes the **failure** cases to `auth_audit_log`:
+
+- `signed_in_failed` — Password Verification Attempt with `valid=false`
+- `mfa_challenge_failed` — MFA Verification Attempt with `valid=false`
+
+Successful sign-ins and MFA passes are intentionally NOT recorded by the webhook — those go through the frontend `AuthEventEmitter` / `MfaChallengeGate` paths so we capture the user's IP and user-agent, which the webhook can't see. The webhook only fills the gap the frontend can't.
+
+Authentication is the Standard Webhooks HMAC signature, verified against `AUTH_HOOK_SECRET`. Stale timestamps (> 5 min skew) and forged signatures return 401/400 and never reach the DB.
+
+**One-time wiring (in the Supabase dashboard):**
+1. Authentication → Hooks → "Send Auth Hook"
+2. Set the URL to `https://<server>/api/auth/webhook`
+3. Enable **Password Verification Attempt Hook** and **MFA Verification Attempt Hook**
+4. Copy the signing secret (looks like `v1,whsec_<base64>`) into the `AUTH_HOOK_SECRET` env var on the Hono server and redeploy
+
+Until `AUTH_HOOK_SECRET` is set, the route returns 503 — by design, so a misconfigured deploy can't accidentally accept unsigned events.
 
 ## Out of scope today
 
@@ -170,4 +187,3 @@ Backlog items deferred to later sprints:
 - **Email change flow** — `supabase.auth.updateUser({ email })` works but no UI yet.
 - **SAML SSO for B2B** — Supabase Pro feature; needs UI in the B2B admin portal.
 - **Suspicious-login detection** — new-device email, geolocation flag, Cloudflare Turnstile in front of signup.
-- **Supabase Auth Hook → /api/auth/webhook** — captures server-side events the frontend can't see.
