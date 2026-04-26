@@ -133,6 +133,16 @@ Set on every API response in `server/src/index.ts`:
 
 When the dashboard `auth.config.mfa_max_enrolled_factors` value is changed, document it in this table.
 
+## Active session list (Settings → Active sessions)
+
+Users can see and revoke their own Supabase auth sessions (one row per signed-in browser/device):
+
+- `GET /api/auth/sessions` — list with a `current` marker on the caller's session
+- `DELETE /api/auth/sessions/:id` — revoke one (refuses to revoke the caller's current session — sign out is for that)
+- `POST /api/auth/sessions/sign-out-others` — revoke every other session in one call
+
+Implementation: `auth.sessions` is not exposed via PostgREST and supabase-js v2's admin SDK doesn't have `listUserSessions`, so three SECURITY DEFINER RPCs in `supabase/migrations/20260426000003_user_sessions_rpcs_caller_arg.sql` provide the boundary. They take `caller_user_id` explicitly and are GRANTed to `service_role` only — backend-private. The route's auth middleware verifies the JWT, then passes `user.id` plus the `session_id` claim into the RPC.
+
 ## Auth event audit log
 
 A user-visible activity feed of authentication events lives in `public.auth_audit_log` and is exposed via:
@@ -157,7 +167,6 @@ Backlog items deferred to later sprints:
 
 - **WebAuthn passkeys** — Supabase supports `factorType: 'webauthn'`; UI not built yet.
 - **MFA backup / recovery codes** — Sprint C; today, lost devices recover via password reset.
-- **Login session list / "sign out everywhere"** — Supabase admin SDK exposes the data.
 - **Email change flow** — `supabase.auth.updateUser({ email })` works but no UI yet.
 - **SAML SSO for B2B** — Supabase Pro feature; needs UI in the B2B admin portal.
 - **Suspicious-login detection** — new-device email, geolocation flag, Cloudflare Turnstile in front of signup.
