@@ -1,5 +1,24 @@
 # Backlog — Resume Agent
 
+## Parking Lot — Open Decisions
+
+Items the owner has flagged for revisit. Not stories yet; capture-only so they don't get lost between sessions.
+
+### Reconsider freemium offering for new users — flagged 2026-04-25
+- **Surface today:** Onboarding/account-creation page advertises "three resumes free and try your free resume builder."
+- **Owner concern:** Doesn't believe we can sustainably offer that — the resume builder is the headline product and the marginal cost (LLM tokens, infra) per generation is meaningful.
+- **Alternatives the owner is considering:**
+  - **Free webinars** — 3-4 live sessions/week already on the platform; a logical low-marginal-cost lead magnet.
+  - **Free career coaching** — could be made the entry experience; positions us against pure tools.
+  - **Other ideas welcome.** Worth a competitive scan of how other platforms (Teal, Resume.io, Rezi, JobScan, Kickresume, Enhancv, Indeed Resume Builder, LinkedIn Premium, BetterUp, etc.) structure their entry/freemium layer before committing.
+- **Action when revisited:**
+  1. Scan competitor freemium / paywall structures.
+  2. Decide what we offer free at the door (webinars? one micro-tool? coaching session?).
+  3. Update the marketing copy on the account-creation page.
+  4. Update CLAUDE.md / Project Hub if the product mission positioning shifts.
+
+---
+
 ## Epic: Platform Decoupling (COMPLETE — Sprint 12)
 
 The Product Definition Layer is complete. `ProductConfig`, `runProductPipeline()`, and `createProductRoutes()` form the generic multi-product runtime. The resume product runs through the generic coordinator. The cover letter POC validates the abstraction with a second product.
