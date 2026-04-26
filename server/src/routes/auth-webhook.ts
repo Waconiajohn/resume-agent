@@ -35,6 +35,70 @@ const TIMESTAMP_TOLERANCE_S = 5 * 60;
 // Body cap — auth hook payloads are tiny; anything bigger is suspicious.
 const MAX_BODY_BYTES = 16 * 1024;
 
+// Replay-protection LRU. Any seen webhook-id within the last ~10 min
+// (roughly 2× the timestamp tolerance) is rejected. The cap is loose
+// — at peak Supabase auth volume we'd expect << 10K hooks in 10 min.
+const SEEN_WEBHOOK_TTL_MS = 10 * 60 * 1000;
+const MAX_SEEN_WEBHOOKS = 10_000;
+const seenWebhooks = new Map<string, number>();
+const seenWebhooksCleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [id, expiresAt] of seenWebhooks.entries()) {
+    if (now >= expiresAt) seenWebhooks.delete(id);
+  }
+}, 60_000);
+seenWebhooksCleanup.unref();
+
+function rememberWebhookId(id: string): boolean {
+  const now = Date.now();
+  const existing = seenWebhooks.get(id);
+  if (existing && now < existing) return false;
+  if (seenWebhooks.size >= MAX_SEEN_WEBHOOKS) {
+    const oldest = seenWebhooks.keys().next().value;
+    if (oldest) seenWebhooks.delete(oldest);
+  }
+  seenWebhooks.set(id, now + SEEN_WEBHOOK_TTL_MS);
+  return true;
+}
+
+export function resetSeenWebhooksForTests() {
+  seenWebhooks.clear();
+}
+
+/**
+ * Defensive payload extraction — Supabase Auth Hook payloads have
+ * varied across versions and hook types. Look for the user id at the
+ * common top-level paths AND under `user.id` / `metadata.user_id`
+ * before giving up.
+ */
+function extractUserId(payload: unknown): string | null {
+  if (typeof payload !== 'object' || payload === null) return null;
+  const obj = payload as Record<string, unknown>;
+  if (typeof obj.user_id === 'string') return obj.user_id;
+  if (typeof obj.userId === 'string') return obj.userId;
+  if (obj.user && typeof obj.user === 'object') {
+    const inner = obj.user as Record<string, unknown>;
+    if (typeof inner.id === 'string') return inner.id;
+  }
+  if (obj.metadata && typeof obj.metadata === 'object') {
+    const meta = obj.metadata as Record<string, unknown>;
+    if (typeof meta.user_id === 'string') return meta.user_id;
+  }
+  return null;
+}
+
+function extractValid(payload: unknown): boolean | null {
+  if (typeof payload !== 'object' || payload === null) return null;
+  const obj = payload as Record<string, unknown>;
+  if (typeof obj.valid === 'boolean') return obj.valid;
+  // Some Supabase hooks return `decision` instead — 'continue' or 'reject'.
+  if (typeof obj.decision === 'string') {
+    if (obj.decision === 'continue' || obj.decision === 'allow') return true;
+    if (obj.decision === 'reject' || obj.decision === 'deny') return false;
+  }
+  return null;
+}
+
 /**
  * Verifies a Standard Webhooks signature header.
  *
@@ -105,15 +169,13 @@ interface HookEnvelope {
  * Maps the parsed payload to an audit-log event_type. Returns null if
  * the event isn't one we record (success cases, unknown types).
  */
-function mapToEventType(payload: HookEnvelope): 'signed_in_failed' | 'mfa_challenge_failed' | null {
-  if (typeof payload.valid !== 'boolean' || payload.valid === true) {
-    return null;
-  }
-  // The hook's `type` field discriminates; fall back to the presence
-  // of factor_type for older payload shapes.
-  const isMfa = payload.factor_type === 'totp'
-    || payload.factor_type === 'webauthn'
-    || (typeof payload.type === 'string' && payload.type.includes('mfa'));
+function mapToEventType(payload: HookEnvelope, valid: boolean | null): 'signed_in_failed' | 'mfa_challenge_failed' | null {
+  if (valid !== false) return null;
+  const factorType = typeof payload.factor_type === 'string' ? payload.factor_type : null;
+  const hookType = typeof payload.type === 'string' ? payload.type : '';
+  const isMfa = factorType === 'totp'
+    || factorType === 'webauthn'
+    || hookType.toLowerCase().includes('mfa');
   if (isMfa) return 'mfa_challenge_failed';
   return 'signed_in_failed';
 }
@@ -161,6 +223,13 @@ authWebhookRoutes.post('/', rateLimitMiddleware(600, 60_000), async (c) => {
     return c.json({ error: 'Signature verification failed' }, 401);
   }
 
+  // Replay protection — only check after signature verifies, so a 409
+  // can't be used to enumerate which IDs were captured by an attacker.
+  if (!rememberWebhookId(id)) {
+    logger.info({ id }, 'auth-webhook: duplicate webhook id; ignoring');
+    return c.json({ ignored: true, reason: 'duplicate' });
+  }
+
   let payload: HookEnvelope;
   try {
     payload = JSON.parse(rawBody) as HookEnvelope;
@@ -168,12 +237,14 @@ authWebhookRoutes.post('/', rateLimitMiddleware(600, 60_000), async (c) => {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const eventType = mapToEventType(payload);
+  const valid = extractValid(payload);
+  const eventType = mapToEventType(payload, valid);
   if (!eventType) {
     // Unrecognized event or successful attempt — ack but don't log.
     return c.json({ ignored: true });
   }
-  if (typeof payload.user_id !== 'string') {
+  const userId = extractUserId(payload);
+  if (!userId) {
     // Some hook variants don't carry a user_id (e.g. anonymous attempts).
     // Log a warning so we know the audit gap exists; don't surface 400
     // to Supabase since retrying won't help.
@@ -191,7 +262,7 @@ authWebhookRoutes.post('/', rateLimitMiddleware(600, 60_000), async (c) => {
   // misleading. The metadata.factor_type / factor_id is sufficient for
   // correlation.
   const { error } = await supabaseAdmin.from('auth_audit_log').insert({
-    user_id: payload.user_id,
+    user_id: userId,
     event_type: eventType,
     ip_address: null,
     user_agent: null,

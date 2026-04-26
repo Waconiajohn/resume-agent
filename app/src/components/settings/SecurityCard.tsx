@@ -14,8 +14,11 @@ import { useEffect, useState } from 'react';
 import { Loader2, ShieldCheck, ShieldOff, Smartphone } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
+import { GlassInput } from '@/components/GlassInput';
 import { MfaEnrollFlow } from '@/components/auth/MfaEnrollFlow';
 import { listVerifiedFactors, unenrollFactor, type VerifiedFactor } from '@/lib/mfa';
+import { supabase } from '@/lib/supabase';
+import { API_BASE } from '@/lib/api';
 
 export function SecurityCard() {
   const [factors, setFactors] = useState<VerifiedFactor[]>([]);
@@ -24,6 +27,7 @@ export function SecurityCard() {
   const [enrolling, setEnrolling] = useState(false);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [disablePassword, setDisablePassword] = useState('');
 
   const refresh = async () => {
     setLoading(true);
@@ -48,12 +52,42 @@ export function SecurityCard() {
   };
 
   const handleDisable = async (factorId: string) => {
+    if (disablePassword.length === 0) {
+      setError('Enter your password to confirm.');
+      return;
+    }
     setRemoving(true);
     setError(null);
     try {
+      // Sprint B.1: password re-auth before MFA disable. Server-side
+      // /verify-password verifies against auth.users.encrypted_password
+      // (bcrypt). Returns 401 on mismatch.
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setError('Not authenticated. Please sign in again.');
+        return;
+      }
+      const verifyRes = await fetch(`${API_BASE}/account/verify-password`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ password: disablePassword }),
+      });
+      if (!verifyRes.ok) {
+        const body = await verifyRes.json().catch(() => ({})) as { error?: string };
+        setError(body.error ?? 'Incorrect password.');
+        return;
+      }
+      // Verified — proceed with the user-side unenroll. Supabase MFA
+      // unenroll goes directly through the user's session (the admin
+      // SDK doesn't expose this), so the password check is the gate.
       await unenrollFactor(factorId);
-      await refresh();
+      setDisablePassword('');
       setConfirmRemoveId(null);
+      await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove factor');
     } finally {
@@ -132,25 +166,39 @@ export function SecurityCard() {
                     </div>
                   </div>
                   {confirmRemoveId === f.id ? (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handleDisable(f.id)}
-                        disabled={removing}
-                        data-testid="mfa-confirm-disable"
-                        className="inline-flex items-center gap-1 rounded-md border border-[var(--badge-red-text)]/40 bg-[var(--badge-red-text)]/10 px-2.5 py-1 text-[12px] font-medium text-[var(--badge-red-text)] disabled:opacity-50"
-                      >
-                        {removing ? <Loader2 size={12} className="motion-safe:animate-spin" /> : <ShieldOff size={12} />}
-                        Confirm disable
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmRemoveId(null)}
-                        disabled={removing}
-                        className="inline-flex items-center gap-1 rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-strong)] disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
+                    <div className="flex flex-col items-end gap-2">
+                      <GlassInput
+                        type="password"
+                        value={disablePassword}
+                        onChange={(e) => setDisablePassword(e.target.value)}
+                        placeholder="Your password"
+                        autoComplete="current-password"
+                        data-testid="mfa-disable-password-input"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleDisable(f.id)}
+                          disabled={removing || disablePassword.length === 0}
+                          data-testid="mfa-confirm-disable"
+                          className="inline-flex items-center gap-1 rounded-md border border-[var(--badge-red-text)]/40 bg-[var(--badge-red-text)]/10 px-2.5 py-1 text-[12px] font-medium text-[var(--badge-red-text)] disabled:opacity-50"
+                        >
+                          {removing ? <Loader2 size={12} className="motion-safe:animate-spin" /> : <ShieldOff size={12} />}
+                          Confirm disable
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConfirmRemoveId(null);
+                            setDisablePassword('');
+                            setError(null);
+                          }}
+                          disabled={removing}
+                          className="inline-flex items-center gap-1 rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-strong)] disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button

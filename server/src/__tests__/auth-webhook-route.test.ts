@@ -29,7 +29,7 @@ vi.mock('../middleware/rate-limit.js', () => ({
 }));
 
 import { Hono } from 'hono';
-import { authWebhookRoutes } from '../routes/auth-webhook.js';
+import { authWebhookRoutes, resetSeenWebhooksForTests } from '../routes/auth-webhook.js';
 
 const app = new Hono();
 app.route('/auth/webhook', authWebhookRoutes);
@@ -71,6 +71,7 @@ async function postSigned(body: object, opts: { secret?: string; tsOffsetSec?: n
 beforeEach(() => {
   vi.clearAllMocks();
   mockFrom.mockReset();
+  resetSeenWebhooksForTests();
   process.env.AUTH_HOOK_SECRET = TEST_SECRET;
 });
 
@@ -175,6 +176,54 @@ describe('POST /api/auth/webhook', () => {
     mockFrom.mockReturnValueOnce(buildInsertChain({ message: 'db down', code: 'PGRST500' }));
     const res = await postSigned({ user_id: 'u', valid: false });
     expect(res.status).toBe(500);
+  });
+
+  it('rejects a duplicate webhook-id (replay protection)', async () => {
+    const insert = buildInsertChain();
+    mockFrom.mockReturnValueOnce(insert);
+
+    const id = 'msg_replay';
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const rawBody = JSON.stringify({ user_id: 'u-replay', valid: false });
+    const sig = signPayload(TEST_SECRET, id, timestamp, rawBody);
+
+    const headers = {
+      'webhook-id': id,
+      'webhook-timestamp': timestamp,
+      'webhook-signature': sig,
+      'content-type': 'application/json',
+    };
+    const first = await app.request('/auth/webhook', { method: 'POST', headers, body: rawBody });
+    expect(first.status).toBe(200);
+    expect((await first.json()).recorded).toBe(true);
+
+    // Same id → ignored, no second insert.
+    const second = await app.request('/auth/webhook', { method: 'POST', headers, body: rawBody });
+    expect(second.status).toBe(200);
+    expect((await second.json()).reason).toBe('duplicate');
+    expect(mockFrom).toHaveBeenCalledTimes(1);
+  });
+
+  it('extracts user_id from a nested user.id path (defensive parsing)', async () => {
+    const insert = buildInsertChain();
+    mockFrom.mockReturnValueOnce(insert);
+
+    const res = await postSigned({ user: { id: 'nested-user' }, valid: false });
+    expect(res.status).toBe(200);
+    expect(insert.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'nested-user', event_type: 'signed_in_failed' }),
+    );
+  });
+
+  it('treats decision="reject" as a failure when valid is absent', async () => {
+    const insert = buildInsertChain();
+    mockFrom.mockReturnValueOnce(insert);
+
+    const res = await postSigned({ user_id: 'u-decision', decision: 'reject' });
+    expect(res.status).toBe(200);
+    expect(insert.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'u-decision', event_type: 'signed_in_failed' }),
+    );
   });
 
   it('accepts multiple signatures separated by space (secret rotation)', async () => {

@@ -14,6 +14,7 @@ import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/re
 const listFactors = vi.hoisted(() => vi.fn());
 const enroll = vi.hoisted(() => vi.fn());
 const unenroll = vi.hoisted(() => vi.fn());
+const getSession = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -25,7 +26,7 @@ vi.mock('@/lib/supabase', () => ({
         challenge: vi.fn(),
         verify: vi.fn(),
       },
-      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      getSession,
     },
   },
 }));
@@ -38,6 +39,7 @@ beforeEach(() => {
   listFactors.mockReset();
   enroll.mockReset();
   unenroll.mockReset();
+  getSession.mockResolvedValue({ data: { session: { access_token: 'tok-xyz' } } });
 });
 
 afterEach(() => cleanup());
@@ -103,7 +105,7 @@ describe('SecurityCard', () => {
     expect(screen.getByTestId('mfa-enroll-intro')).toBeInTheDocument();
   });
 
-  it('requires explicit confirm before disabling a factor', async () => {
+  it('requires password re-auth before disabling a factor', async () => {
     listFactors.mockResolvedValue({
       data: {
         totp: [
@@ -114,19 +116,55 @@ describe('SecurityCard', () => {
     });
     unenroll.mockResolvedValue({ data: null, error: null });
 
+    // Verify-password endpoint succeeds.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ verified: true }), { status: 200 }),
+    ));
+
     render(<SecurityCard />);
 
     await waitFor(() => expect(screen.getByTestId('mfa-disable-button')).toBeInTheDocument());
 
-    // First click reveals the confirm; doesn't fire unenroll yet.
+    // First click reveals the confirm UI with password input; doesn't fire unenroll yet.
     fireEvent.click(screen.getByTestId('mfa-disable-button'));
     expect(unenroll).not.toHaveBeenCalled();
-    expect(screen.getByTestId('mfa-confirm-disable')).toBeInTheDocument();
+    expect(screen.getByTestId('mfa-disable-password-input')).toBeInTheDocument();
+    // Confirm button disabled while password is empty.
+    expect(screen.getByTestId('mfa-confirm-disable')).toBeDisabled();
 
-    // Second click fires the unenroll.
+    fireEvent.change(screen.getByTestId('mfa-disable-password-input'), { target: { value: 'pwd-123' } });
+    expect(screen.getByTestId('mfa-confirm-disable')).not.toBeDisabled();
+
     listFactors.mockResolvedValueOnce({ data: { totp: [] }, error: null });
     fireEvent.click(screen.getByTestId('mfa-confirm-disable'));
 
     await waitFor(() => expect(unenroll).toHaveBeenCalledWith({ factorId: 'f1' }));
+  });
+
+  it('blocks unenroll when password verification returns 401', async () => {
+    listFactors.mockResolvedValue({
+      data: {
+        totp: [
+          { id: 'f1', factor_type: 'totp', status: 'verified', friendly_name: 'iPhone', created_at: '2026-04-26T10:00:00Z', updated_at: '2026-04-26T10:00:00Z' },
+        ],
+      },
+      error: null,
+    });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Incorrect password' }), { status: 401 }),
+    ));
+
+    render(<SecurityCard />);
+
+    await waitFor(() => expect(screen.getByTestId('mfa-disable-button')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('mfa-disable-button'));
+    fireEvent.change(screen.getByTestId('mfa-disable-password-input'), { target: { value: 'wrong' } });
+    fireEvent.click(screen.getByTestId('mfa-confirm-disable'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/Incorrect password/),
+    );
+    expect(unenroll).not.toHaveBeenCalled();
   });
 });

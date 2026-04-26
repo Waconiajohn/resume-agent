@@ -49,15 +49,20 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
     onNavigate('/sales');
   };
 
-  // Account deletion — type-to-confirm gate. Hard-delete; cascades through
-  // every public-schema FK to auth.users. Cancels the user's Stripe
-  // subscription first so they don't keep getting billed.
+  // Account deletion — type-to-confirm + password re-auth.
+  // Sprint B.1: a session-jacked user could be tricked into clicking
+  // delete and typing DELETE; the password re-auth fence raises the
+  // bar to "attacker also has the password," at which point they
+  // have everything anyway.
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const deleteEnabled = deleteConfirm.trim().toUpperCase() === 'DELETE';
+  const deleteEnabled =
+    deleteConfirm.trim().toUpperCase() === 'DELETE'
+    && deletePassword.length > 0;
 
   const handleDeleteAccount = async () => {
     if (!deleteEnabled || deleteLoading) return;
@@ -73,7 +78,11 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
       }
       const res = await fetch(`${API_BASE}/account`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ password: deletePassword }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
@@ -81,9 +90,6 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
         setDeleteLoading(false);
         return;
       }
-      // Sign out client-side and redirect to the sales page. The auth.users
-      // row is already deleted server-side; we're just clearing the local
-      // cached session.
       await supabase.auth.signOut().catch(() => undefined);
       onNavigate('/sales');
     } catch (err) {
@@ -216,8 +222,9 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
             {deleteOpen && (
               <div className="mt-3 space-y-3" data-testid="delete-account-confirm-panel">
                 <p className="text-xs text-[var(--text-strong)]">
-                  Type <span className="font-mono font-semibold">DELETE</span> in the box below to
-                  confirm. Your subscription will be cancelled before the account is removed.
+                  Type <span className="font-mono font-semibold">DELETE</span> and enter your
+                  password to confirm. Your subscription will be cancelled before the account is
+                  removed.
                 </p>
                 <GlassInput
                   type="text"
@@ -226,6 +233,14 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
                   placeholder="Type DELETE to confirm"
                   autoComplete="off"
                   data-testid="delete-account-confirm-input"
+                />
+                <GlassInput
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Your password"
+                  autoComplete="current-password"
+                  data-testid="delete-account-password-input"
                 />
                 {deleteError && (
                   <p className="text-xs text-[var(--badge-red-text)]" role="alert">{deleteError}</p>
@@ -236,6 +251,7 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
                     onClick={() => {
                       setDeleteOpen(false);
                       setDeleteConfirm('');
+                      setDeletePassword('');
                       setDeleteError(null);
                     }}
                     disabled={deleteLoading}

@@ -17,6 +17,7 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { supabaseAdmin } from '../lib/supabase.js';
@@ -27,10 +28,69 @@ export const accountRoutes = new Hono();
 
 accountRoutes.use('*', authMiddleware);
 
+// Password re-auth helper used by destructive ops. Returns true if the
+// supplied password matches the user's bcrypt hash in auth.users.
+// The RPC is service-role only; we never expose verification to a
+// non-authenticated caller.
+async function verifyUserPassword(userId: string, password: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc('rpc_verify_user_password', {
+    caller_user_id: userId,
+    password,
+  });
+  if (error) {
+    logger.warn(
+      { userId, code: error.code, message: error.message },
+      'account: rpc_verify_user_password failed',
+    );
+    return false;
+  }
+  return data === true;
+}
+
+const verifyPasswordSchema = z.object({
+  password: z.string().min(1).max(256),
+});
+
+// Lightweight standalone endpoint for non-server-mediated destructive
+// ops (e.g., disabling MFA, which goes from frontend directly to
+// Supabase). The frontend prompts for the password, calls this to
+// confirm, then proceeds with the user-side mutation.
+accountRoutes.post('/verify-password', rateLimitMiddleware(10, 60_000), async (c) => {
+  const user = c.get('user');
+  const raw = await c.req.json().catch(() => null);
+  const parsed = verifyPasswordSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json({ error: 'Password required' }, 400);
+  }
+  const ok = await verifyUserPassword(user.id, parsed.data.password);
+  if (!ok) {
+    return c.json({ error: 'Incorrect password' }, 401);
+  }
+  return c.json({ verified: true });
+});
+
+const deleteAccountSchema = z.object({
+  password: z.string().min(1).max(256),
+});
+
 // One destructive call per minute is plenty; nothing legitimate retries
 // account deletion in a tight loop.
 accountRoutes.delete('/', rateLimitMiddleware(3, 60_000), async (c) => {
   const user = c.get('user');
+
+  // Password re-auth. Even though the user is signed in, requiring the
+  // password again limits the blast radius of session-jacking
+  // (XSS / stolen JWT / unlocked-laptop attacks). The body schema is
+  // optional-friendly: we only pull the password if the body parses.
+  const rawBody = await c.req.json().catch(() => null);
+  const parsedBody = deleteAccountSchema.safeParse(rawBody);
+  if (!parsedBody.success) {
+    return c.json({ error: 'Password required to confirm deletion' }, 400);
+  }
+  const passwordOk = await verifyUserPassword(user.id, parsedBody.data.password);
+  if (!passwordOk) {
+    return c.json({ error: 'Incorrect password' }, 401);
+  }
 
   // 1) Cancel any live Stripe subscription. Treat "no Stripe configured" and
   //    "no subscription on file" as no-ops; treat a real Stripe failure as a
