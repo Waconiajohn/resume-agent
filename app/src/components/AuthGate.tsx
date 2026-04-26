@@ -4,6 +4,11 @@ import { GlassButton } from './GlassButton';
 import { GlassInput } from './GlassInput';
 import { Briefcase, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import {
+  MIN_PASSWORD_LENGTH,
+  validatePasswordPolicy,
+  checkPasswordBreached,
+} from '@/lib/password-policy';
 
 /**
  * Sprint E4 — initial view preference. Sales page "Get started free" links
@@ -43,7 +48,29 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
+
+    // Password policy enforced only on signup. Sign-in passes the existing
+    // password through unchanged (a user with a legacy short password should
+    // still be able to sign in; they'd hit the policy on their next reset).
+    if (isSignUp) {
+      const policy = validatePasswordPolicy(password);
+      if (!policy.ok) {
+        setError(policy.reasons.join(' '));
+        return;
+      }
+      setLoading(true);
+      const breach = await checkPasswordBreached(password);
+      if (breach.breached) {
+        setLoading(false);
+        setError(
+          `This password has appeared in ${breach.count.toLocaleString()} known data breaches. `
+            + 'Pick a different one — even one not on the list — or use a password manager to generate a strong unique password.',
+        );
+        return;
+      }
+    } else {
+      setLoading(true);
+    }
 
     const { error } = isSignUp
       ? await onSignUp(email, password, { firstName, lastName, phone: phone || undefined })
@@ -279,11 +306,11 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
               name="password"
               type="password"
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
-              placeholder="Password"
+              placeholder={isSignUp ? `Password (${MIN_PASSWORD_LENGTH}+ characters)` : 'Password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={isSignUp ? MIN_PASSWORD_LENGTH : 1}
               aria-describedby={error ? 'auth-error' : undefined}
             />
             {!isSignUp && (

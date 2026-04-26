@@ -5,6 +5,11 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassInput } from '@/components/GlassInput';
 import { GlassButton } from '@/components/GlassButton';
 import { Briefcase, Loader2 } from 'lucide-react';
+import {
+  MIN_PASSWORD_LENGTH,
+  validatePasswordPolicy,
+  checkPasswordBreached,
+} from '@/lib/password-policy';
 
 export function ResetPassword() {
   const navigate = useNavigate();
@@ -39,12 +44,24 @@ export function ResetPassword() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    const policy = validatePasswordPolicy(password);
+    if (!policy.ok) {
+      setError(policy.reasons.join(' '));
       return;
     }
 
     setLoading(true);
+
+    const breach = await checkPasswordBreached(password);
+    if (breach.breached) {
+      setLoading(false);
+      setError(
+        `This password has appeared in ${breach.count.toLocaleString()} known data breaches. `
+          + 'Pick a different one — even one not on the list — or use a password manager to generate a strong unique password.',
+      );
+      return;
+    }
+
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setLoading(false);
 
@@ -104,11 +121,11 @@ export function ResetPassword() {
                 name="password"
                 type="password"
                 autoComplete="new-password"
-                placeholder="New password"
+                placeholder={`New password (${MIN_PASSWORD_LENGTH}+ characters)`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={MIN_PASSWORD_LENGTH}
                 aria-describedby={error ? 'reset-error' : undefined}
               />
             </div>
@@ -123,7 +140,7 @@ export function ResetPassword() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={MIN_PASSWORD_LENGTH}
                 aria-describedby={error ? 'reset-error' : undefined}
               />
             </div>
