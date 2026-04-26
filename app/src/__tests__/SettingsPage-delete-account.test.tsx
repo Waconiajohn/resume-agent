@@ -62,18 +62,23 @@ describe('SettingsPage — delete account', () => {
     expect(screen.getByTestId('delete-account-confirm-button')).toBeDisabled();
   });
 
-  it('keeps the confirm button disabled until DELETE is typed exactly', () => {
+  it('keeps the confirm button disabled until DELETE is typed exactly AND password is provided', () => {
     render(<SettingsPage user={fakeUser} onNavigate={vi.fn()} />);
     fireEvent.click(screen.getByText(/I understand — start deletion/i));
-    const input = screen.getByTestId('delete-account-confirm-input');
+    const confirmInput = screen.getByTestId('delete-account-confirm-input');
+    const passwordInput = screen.getByTestId('delete-account-password-input');
 
-    fireEvent.change(input, { target: { value: 'delete' } });
-    expect(screen.getByTestId('delete-account-confirm-button')).not.toBeDisabled(); // case-insensitive
-
-    fireEvent.change(input, { target: { value: 'DEL' } });
+    fireEvent.change(confirmInput, { target: { value: 'delete' } });
+    // Without password, still disabled.
     expect(screen.getByTestId('delete-account-confirm-button')).toBeDisabled();
 
-    fireEvent.change(input, { target: { value: 'DELETE' } });
+    fireEvent.change(passwordInput, { target: { value: 'p' } });
+    expect(screen.getByTestId('delete-account-confirm-button')).not.toBeDisabled(); // case-insensitive on confirm
+
+    fireEvent.change(confirmInput, { target: { value: 'DEL' } });
+    expect(screen.getByTestId('delete-account-confirm-button')).toBeDisabled();
+
+    fireEvent.change(confirmInput, { target: { value: 'DELETE' } });
     expect(screen.getByTestId('delete-account-confirm-button')).not.toBeDisabled();
   });
 
@@ -92,17 +97,17 @@ describe('SettingsPage — delete account', () => {
     render(<SettingsPage user={fakeUser} onNavigate={onNavigate} />);
     fireEvent.click(screen.getByText(/I understand — start deletion/i));
     fireEvent.change(screen.getByTestId('delete-account-confirm-input'), { target: { value: 'DELETE' } });
+    fireEvent.change(screen.getByTestId('delete-account-password-input'), { target: { value: 'pwd-123' } });
     fireEvent.click(screen.getByTestId('delete-account-confirm-button'));
 
     await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/sales'));
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3001/api/account',
-      expect.objectContaining({
-        method: 'DELETE',
-        headers: expect.objectContaining({ Authorization: 'Bearer tok-123' }),
-      }),
-    );
+    const deleteCall = fetchMock.mock.calls.find((args) => args[0] === 'http://localhost:3001/api/account');
+    expect(deleteCall).toBeDefined();
+    const init = deleteCall![1] as RequestInit;
+    expect(init.method).toBe('DELETE');
+    expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer tok-123');
+    expect(JSON.parse(init.body as string)).toEqual({ password: 'pwd-123' });
     expect(supabaseSignOut).toHaveBeenCalled();
   });
 
@@ -122,6 +127,7 @@ describe('SettingsPage — delete account', () => {
     render(<SettingsPage user={fakeUser} onNavigate={onNavigate} />);
     fireEvent.click(screen.getByText(/I understand — start deletion/i));
     fireEvent.change(screen.getByTestId('delete-account-confirm-input'), { target: { value: 'DELETE' } });
+    fireEvent.change(screen.getByTestId('delete-account-password-input'), { target: { value: 'pwd-123' } });
     fireEvent.click(screen.getByTestId('delete-account-confirm-button'));
 
     await waitFor(() => {
@@ -138,5 +144,31 @@ describe('SettingsPage — delete account', () => {
 
     fireEvent.click(screen.getByText(/^Cancel$/));
     expect(screen.queryByTestId('delete-account-confirm-panel')).toBeNull();
+  });
+
+  it('surfaces "Incorrect password" when the server returns 401', async () => {
+    const onNavigate = vi.fn();
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/auth/events')) {
+        return Promise.resolve(new Response(JSON.stringify({ events: [] }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(
+        JSON.stringify({ error: 'Incorrect password' }),
+        { status: 401 },
+      ));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<SettingsPage user={fakeUser} onNavigate={onNavigate} />);
+    fireEvent.click(screen.getByText(/I understand — start deletion/i));
+    fireEvent.change(screen.getByTestId('delete-account-confirm-input'), { target: { value: 'DELETE' } });
+    fireEvent.change(screen.getByTestId('delete-account-password-input'), { target: { value: 'wrong' } });
+    fireEvent.click(screen.getByTestId('delete-account-confirm-button'));
+
+    await waitFor(() => {
+      const panel = screen.getByTestId('delete-account-confirm-panel');
+      expect(within(panel).getByRole('alert').textContent).toMatch(/Incorrect password/);
+    });
+    expect(onNavigate).not.toHaveBeenCalled();
   });
 });
