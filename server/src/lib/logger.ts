@@ -14,6 +14,18 @@ const logger = pino({
       '*.job_description',
       'original_resume',
       '*.original_resume',
+      // Defense-in-depth: bearer tokens are not logged today, but a future
+      // logger.info({ headers: c.req.header() }) would leak them. Strip the
+      // common shapes: top-level Authorization, Hono's req.headers map, and
+      // any nested header bag a developer might attach.
+      'authorization',
+      'Authorization',
+      '*.authorization',
+      '*.Authorization',
+      'headers.authorization',
+      'headers.Authorization',
+      'req.headers.authorization',
+      'req.headers.Authorization',
     ],
     remove: true,
   },

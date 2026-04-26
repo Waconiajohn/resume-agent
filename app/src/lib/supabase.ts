@@ -13,6 +13,23 @@ if (!supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Mirror the backend's E2E_MOCK_AUTH guard (server/src/middleware/auth.ts:16) on
+// the frontend. A production build with VITE_E2E_MOCK_AUTH=true would let
+// anyone visiting the site act as the hardcoded mock user — the localStorage
+// escape hatch only opts OUT of mock auth, it can't opt IN, so an empty
+// localStorage on a misconfigured build means immediate auth bypass.
+//
+// Throwing here crashes the app on first load with a loud, unrecoverable
+// error. Better than letting the build serve a logged-in spoof of the mock user.
+if (import.meta.env.VITE_E2E_MOCK_AUTH === 'true' && import.meta.env.PROD) {
+  throw new Error(
+    'VITE_E2E_MOCK_AUTH=true is set in a production build. This bypasses '
+    + 'all authentication with a hardcoded mock user. Remove the variable '
+    + 'from the build environment and redeploy. See server/src/middleware/auth.ts '
+    + 'for the matching backend guard.',
+  );
+}
+
 const e2eMockAuthDisabled = typeof window !== 'undefined'
   && (
     window.localStorage.getItem('e2e_disable_mock_auth') === 'true'
