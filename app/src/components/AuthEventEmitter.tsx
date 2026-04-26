@@ -19,6 +19,7 @@ import { useEffect, useRef } from 'react';
 import type { AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
+import type { AuthEventType } from '@/types/auth-events';
 
 const RECORDED_EVENTS: ReadonlyArray<AuthChangeEvent> = [
   'SIGNED_IN',
@@ -27,13 +28,15 @@ const RECORDED_EVENTS: ReadonlyArray<AuthChangeEvent> = [
   'USER_UPDATED',
 ];
 
-function mapEventType(event: AuthChangeEvent): string | null {
+function mapEventType(event: AuthChangeEvent): AuthEventType | null {
   switch (event) {
     case 'SIGNED_IN':
       return 'signed_in';
     case 'SIGNED_OUT':
       return 'signed_out';
     case 'PASSWORD_RECOVERY':
+      // PASSWORD_RECOVERY fires when the user opens the reset deep
+      // link, not when they request a reset. Naming reflects that.
       return 'password_recovery_started';
     case 'USER_UPDATED':
       return 'user_updated';
@@ -47,10 +50,10 @@ export function AuthEventEmitter() {
   // SIGNED_IN twice on some flows — once from setSession and once from
   // the OAuth redirect). 5s is a generous floor that still lets a real
   // sign-out + sign-in inside the same window through.
-  const lastEventRef = useRef<{ type: string; at: number } | null>(null);
+  const lastEventRef = useRef<{ type: AuthEventType; at: number } | null>(null);
 
   useEffect(() => {
-    const post = async (event_type: string, accessToken: string | null) => {
+    const post = async (event_type: AuthEventType, accessToken: string | null) => {
       try {
         await fetch(`${API_BASE}/auth/events`, {
           method: 'POST',

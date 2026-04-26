@@ -19,23 +19,11 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { AUTH_EVENT_TYPES } from '../lib/auth-events.js';
 import logger from '../lib/logger.js';
 
-// Keep this list in sync with the CHECK constraint in
-// supabase/migrations/20260426000001_auth_audit_log.sql.
-const EVENT_TYPE_VALUES = [
-  'signed_in',
-  'signed_out',
-  'password_recovery_started',
-  'password_changed',
-  'user_updated',
-  'mfa_enrolled',
-  'mfa_challenge_passed',
-  'mfa_challenge_failed',
-] as const;
-
 const createEventSchema = z.object({
-  event_type: z.enum(EVENT_TYPE_VALUES),
+  event_type: z.enum(AUTH_EVENT_TYPES),
   // Free-form metadata — capped at ~2KB at the JSON level. Sign-in metadata
   // typically carries { method: 'password' | 'oauth' } plus optional
   // provider name; user_updated may carry { changed_fields: [...] }.

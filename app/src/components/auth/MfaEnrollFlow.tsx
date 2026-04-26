@@ -147,13 +147,14 @@ export function MfaEnrollFlow({ onEnrolled, onCancel }: MfaEnrollFlowProps) {
       <p className="text-xs text-[var(--text-soft)]">
         Scan this QR code with your authenticator app, or copy the secret manually.
       </p>
-      <div
-        className="rounded-md border border-[var(--line-soft)] bg-white p-3 text-center"
-        // The `qr_code` from Supabase is a `data:image/svg+xml;...` URL.
-        dangerouslySetInnerHTML={{
-          __html: `<img src="${enrollment.qrCode}" alt="MFA QR code" style="max-width: 220px; margin: 0 auto;" />`,
-        }}
-      />
+      <div className="rounded-md border border-[var(--line-soft)] bg-white p-3 text-center">
+        {/* qrCode is a data:image/svg+xml;... URL from Supabase. */}
+        <img
+          src={enrollment.qrCode}
+          alt="MFA QR code"
+          className="mx-auto max-w-[220px]"
+        />
+      </div>
       <div className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] p-2 text-center">
         <span className="block text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Manual entry</span>
         <code className="block break-all text-[12px] font-mono text-[var(--text-strong)]">{enrollment.secret}</code>

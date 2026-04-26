@@ -12,6 +12,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
+import type { AuthEventType } from '@/types/auth-events';
 
 export interface VerifiedFactor {
   id: string;
@@ -135,9 +136,9 @@ export async function unenrollFactor(factorId: string): Promise<void> {
  * don't fire distinct events for them), so we post directly here.
  * Failures are intentionally swallowed.
  */
-export async function recordMfaEvent(
-  event_type: 'mfa_enrolled' | 'mfa_challenge_passed' | 'mfa_challenge_failed',
-): Promise<void> {
+export type MfaAuditEvent = Extract<AuthEventType, 'mfa_enrolled' | 'mfa_challenge_passed' | 'mfa_challenge_failed'>;
+
+export async function recordMfaEvent(event_type: MfaAuditEvent): Promise<void> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;

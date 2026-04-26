@@ -57,7 +57,7 @@ describe('ActivityLogCard', () => {
     render(<ActivityLogCard />);
 
     await waitFor(() => expect(screen.getByText('Signed in')).toBeInTheDocument());
-    expect(screen.getByText('Password reset requested')).toBeInTheDocument();
+    expect(screen.getByText('Password reset link opened')).toBeInTheDocument();
     expect(screen.getByText(/203\.0\.113\.5/)).toBeInTheDocument();
     expect(screen.getByText(/Chrome on Mac OS X/)).toBeInTheDocument();
   });

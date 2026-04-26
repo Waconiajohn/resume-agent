@@ -12,27 +12,23 @@ import { Activity, Loader2, RefreshCw } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
+import { AUTH_EVENT_LABELS, type AuthEventType } from '@/types/auth-events';
 
 interface AuthEvent {
   id: string;
-  event_type: string;
+  event_type: AuthEventType | string;
   ip_address: string | null;
   user_agent: string | null;
   metadata: Record<string, unknown> | null;
   occurred_at: string;
 }
 
-const EVENT_LABELS: Record<string, string> = {
-  signed_in: 'Signed in',
-  signed_in_failed: 'Sign-in attempt failed',
-  signed_out: 'Signed out',
-  password_recovery_started: 'Password reset requested',
-  password_changed: 'Password changed',
-  user_updated: 'Profile updated',
-  mfa_enrolled: 'MFA enrolled',
-  mfa_challenge_passed: 'MFA verified',
-  mfa_challenge_failed: 'MFA failed',
-};
+function labelFor(type: string): string {
+  if (type in AUTH_EVENT_LABELS) {
+    return AUTH_EVENT_LABELS[type as AuthEventType];
+  }
+  return type;
+}
 
 function formatWhen(iso: string): string {
   try {
@@ -136,7 +132,7 @@ export function ActivityLogCard() {
       {events.length > 0 && (
         <ul className="mt-4 divide-y divide-[var(--line-soft)]">
           {events.map((e) => {
-            const label = EVENT_LABELS[e.event_type] ?? e.event_type;
+            const label = labelFor(e.event_type);
             const ua = shortenUserAgent(e.user_agent);
             return (
               <li key={e.id} className="flex items-baseline justify-between gap-3 py-2 text-[13px]">
