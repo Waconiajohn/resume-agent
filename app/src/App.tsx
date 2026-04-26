@@ -27,6 +27,7 @@ import { SessionExpiryToaster } from '@/components/SessionExpiryToaster';
 import { EmailVerificationBanner } from '@/components/EmailVerificationBanner';
 import { SessionDegradedBanner } from '@/components/SessionDegradedBanner';
 import { AuthEventEmitter } from '@/components/AuthEventEmitter';
+import { MfaChallengeGate } from '@/components/auth/MfaChallengeGate';
 import { TermsOfService } from '@/components/legal/TermsOfService';
 import { PrivacyPolicy } from '@/components/legal/PrivacyPolicy';
 import { Contact } from '@/components/legal/Contact';
@@ -606,6 +607,8 @@ export default function App() {
       <SessionDegradedBanner degraded={sessionDegraded} onSignInAgain={handleSignOut} />
       {/* Sprint B (auth hardening) — writes auth events to the activity log. */}
       <AuthEventEmitter />
+      {/* Sprint B (auth hardening) — blocks app behind TOTP challenge for users with MFA enrolled. */}
+      <MfaChallengeGate hasSession={!!session} onSignOut={handleSignOut} />
       <CareerProfileProvider>
         <ErrorBoundary key={`${currentSession?.id ?? 'no-session'}:${location.pathname}${location.search}`}>
           <a

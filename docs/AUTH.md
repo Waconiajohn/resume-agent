@@ -120,14 +120,45 @@ Set on every API response in `server/src/index.ts`:
 | Account deletion flow | `server/src/routes/account.ts` + `app/src/components/SettingsPage.tsx` |
 | Mock auth gates | `app/src/lib/supabase.ts` and `server/src/middleware/auth.ts` |
 
+## Multi-factor authentication
+
+| Layer | Setting / Status |
+|---|---|
+| TOTP enrollment | **enabled** — Settings → Security → "Enable two-factor authentication" |
+| Implementation | `app/src/lib/mfa.ts` (Supabase MFA wrapper) + `MfaEnrollFlow` (3-step intro/scan/verify) + `SecurityCard` (Settings) |
+| Sign-in challenge | `MfaChallengeGate` overlay; blocks the app at AAL1 when verified factors exist |
+| WebAuthn passkeys | not enabled (Sprint C) |
+| Backup / recovery codes | not implemented; "lost device" recovery goes through password reset (which clears the factor) and re-enrollment. Sprint C item. |
+| Audit | `mfa_enrolled`, `mfa_challenge_passed`, `mfa_challenge_failed` events flow through `auth_audit_log` |
+
+When the dashboard `auth.config.mfa_max_enrolled_factors` value is changed, document it in this table.
+
+## Auth event audit log
+
+A user-visible activity feed of authentication events lives in `public.auth_audit_log` and is exposed via:
+
+- `POST /api/auth/events` — record one event (frontend `AuthEventEmitter` is the primary writer)
+- `GET /api/auth/events` — read the caller's own log; capped at 200 rows
+
+Written via `supabaseAdmin` so the table can keep service-role-only INSERT in RLS. Allowed event types:
+
+- `signed_in`, `signed_out`, `password_recovery_started`, `password_changed`, `user_updated`
+- `mfa_enrolled`, `mfa_challenge_passed`, `mfa_challenge_failed`
+
+The CHECK constraint pins this list; adding a new event type requires both a migration to update the constraint and the relevant frontend emit point.
+
+The frontend skips `TOKEN_REFRESHED` (noisy, every 45 min) and de-dupes back-to-back duplicates inside 5s for the OAuth-redirect double-fire case.
+
+A future Supabase Auth Hook will also POST server-side events (failed-login attempts) to the same route — Sprint C.
+
 ## Out of scope today
 
 Backlog items deferred to later sprints:
 
-- **MFA enrollment** (TOTP, WebAuthn passkeys) — Supabase has the primitives (`auth.mfa_factors`); we haven't built the enrollment UI.
+- **WebAuthn passkeys** — Supabase supports `factorType: 'webauthn'`; UI not built yet.
+- **MFA backup / recovery codes** — Sprint C; today, lost devices recover via password reset.
 - **Login session list / "sign out everywhere"** — Supabase admin SDK exposes the data.
-- **Auth event audit log** — Supabase auth events live only in the dashboard's logs. A custom `auth_audit_log` table would persist them.
-- **Token refresh failure UX** — currently silent; should surface a "session having trouble" banner.
 - **Email change flow** — `supabase.auth.updateUser({ email })` works but no UI yet.
 - **SAML SSO for B2B** — Supabase Pro feature; needs UI in the B2B admin portal.
 - **Suspicious-login detection** — new-device email, geolocation flag, Cloudflare Turnstile in front of signup.
+- **Supabase Auth Hook → /api/auth/webhook** — captures server-side events the frontend can't see.

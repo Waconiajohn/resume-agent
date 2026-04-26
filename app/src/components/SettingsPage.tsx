@@ -15,6 +15,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { GlassInput } from '@/components/GlassInput';
 import { ActivityLogCard } from '@/components/settings/ActivityLogCard';
+import { SecurityCard } from '@/components/settings/SecurityCard';
 import { AlertTriangle, CreditCard, ExternalLink, LifeBuoy, Loader2, LogOut, Mail, User } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { API_BASE } from '@/lib/api';
@@ -181,6 +182,9 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
           </a>
         </div>
       </GlassCard>
+
+      {/* Security — MFA enrollment (Sprint B) */}
+      <SecurityCard />
 
       {/* Activity log — Sprint B (auth hardening) */}
       <ActivityLogCard />
