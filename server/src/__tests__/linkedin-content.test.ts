@@ -652,7 +652,19 @@ describe('write_post prompt quality rules', () => {
     const chatMock = llm.chat as ReturnType<typeof vi.fn>;
     chatMock.mockResolvedValueOnce({
       text: JSON.stringify({
-        post: 'The hardest integration I ever owned was not a systems problem. It was an operating-rhythm problem.\n\nWe had the right tools, but the handoffs were unclear.',
+        post: [
+          'The hardest integration I ever owned was not a systems problem. It was an operating-rhythm problem.',
+          'We had the right tools, but the handoffs were unclear, the exception path kept changing, and no one could see the same risk at the same time.',
+          'The fix was not another status meeting. We rebuilt the operating cadence around three signals: decision owner, blocked dependency, and customer impact.',
+          'That made the work less theatrical and more useful. People stopped reporting motion and started reporting the decisions that would actually change the outcome.',
+          'The lesson stuck with me because integrations rarely fail from one dramatic mistake. They usually fail from a dozen small ambiguities that stay hidden until the deadline is already loud.',
+          'Good operators make those ambiguities visible early enough to act.',
+          'In that project, the best change was cultural as much as operational. Once the team knew which signals mattered, engineers, operators, and finance leaders could challenge the same facts instead of defending separate versions of the story.',
+          'That changed the quality of escalation. A red flag was no longer a surprise or an accusation; it was the agreed trigger for making a better decision sooner.',
+          'The work moved faster because the conversation got cleaner.',
+          'That is the discipline I look for now: fewer heroic updates, more honest signals.',
+          'Where have you seen an integration improve because the operating rhythm changed before the technology did?',
+        ].join('\n\n'),
         hashtags: ['#Operations', '#Leadership'],
         hook_explanation: 'Starts with a specific operator insight.',
       }),
@@ -675,7 +687,8 @@ describe('write_post prompt quality rules', () => {
     expect(callArgs.system).toContain('HOOK ENGINEERING');
     expect(callArgs.system).toContain('360BREW ALGORITHM OPTIMIZATION');
     expect(callArgs.messages?.[0]?.content).toContain('Post Requirements');
-    expect(callArgs.messages?.[0]?.content).toContain('target about 250 words');
+    expect(callArgs.messages?.[0]?.content).toContain('near 250 words');
+    expect(callArgs.messages?.[0]?.content).toContain('230-275 words');
   });
 });
 
@@ -693,6 +706,7 @@ describe('self_review_post tool', () => {
       'That choice created rework across operations, customer support, and finance. The repair was not glamorous. We rebuilt the intake path, added owner-level review for exceptions, and made the leading indicators visible before each release.',
       'The lesson was simple: speed without decision quality is just motion. Since then, I have treated risk visibility as part of delivery, not a side meeting.',
       'That changed how I run operating rhythms. Every project now needs a small number of visible risk signals, a clear owner, and a trigger for escalation before the team is already behind. It also changed how I coach managers. I ask them to explain what would break first, who would notice, and what decision we would wish we had made two weeks earlier.',
+      'In practice, that means the conversation changes before the project is in trouble. Instead of asking why a team missed a date, we ask which signal changed, who owned the response, and whether the tradeoff was visible early enough for leadership to act.',
       'Those questions slow a team down for a few minutes, but they save weeks when the pressure hits.',
       'The best operators I know do not wait for a failure report. They build systems that make the next failure harder to miss.',
       'Where do you see teams confusing movement with progress?',

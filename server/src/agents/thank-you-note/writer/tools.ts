@@ -113,6 +113,43 @@ function normalizeWhitespace(text: string): string {
   return text.replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+function cleanCandidateName(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const raw = value
+    .replace(/\s+/g, ' ')
+    .replace(/[,|].*$/g, '')
+    .trim();
+  if (!raw || /^(candidate|the candidate|your name)$/i.test(raw)) return null;
+
+  const words = raw.split(/\s+/).filter(Boolean);
+  if (words.length < 2 || words.length > 4) return null;
+  if (!words.every((word) => /^[A-Za-z][A-Za-z.'-]*$/.test(word))) return null;
+
+  if (raw === raw.toUpperCase()) {
+    return words
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  return raw;
+}
+
+function candidateNameFromResumeText(resumeText: string): string | null {
+  const firstLine = resumeText.split(/\n/).map((line) => line.trim()).find(Boolean);
+  return cleanCandidateName(firstLine);
+}
+
+function candidateNameFromState(
+  state: ThankYouNoteState,
+  scratchpad: Record<string, unknown>,
+): string | null {
+  const careerProfile = state.platform_context?.career_profile as Record<string, unknown> | undefined;
+  return cleanCandidateName(scratchpad.candidate_name)
+    ?? cleanCandidateName(state.shared_context?.candidateProfile.fullName)
+    ?? cleanCandidateName(careerProfile?.name)
+    ?? cleanCandidateName(careerProfile?.fullName);
+}
+
 function normalizeCandidateSignoff(text: string, candidateName: string): string {
   const realName = candidateName.trim();
   const hasRealName = realName.length > 0 && !/^(candidate|the candidate|your name)$/i.test(realName);
@@ -236,9 +273,10 @@ Return JSON:
     scratchpad.interview_analysis = result;
 
     // Derive candidate name for later tools.
-    const nameMatch = resumeText.match(/^([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,3})/);
-    if (nameMatch) {
-      scratchpad.candidate_name = nameMatch[1];
+    const candidateName = candidateNameFromResumeText(resumeText)
+      ?? candidateNameFromState(state, scratchpad);
+    if (candidateName) {
+      scratchpad.candidate_name = candidateName;
     }
 
     return JSON.stringify({
@@ -373,7 +411,7 @@ const writeThankYouNoteTool: WriterTool = {
       }
     }
 
-    const candidateName = scratchpad.candidate_name ? String(scratchpad.candidate_name) : 'the candidate';
+    const candidateName = candidateNameFromState(state, scratchpad) ?? 'the candidate';
     const wordCountGuide: Record<NoteFormat, string> = {
       email: '150–250 words, 3–5 short paragraphs',
       handwritten: '75–150 words, card-sized',

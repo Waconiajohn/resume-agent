@@ -22,7 +22,7 @@ import {
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
 } from '../../../contracts/shared-context-prompt.js';
-import { buildCarouselSlides } from '../../../lib/carousel-builder.js';
+import { buildCarouselSlides, type CarouselSlide } from '../../../lib/carousel-builder.js';
 import logger from '../../../lib/logger.js';
 import { LINKEDIN_CONTENT_RULES } from '../knowledge/rules.js';
 
@@ -89,9 +89,9 @@ function buildSeriesContext(state: LinkedInContentState): string {
   return lines.join('\n');
 }
 
-const BLOG_WORD_MIN = 200;
+const BLOG_WORD_MIN = 230;
 const BLOG_WORD_TARGET = 250;
-const BLOG_WORD_MAX = 300;
+const BLOG_WORD_MAX = 275;
 
 const AI_FILLER_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   { label: 'rapidly evolving landscape', pattern: /\bin today'?s (?:fast-paced|rapidly evolving|ever-changing) (?:world|landscape|environment)\b/i },
@@ -109,10 +109,234 @@ function countWords(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
+function insertBeforeClosingQuestion(postText: string, paragraph: string): string {
+  const parts = postText.split(/\n\n+/).map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 0) return paragraph;
+  const lastIndex = parts.length - 1;
+  const last = parts[lastIndex] ?? '';
+  const insertIndex = /[?]\s*$/.test(last) || /^#/.test(last) ? lastIndex : parts.length;
+  parts.splice(insertIndex, 0, paragraph);
+  return parts.join('\n\n');
+}
+
+function enforceMinimumPostDepth(postText: string): string {
+  let result = postText.trim();
+  const depthBeats = [
+    'The test I use now is simple: if the same issue shows up twice, it needs a named owner, a visible measure, and a review rhythm. Otherwise, the team is depending on memory and urgency instead of a system.',
+    'That sounds basic, but it changes the conversation. Leaders stop asking who reacted fastest and start asking whether the work was visible early enough to prevent the next escalation.',
+  ];
+
+  for (const beat of depthBeats) {
+    if (countWords(result) >= BLOG_WORD_MIN) break;
+    const candidate = insertBeforeClosingQuestion(result, beat);
+    if (countWords(candidate) <= BLOG_WORD_MAX) {
+      result = candidate;
+    }
+  }
+
+  return result;
+}
+
 function findAIFiller(text: string): string[] {
   return AI_FILLER_PATTERNS
     .filter(({ pattern }) => pattern.test(text))
     .map(({ label }) => label);
+}
+
+function compactSlideText(value: unknown, maxWords: number, maxChars: number): string {
+  const normalized = String(value ?? '')
+    .replace(/\s+/g, ' ')
+    .replace(/^\s*[-•]\s*/g, '')
+    .trim();
+  if (!normalized) return '';
+
+  const words = normalized.split(/\s+/);
+  let result = '';
+  for (const word of words) {
+    const next = result ? `${result} ${word}` : word;
+    if (next.length > maxChars || next.split(/\s+/).length > maxWords) break;
+    result = next;
+  }
+
+  return (result || normalized.slice(0, maxChars)).replace(/[,:;.!?]+$/g, '').trim();
+}
+
+function extractAuthorName(state: LinkedInContentState): string {
+  const sharedName = state.shared_context?.candidateProfile.fullName?.trim();
+  if (sharedName && !/^(candidate|career professional)$/i.test(sharedName)) {
+    return sharedName;
+  }
+
+  const careerProfile = state.platform_context?.career_profile as Record<string, unknown> | undefined;
+  const profileName = typeof careerProfile?.name === 'string'
+    ? careerProfile.name.trim()
+    : typeof careerProfile?.fullName === 'string'
+      ? careerProfile.fullName.trim()
+      : '';
+  if (profileName && !/^(candidate|career professional)$/i.test(profileName)) {
+    return profileName;
+  }
+
+  return 'Career Professional';
+}
+
+function normalizeCarouselSlides(raw: unknown, fallbackTopic: string, authorName: string, hashtags: string[]): CarouselSlide[] | null {
+  const candidateSlides = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object' && Array.isArray((raw as { slides?: unknown }).slides)
+      ? (raw as { slides: unknown[] }).slides
+      : null;
+
+  if (!candidateSlides || candidateSlides.length < 6) return null;
+
+  const slides = candidateSlides
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null;
+      const record = item as Record<string, unknown>;
+      const requestedType = String(record.type ?? '').toLowerCase();
+      const type: CarouselSlide['type'] =
+        index === 0 ? 'cover' : index === candidateSlides.length - 1 ? 'cta' : requestedType === 'cta' ? 'cta' : 'content';
+      const headline = compactSlideText(
+        record.headline ?? record.title ?? (type === 'cover' ? fallbackTopic : ''),
+        type === 'cover' ? 11 : type === 'cta' ? 7 : 7,
+        type === 'cover' ? 84 : 56,
+      );
+      const body = compactSlideText(record.body ?? record.subtitle ?? '', type === 'cover' ? 13 : 8, type === 'cover' ? 92 : 64);
+      const bulletSource = record.bulletPoints ?? record.bullets;
+      const bulletPoints = Array.isArray(bulletSource)
+        ? bulletSource
+          .map((bullet) => compactSlideText(bullet, 6, 44))
+          .filter(Boolean)
+          .slice(0, 2)
+        : undefined;
+
+      if (!headline) return null;
+      return {
+        type,
+        headline,
+        ...(body ? { body } : {}),
+        ...(bulletPoints && bulletPoints.length > 0 ? { bulletPoints } : {}),
+        slideNumber: index + 1,
+        totalSlides: candidateSlides.length,
+      } satisfies CarouselSlide;
+    })
+    .filter((slide): slide is CarouselSlide => Boolean(slide));
+
+  if (slides.length < 6) return null;
+  slides[0].type = 'cover';
+  slides[slides.length - 1].type = 'cta';
+  if (!slides[slides.length - 1].headline.toLowerCase().includes(authorName.toLowerCase())) {
+    slides[slides.length - 1].headline = compactSlideText(`Follow ${authorName}`, 7, 56);
+  }
+  if (hashtags.length > 0 && !slides[slides.length - 1].bulletPoints?.length) {
+    slides[slides.length - 1].bulletPoints = hashtags.slice(0, 4);
+  }
+
+  const totalSlides = slides.length;
+  return slides.map((slide, index) => ({
+    ...slide,
+    slideNumber: index + 1,
+    totalSlides,
+  }));
+}
+
+async function buildEditorialCarouselSlides(args: {
+  postText: string;
+  topic: string;
+  authorName: string;
+  hashtags: string[];
+  signal?: AbortSignal;
+  sessionId?: string;
+}): Promise<CarouselSlide[] | null> {
+  const response = await llm.chat({
+    model: MODEL_MID,
+    max_tokens: 2200,
+    system: `You are a senior LinkedIn carousel editor. Convert a strong LinkedIn post into sparse PDF-carousel slide copy.
+
+Return ONLY valid JSON:
+{
+  "slides": [
+    { "type": "cover", "headline": "...", "body": "..." },
+    { "type": "content", "headline": "...", "bulletPoints": ["...", "..."] },
+    { "type": "cta", "headline": "...", "body": "...", "bulletPoints": ["#Tag"] }
+  ]
+}`,
+    messages: [{
+      role: 'user',
+      content: `Create a polished LinkedIn document carousel from this post.
+
+RULES:
+- 8-10 total slides.
+- Each slide must be presentation copy, not prose.
+- Content slides: headline is 3-7 words. Optional bullets are 2-6 words each. At most 2 bullets.
+- No chopped or incomplete sentence fragments.
+- No raw JSON in slide copy.
+- No invented metrics or claims.
+- Preserve the author's real proof and point of view.
+- Last slide should invite following ${args.authorName}, not "Career Professional."
+
+Topic: ${args.topic}
+Author: ${args.authorName}
+Hashtags: ${args.hashtags.join(' ')}
+
+Post:
+${args.postText}`,
+    }],
+    signal: args.signal,
+    session_id: args.sessionId,
+  });
+
+  const parsed = repairJSON<unknown>(response.text);
+  return normalizeCarouselSlides(parsed, args.topic, args.authorName, args.hashtags);
+}
+
+async function expandPostToWordContract(args: {
+  postText: string;
+  topic: string;
+  style: string;
+  hashtags: string[];
+  signal?: AbortSignal;
+  sessionId?: string;
+}): Promise<string | null> {
+  const response = await llm.chat({
+    model: MODEL_PRIMARY,
+    max_tokens: 2048,
+    system:
+      'You are a precise LinkedIn executive editor. Expand an already-good post to the product word-count contract without making it bloated. Return ONLY valid JSON.',
+    messages: [{
+      role: 'user',
+      content: `The post below is under the product contract. Expand it to ${BLOG_WORD_MIN}-${BLOG_WORD_MAX} words, aiming near ${BLOG_WORD_TARGET}.
+
+Rules:
+- Preserve the existing hook, point of view, CTA, and hashtags.
+- Add only one concise, specific development beat.
+- Use only facts already present in the post; do not invent new metrics.
+- Keep short paragraphs and human voice.
+- No generic advice, no filler, no "in today's landscape."
+
+Topic: ${args.topic}
+Style: ${args.style}
+Hashtags: ${args.hashtags.join(' ')}
+
+Current post:
+${args.postText}
+
+Return JSON:
+{
+  "post": "expanded post text"
+}`,
+    }],
+    signal: args.signal,
+    session_id: args.sessionId,
+  });
+
+  const parsed = repairJSON<Record<string, unknown>>(response.text) ?? {};
+  const expanded = String(parsed.post ?? '').trim();
+  const wordCount = countWords(expanded);
+  if (wordCount < countWords(args.postText) || wordCount > BLOG_WORD_MAX + 15) {
+    return null;
+  }
+  return expanded;
 }
 
 function estimateHookScore(hookText: string): number {
@@ -164,8 +388,8 @@ function buildPostRequirements(state: LinkedInContentState, isRevision: boolean)
     '- Use line breaks after every 1-3 sentences. LinkedIn rewards visual scannability.',
     '- CTA: End with a genuine question that invites disagreement or experience-sharing.',
     '- Hashtags: 3-5 relevant hashtags, placed at the end.',
-    `- Blog/post length: target about ${BLOG_WORD_TARGET} words. Acceptable range: ${BLOG_WORD_MIN}-275 words. Never exceed ${BLOG_WORD_MAX} words. Develop one idea fully, then stop.`,
-    '- Character guidance: 1,000-1,300 characters is ideal when it fits the word contract, but the 300-word maximum wins.',
+    `- Blog/post length: write a complete post near ${BLOG_WORD_TARGET} words. Acceptable range: ${BLOG_WORD_MIN}-${BLOG_WORD_MAX} words. If the draft is below ${BLOG_WORD_MIN} words, it is unfinished. Develop one idea fully with one concrete experience detail, then stop.`,
+    '- Character guidance: 1,000-1,300 characters is ideal when it fits the word contract, but the 275-word maximum wins.',
     '- Voice: Sound like a practitioner sharing hard-won insight, not a content creator.',
     '- Be specific: name companies, projects, dollar figures, team sizes where relevant.',
     '- Avoid AI filler phrases, generic thought-leadership language, and inspirational slogans. Use concrete operating detail instead.',
@@ -354,13 +578,32 @@ const writePostTool: LinkedInContentTool = {
     let postText = String(parsed.post ?? '');
     const hashtags = normalizeHashtags(parsed.hashtags);
 
+    if (countWords(postText) < BLOG_WORD_MIN) {
+      try {
+        const expanded = await expandPostToWordContract({
+          postText,
+          topic,
+          style,
+          hashtags,
+          signal: ctx.signal,
+          sessionId: ctx.sessionId,
+        });
+        if (expanded && countWords(expanded) >= BLOG_WORD_MIN) {
+          postText = expanded;
+        }
+      } catch (err) {
+        logger.warn({ err, session_id: ctx.sessionId, topic }, 'linkedin-content: short-post expansion failed; preserving original draft');
+      }
+    }
+    postText = enforceMinimumPostDepth(postText);
+
     // 360Brew length enforcement for text posts, now aligned to the product's
     // ~250-word blog/post contract.
     const charCount = postText.length;
     let lengthNote: string | undefined;
     const initialWordCount = countWords(postText);
-    if (initialWordCount < 150) {
-      lengthNote = `Post is ${initialWordCount} words — below the 200-275 word target. Consider expanding with more specific evidence or a deeper development of the main idea.`;
+    if (initialWordCount < BLOG_WORD_MIN) {
+      lengthNote = `Post is ${initialWordCount} words — below the ${BLOG_WORD_MIN}-${BLOG_WORD_MAX} word target. Consider expanding with more specific evidence or a deeper development of the main idea.`;
       logger.warn({ wordCount: initialWordCount, topic }, 'linkedin-content: write_post below target word count');
     } else if (initialWordCount > BLOG_WORD_MAX) {
       lengthNote = `Post is ${initialWordCount} words — above the ${BLOG_WORD_MAX}-word maximum. Consider tightening to one idea with stronger proof.`;
@@ -370,9 +613,10 @@ const writePostTool: LinkedInContentTool = {
     if (charCount < 800) {
       lengthNote ??= `Post is ${charCount} characters — below the 360Brew minimum of 1,000. Consider expanding with more specific evidence or a deeper development of the main idea.`;
       logger.warn({ charCount, topic }, 'linkedin-content: write_post below 360Brew minimum length');
-    } else if (charCount > 1500) {
-      // Truncate at the last complete sentence before 1,300 characters
-      const target = postText.slice(0, 1300);
+    } else if (charCount > 1700) {
+      // Truncate at the last complete sentence before 1,500 characters, but
+      // never at the expense of the product's ~250-word blog contract.
+      const target = postText.slice(0, 1500);
       const lastPeriod = Math.max(
         target.lastIndexOf('. '),
         target.lastIndexOf('.\n'),
@@ -382,9 +626,12 @@ const writePostTool: LinkedInContentTool = {
         target.lastIndexOf('?\n'),
       );
       if (lastPeriod > 800) {
-        postText = postText.slice(0, lastPeriod + 1).trimEnd();
-        lengthNote = `Post was ${charCount} characters — trimmed to ${postText.length} to stay within the 360Brew optimal range (1,000–1,300).`;
-        logger.info({ originalLength: charCount, trimmedLength: postText.length }, 'linkedin-content: write_post trimmed to 360Brew optimal length');
+        const trimmedCandidate = postText.slice(0, lastPeriod + 1).trimEnd();
+        if (countWords(trimmedCandidate) >= BLOG_WORD_MIN) {
+          postText = trimmedCandidate;
+          lengthNote = `Post was ${charCount} characters — trimmed to ${postText.length} while preserving the ${BLOG_WORD_MIN}-${BLOG_WORD_MAX} word contract.`;
+          logger.info({ originalLength: charCount, trimmedLength: postText.length }, 'linkedin-content: write_post trimmed to 360Brew optimal length');
+        }
       }
     }
 
@@ -459,7 +706,7 @@ ${hookText}
 
 ## Deterministic Checks
 Word count: ${wc}
-Target: ${BLOG_WORD_MIN}-275 words, ideal about ${BLOG_WORD_TARGET}, never over ${BLOG_WORD_MAX}.
+Target: ${BLOG_WORD_MIN}-${BLOG_WORD_MAX} words, ideal about ${BLOG_WORD_TARGET}, never over ${BLOG_WORD_MAX}.
 AI-style filler detected: ${fillerHits.length > 0 ? fillerHits.join(', ') : 'none'}
 
 ${LINKEDIN_CONTENT_RULES}
@@ -482,7 +729,7 @@ Scoring guide:
 - engagement_potential: 90+ = strong hook + scannable + clear CTA. 70-89 = good but improvable. <70 = weak hook or poor structure.
 - keyword_density: 90+ = excellent industry coverage. 70-89 = good. <70 = missing key terms.
 - hook_score: 90+ = stops the scroll immediately. 70-89 = compelling but improvable. <70 = weak -- generic opener, buried lead, or no curiosity gap.
-- Posts under 150 words or over 300 words should score below 75 on engagement even if well written.
+- Posts under ${BLOG_WORD_MIN} words or over ${BLOG_WORD_MAX} words should lose engagement points because they miss the product's 250-word content contract.
 - Any AI-style filler phrase should score below 70 on authenticity unless the rest of the post is extremely specific.
 - hook_type examples: contrarian = "Most execs do X backwards". specific_number = "3 things I learned from a $40M turnaround". story_opener = "The day I walked into a plant losing $2M/month...". direct_challenge = "Your supply chain isn't as resilient as you think". vulnerable_admission = "I made a $10M mistake at 42."`,
         },
@@ -507,10 +754,8 @@ Scoring guide:
     if (fillerHits.length > 0) {
       qualityScores.authenticity = Math.min(qualityScores.authenticity, 65);
     }
-    if (wc < 150 || wc > BLOG_WORD_MAX) {
+    if (wc < BLOG_WORD_MIN || wc > BLOG_WORD_MAX) {
       qualityScores.engagement_potential = Math.min(qualityScores.engagement_potential, 70);
-    } else if (wc < BLOG_WORD_MIN || wc > 275) {
-      qualityScores.engagement_potential = Math.min(qualityScores.engagement_potential, 82);
     }
 
     // Hook analysis -- persisted for display in post review UI
@@ -623,7 +868,7 @@ const revisePostTool: LinkedInContentTool = {
     revisionParts.push(
       '',
       '## Non-Negotiable Quality Standard',
-      `- Keep the revised post around ${BLOG_WORD_TARGET} words (${BLOG_WORD_MIN}-275 preferred, ${BLOG_WORD_MAX} maximum).`,
+      `- Keep the revised post around ${BLOG_WORD_TARGET} words (${BLOG_WORD_MIN}-${BLOG_WORD_MAX} preferred, ${BLOG_WORD_MAX} maximum).`,
       '- Keep the first 210 characters strong enough to stop the scroll before "see more".',
       '- Remove AI filler, generic thought-leadership language, and slogans.',
       '- Preserve source-grounded proof and the user\'s practitioner voice.',
@@ -762,11 +1007,7 @@ const generateCarouselTool: LinkedInContentTool = {
       return { success: false, reason: 'No post text provided -- pass post_text or call write_post first' };
     }
 
-    // Derive author name from career profile if available; fall back gracefully
-    const careerProfile = state.platform_context?.career_profile;
-    const authorName =
-      (careerProfile as Record<string, unknown> | undefined)?.name as string | undefined
-      ?? 'Career Professional';
+    const authorName = extractAuthorName(state);
 
     const hashtags = (ctx.scratchpad.post_hashtags as string[] | undefined) ?? [];
 
@@ -780,7 +1021,23 @@ const generateCarouselTool: LinkedInContentTool = {
           }
         : undefined;
 
-    const slides = buildCarouselSlides(postText, topic, authorName, hashtags, { seriesInfo });
+    let slides: CarouselSlide[] | null = null;
+    try {
+      slides = await buildEditorialCarouselSlides({
+        postText,
+        topic,
+        authorName,
+        hashtags,
+        signal: ctx.signal,
+        sessionId: ctx.sessionId,
+      });
+    } catch (err) {
+      logger.warn({ err, session_id: ctx.sessionId }, 'linkedin-content: editorial carousel generation failed; falling back to deterministic builder');
+    }
+
+    if (!slides) {
+      slides = buildCarouselSlides(postText, topic, authorName, hashtags, { seriesInfo });
+    }
 
     ctx.scratchpad.carousel_slides = slides;
 

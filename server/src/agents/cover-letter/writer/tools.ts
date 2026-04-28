@@ -30,6 +30,20 @@ import { COVER_LETTER_RULES } from '../knowledge/rules.js';
 
 type CoverLetterTool = AgentTool<CoverLetterState, CoverLetterSSEEvent>;
 
+function removeDefensiveCoverLetterCaveats(letter: string): string {
+  return letter
+    .replace(/\bWhile I have not (?:held|had) final P&L sign-off,\s*the\s+/gi, 'The ')
+    .replace(/\bWhile I do not claim final P&L sign-off,\s*the\s+/gi, 'The ')
+    .replace(/\bI do not claim final P&L sign-off,\s+but\s+/gi, '')
+    .replace(/\bI don't claim final P&L sign-off,\s+but\s+/gi, '')
+    .replace(/\bI have not had final P&L sign-off,\s+but\s+/gi, '')
+    .replace(/\bI have not held final P&L sign-off,\s+but\s+/gi, '')
+    .replace(/\bI do not have direct (?:PE )?board reporting experience,\s+but\s+/gi, '')
+    .replace(/\bI have not directly reported to a (?:PE )?board,\s+but\s+/gi, '')
+    .replace(/\bI would not claim [^.]+\.?\s*/gi, '')
+    .trim();
+}
+
 // ─── Tool: write_letter ───────────────────────────────────────────────
 
 const writeLetterTool: CoverLetterTool = {
@@ -135,6 +149,9 @@ Writing philosophy:
 - This is a strategic positioning letter, not a prose resume. Interpret the evidence into why the candidate fits this specific role; do not walk chronologically through the resume.
 - The first sentence must name the role's business problem, mandate, or benchmark-candidate need. Do not begin with "I am writing to express my interest."
 - Use no more than two past-employer references unless the target role genuinely requires breadth across several environments.
+- If the target role explicitly requires board/PE sponsor communication, P&L ownership, or another high-risk stretch area, do not skip it. Use one concise sentence of confident adjacent-proof framing from the positioning strategy. Never claim direct board/PE reporting or final P&L ownership unless the evidence explicitly says so.
+- Cover letters should not volunteer self-defeating disclaimers such as "I have not..." or "I do not have..." unless the user explicitly asks for that level of disclosure. Handle gaps with positive, truthful language: show the operating-budget, executive-cadence, or board-ready evidence that makes the stretch credible, and save explicit gap handling for interview prep.
+- If Board/PE/P&L appears in the target role, include positive language like "board-ready operating rhythm", "sponsor-ready operating evidence", or "operating-budget discipline" only when supported by the evidence. This must read as confident positioning, not a caveat.
 - Length target: 250-350 words. No fluff.`;
 
     const userMessage = `Write a complete, polished cover letter using ONLY the information provided below. Output the letter text only — no JSON, no commentary, no markdown fencing.
@@ -163,7 +180,22 @@ Closing strategy: ${plan.closing_strategy}
 
 TONE: ${tone}
 
-Write the full letter now. Start with "Dear Hiring Manager," and end with a professional sign-off using the candidate's name. Every paragraph must include at least one concrete source-backed detail, but the paragraph's job is to interpret why that proof matters for ${jd.company_name}'s ${jd.role_title} role.`;
+Write the full letter now. Start with "Dear ${jd.company_name} Hiring Team," and end with a professional sign-off using the candidate's name.
+
+Structure it as 4-5 concise paragraphs, 280-340 words:
+1. Company/role mandate + strongest proof.
+2. Role-fit proof for the top operating requirement.
+3. Integration, finance, capital, supplier, or working-capital proof.
+4. If Board/PE/P&L is in the role, one positive adjacent-proof bridge to board-ready or sponsor-ready operating communication.
+5. Brief close.
+
+Mandatory COO-scope coverage when present in the target role:
+- Consolidated P&L ownership: bridge with operating-budget partnership, cost-per-unit accountability, margin levers, or finance partnership; do not claim final P&L ownership unless directly evidenced.
+- Board/PE sponsor quarterly reviews: bridge with board-ready operating rhythm, sponsor-ready operating evidence, executive reporting, or measurable value-creation narrative; do not claim direct PE-board reporting unless directly evidenced.
+- ERP, procurement, or cross-divisional integration: bridge with multi-site standardization, operating standards, procurement discipline, supplier performance, or system-ready operating cadence.
+- CFO / working capital: bridge with budget partnership, WIP/inventory reduction, supplier savings, capital discipline, or cost-per-unit targets.
+
+Every paragraph must include at least one concrete source-backed detail, but the paragraph's job is to interpret why that proof matters for ${jd.company_name}'s ${jd.role_title} role.`;
 
     try {
       const response = await llm.chat({
@@ -175,7 +207,7 @@ Write the full letter now. Start with "Dear Hiring Manager," and end with a prof
         session_id: ctx.sessionId,
       });
 
-      const letter = response.text.trim();
+      const letter = removeDefensiveCoverLetterCaveats(response.text.trim());
 
       state.letter_draft = letter;
       ctx.scratchpad['letter_draft'] = letter;
