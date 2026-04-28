@@ -7,6 +7,7 @@
  */
 
 import logger from '../logger.js';
+import { normalizeJobPostedDate } from '../job-date.js';
 import type { ATSJob } from './types.js';
 
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -71,7 +72,8 @@ export function extractJsonLdJobs(html: string, baseUrl: string): ATSJob[] {
 
         const jobUrl = typeof item.url === 'string' ? item.url : null;
         const location = extractJsonLdLocation(item);
-        const postedOn = typeof item.datePosted === 'string' ? item.datePosted : null;
+        const postedDate = normalizeJobPostedDate(item.datePosted);
+        const postedOn = postedDate ? postedDate.toISOString() : null;
 
         jobs.push({
           title,

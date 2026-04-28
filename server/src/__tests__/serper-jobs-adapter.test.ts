@@ -50,6 +50,68 @@ describe('SerperJobsAdapter', () => {
     expect(body.tbs).toBe('qdr:m');
   });
 
+  it.each([
+    ['24h', 'qdr:d'],
+    ['3d', 'qdr:d3'],
+    ['7d', 'qdr:w'],
+    ['14d', 'qdr:w2'],
+    ['30d', 'qdr:m'],
+  ] as const)('uses the expected Google freshness parameter for %s', async (datePosted, expectedTbs) => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ jobs: [] }) });
+    });
+
+    await new SerperJobsAdapter().search(
+      'VP Operations',
+      '',
+      { datePosted, remoteType: 'any' },
+    );
+
+    expect(capturedBody).toBeDefined();
+    expect(JSON.parse(capturedBody!).tbs).toBe(expectedTbs);
+  });
+
+  it('excludes jobs without a readable posted date when a freshness filter is active', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        jobs: [
+          {
+            title: 'VP Operations',
+            companyName: 'Acme',
+            location: 'Dallas, TX',
+            link: 'https://example.com/current',
+            date: '2 days ago',
+          },
+          {
+            title: 'VP Operations',
+            companyName: 'Acme',
+            location: 'Dallas, TX',
+            link: 'https://example.com/old',
+            date: '21 days ago',
+          },
+          {
+            title: 'VP Operations',
+            companyName: 'Acme',
+            location: 'Dallas, TX',
+            link: 'https://example.com/unknown',
+          },
+        ],
+      }),
+    });
+
+    const jobs = await new SerperJobsAdapter().search(
+      'VP Operations',
+      '',
+      { datePosted: '7d', remoteType: 'any' },
+    );
+
+    expect(jobs.map((job) => job.apply_url)).toEqual(['https://example.com/current']);
+    expect(jobs[0].posted_date).toEqual(expect.any(String));
+  });
+
   it('classifies work mode labels returned by Serper', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -62,6 +124,7 @@ describe('SerperJobsAdapter', () => {
             link: 'https://example.com/remote',
             snippet: 'Fully remote role.',
             extensions: ['Full-time', 'Remote'],
+            date: '1 day ago',
           },
           {
             title: 'VP Operations',
@@ -70,6 +133,7 @@ describe('SerperJobsAdapter', () => {
             link: 'https://example.com/hybrid',
             snippet: 'Hybrid schedule with 3 days in-office.',
             extensions: ['Full-time'],
+            date: '2 days ago',
           },
         ],
       }),

@@ -16,6 +16,7 @@ import { fetchFromATS } from './ats-clients.js';
 import { extractJobsFromCareerPage } from './json-ld-extractor.js';
 import { searchJobsViaSerper } from './serper-job-search.js';
 import { classifyWorkMode } from '../job-search/work-mode-classifier.js';
+import { isWithinFreshnessWindow, normalizeJobPostedDate } from '../job-date.js';
 import logger from '../logger.js';
 import type { ATSJob, CompanyInfo, NiSearchContext, NiScrapeFilters, NiWorkMode, ScrapeResult, ScrapeSource } from './types.js';
 
@@ -196,7 +197,7 @@ function hasStateToken(location: string, state: string): boolean {
 
 function locationMatchesIntent(jobLocation: string | null, intent: ParsedLocationIntent | null): boolean {
   if (!intent) return true;
-  if (!jobLocation) return true; // unknown location — include
+  if (!jobLocation) return false; // unknown location cannot satisfy a city/state filter
 
   const normalized = jobLocation.toLowerCase();
   if (normalized.includes('remote')) return true; // remote is not tied to a city
@@ -215,7 +216,8 @@ function locationMatchesIntent(jobLocation: string | null, intent: ParsedLocatio
 
 /**
  * Apply work-mode, location, and date filters to a raw job list.
- * Inclusion is additive: null/missing values pass through by default.
+ * Freshness is strict: when a posted-within filter is active, jobs with no
+ * readable source posting date are excluded rather than guessed.
  */
 function applyFilters(jobs: ATSJob[], filters: NiScrapeFilters): ATSJob[] {
   let result = jobs;
@@ -245,12 +247,8 @@ function applyFilters(jobs: ATSJob[], filters: NiScrapeFilters): ATSJob[] {
 
   // Date filter — only applied when the job has a known postedOn date.
   if (filters.max_days_old > 0) {
-    const cutoff = new Date(Date.now() - filters.max_days_old * 24 * 60 * 60 * 1000);
     result = result.filter((job) => {
-      if (!job.postedOn) return true; // unknown date — include
-      const postedDate = new Date(job.postedOn);
-      if (isNaN(postedDate.getTime())) return true; // unparseable — include
-      return postedDate >= cutoff;
+      return isWithinFreshnessWindow(job.postedOn, filters.max_days_old);
     });
   }
 
@@ -372,6 +370,7 @@ async function scanCompany(
       job.descriptionSnippet ?? '',
       job.location ?? undefined,
     );
+    const normalizedPostedOn = normalizeJobPostedDate(job.postedOn)?.toISOString();
     const inserted = await insertJobMatch(userId, {
       company_id: company.id,
       title: job.title,
@@ -381,7 +380,7 @@ async function scanCompany(
       description_snippet: job.descriptionSnippet || undefined,
       match_score: score,
       referral_available: referral,
-      posted_on: job.postedOn || undefined,
+      posted_on: normalizedPostedOn || undefined,
       scraped_at: new Date().toISOString(),
       metadata: {
         source: job.source,

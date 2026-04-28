@@ -172,7 +172,7 @@ export type NiWorkMode = 'remote' | 'hybrid' | 'onsite';
 export interface NiScrapeFilters {
   /** City/state string for location filtering, e.g. "Portland, OR" */
   location?: string;
-  /** Search radius in miles around the requested location. */
+  /** Search-engine reach hint in miles around the requested location; not a verified distance calculation. */
   radius_miles?: number;
   /** When true, only return jobs classified as remote */
   remote_only: boolean;

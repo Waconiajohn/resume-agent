@@ -159,6 +159,8 @@ jobSearchRoutes.get(
     }
 
     // Freshness window: honour the filter stored with the scan, default 7d.
+    // A freshness-filtered result must have a known posting date. Unknown
+    // dates are intentionally excluded so the UI never claims false precision.
     const scanFilters = (scan as Record<string, unknown>).filters as { datePosted?: string } | null;
     const datePosted = scanFilters?.datePosted ?? '7d';
     const freshnessMap: Record<string, number> = { '24h': 1, '3d': 3, '7d': 7, '14d': 14, '30d': 30 };
@@ -204,8 +206,8 @@ jobSearchRoutes.get(
       .neq('status', 'expired')
       // Staleness guard: drop rows older than 30 days unless saved/promoted
       .or(`created_at.gt.${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()},status.in.(saved,promoted)`)
-      // Freshness filter on job listing's posted_date (null posted_date passes through)
-      .or(`job_listings.posted_date.gt.${freshnessThreshold},job_listings.posted_date.is.null`)
+      // Freshness filter on job listing's posted_date
+      .gt('job_listings.posted_date', freshnessThreshold)
       .order('first_seen_at', { ascending: true, nullsFirst: true })
       .order('match_score', { ascending: false, nullsFirst: false });
 

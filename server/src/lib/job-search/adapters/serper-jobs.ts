@@ -10,6 +10,12 @@
 
 import { createHash } from 'node:crypto';
 import logger from '../../logger.js';
+import {
+  freshnessDaysForDatePosted,
+  googleTbsForFreshnessDays,
+  isWithinFreshnessWindow,
+  normalizeJobPostedDate,
+} from '../../job-date.js';
 import { classifyWorkMode } from '../work-mode-classifier.js';
 import type { SearchAdapter, SearchFilters, JobResult } from '../types.js';
 
@@ -34,59 +40,6 @@ interface SerperJobsResponse {
 }
 
 // ─── Freshness filter mapping ─────────────────────────────────────────────────
-
-/**
- * Map our SearchFilters.datePosted values to Google's tbs (time-based search) param.
- * Added as a query parameter on the POST body.
- */
-function tbsForDatePosted(
-  datePosted: SearchFilters['datePosted'],
-): string | null {
-  switch (datePosted) {
-    case '24h':
-      return 'qdr:d';
-    case '3d':
-      return 'qdr:d3';
-    case '7d':
-      return 'qdr:w';
-    case '14d':
-      return 'qdr:d14';
-    case '30d':
-      return 'qdr:m';
-    case 'any':
-    default:
-      return null;
-  }
-}
-
-// ─── Date parsing ─────────────────────────────────────────────────────────────
-
-/**
- * Parse Serper's relative date strings ("1 day ago", "3 days ago", etc.)
- * into an ISO 8601 timestamp string. Returns null if unparseable.
- */
-function parseRelativeDate(dateStr: string): Date | null {
-  if (!dateStr) return null;
-  const match = dateStr.match(/(\d+)\s*(day|hour|minute|week|month)s?\s*ago/i);
-  if (!match) return null;
-  const [, num, unit] = match;
-  const n = parseInt(num, 10);
-  const now = new Date();
-  switch ((unit).toLowerCase()) {
-    case 'minute':
-      return new Date(now.getTime() - n * 60 * 1000);
-    case 'hour':
-      return new Date(now.getTime() - n * 60 * 60 * 1000);
-    case 'day':
-      return new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
-    case 'week':
-      return new Date(now.getTime() - n * 7 * 24 * 60 * 60 * 1000);
-    case 'month':
-      return new Date(now.getTime() - n * 30 * 24 * 60 * 60 * 1000);
-    default:
-      return null;
-  }
-}
 
 // ─── Salary extraction ────────────────────────────────────────────────────────
 
@@ -193,7 +146,8 @@ export class SerperJobsAdapter implements SearchAdapter {
       requestBody.location = location;
     }
 
-    const tbs = tbsForDatePosted(filters.datePosted);
+    const maxDaysOld = freshnessDaysForDatePosted(filters.datePosted);
+    const tbs = googleTbsForFreshnessDays(maxDaysOld);
     if (tbs) {
       requestBody.tbs = tbs;
     }
@@ -229,12 +183,15 @@ export class SerperJobsAdapter implements SearchAdapter {
         .filter((job): job is Required<Pick<SerperJob, 'title'>> & SerperJob =>
           Boolean(job.title),
         )
-        .map((job): JobResult => {
+        .map((job): JobResult | null => {
           const title = job.title ?? 'Unknown Title';
           const company = job.companyName ?? 'Unknown Company';
           const extensions = job.extensions ?? [];
           const { salary_min, salary_max } = extractSalary(extensions);
-          const postedDate = job.date ? parseRelativeDate(job.date) : null;
+          const postedDate = normalizeJobPostedDate(job.date);
+          if (maxDaysOld && !isWithinFreshnessWindow(postedDate, maxDaysOld)) {
+            return null;
+          }
           const workMode = classifyWorkMode(
             title,
             job.snippet ?? '',
@@ -257,7 +214,8 @@ export class SerperJobsAdapter implements SearchAdapter {
             employment_type: extractEmploymentType(extensions),
             required_skills: null,
           };
-        });
+        })
+        .filter((job): job is JobResult => job !== null);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.warn(

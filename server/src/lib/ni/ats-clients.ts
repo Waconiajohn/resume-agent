@@ -7,6 +7,7 @@
  */
 
 import logger from '../logger.js';
+import { normalizeJobPostedDate } from '../job-date.js';
 import type { ATSJob, ATSPlatform } from './types.js';
 
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -35,7 +36,7 @@ export async function fetchLeverJobs(slug: string): Promise<ATSJob[]> {
       location: p.categories?.location ?? null,
       salaryRange: null,
       descriptionSnippet: p.descriptionPlain?.slice(0, 300) ?? null,
-      postedOn: p.createdAt ? new Date(p.createdAt).toISOString() : null,
+      postedOn: normalizeToIso(p.createdAt),
       source: 'lever' as const,
     }));
   } catch (err) {
@@ -51,6 +52,9 @@ interface GreenhouseJob {
   absolute_url?: string;
   location?: { name?: string };
   content?: string;
+  created_at?: string;
+  first_published?: string;
+  published_at?: string;
   updated_at?: string;
 }
 
@@ -68,7 +72,9 @@ export async function fetchGreenhouseJobs(slug: string): Promise<ATSJob[]> {
       location: j.location?.name ?? null,
       salaryRange: null,
       descriptionSnippet: j.content ? stripHtml(j.content).slice(0, 300) : null,
-      postedOn: j.updated_at ?? null,
+      // `updated_at` changes whenever the posting is edited, so it is not a
+      // trustworthy posted date. Only use explicit publication/creation fields.
+      postedOn: normalizeToIso(j.first_published ?? j.published_at ?? j.created_at),
       source: 'greenhouse' as const,
     }));
   } catch (err) {
@@ -155,7 +161,7 @@ export async function fetchWorkdayJobs(slug: string): Promise<ATSJob[]> {
         location: j.locationsText ?? null,
         salaryRange: null,
         descriptionSnippet: j.bulletFields?.join(' ').slice(0, 300) ?? null,
-        postedOn: j.postedOn ?? null,
+        postedOn: normalizeToIso(j.postedOn),
         source: 'workday' as const,
       }));
     } catch {
@@ -238,7 +244,7 @@ function extractJsonLdJobs(html: string, baseUrl: string): ATSJob[] {
           descriptionSnippet: typeof item.description === 'string'
             ? stripHtml(item.description).slice(0, 300)
             : null,
-          postedOn: typeof item.datePosted === 'string' ? item.datePosted : null,
+          postedOn: normalizeToIso(item.datePosted),
           source: 'icims',
         });
       }
@@ -338,7 +344,7 @@ export async function fetchRecruiteeJobs(slug: string): Promise<ATSJob[]> {
       location: [o.city, o.country].filter(Boolean).join(', ') || null,
       salaryRange: null,
       descriptionSnippet: o.description ? stripHtml(o.description).slice(0, 300) : null,
-      postedOn: o.created_at ?? null,
+      postedOn: normalizeToIso(o.created_at),
       source: 'recruitee' as const,
     }));
   } catch (err) {
@@ -372,7 +378,7 @@ export async function fetchWorkableJobs(slug: string): Promise<ATSJob[]> {
       location: [j.city, j.country].filter(Boolean).join(', ') || null,
       salaryRange: null,
       descriptionSnippet: j.shortdescription ? stripHtml(j.shortdescription).slice(0, 300) : null,
-      postedOn: j.created_at ?? null,
+      postedOn: normalizeToIso(j.created_at),
       source: 'workable' as const,
     }));
   } catch (err) {
@@ -411,7 +417,7 @@ export async function fetchPersonioJobs(slug: string): Promise<ATSJob[]> {
         descriptionSnippet: p.jobDescriptions?.[0]?.value
           ? stripHtml(p.jobDescriptions[0].value).slice(0, 300)
           : null,
-        postedOn: p.createdAt ?? null,
+        postedOn: normalizeToIso(p.createdAt),
         source: 'personio' as const,
       }));
     } catch {
@@ -420,6 +426,11 @@ export async function fetchPersonioJobs(slug: string): Promise<ATSJob[]> {
   }
   logger.debug({ slug }, 'Personio API failed on all domains');
   return [];
+}
+
+function normalizeToIso(value: unknown): string | null {
+  const date = normalizeJobPostedDate(value);
+  return date ? date.toISOString() : null;
 }
 
 // ─── Dispatcher ─────────────────────────────────────────────────────────────

@@ -98,7 +98,7 @@ function buildSingleChain(result: unknown) {
 
 function buildListChain(result: unknown) {
   const chain: Record<string, unknown> = {};
-  const methods = ['select', 'eq', 'neq', 'or', 'in', 'order', 'limit', 'is', 'insert', 'upsert', 'update'];
+  const methods = ['select', 'eq', 'neq', 'or', 'gt', 'in', 'order', 'limit', 'is', 'insert', 'upsert', 'update'];
   for (const m of methods) {
     chain[m] = vi.fn().mockReturnValue(chain);
   }
@@ -269,6 +269,36 @@ describe('GET /api/job-search/scans/latest', () => {
     const body = (await res.json()) as { results: Array<Record<string, unknown>> };
     expect(body.results[0].network_contacts).toBeUndefined();
     expect(mockCrossReferenceWithNetwork).not.toHaveBeenCalled();
+  });
+
+  it('requires a known posted_date inside the stored scan freshness window', async () => {
+    // latest scan
+    mockFrom.mockReturnValueOnce(
+      buildSingleChain({
+        data: {
+          id: 'scan-latest',
+          query: 'CTO',
+          created_at: new Date().toISOString(),
+          filters: { datePosted: '14d' },
+        },
+        error: null,
+      }),
+    );
+    // results
+    const resultsChain = buildListChain({ data: [makeResultRow('ext-1')], error: null });
+    mockFrom.mockReturnValueOnce(resultsChain);
+
+    const res = await app.request('/api/job-search/scans/latest', {
+      headers: { Authorization: 'Bearer tok' },
+    });
+
+    expect(res.status).toBe(200);
+    expect(resultsChain['gt']).toHaveBeenCalledWith(
+      'job_listings.posted_date',
+      expect.any(String),
+    );
+    const threshold = Date.parse((resultsChain['gt'] as ReturnType<typeof vi.fn>).mock.calls[0][1]);
+    expect(Math.abs(threshold - (Date.now() - 14 * 24 * 60 * 60 * 1000))).toBeLessThan(10_000);
   });
 
   it('returns empty state when user has no scans', async () => {

@@ -90,6 +90,20 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
   const selection = useCompanySelection(companies);
   const { filters, setLocation, setRadiusMiles, setWorkModes, setPostedWithin } = useJobFilters('ni-job-filters');
 
+  useEffect(() => {
+    const enabledModes = (Object.entries(filters.workModes) as Array<[WorkModeKey, boolean]>)
+      .filter(([, enabled]) => enabled)
+      .map(([mode]) => mode);
+    if (enabledModes.length === 1) return;
+
+    const fallbackMode: WorkModeKey = filters.location.trim() ? 'hybrid' : 'remote';
+    setWorkModes({
+      remote: fallbackMode === 'remote',
+      hybrid: fallbackMode === 'hybrid',
+      onsite: false,
+    });
+  }, [filters.location, filters.workModes, setWorkModes]);
+
   // ─── Load companies + titles ───────────────────────────────────────────────
 
   const loadPanelData = useCallback(async (options?: { silent?: boolean }) => {
@@ -316,6 +330,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
         onWorkModesChange={setWorkModes}
         postedWithin={filters.postedWithin}
         onPostedWithinChange={setPostedWithin}
+        workModeSelection="scan-shape"
       />
 
       {/* Company picker */}

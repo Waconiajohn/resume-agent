@@ -174,6 +174,47 @@ describe('searchJobsViaSerper', () => {
     expect(jobs[1].url).toContain('icims.com');
   });
 
+  it('extracts a readable posted date from Serper organic metadata', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        organic: [
+          {
+            title: 'Director at Acme - Greenhouse',
+            link: 'https://boards.greenhouse.io/acme/jobs/123',
+            snippet: 'Great role',
+            date: '3 days ago',
+          },
+        ],
+      }),
+    });
+
+    const jobs = await searchJobsViaSerper('Acme Corp', ['Director']);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].postedOn).toEqual(expect.any(String));
+  });
+
+  it('extracts a readable posted date from a result snippet when metadata is missing', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        organic: [
+          {
+            title: 'Director at Acme - Greenhouse',
+            link: 'https://boards.greenhouse.io/acme/jobs/123',
+            snippet: 'Posted 2 days ago · Dallas, TX · Great role',
+          },
+        ],
+      }),
+    });
+
+    const jobs = await searchJobsViaSerper('Acme Corp', ['Director']);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].postedOn).toEqual(expect.any(String));
+  });
+
   it('returns empty array when SERPER_API_KEY is not set', async () => {
     delete process.env.SERPER_API_KEY;
     globalThis.fetch = vi.fn();

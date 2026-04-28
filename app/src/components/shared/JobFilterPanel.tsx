@@ -10,7 +10,7 @@ export interface JobFilterPanelProps {
   onWorkModesChange: (modes: WorkModes) => void;
   postedWithin: PostedWithin;
   onPostedWithinChange: (value: PostedWithin) => void;
-  workModeSelection?: 'multi' | 'single';
+  workModeSelection?: 'multi' | 'single' | 'scan-shape';
   guidanceText?: string;
 }
 
@@ -22,7 +22,7 @@ const RADIUS_OPTIONS: { value: number; label: string }[] = [
 ];
 
 const POSTED_WITHIN_OPTIONS: { value: PostedWithin; label: string }[] = [
-  { value: '24h', label: 'Today' },
+  { value: '24h', label: 'Last 24 hours' },
   { value: '3d', label: 'Last 3 days' },
   { value: '7d', label: 'Last 7 days' },
   { value: '14d', label: 'Last 14 days' },
@@ -42,11 +42,17 @@ const SINGLE_WORK_MODE_CHIPS: { key: WorkModeKey | 'any'; label: string }[] = [
   { key: 'onsite', label: 'On-site' },
 ];
 
+const SCAN_SHAPE_CHIPS: { key: WorkModeKey; label: string; hint: string }[] = [
+  { key: 'remote', label: 'Remote', hint: 'Nationwide' },
+  { key: 'hybrid', label: 'Hybrid', hint: 'Uses location' },
+  { key: 'onsite', label: 'On-site', hint: 'Uses location' },
+];
+
 const insiderGuidance =
-  'For clean results, run one search shape at a time: city + radius for local or hybrid roles, or Remote by itself for nationwide remote roles. Hybrid uses the city/radius when a location is entered; Remote is not tied to the radius.';
+  'For accurate freshness, CareerIQ only includes jobs with a readable posted date from the ATS, structured JobPosting data, or Google Jobs metadata. Run one search shape at a time: Remote by itself, or Hybrid/On-site with a city/state. The distance menu is a search hint, not a verified mileage calculation.';
 
 const broadSearchGuidance =
-  'Broad Search runs one work mode at a time. Choose Any for broad coverage, or pick Remote, Hybrid, or On-site for stricter results. Remote is not tied to the radius.';
+  'Broad Search uses Google Jobs metadata and then verifies the posted date before showing a result. Jobs without a readable posted date are excluded from posted-within filters.';
 
 const selectBase =
   'rounded-lg border border-[var(--line-soft)] bg-[var(--surface-2)] px-2.5 py-1.5 text-sm text-[var(--text-strong)] outline-none transition-[border-color,background-color] duration-200 focus-visible:border-[var(--link)]/40 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] cursor-pointer';
@@ -68,6 +74,10 @@ export function JobFilterPanel({
     activeModeCount === 1
       ? (WORK_MODE_CHIPS.find(({ key }) => workModes[key])?.key ?? 'any')
       : 'any';
+  const scanShapeValue: WorkModeKey =
+    activeModeCount === 1
+      ? (WORK_MODE_CHIPS.find(({ key }) => workModes[key])?.key ?? 'remote')
+      : 'remote';
   const resolvedGuidance = guidanceText
     ?? (workModeSelection === 'single' ? broadSearchGuidance : insiderGuidance);
 
@@ -77,6 +87,14 @@ export function JobFilterPanel({
   }
 
   function chooseSingleWorkMode(key: WorkModeKey | 'any') {
+    onWorkModesChange({
+      remote: key === 'remote',
+      hybrid: key === 'hybrid',
+      onsite: key === 'onsite',
+    });
+  }
+
+  function chooseScanShape(key: WorkModeKey) {
     onWorkModesChange({
       remote: key === 'remote',
       hybrid: key === 'hybrid',
@@ -106,20 +124,20 @@ export function JobFilterPanel({
           />
         </div>
 
-        {/* Radius — only visible when location has a value */}
+        {/* Location reach — only visible when location has a value */}
         {location.trim().length > 0 && (
           <div className="flex flex-col gap-1">
             <label
               htmlFor="job-filter-radius"
               className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-soft)]"
             >
-              Radius
+              Search Reach
             </label>
             <select
               id="job-filter-radius"
               value={radiusMiles}
               onChange={(e) => onRadiusMilesChange(Number(e.target.value))}
-              aria-label="Search radius in miles"
+              aria-label="Location search reach hint"
               className={cn(selectBase, 'w-[120px]')}
             >
               {RADIUS_OPTIONS.map(({ value, label }) => (
@@ -137,7 +155,28 @@ export function JobFilterPanel({
             Work Mode
           </span>
           <div className="flex items-center gap-1.5" role="group" aria-label="Work mode filters">
-            {workModeSelection === 'single'
+            {workModeSelection === 'scan-shape'
+              ? SCAN_SHAPE_CHIPS.map(({ key, label, hint }) => {
+                  const active = scanShapeValue === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => chooseScanShape(key)}
+                      aria-pressed={active}
+                      className={cn(
+                        'rounded-lg px-3 py-1.5 text-left text-[12px] font-medium transition-colors duration-150 border',
+                        active
+                          ? 'border-[var(--link)]/40 bg-[var(--link)]/15 text-[var(--link)]'
+                          : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:text-[var(--text-muted)]',
+                      )}
+                    >
+                      <span className="block leading-none">{label}</span>
+                      <span className="mt-0.5 block text-[10px] font-normal text-current opacity-75">{hint}</span>
+                    </button>
+                  );
+                })
+              : workModeSelection === 'single'
               ? SINGLE_WORK_MODE_CHIPS.map(({ key, label }) => {
                   const active = singleModeValue === key;
                   return (

@@ -7,6 +7,7 @@
  */
 
 import logger from '../logger.js';
+import { freshnessDaysForDatePosted, isWithinFreshnessWindow } from '../job-date.js';
 import type { SearchAdapter, SearchFilters, SearchResponse, JobResult } from './types.js';
 
 /**
@@ -63,6 +64,7 @@ export async function searchAllSources(
   const seen = new Set<string>();
   const jobs: JobResult[] = [];
   const sources_queried: string[] = [];
+  const maxDaysOld = freshnessDaysForDatePosted(filters.datePosted);
 
   for (let i = 0; i < adapters.length; i++) {
     const adapter = adapters[i];
@@ -80,6 +82,7 @@ export async function searchAllSources(
 
     for (const job of result.value) {
       if (!matchesRemoteType(job, filters)) continue;
+      if (maxDaysOld && !isWithinFreshnessWindow(job.posted_date, maxDaysOld)) continue;
 
       const key = dedupeKey(job);
       if (!seen.has(key)) {

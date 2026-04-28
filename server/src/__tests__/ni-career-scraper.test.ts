@@ -87,7 +87,7 @@ function makeATSJobs(titles: string[], source: ATSJob['source'] = 'greenhouse'):
     location: 'San Francisco, CA',
     salaryRange: null,
     descriptionSnippet: null,
-    postedOn: null,
+    postedOn: new Date().toISOString(),
     source,
   }));
 }
@@ -287,6 +287,15 @@ describe('scrapeCareerPages', () => {
         postedOn: new Date().toISOString(),
         source: 'greenhouse',
       },
+      {
+        title: 'VP Operations',
+        url: 'https://example.com/jobs/location-unknown',
+        location: null,
+        salaryRange: null,
+        descriptionSnippet: null,
+        postedOn: new Date().toISOString(),
+        source: 'greenhouse',
+      },
     ] satisfies ATSJob[]);
 
     const result = await scrapeCareerPages(
@@ -304,6 +313,7 @@ describe('scrapeCareerPages', () => {
     expect(insertedLocations).toContain('Remote');
     expect(insertedLocations).not.toContain('New York, NY');
     expect(insertedLocations).not.toContain('Orlando, FL');
+    expect(insertedLocations).not.toContain(null);
   });
 
   it('filters jobs by explicit hybrid work mode during the scan', async () => {
@@ -358,6 +368,52 @@ describe('scrapeCareerPages', () => {
     const insertedTitles = vi.mocked(insertJobMatch).mock.calls.map(([, match]) => match.title);
     expect(result.matchingJobs).toBe(1);
     expect(insertedTitles).toEqual(['VP Operations - Hybrid']);
+  });
+
+  it('requires a readable posting date for posted-within filters', async () => {
+    const now = Date.now();
+    mockFetchFromATS.mockResolvedValue([
+      {
+        title: 'VP Operations - Current',
+        url: 'https://example.com/jobs/current',
+        location: 'Dallas, TX',
+        salaryRange: null,
+        descriptionSnippet: null,
+        postedOn: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        source: 'greenhouse',
+      },
+      {
+        title: 'VP Operations - Old',
+        url: 'https://example.com/jobs/old',
+        location: 'Dallas, TX',
+        salaryRange: null,
+        descriptionSnippet: null,
+        postedOn: new Date(now - 21 * 24 * 60 * 60 * 1000).toISOString(),
+        source: 'greenhouse',
+      },
+      {
+        title: 'VP Operations - Unknown',
+        url: 'https://example.com/jobs/unknown',
+        location: 'Dallas, TX',
+        salaryRange: null,
+        descriptionSnippet: null,
+        postedOn: null,
+        source: 'greenhouse',
+      },
+    ] satisfies ATSJob[]);
+
+    const result = await scrapeCareerPages(
+      [COMPANY_WITH_ATS],
+      ['VP Operations'],
+      'user-1',
+      'network_connections',
+      undefined,
+      { remote_only: false, max_days_old: 7 },
+    );
+
+    const insertedTitles = vi.mocked(insertJobMatch).mock.calls.map(([, match]) => match.title);
+    expect(result.matchingJobs).toBe(1);
+    expect(insertedTitles).toEqual(['VP Operations - Current']);
   });
 });
 

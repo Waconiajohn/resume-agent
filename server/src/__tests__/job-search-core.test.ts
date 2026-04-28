@@ -187,6 +187,38 @@ describe('searchAllSources', () => {
     expect(result.jobs).toEqual([hybridJob]);
   });
 
+  it('excludes stale and unknown-date jobs when a freshness filter is active', async () => {
+    const recentJob = makeJob({
+      external_id: 'recent_1',
+      posted_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const oldJob = makeJob({
+      external_id: 'old_1',
+      posted_date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const unknownDateJob = makeJob({
+      external_id: 'unknown_1',
+      posted_date: null,
+    });
+    const adapter = makeAdapter('a', [recentJob, oldJob, unknownDateJob]);
+
+    const result = await searchAllSources('VP Operations', 'Dallas, TX', { datePosted: '7d' }, [adapter]);
+
+    expect(result.jobs).toEqual([recentJob]);
+  });
+
+  it('keeps unknown-date jobs only when datePosted is any', async () => {
+    const unknownDateJob = makeJob({
+      external_id: 'unknown_1',
+      posted_date: null,
+    });
+    const adapter = makeAdapter('a', [unknownDateJob]);
+
+    const result = await searchAllSources('VP Operations', 'Dallas, TX', { datePosted: 'any' }, [adapter]);
+
+    expect(result.jobs).toEqual([unknownDateJob]);
+  });
+
   it('deduplication is case-insensitive for title/company/location', async () => {
     const jobA = makeJob({ title: 'CTO', company: 'ACME CORP', location: 'New York', source: 'a' });
     const jobB = makeJob({ title: 'cto', company: 'Acme Corp', location: 'new york', source: 'b', external_id: 'b_2' });

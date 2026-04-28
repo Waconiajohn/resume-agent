@@ -129,7 +129,7 @@ export function RadarSection({
       </div>
 
       <p className="mb-4 text-[13px] leading-relaxed text-[var(--text-soft)]">
-        Search public jobs, check how old each role is, and save the best 5 or 6 to your shortlist before tailoring resumes.
+        Search public jobs with verified posted-date metadata, then save the best 5 or 6 to your shortlist before tailoring resumes.
       </p>
 
       {/* Search bar — Location / Date Posted / Work Mode live in the outer
@@ -175,7 +175,7 @@ export function RadarSection({
         <div className="py-8 text-center">
           <Search size={24} className="mx-auto mb-3 text-[var(--text-soft)]" />
           <p className="text-[12px] text-[var(--text-soft)]">
-            Search public jobs here. You can start with a title, a keyword, or click a target company above.
+            Search public jobs here. Posted-within filters only show roles with a readable posting date from the source.
           </p>
         </div>
       )}

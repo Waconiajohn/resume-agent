@@ -6,6 +6,11 @@
  */
 
 import logger from '../logger.js';
+import {
+  findPostedDateText,
+  googleTbsForFreshnessDays,
+  normalizeJobPostedDate,
+} from '../job-date.js';
 import type { ATSJob, NiWorkMode } from './types.js';
 
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -44,15 +49,8 @@ export async function searchJobsViaSerper(
     try {
       // Build Serper request body with optional time filter
       const serperBody: Record<string, unknown> = { q: query, num: 10 };
-      if (maxDaysOld && maxDaysOld > 0) {
-        // Google tbs parameter: qdr:d = past day, qdr:d3 = past 3 days, qdr:w = past week,
-        // qdr:w2 = past 2 weeks, qdr:m = past month.
-        if (maxDaysOld <= 1) serperBody.tbs = 'qdr:d';
-        else if (maxDaysOld <= 3) serperBody.tbs = 'qdr:d3';
-        else if (maxDaysOld <= 7) serperBody.tbs = 'qdr:w';
-        else if (maxDaysOld <= 14) serperBody.tbs = 'qdr:w2';
-        else if (maxDaysOld <= 30) serperBody.tbs = 'qdr:m';
-      }
+      const tbs = googleTbsForFreshnessDays(maxDaysOld);
+      if (tbs) serperBody.tbs = tbs;
 
       const res = await fetch(SERPER_API_URL, {
         method: 'POST',
@@ -125,6 +123,7 @@ interface SerperResult {
   title?: string;
   link?: string;
   snippet?: string;
+  date?: string;
   position?: number;
 }
 
@@ -183,12 +182,18 @@ function parseSerperResults(data: SerperResponse, _companyName: string): ATSJob[
       location: extractLocationFromSnippet(result.snippet),
       salaryRange: null,
       descriptionSnippet: result.snippet?.slice(0, 300) ?? null,
-      postedOn: null,
+      postedOn: extractPostedOn(result),
       source: 'serper',
     });
   }
 
   return results;
+}
+
+function extractPostedOn(result: SerperResult): string | null {
+  const dateText = result.date ?? findPostedDateText(result.snippet);
+  const postedDate = normalizeJobPostedDate(dateText);
+  return postedDate ? postedDate.toISOString() : null;
 }
 
 function extractLocationFromSnippet(snippet?: string): string | null {

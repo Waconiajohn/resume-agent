@@ -253,7 +253,7 @@ describe('network intelligence panels', () => {
     expect(scanButton).toBeEnabled();
   });
 
-  it('explains clean Insider Jobs scan shapes and offers the 30-day freshness option', () => {
+  it('explains verified freshness and offers all supported freshness windows', () => {
     render(
       <JobFilterPanel
         location=""
@@ -264,15 +264,17 @@ describe('network intelligence panels', () => {
         onWorkModesChange={vi.fn()}
         postedWithin="7d"
         onPostedWithinChange={vi.fn()}
+        workModeSelection="scan-shape"
       />,
     );
 
-    expect(screen.getByText(/For clean results, run one search shape at a time/i)).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Today' })).toBeInTheDocument();
+    expect(screen.getByText(/only includes jobs with a readable posted date/i)).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Last 24 hours' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 3 days' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 7 days' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 14 days' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 30 days' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remote Nationwide/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('supports a single-select work-mode control for Broad Search', () => {
@@ -293,7 +295,7 @@ describe('network intelligence panels', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Any' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText(/Broad Search runs one work mode at a time/i)).toBeInTheDocument();
+    expect(screen.getByText(/verifies the posted date before showing a result/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remote' }));
     expect(onWorkModesChange).toHaveBeenLastCalledWith({ remote: true, hybrid: false, onsite: false });
