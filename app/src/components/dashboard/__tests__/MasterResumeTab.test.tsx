@@ -133,7 +133,7 @@ describe('MasterResumeTab', () => {
       />,
     );
     await waitFor(() => {
-      expect(screen.getByText(/no career evidence found/i)).toBeInTheDocument();
+      expect(screen.getByText(/no career proof found/i)).toBeInTheDocument();
     });
   });
 

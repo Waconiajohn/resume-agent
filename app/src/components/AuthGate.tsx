@@ -123,7 +123,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
   if (view === 'forgot_password') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface p-4">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-300/[0.08] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(5,102,141,0.08),transparent_42%)]" />
 
         <GlassCard className="relative z-10 w-full max-w-sm p-8">
           <div className="mb-6 flex flex-col items-center gap-2">
@@ -192,7 +192,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
   if (signUpSent) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface p-4">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-300/[0.08] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(5,102,141,0.08),transparent_42%)]" />
 
         <GlassCard className="relative z-10 w-full max-w-sm p-8">
           <div className="mb-6 flex flex-col items-center gap-2">
@@ -230,7 +230,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface p-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-300/[0.08] via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(5,102,141,0.08),transparent_42%)]" />
 
       <GlassCard className="relative z-10 w-full max-w-sm p-8">
         <div className="mb-6 flex flex-col items-center gap-2">

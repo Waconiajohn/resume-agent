@@ -70,23 +70,23 @@ function TimelineSkeleton() {
   return (
     <div className="flex flex-col gap-6" data-testid="pursuit-timeline-skeleton">
       <div className="flex flex-col gap-3">
-        <div className="h-4 w-16 animate-pulse rounded bg-white/10" />
+        <div className="h-4 w-16 animate-pulse rounded bg-[var(--line-soft)]" />
         <GlassCard className="p-5">
-          <div className="h-5 w-2/3 animate-pulse rounded bg-white/10" />
-          <div className="mt-3 h-4 w-1/2 animate-pulse rounded bg-white/10" />
+          <div className="h-5 w-2/3 animate-pulse rounded bg-[var(--line-soft)]" />
+          <div className="mt-3 h-4 w-1/2 animate-pulse rounded bg-[var(--line-soft)]" />
         </GlassCard>
       </div>
       <div className="flex flex-col gap-3">
-        <div className="h-4 w-16 animate-pulse rounded bg-white/10" />
+        <div className="h-4 w-16 animate-pulse rounded bg-[var(--line-soft)]" />
         <GlassCard className="p-5">
-          <div className="h-5 w-1/2 animate-pulse rounded bg-white/10" />
-          <div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-white/10" />
+          <div className="h-5 w-1/2 animate-pulse rounded bg-[var(--line-soft)]" />
+          <div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-[var(--line-soft)]" />
         </GlassCard>
       </div>
       <div className="flex flex-col gap-3">
-        <div className="h-4 w-20 animate-pulse rounded bg-white/10" />
+        <div className="h-4 w-20 animate-pulse rounded bg-[var(--line-soft)]" />
         <GlassCard className="p-5">
-          <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+          <div className="h-4 w-3/4 animate-pulse rounded bg-[var(--line-soft)]" />
         </GlassCard>
       </div>
     </div>
@@ -114,14 +114,14 @@ function DoneCard({
         hover
         className="flex items-center gap-3 px-4 py-3 transition-transform group-hover:translate-x-0.5"
       >
-        <CheckCircle2 className="h-4 w-4 flex-none text-emerald-400/80" />
+        <CheckCircle2 className="h-4 w-4 flex-none text-[var(--badge-green-text)]" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white">{item.title}</div>
+          <div className="text-sm font-semibold text-[var(--text-strong)]">{item.title}</div>
           {item.detail && (
-            <div className="text-xs text-white/60 truncate">{item.detail}</div>
+            <div className="text-xs text-[var(--text-soft)] truncate">{item.detail}</div>
           )}
         </div>
-        <div className="flex flex-none items-center gap-2 text-xs text-white/50">
+        <div className="flex flex-none items-center gap-2 text-xs text-[var(--text-soft)]">
           <Clock className="h-3 w-3" aria-hidden="true" />
           <span>{relativeFrom(item.occurredAt)}</span>
         </div>
@@ -143,10 +143,10 @@ function NextCard({
 }) {
   const tierAccent =
     item.tier === 'A'
-      ? 'text-amber-300'
+      ? 'text-[var(--badge-amber-text)]'
       : item.tier === 'B'
-        ? 'text-sky-300'
-        : 'text-white/60';
+        ? 'text-[var(--link)]'
+        : 'text-[var(--text-soft)]';
 
   return (
     <button
@@ -160,10 +160,10 @@ function NextCard({
       >
         <Sparkles className={`h-4 w-4 flex-none mt-0.5 ${tierAccent}`} />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white">{item.title}</div>
-          <p className="mt-1 text-xs text-white/60 whitespace-pre-line">{item.body}</p>
+          <div className="text-sm font-semibold text-[var(--text-strong)]">{item.title}</div>
+          <p className="mt-1 text-xs text-[var(--text-soft)] whitespace-pre-line">{item.body}</p>
         </div>
-        <ArrowRight className="h-4 w-4 flex-none text-white/40 mt-0.5" aria-hidden="true" />
+        <ArrowRight className="h-4 w-4 flex-none text-[var(--text-soft)] mt-0.5" aria-hidden="true" />
       </GlassCard>
     </button>
   );
@@ -174,10 +174,10 @@ function NextCard({
 function TheirTurnCard({ item }: { item: TheirTurnItem }) {
   return (
     <GlassCard className="flex items-start gap-3 p-4">
-      <Hourglass className="h-4 w-4 flex-none mt-0.5 text-white/50" />
+      <Hourglass className="h-4 w-4 flex-none mt-0.5 text-[var(--text-soft)]" />
       <div className="flex-1">
-        <div className="text-sm font-medium text-white">{item.title}</div>
-        <p className="mt-1 text-xs text-white/60">{item.body}</p>
+        <div className="text-sm font-semibold text-[var(--text-strong)]">{item.title}</div>
+        <p className="mt-1 text-xs text-[var(--text-soft)]">{item.body}</p>
       </div>
     </GlassCard>
   );
@@ -187,7 +187,7 @@ function TheirTurnCard({ item }: { item: TheirTurnItem }) {
 
 function RegionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-xs uppercase tracking-[0.18em] text-white/40">
+    <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-soft)]">
       {children}
     </div>
   );
@@ -212,8 +212,8 @@ export function PursuitTimeline({
     <div className="flex flex-col gap-6" data-testid="pursuit-timeline">
       {/* Stage chip — non-prescriptive, just situates the user. */}
       <div className="flex items-center gap-2">
-        <span className="text-xs uppercase tracking-[0.18em] text-white/40">You're in</span>
-        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">
+        <span className="text-xs uppercase tracking-[0.18em] text-[var(--text-soft)]">You're in</span>
+        <span className="rounded-full bg-[var(--badge-blue-bg)] px-3 py-1 text-xs font-semibold text-[var(--badge-blue-text)]">
           {stageLabel}
         </span>
       </div>
@@ -223,7 +223,7 @@ export function PursuitTimeline({
         <RegionHeader>Done</RegionHeader>
         {done.length === 0 ? (
           <GlassCard className="p-5">
-            <p className="text-sm text-white/60">
+            <p className="text-sm text-[var(--text-soft)]">
               Nothing's wrapped up yet for this pursuit. Pick something from the
               "Next" list below to get started.
             </p>
@@ -247,14 +247,14 @@ export function PursuitTimeline({
         <RegionHeader>Next</RegionHeader>
         {next.length === 0 ? (
           <GlassCard className="p-5">
-            <p className="text-sm text-white/60">
+            <p className="text-sm text-[var(--text-soft)]">
               Nothing pressing right now. The next move is probably in their court —
               see "Their turn" below.
             </p>
           </GlassCard>
         ) : (
           <>
-            <p className="text-xs text-white/50">
+            <p className="text-xs text-[var(--text-soft)]">
               A few things you could do now, in rough priority order.
             </p>
             <div className="flex flex-col gap-2">
@@ -276,14 +276,14 @@ export function PursuitTimeline({
         <RegionHeader>Their turn</RegionHeader>
         {theirTurn.length === 0 ? (
           <GlassCard className="p-5">
-            <p className="text-sm text-white/60">
+            <p className="text-sm text-[var(--text-soft)]">
               Nothing's stuck waiting on them yet. Once you've applied or
               interviewed, this region will show what's queued up on their side.
             </p>
           </GlassCard>
         ) : (
           <>
-            <p className="text-xs text-white/50">
+            <p className="text-xs text-[var(--text-soft)]">
               Honest about waiting — the next move is on their side, not yours.
             </p>
             <div className="flex flex-col gap-2">

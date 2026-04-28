@@ -29,6 +29,7 @@ interface MobileBriefingProps {
   feedEvents?: RealFeedEvent[];
   /** When true, renders only the bottom nav (used when a room is active) */
   navOnly?: boolean;
+  navFixed?: boolean;
   onNavigateRoute?: (route: string) => void;
 }
 
@@ -55,7 +56,7 @@ function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom, o
 
   return (
     <GlassCard className="p-6 flex flex-col min-h-[240px]">
-      <div className="text-[13px] font-medium text-[var(--link)]/60 uppercase tracking-widest mb-3">
+      <div className="mb-3 text-[13px] font-extrabold text-[var(--link)]">
         Your One Action Today
       </div>
       <h2 className="text-lg font-semibold text-[var(--text-strong)] mb-2">
@@ -76,7 +77,7 @@ function ActionCard({ userName, dashboardState, onRefineWhyMe, onNavigateRoom, o
             onNavigateRoom(guidance.primary.room);
           }
         }}
-        className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-[var(--link)]/45 bg-[linear-gradient(180deg,rgba(158,184,255,0.2),rgba(158,184,255,0.1))] px-4 py-3 text-[14px] font-medium text-white shadow-[0_10px_28px_-18px_rgba(132,160,255,0.9)]"
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-[8px] border border-[var(--btn-primary-border)] bg-[var(--btn-primary-bg)] px-4 py-3 text-[14px] font-extrabold text-white shadow-[0_5px_0_rgba(3,75,105,0.24)]"
       >
         {guidance.primary.label}
         <ArrowRight size={16} />
@@ -226,16 +227,33 @@ function BottomNav({
   activeTab,
   onNavigate,
   onNavigateRoute,
+  fixed = true,
 }: {
   activeTab: CareerIQRoom;
   onNavigate: (room: CareerIQRoom) => void;
   onNavigateRoute?: (route: string) => void;
+  fixed?: boolean;
 }) {
   const location = useLocation();
   const applicationsActive = isApplicationsPath(location.pathname);
+  const shortLabel = (id: string, label: string) => {
+    if (id === 'dashboard') return 'Today';
+    if (id === 'career-profile') return 'Profile';
+    if (id === 'linkedin') return 'LinkedIn';
+    if (id === 'resume') return 'Resume';
+    if (id === 'jobs') return 'Jobs';
+    if (id === 'applications') return 'Pipeline';
+    if (id === 'live-webinars') return 'Live';
+    return label;
+  };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-[var(--line-soft)] bg-[var(--bg-1)]/95 backdrop-blur-xl px-2 py-2 safe-area-pb">
+    <nav
+      className={cn(
+        'safe-area-pb z-50 grid grid-cols-5 gap-1 border-t border-[var(--line-soft)] bg-[var(--surface-3)]/96 px-2 py-2 shadow-[0_-8px_24px_rgba(16,24,32,0.08)]',
+        fixed ? 'fixed bottom-0 left-0 right-0 backdrop-blur-xl' : 'relative shrink-0',
+      )}
+    >
       {BOTTOM_TAB_NAV.map((tab) => {
         const Icon = tab.icon;
         const isActive = tab.route
@@ -257,12 +275,12 @@ function BottomNav({
             onClick={handleClick}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-              'flex flex-col items-center gap-0.5 px-3 py-1 min-h-[44px] min-w-[44px] transition-colors',
-              isActive ? 'text-[var(--link)]' : 'text-[var(--text-soft)]',
+              'flex min-h-[46px] min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 py-1 transition-colors',
+              isActive ? 'bg-[var(--link)] text-white' : 'text-[var(--text-soft)] hover:bg-[var(--accent-muted)] hover:text-[var(--text-strong)]',
             )}
           >
-            <Icon size={20} />
-            <span className="text-[12px] font-medium">{tab.label}</span>
+            <Icon size={19} />
+            <span className="max-w-full truncate text-[10px] font-extrabold leading-none">{shortLabel(tab.id, tab.label)}</span>
           </button>
         );
       })}
@@ -284,15 +302,16 @@ export function MobileBriefing({
   coachRecommendation = null,
   feedEvents,
   navOnly = false,
+  navFixed = true,
   onNavigateRoute,
 }: MobileBriefingProps) {
   // navOnly mode: render only the bottom nav bar (used when a room is displayed above)
   if (navOnly) {
-    return <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} onNavigateRoute={onNavigateRoute} />;
+    return <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} onNavigateRoute={onNavigateRoute} fixed={navFixed} />;
   }
 
   return (
-    <div className="flex flex-col min-h-screen pb-20">
+    <div className={cn('flex flex-col', navFixed ? 'min-h-screen pb-20' : 'min-h-full pb-0')}>
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
         <span className="text-[13px] font-medium text-[var(--link)]/60 uppercase tracking-widest">
@@ -318,7 +337,7 @@ export function MobileBriefing({
       </div>
 
       {/* Bottom navigation — reflects current active room */}
-      <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} onNavigateRoute={onNavigateRoute} />
+      <BottomNav activeTab={activeRoom} onNavigate={onNavigateRoom} onNavigateRoute={onNavigateRoute} fixed={navFixed} />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useOnboarding } from '@/hooks/useOnboarding';
-import type { CareerProfileV2 } from '@/types/career-profile';
+import type { BenchmarkProfileReviewStatus, CareerProfileV2 } from '@/types/career-profile';
 import {
   buildCareerProfileSummary,
   deriveCareerProfileDashboardState,
@@ -54,6 +54,94 @@ export function useCareerProfileAgent() {
       return null;
     } finally {
       setProfileLoading(false);
+    }
+  }, []);
+
+  const updateBenchmarkProfileItem = useCallback(async (
+    itemId: string,
+    changes: { statement?: string; review_status?: BenchmarkProfileReviewStatus },
+  ): Promise<boolean> => {
+    setProfileError(null);
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        setProfileError('Not authenticated');
+        return false;
+      }
+
+      const res = await fetch(`${API_BASE}/platform-context/career-profile/benchmark-item`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          item_id: itemId,
+          changes,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({} as { error?: string }));
+        setProfileError(body.error ?? `Failed to update Benchmark Profile item (${res.status})`);
+        return false;
+      }
+
+      const data = await res.json() as { career_profile?: CareerProfileV2 | null };
+      const nextProfile = data.career_profile ?? null;
+      setProfile(nextProfile);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('platform_context_summary');
+      }
+      return true;
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'Failed to update Benchmark Profile item');
+      return false;
+    }
+  }, []);
+
+  const answerBenchmarkDiscoveryQuestion = useCallback(async (
+    questionId: string,
+    answer: string,
+  ): Promise<boolean> => {
+    setProfileError(null);
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        setProfileError('Not authenticated');
+        return false;
+      }
+
+      const res = await fetch(`${API_BASE}/platform-context/career-profile/discovery-question`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question_id: questionId,
+          answer,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({} as { error?: string }));
+        setProfileError(body.error ?? `Failed to save discovery answer (${res.status})`);
+        return false;
+      }
+
+      const data = await res.json() as { career_profile?: CareerProfileV2 | null };
+      const nextProfile = data.career_profile ?? null;
+      setProfile(nextProfile);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('platform_context_summary');
+      }
+      return true;
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'Failed to save discovery answer');
+      return false;
     }
   }, []);
 
@@ -109,6 +197,8 @@ export function useCareerProfileAgent() {
     profileLoading,
     profileError,
     refreshProfile,
+    updateBenchmarkProfileItem,
+    answerBenchmarkDiscoveryQuestion,
     startAssessment,
     story,
     signals,

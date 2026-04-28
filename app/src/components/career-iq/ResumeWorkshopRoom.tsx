@@ -95,7 +95,7 @@ export function ResumeWorkshopRoom({
       ? `Knowledge base v${v3Master.summary.version} · ${v3Master.summary.positionCount ?? 0} positions`
       : v3Master.loading
         ? 'Loading…'
-        : 'No default Career Evidence yet';
+        : 'No source resume yet';
   const tailoredCount = sessions.filter((session) => {
     const type = session.product_type ?? 'resume';
     return type === 'resume' || type === 'resume_v2' || type === 'cover_letter';
@@ -148,18 +148,18 @@ export function ResumeWorkshopRoom({
       <GlassCard className="p-7">
         <div className="room-header">
           <div className="room-header-copy">
-            <div className="eyebrow-label">Resume Builder</div>
-            <h1 className="room-title">Choose the resume tool you need right now</h1>
+            <div className="eyebrow-label">Tailor Resume</div>
+            <h1 className="room-title">Tailor your resume to a job you actually want</h1>
             <p className="room-subtitle">
-              Start a new role-specific resume, open your Career Evidence, write a cover letter, or review saved job workspaces. The landing view should help you choose, not dump you into a table.
+              Choose a saved job or add a job description. CareerIQ compares the role to your Benchmark Profile, strengthens the match, and helps you export a resume built for that opportunity.
             </p>
             <div className="room-meta-strip mt-5">
               <div className="room-meta-item">
-                Saved job workspaces
+                Saved tailored resumes
                 <strong>{tailoredCount}</strong>
               </div>
               <div className="room-meta-item">
-                Career Evidence
+                Source material
                 <strong>{masterLabel}</strong>
               </div>
             </div>
@@ -172,27 +172,27 @@ export function ResumeWorkshopRoom({
         <div className="grid gap-4 xl:grid-cols-2">
           <ResumeToolCard
             eyebrow="Primary"
-            title="New Role-Specific Resume"
-            description="Start a fresh role-specific resume and go straight into the guided editing workflow."
-            meta={`Saved workspaces: ${tailoredCount}`}
+            title="Tailor Resume to a Job"
+            description="Select a saved job and build a resume that mirrors the role, proves your fit, and positions you as the benchmark candidate."
+            meta="Best after you have found or saved a real role"
             icon={FilePlus2}
-            actionLabel="Start Role-Specific Resume"
+            actionLabel="Tailor My Resume"
             onAction={handleStartTailor}
             accent="primary"
           />
           <ResumeToolCard
-            eyebrow="Reusable Base"
-            title="Career Evidence"
-            description="Maintain the long-term source document you promote strong edits into after a role-specific run proves worth keeping."
+            eyebrow="Source Material"
+            title="Base Resume & Proof"
+            description="Keep your base resume, trophies, proof points, and positioning clean so every tailored resume starts from accurate source material."
             meta={masterDetail}
             icon={LibraryBig}
-            actionLabel="Open Career Evidence"
+            actionLabel="Open Source Material"
             onAction={openMasterResume}
           />
           <ResumeToolCard
-            eyebrow="Application Asset"
+            eyebrow="Optional Asset"
             title="Cover Letter"
-            description="Draft the letter for a target role without leaving Resume Builder or creating a separate product path."
+            description="Draft a cover letter for a saved job when the application actually asks for one."
             meta="Use when a real application actually needs one"
             icon={FileText}
             actionLabel="Write Cover Letter"
@@ -200,11 +200,11 @@ export function ResumeWorkshopRoom({
           />
           <ResumeToolCard
             eyebrow="Saved Work"
-            title="Job Workspaces"
-            description="Review saved role-specific resumes and reopen past work only when you actually want the history view."
-            meta={`${tailoredCount} saved workspace${tailoredCount === 1 ? '' : 's'}`}
+            title="Saved Tailored Resumes"
+            description="Reopen resumes and related assets you already created for specific jobs."
+            meta={`${tailoredCount} saved tailored resume${tailoredCount === 1 ? '' : 's'}`}
             icon={BriefcaseBusiness}
-            actionLabel="Browse Job Workspaces"
+            actionLabel="Browse Saved Resumes"
             onAction={openJobWorkspaces}
           />
         </div>
@@ -214,15 +214,15 @@ export function ResumeWorkshopRoom({
         <GlassCard className="p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
-              <div className="eyebrow-label">Job Workspaces</div>
-              <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Open saved role-specific work only when you need the history view</h2>
+              <div className="eyebrow-label">Saved Tailored Resumes</div>
+              <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Reopen resumes built for specific jobs</h2>
               <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
-                This is the archive of saved role-specific resumes and linked assets. It should be available, but it should not take over the Resume Builder landing page.
+                This is the archive of job-specific resumes and linked assets. Use it when you need to revisit previous work by company, role, and date.
               </p>
             </div>
             <div className="flex flex-col items-start gap-2">
               <GlassButton variant="ghost" onClick={openTools}>
-                Back to Resume Tools
+                Back to Tailor Resume
               </GlassButton>
             </div>
           </div>
@@ -259,7 +259,7 @@ export function ResumeWorkshopRoom({
               </div>
               <div className="flex flex-col items-start gap-2">
                 <GlassButton variant="ghost" onClick={openTools}>
-                  Back to Resume Tools
+                  Back to Tailor Resume
                 </GlassButton>
               </div>
             </div>
@@ -271,7 +271,7 @@ export function ResumeWorkshopRoom({
             onGetDefaultResume={onGetDefaultResume}
             embedded
             backTarget={buildResumeWorkspaceRoute()}
-            backLabel="Back to Resume Tools"
+            backLabel="Back to Tailor Resume"
           />
         </div>
       )}
@@ -282,16 +282,16 @@ export function ResumeWorkshopRoom({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-3xl">
                 <div className="eyebrow-label">
-                  Career Evidence
+                  Source Material
                 </div>
-                <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Keep your long-term Career Evidence clean, current, and reusable</h2>
+                <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Keep your base resume and proof points clean, current, and reusable</h2>
                 <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
                   Use this as the durable base you promote strong edits into after job-specific work proves worth keeping.
                 </p>
               </div>
               <div className="flex flex-col items-start gap-2">
                 <GlassButton variant="ghost" onClick={openTools}>
-                  Back to Resume Tools
+                  Back to Tailor Resume
                 </GlassButton>
               </div>
             </div>
@@ -341,8 +341,8 @@ function ResumeToolCard({
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-3">
               <div className="eyebrow-label">{eyebrow}</div>
-              <div className={`inline-flex rounded-xl border px-3 py-3 ${accent === 'primary' ? 'border-[var(--link)]/26 bg-[var(--link)]/[0.12]' : 'border-[var(--line-soft)] bg-[var(--accent-muted)]'}`}>
-                <Icon size={18} className={accent === 'primary' ? 'text-[#d8e3ff]' : 'text-[var(--text-muted)]'} />
+              <div className={`inline-flex rounded-xl border px-3 py-3 ${accent === 'primary' ? 'border-[var(--link)]/26 bg-[var(--badge-blue-bg)]' : 'border-[var(--line-soft)] bg-[var(--accent-muted)]'}`}>
+                <Icon size={18} className={accent === 'primary' ? 'text-[var(--link)]' : 'text-[var(--text-muted)]'} />
               </div>
             </div>
           </div>

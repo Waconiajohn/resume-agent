@@ -129,7 +129,7 @@ export function RadarSection({
       </div>
 
       <p className="mb-4 text-[13px] leading-relaxed text-[var(--text-soft)]">
-        Search public jobs, check how old each role is, and save the best 5 or 6 to your shortlist before you start building resumes.
+        Search public jobs, check how old each role is, and save the best 5 or 6 to your shortlist before tailoring resumes.
       </p>
 
       {/* Search bar — Location / Date Posted / Work Mode live in the outer
@@ -298,7 +298,7 @@ export function RadarSection({
                         className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--surface-1)] transition-colors"
                       >
                         <FileText size={11} />
-                        Build Resume
+                        Tailor Resume
                       </button>
                     )}
                     <button

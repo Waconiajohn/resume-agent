@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode }
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { useCareerProfileAgent } from '@/hooks/useCareerProfileAgent';
 import type { CareerProfileSummary } from './career-profile-summary';
-import type { CareerProfileV2 } from '@/types/career-profile';
+import type { BenchmarkProfileReviewStatus, CareerProfileV2 } from '@/types/career-profile';
 import type { AssessmentQuestion, OnboardingStatus } from '@/types/onboarding';
 import type { ActivityMessage } from '@/types/activity';
 
@@ -25,6 +25,11 @@ interface CareerProfileContextValue {
   submitResponses: (responses: Record<string, string>) => Promise<boolean>;
   resetAssessment: () => void;
   refreshProfile: () => Promise<CareerProfileV2 | null>;
+  updateBenchmarkProfileItem: (
+    itemId: string,
+    changes: { statement?: string; review_status?: BenchmarkProfileReviewStatus },
+  ) => Promise<boolean>;
+  answerBenchmarkDiscoveryQuestion: (questionId: string, answer: string) => Promise<boolean>;
 }
 
 const CareerProfileContext = createContext<CareerProfileContextValue | null>(null);
@@ -96,6 +101,8 @@ export function CareerProfileProvider({ children }: { children: ReactNode }) {
     submitResponses: careerProfile.onboarding.respondToGate,
     resetAssessment: careerProfile.onboarding.reset,
     refreshProfile: careerProfile.refreshProfile,
+    updateBenchmarkProfileItem: careerProfile.updateBenchmarkProfileItem,
+    answerBenchmarkDiscoveryQuestion: careerProfile.answerBenchmarkDiscoveryQuestion,
   }), [careerProfile]);
 
   return (

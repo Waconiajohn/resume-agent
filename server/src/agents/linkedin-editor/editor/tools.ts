@@ -15,6 +15,7 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { LinkedInEditorState, LinkedInEditorSSEEvent } from '../types.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
@@ -27,6 +28,46 @@ import {
 } from '../../shared-knowledge.js';
 
 // ─── Section writing prompts ───────────────────────────────────────────
+
+const FIRST_IMPRESSION_PROFILE_STANDARD = `## Five-Second / Benchmark Candidate Standard
+
+This profile must pass the human scan before it passes the keyword scan:
+- Headline: in a recruiter search result, the reader must know what this person does, why they are credible, and what keywords they own in under five seconds.
+- Top of About: the first 300 characters must work before "see more" is clicked. It should answer "why this person?" immediately, not warm up with biography.
+- Benchmark candidate test: every section should make the user feel like the obvious strong comparison point for the target roles, while staying fully evidence-grounded.
+- Search + persuasion: include the right LinkedIn keywords, but never at the expense of a memorable human positioning statement.
+- No filler: avoid "results-driven," "passionate," "dynamic," "seasoned," "proven track record," and generic transformation language unless it is tied to specific proof.`;
+
+function scoreFrom(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.min(100, Math.round(value)))
+    : fallback;
+}
+
+function normalizeHeadlineText(text: string): string {
+  const normalized = text
+    .replace(/\s+/g, ' ')
+    .replace(/\s*\|\s*/g, ' | ')
+    .trim();
+
+  if (normalized.length <= 220) {
+    return normalized.replace(/(?:\s+\||[|,;:.-])\s*$/g, '').trim();
+  }
+
+  const target = normalized.slice(0, 220);
+  const cutPoints = [
+    target.lastIndexOf(' | '),
+    target.lastIndexOf(' - '),
+    target.lastIndexOf(', '),
+    target.lastIndexOf(' '),
+  ].filter((idx) => idx >= 160);
+
+  const cutAt = cutPoints.length > 0 ? Math.max(...cutPoints) : 220;
+  return normalized
+    .slice(0, cutAt)
+    .replace(/(?:\s+\||[|,;:.-])\s*$/g, '')
+    .trim();
+}
 
 function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState): string {
   const platformContext = state.platform_context;
@@ -43,6 +84,8 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
     EVIDENCE_LADDER_RULES,
     '',
     HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
+    '',
+    FIRST_IMPRESSION_PROFILE_STANDARD,
     '',
     '## Age Awareness',
     AGE_AWARENESS_RULES,
@@ -65,6 +108,11 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
       sharedNarrative: sharedContext?.careerNarrative,
     }));
   }
+
+  parts.push(...renderBenchmarkProfileDirectionSection({
+    heading: '## Benchmark Profile Direction',
+    sharedContext,
+  }));
 
   if (platformContext?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
     parts.push(...renderPositioningStrategySection({
@@ -105,16 +153,22 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
     parts.push(
       '## Headline Requirements',
       '- Max 220 characters (LinkedIn limit)',
-      '- Must include: current role/title | key differentiator | industry keywords',
+      '- Must pass the five-second recruiter search result test: role identity, business value, credibility signal, and 2-4 high-value keywords are obvious immediately',
+      '- Write a positioning statement, not just a job title. The first phrase should make the target reader want to click.',
+      '- Must include: current/target role identity | key differentiator or proof | industry/function keywords',
       '- Avoid: "Seeking opportunities", generic titles, buzzwords like "passionate"',
+      '- Do not cut off mid-phrase or end with a dangling separator',
       '- Format: [Role] | [Value Proposition] | [Industry/Function Keywords]',
     );
   } else if (section === 'about') {
     parts.push(
       '## About Section Requirements',
-      '- 3-5 paragraphs, ~300-500 words',
-      '- Open with a hook — not "I am a..."',
+      '- Target 1,500-2,300 characters, usually 250-375 words. Do not pad.',
+      '- The first 300 characters must stand alone before LinkedIn "see more" and answer: why this person, why now, why credible',
+      '- Open with the benchmark-candidate thesis — not "I am a..." and not a chronology',
       '- Include: what you do, who you do it for, what makes you different, social proof',
+      '- Use the Why Me/career narrative as the spine: communicate who they are, not just what jobs they held',
+      '- Put proof near the top. Do not bury the strongest metric or signature strength.',
       '- End with a clear CTA (connect, message, visit website)',
       '- Use first person throughout',
     );
@@ -125,6 +179,7 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
       '- Format: Achievement-Impact-Metric (not responsibility lists)',
       '- Include specific metrics where evidence provides them',
       '- Keywords front-loaded in each bullet',
+      '- Prioritize proof that reinforces the benchmark-candidate profile and target positioning',
     );
   } else if (section === 'skills') {
     parts.push(
@@ -218,7 +273,10 @@ const writeSectionTool: LinkedInEditorTool = {
     }
 
     const contentKey = `${section}_content`;
-    const sectionContent = String(parsed[contentKey] ?? raw.slice(0, 2000));
+    let sectionContent = String(parsed[contentKey] ?? raw.slice(0, 2000));
+    if (section === 'headline') {
+      sectionContent = normalizeHeadlineText(sectionContent);
+    }
 
     // Store in scratchpad with section key
     ctx.scratchpad[`draft_${section}`] = sectionContent;
@@ -260,7 +318,7 @@ const selfReviewSectionTool: LinkedInEditorTool = {
     ctx.emit({
       type: 'transparency',
       stage: state.current_stage,
-      message: `Reviewing ${section} for keyword coverage and positioning alignment...`,
+      message: `Reviewing ${section} for five-second strength, proof, and positioning...`,
     });
 
     const positioningSection = (
@@ -289,15 +347,32 @@ ${sectionContent}
 
 ${positioningSection}
 
+${FIRST_IMPRESSION_PROFILE_STANDARD}
+
 Return scores (0-100) as:
 {
   "keyword_coverage": 75,
   "readability": 80,
   "positioning_alignment": 70,
+  "five_second_test": 75,
+  "hook_strength": 75,
+  "benchmark_strength": 75,
+  "proof_specificity": 75,
+  "searchability": 75,
   "keyword_notes": "specific feedback",
   "readability_notes": "specific feedback",
-  "alignment_notes": "specific feedback"
-}`,
+  "alignment_notes": "specific feedback",
+  "five_second_notes": "does the headline or visible About section pass the recruiter/hiring-manager scan?",
+  "benchmark_notes": "does this make them feel like a benchmark candidate?",
+  "proof_notes": "are the claims specific and source-grounded?"
+}
+
+Scoring focus:
+- Headline: weigh five_second_test and searchability heavily. A generic title should score below 70 even if it has keywords.
+- About: weigh hook_strength and five_second_test heavily. The first 300 characters must carry the Why Me story before "see more".
+- Experience: weigh proof_specificity heavily. Responsibilities without outcomes should score below 70.
+- Skills/Education: judge strategic ordering, age-awareness, and whether the section supports target positioning.
+Return ONLY valid JSON.`,
         },
       ],
     });
@@ -312,9 +387,14 @@ Return scores (0-100) as:
     }
 
     const qualityScores: SectionQualityScores = {
-      keyword_coverage: typeof scores.keyword_coverage === 'number' ? scores.keyword_coverage : 70,
-      readability: typeof scores.readability === 'number' ? scores.readability : 75,
-      positioning_alignment: typeof scores.positioning_alignment === 'number' ? scores.positioning_alignment : 70,
+      keyword_coverage: scoreFrom(scores.keyword_coverage, 70),
+      readability: scoreFrom(scores.readability, 75),
+      positioning_alignment: scoreFrom(scores.positioning_alignment, 70),
+      five_second_test: scoreFrom(scores.five_second_test, 70),
+      hook_strength: scoreFrom(scores.hook_strength, 70),
+      benchmark_strength: scoreFrom(scores.benchmark_strength, 70),
+      proof_specificity: scoreFrom(scores.proof_specificity, 70),
+      searchability: scoreFrom(scores.searchability, 70),
     };
 
     ctx.scratchpad[`scores_${section}`] = qualityScores;
@@ -382,6 +462,8 @@ ${currentDraft}
 ## User Feedback
 ${feedback}
 
+${FIRST_IMPRESSION_PROFILE_STANDARD}
+
 ${(
   hasMeaningfulSharedValue(state.shared_context?.evidenceInventory.evidenceItems) ||
   state.platform_context?.evidence_items
@@ -412,7 +494,10 @@ Return ONLY valid JSON:
       parsed = { [`${section}_content`]: currentDraft };
     }
 
-    const revisedContent = String(parsed[`${section}_content`] ?? currentDraft);
+    let revisedContent = String(parsed[`${section}_content`] ?? currentDraft);
+    if (section === 'headline') {
+      revisedContent = normalizeHeadlineText(revisedContent);
+    }
     ctx.scratchpad[`draft_${section}`] = revisedContent;
 
     // Store feedback in state

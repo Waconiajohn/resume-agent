@@ -83,6 +83,10 @@ export interface CompanyResearchData {
    * operational margin improvement that is the primary driver of 2025 guidance."
    */
   role_impact?: string;
+  /** Research source caveat shown to writer when public company data is weak/unverified. */
+  source_note?: string;
+  /** Source quality flag so writers do not overstate weak company research. */
+  source_confidence?: 'verified_web' | 'jd_only' | 'mixed_unverified';
   /** Raw Perplexity response for transparency */
   raw_research?: string;
   /** Raw Perplexity response from the role-intelligence query */
@@ -158,6 +162,7 @@ export interface InterviewPrepState extends BaseState {
     requirements: JobRequirement[];
     culture_cues: string[];
     seniority_level: 'director' | 'vp' | 'svp' | 'c_suite' | 'senior_ic' | 'other';
+    raw_job_description?: string;
   };
 
   /** Company research from Perplexity */

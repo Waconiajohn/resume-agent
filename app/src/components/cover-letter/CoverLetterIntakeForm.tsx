@@ -50,7 +50,7 @@ const TONE_OPTIONS: ToneOption[] = [
     description: 'Executive gravitas, structured language',
     icon: Briefcase,
     sample:
-      '"I am writing to express my interest in the Director of Operations role. Over the past decade I have scaled supply-chain teams through three acquisitions and cut unit cost 22%."',
+      '"Your target role calls for someone who can turn complexity into operating rhythm. My strongest proof is building cross-functional teams through measurable change, not simply managing the status quo."',
   },
   {
     id: 'conversational',
@@ -58,7 +58,7 @@ const TONE_OPTIONS: ToneOption[] = [
     description: 'Warm, direct, human voice',
     icon: MessageSquare,
     sample:
-      '"When I saw the Director of Operations role I had to write. Your turnaround story sounds a lot like the one I ran at Acme — here is what I think I would bring."',
+      '"What stood out to me about this role is the mix of execution, people leadership, and messy business problems. That is where my best work has usually happened."',
   },
   {
     id: 'bold',
@@ -66,7 +66,7 @@ const TONE_OPTIONS: ToneOption[] = [
     description: 'High-conviction, declarative positioning',
     icon: Zap,
     sample:
-      '"Your next Director of Operations should not be another steward — it should be someone who has already rebuilt a stalled supply chain under fire. That person is me."',
+      '"The benchmark candidate for this role should already have proof of solving this kind of problem. My background gives you that proof, with enough range to move quickly."',
   },
 ];
 

@@ -160,7 +160,7 @@ function NextButton({
     >
       {isUrgent && (
         <AlertCircle
-          className="mr-1.5 h-3.5 w-3.5 text-amber-300"
+          className="mr-1.5 h-3.5 w-3.5 text-[var(--badge-amber-text)]"
           aria-hidden="true"
           data-testid={`whats-next-urgency-${item.id}`}
         />

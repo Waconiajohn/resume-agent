@@ -20,8 +20,8 @@ import { STRESS_TEST_PROFILES } from './fixtures/stress-test-profiles.js';
 
 const SUPABASE_URL = 'https://pvmfgfnbtqlipnnoeixu.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_XPbIzrH67TbmMQggn9QN_A_16iB5oPG';
-const TEST_EMAIL = 'jjschrup@yahoo.com';
-const TEST_PASSWORD = 'Scout123';
+const TEST_EMAIL = process.env.PRODUCT_QA_EMAIL ?? 'jjschrup@yahoo.com';
+const TEST_PASSWORD = process.env.PRODUCT_QA_PASSWORD ?? 'Scout123';
 const API_BASE = 'http://localhost:3001/api';
 const PIPELINE_TIMEOUT_MS = 10 * 60 * 1_000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
@@ -283,11 +283,40 @@ const RUBRIC_PREFIX = (resume: string, jd?: string) =>
 const JSON_SCHEMA = (dims: string[]) =>
   `Return ONLY valid JSON (no markdown fences):\n{"dimensions":[${dims.map(n => `{"name":"${n}","score":<1-10>,"reasoning":"<1-2 sentences>","callouts":["<quote>"]}`).join(',')}],"criticalIssues":["<issue>"]}`;
 
+function buildEvaluationExcerpt(
+  text: string,
+  anchors: string[],
+  maxChars = 10_000,
+): string {
+  const normalized = text.trim();
+  if (normalized.length <= maxChars) return normalized;
+
+  const chunkSize = 1_800;
+  const chunks: string[] = [
+    `[[BEGINNING]]\n${normalized.slice(0, chunkSize)}`,
+  ];
+
+  const lower = normalized.toLowerCase();
+  for (const anchor of anchors) {
+    const index = lower.indexOf(anchor.toLowerCase());
+    if (index < 0) continue;
+    const start = Math.max(0, index - Math.floor(chunkSize / 3));
+    const end = Math.min(normalized.length, start + chunkSize);
+    chunks.push(`[[AROUND: ${anchor}]]\n${normalized.slice(start, end)}`);
+  }
+
+  chunks.push(`[[ENDING]]\n${normalized.slice(-chunkSize)}`);
+
+  const uniqueChunks = Array.from(new Set(chunks));
+  return uniqueChunks.join('\n\n--- excerpt boundary ---\n\n').slice(0, maxChars);
+}
+
 function buildLinkedInRubric(resume: string, report: string): string {
   const dims = ['headlineQuality', 'aboutSectionQuality', 'findingsAccuracy', 'actionability'];
   return `You are evaluating an AI-generated LinkedIn profile optimization report. Score rigorously — 7 means genuinely good, 4 means noticeably flawed.
 
-${RUBRIC_PREFIX(resume)}## Report to Evaluate:\n${report.slice(0, 4000)}
+${RUBRIC_PREFIX(resume)}## Report Excerpts to Evaluate:
+${buildEvaluationExcerpt(report, ['headline', 'about', 'recommended', 'keyword', 'action plan'])}
 
 Score each dimension 1-10. Quote specific text when flagging problems.
 - **headlineQuality**: Is the recommended headline specific and positioning, not generic?
@@ -302,7 +331,8 @@ function buildInterviewPrepRubric(resume: string, jd: string, report: string): s
   const dims = ['companyResearchRelevance', 'questionsQuality', 'starStoryGrounding', 'authenticVoice'];
   return `You are evaluating an AI-generated interview preparation report. Score rigorously — 7 means genuinely good, 4 means noticeably flawed.
 
-${RUBRIC_PREFIX(resume, jd)}## Report to Evaluate:\n${report.slice(0, 4000)}
+${RUBRIC_PREFIX(resume, jd)}## Report Excerpts to Evaluate:
+${buildEvaluationExcerpt(report, ['interview questions', 'STAR', 'story', 'risk', 'board', '90-day'])}
 
 Score each dimension 1-10. Quote specific text when flagging problems.
 - **companyResearchRelevance**: Is company research specific to the target company, not generic industry talking points?
@@ -317,7 +347,7 @@ function buildCoverLetterRubric(resume: string, jd: string, letter: string): str
   const dims = ['personalization', 'authenticVoice', 'specificProof', 'compelling'];
   return `You are evaluating an AI-generated cover letter. Score rigorously — 7 means genuinely good, 4 means noticeably flawed.
 
-${RUBRIC_PREFIX(resume, jd)}## Cover Letter to Evaluate:\n${letter.slice(0, 3000)}
+${RUBRIC_PREFIX(resume, jd)}## Cover Letter to Evaluate:\n${buildEvaluationExcerpt(letter, ['Dear', 'Sincerely'], 4_000)}
 
 Score each dimension 1-10. Quote specific text when flagging problems.
 - **personalization**: Does it connect THIS candidate's experience to THIS role at THIS company?
@@ -448,7 +478,7 @@ async function main(): Promise<void> {
   const captures = await Promise.allSettled([
     run('linkedin') ? captureLinkedIn(profile.resumeText, token).then(out => ({ product: 'linkedin' as const, out })) : Promise.resolve(null),
     run('interview') ? captureInterviewPrep(profile.resumeText, profile.jobDescription, companyName, token).then(out => ({ product: 'interview' as const, out })) : Promise.resolve(null),
-    run('cover-letter') ? captureCoverLetter(profile.resumeText, profile.jobDescription, companyName, profile.jobDescription.match(/([A-Z][a-z]+ (?:of|for) [A-Z].*?)(?:\n|$)/)?.[1] ?? 'COO', token).then(out => ({ product: 'cover-letter' as const, out })) : Promise.resolve(null),
+    run('cover-letter') ? captureCoverLetter(profile.resumeText, profile.jobDescription, companyName, token).then(out => ({ product: 'cover-letter' as const, out })) : Promise.resolve(null),
   ]);
 
   // Evaluate each captured output
@@ -470,6 +500,7 @@ async function main(): Promise<void> {
 
   if (reports.length > 1) printSummaryTable(reports);
   if (reports.length === 0) { console.log('No products evaluated.'); process.exit(1); }
+  process.exit(0);
 }
 
 main().catch((err) => { console.error('Fatal error:', err instanceof Error ? err.message : err); process.exit(1); });

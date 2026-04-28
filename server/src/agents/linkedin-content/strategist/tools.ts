@@ -17,6 +17,7 @@ import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../types.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
@@ -74,6 +75,11 @@ const analyzeExpertiseTool: LinkedInContentTool = {
         legacyStrategy: platformContext.positioning_strategy,
       }));
     }
+
+    contextParts.push(...renderBenchmarkProfileDirectionSection({
+      heading: '## Benchmark Profile Direction',
+      sharedContext,
+    }));
 
     if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
       contextParts.push(...renderEvidenceInventorySection({
@@ -193,6 +199,11 @@ const suggestTopicsTool: LinkedInContentTool = {
         '',
       );
     }
+
+    contextParts.push(...renderBenchmarkProfileDirectionSection({
+      heading: '## Benchmark Profile Direction',
+      sharedContext,
+    }));
 
     if (hasMeaningfulSharedValue(sharedContext?.evidenceInventory.evidenceItems)) {
       contextParts.push(...renderEvidenceInventorySection({
@@ -409,6 +420,8 @@ const planSeriesTool: LinkedInContentTool = {
       '- Each post must stand alone as a useful read, but also reference the series arc',
       '- Mix of categories across the series: foundation (1-2), deep_dive (4-6), case_study (3-4), contrarian (1-2), vision (1-2)',
       '- Every post must be backed by a specific evidence item from the inventory above',
+      '- Each planned text post should be executable as a focused ~250-word LinkedIn blog/post, not a sprawling article',
+      '- Carousel-ready topics should be reducible to sparse slides with only a few words per slide',
       '- The series arc should describe an intellectual journey: problem -> framework -> proof -> future',
       '- Posts should build on each other naturally, not feel like a random list',
       '- The series title should be memorable and position the author as THE expert in this domain',
@@ -601,6 +614,7 @@ const suggestInterviewAuthorityTopicsTool: LinkedInContentTool = {
       '- The hook must sound like this person starting to answer the question — specific, confident, from experience',
       '- The rationale must explain which JD requirement or role challenge this question probes',
       '- evidence_refs must point to specific items from their evidence library',
+      '- The resulting carousel should be sparse and skimmable: one answer idea per slide, only a few words per slide',
       '',
       'Question categories to draw from:',
       '- Scale/scope questions: "Tell me about the largest [X] you\'ve managed"',

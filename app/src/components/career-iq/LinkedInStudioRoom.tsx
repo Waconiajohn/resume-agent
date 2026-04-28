@@ -91,17 +91,17 @@ function CarouselSlideThumbnail({ slide }: { slide: CarouselSlide }) {
       className={cn(
         'flex-shrink-0 w-[120px] h-[90px] rounded-lg border overflow-hidden flex flex-col p-2 gap-1',
         isCover
-          ? 'bg-[#1a365d] border-[#1a365d]/40'
+          ? 'bg-[#121a26] border-[#05668d]/40'
           : isCta
-          ? 'bg-[#1a365d]/90 border-[#1a365d]/30'
+          ? 'bg-[#05668d] border-[#034b69]/30'
           : 'bg-[var(--surface-0)] border-[var(--line-soft)]',
       )}
     >
       {isCover && (
-        <div className="w-full h-1.5 rounded-sm bg-[#3182ce] mb-0.5 flex-shrink-0" />
+        <div className="w-full h-1.5 rounded-sm bg-[#c2410c] mb-0.5 flex-shrink-0" />
       )}
       {!isCover && !isCta && (
-        <div className="w-8 h-0.5 rounded-sm bg-[#3182ce] mb-0.5 flex-shrink-0" />
+        <div className="w-8 h-0.5 rounded-sm bg-[#05668d] mb-0.5 flex-shrink-0" />
       )}
       <p
         className={cn(

@@ -102,9 +102,41 @@ interface ThankYouNoteHookState {
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
 
+function parseRecordFromString(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeNotePayload(raw: Record<string, unknown>): Record<string, unknown> {
+  const nestedContent = parseRecordFromString(raw.content);
+  if (!nestedContent) return raw;
+
+  return {
+    ...raw,
+    ...Object.fromEntries(
+      Object.entries(nestedContent).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+    ),
+    content: nestedContent.content ?? raw.content,
+    subject_line: nestedContent.subject_line ?? raw.subject_line,
+    personalization_notes: nestedContent.personalization_notes ?? raw.personalization_notes,
+    quality_score: nestedContent.quality_score ?? raw.quality_score,
+  };
+}
+
 function normalizeNote(raw: unknown): ThankYouNote | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const r = raw as Record<string, unknown>;
+  const parsedRaw = parseRecordFromString(raw);
+  if (!parsedRaw && (!raw || typeof raw !== 'object')) return null;
+  const r = normalizeNotePayload(parsedRaw ?? (raw as Record<string, unknown>));
   const format = safeString(r.format, 'email') as NoteFormat;
   const role = safeString(r.recipient_role, 'other') as RecipientRole;
   return {
@@ -112,7 +144,7 @@ function normalizeNote(raw: unknown): ThankYouNote | null {
     recipient_name: safeString(r.recipient_name),
     recipient_title: safeString(r.recipient_title),
     format,
-    content: safeString(r.content),
+    content: safeString(r.content).trim(),
     subject_line: typeof r.subject_line === 'string' ? r.subject_line : undefined,
     personalization_notes: safeString(r.personalization_notes),
     quality_score:

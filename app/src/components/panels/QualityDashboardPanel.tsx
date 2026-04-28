@@ -137,7 +137,7 @@ export function QualityDashboardPanel({ data }: QualityDashboardPanelProps) {
       <div className="border-b border-[var(--line-soft)] px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-[var(--text-strong)]">Quality Scores</span>
-          <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.08] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-amber-400/60">Estimated</span>
+          <span className="rounded-md border border-[var(--badge-amber-text)]/25 bg-[var(--badge-amber-bg)] px-2 py-1 text-[12px] uppercase tracking-[0.12em] text-[var(--badge-amber-text)]">Estimated</span>
         </div>
       </div>
       <span className="sr-only" aria-live="polite">

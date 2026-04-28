@@ -24,6 +24,7 @@ type BundleSourceRows = {
   gapAnalysisRow?: PlatformContextRow | null;
   careerNarrativeRow?: PlatformContextRow | null;
   industryResearchRow?: PlatformContextRow | null;
+  linkedInProfileRow?: PlatformContextRow | null;
   targetRoleRow?: PlatformContextRow | null;
   evidenceRows?: PlatformContextRow[];
   emotionalBaseline?: EmotionalBaseline | null;
@@ -94,6 +95,21 @@ function collectBenchmarkRequirements(benchmark: Record<string, unknown> | null)
   ];
 }
 
+function collectAnsweredDiscoveryQuestions(
+  benchmarkProfile: CareerProfileV2['benchmark_profile'] | undefined,
+): Array<{ id: string; question: string; answer: string; usedBy: string[] }> {
+  if (!benchmarkProfile?.discovery_questions?.length) return [];
+
+  return benchmarkProfile.discovery_questions
+    .map((question) => ({
+      id: question.id,
+      question: question.question,
+      answer: asString(question.answer) ?? '',
+      usedBy: question.used_by,
+    }))
+    .filter((question) => question.answer.length > 0);
+}
+
 export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): SharedContext {
   const context = createEmptySharedContext();
 
@@ -104,6 +120,8 @@ export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): Shar
   const careerNarrative = asRecord(args.careerNarrativeRow?.content);
   const industryResearch = asRecord(args.industryResearchRow?.content);
   const targetRole = asRecord(args.targetRoleRow?.content);
+  const benchmarkProfile = args.careerProfile?.benchmark_profile;
+  const answeredDiscoveryQuestions = collectAnsweredDiscoveryQuestions(benchmarkProfile);
 
   context.candidateProfile.candidateId = args.userId;
   context.candidateProfile.headline = args.careerProfile?.profile_summary ?? null;
@@ -180,6 +198,7 @@ export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): Shar
   context.sourceArtifacts.gapAnalysis = makeArtifactRef(args.gapAnalysisRow, 'gap_analysis');
   context.sourceArtifacts.careerNarrative = makeArtifactRef(args.careerNarrativeRow, 'career_narrative');
   context.sourceArtifacts.industryContext = makeArtifactRef(args.industryResearchRow, 'industry_research');
+  context.sourceArtifacts.linkedinProfile = makeArtifactRef(args.linkedInProfileRow, 'linkedin_profile');
   context.sourceArtifacts.evidenceItems = (args.evidenceRows ?? []).map((row) => ({
     artifactId: row.id,
     artifactType: 'evidence_item',
@@ -212,17 +231,28 @@ export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): Shar
     args.careerProfile?.narrative.known_for_what ?? null,
   ]);
 
-  context.benchmarkCandidate.benchmarkSummary = asString(benchmarkCandidate?.ideal_profile_summary);
+  context.benchmarkCandidate.benchmarkSummary = asString(benchmarkCandidate?.ideal_profile_summary)
+    ?? benchmarkProfile?.identity.benchmark_headline.statement
+    ?? null;
   pushUnique(context.benchmarkCandidate.benchmarkRequirements, collectBenchmarkRequirements(benchmarkCandidate));
   pushUnique(context.benchmarkCandidate.benchmarkSignals, [
     ...asStringArray(benchmarkCandidate?.expected_industry_knowledge),
     ...asStringArray(benchmarkCandidate?.expected_technical_skills),
+    ...(benchmarkProfile?.linkedin_brand.recruiter_keywords ?? []),
   ]);
   pushUnique(context.benchmarkCandidate.benchmarkWins, [
     ...asStringArray(benchmarkCandidate?.differentiators),
+    ...(benchmarkProfile?.proof.signature_accomplishments.map((item) => item.statement) ?? []),
   ]);
-  pushUnique(context.benchmarkCandidate.differentiators, asStringArray(benchmarkCandidate?.differentiators));
-  pushUnique(context.benchmarkCandidate.benchmarkGapsRelativeToCandidate, asStringArray(gapAnalysis?.critical_gaps));
+  pushUnique(context.benchmarkCandidate.differentiators, [
+    ...asStringArray(benchmarkCandidate?.differentiators),
+    ...(benchmarkProfile?.proof.proof_themes.map((item) => item.statement) ?? []),
+  ]);
+  pushUnique(context.benchmarkCandidate.benchmarkGapsRelativeToCandidate, [
+    ...asStringArray(gapAnalysis?.critical_gaps),
+    ...(benchmarkProfile?.risk_and_gaps.objections.map((item) => item.statement) ?? []),
+    ...(benchmarkProfile?.risk_and_gaps.adjacent_proof_needed.map((item) => item.statement) ?? []),
+  ]);
 
   context.gapAnalysis.coverageSummary = asString(gapAnalysis?.strength_summary);
   pushUnique(context.gapAnalysis.requirements, Array.isArray(gapAnalysis?.requirements)
@@ -243,11 +273,40 @@ export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): Shar
     ...asStringArray(positioningStrategy?.supporting_themes),
   ]);
   pushUnique(context.positioningStrategy.narrativePriorities, asStringArray(positioningStrategy?.narrative_priorities));
-  pushUnique(context.positioningStrategy.riskAreas, asStringArray(positioningStrategy?.risk_areas));
-  pushUnique(context.positioningStrategy.approvedFraming, asStringArray(positioningStrategy?.approved_framing));
+  pushUnique(context.positioningStrategy.riskAreas, [
+    ...asStringArray(positioningStrategy?.risk_areas),
+    ...(benchmarkProfile?.risk_and_gaps.objections.map((item) => item.statement) ?? []),
+    ...(benchmarkProfile?.risk_and_gaps.claims_to_soften.map((item) => item.statement) ?? []),
+  ]);
+  pushUnique(context.positioningStrategy.approvedFraming, [
+    ...asStringArray(positioningStrategy?.approved_framing),
+    benchmarkProfile?.approved_language.positioning_statement,
+    benchmarkProfile?.approved_language.resume_summary_seed,
+    benchmarkProfile?.approved_language.linkedin_opening,
+    benchmarkProfile?.approved_language.networking_intro,
+    benchmarkProfile?.approved_language.cover_letter_thesis,
+    ...answeredDiscoveryQuestions.map((question) => `Candidate discovery answer: ${question.answer}`),
+  ]);
   pushUnique(context.positioningStrategy.framingStillRequiringConfirmation, [
     ...asStringArray(positioningStrategy?.framing_still_requiring_confirmation),
     ...context.careerNarrative.missingConfirmation,
+    ...(benchmarkProfile?.discovery_questions
+      .filter((question) => !asString(question.answer))
+      .map((question) => question.question) ?? []),
+    ...(benchmarkProfile
+      ? [
+          benchmarkProfile.identity.benchmark_headline,
+          benchmarkProfile.identity.why_me_story,
+          benchmarkProfile.identity.why_not_me,
+          benchmarkProfile.identity.operating_identity,
+          ...benchmarkProfile.proof.signature_accomplishments,
+          ...benchmarkProfile.proof.proof_themes,
+          ...benchmarkProfile.risk_and_gaps.adjacent_proof_needed,
+          ...benchmarkProfile.risk_and_gaps.claims_to_soften,
+        ]
+          .filter((item) => item.review_status !== 'approved')
+          .map((item) => item.statement)
+      : []),
   ]);
 
   const mappedEvidence: EvidenceItem[] = [];
@@ -272,6 +331,35 @@ export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): Shar
         capturedAt: args.benchmarkCandidateRow?.updated_at ?? null,
       }),
     );
+  }
+
+  for (const question of answeredDiscoveryQuestions) {
+    mappedEvidence.push({
+      id: `ev_benchmark_discovery_${question.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+      level: 'StrongAdjacentProof',
+      statement: question.answer,
+      sourceType: 'benchmark_profile_discovery_answer',
+      sourceArtifactId: context.sourceArtifacts.careerProfile?.artifactId ?? null,
+      sourceExcerpt: `Q: ${question.question}\nA: ${question.answer}`,
+      supports: question.usedBy.length > 0 ? question.usedBy : ['benchmark profile discovery'],
+      limitations: ['Candidate-provided discovery answer; preserve nuance and avoid adding unsupported metrics, tools, credentials, or scope.'],
+      requiresConfirmation: false,
+      finalArtifactEligible: true,
+      riskLabel: 'Moderate',
+      confidence: 'Moderate',
+      provenance: {
+        origin: 'platform_context',
+        sourceProduct: args.careerProfile?.source ?? 'profile-setup',
+        sourceSessionId: null,
+        sourceContextType: 'career_profile',
+        capturedAt: args.careerProfile?.generated_at ?? null,
+        mapper: 'collectAnsweredDiscoveryQuestions',
+      },
+      metadata: {
+        benchmark_profile_question_id: question.id,
+        question: question.question,
+      },
+    });
   }
 
   context.evidenceInventory = summarizeEvidenceInventory(mappedEvidence);
@@ -299,6 +387,7 @@ export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): Shar
     args.gapAnalysisRow,
     args.careerNarrativeRow,
     args.industryResearchRow,
+    args.linkedInProfileRow,
     args.targetRoleRow,
     ...(args.evidenceRows ?? []),
   ]) {
@@ -315,6 +404,7 @@ export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): Shar
   context.provenance.contextVersion = 1;
   pushUnique(context.provenance.inferenceNotes, [
     'SharedContext is currently built through compatibility adapters over legacy platform context rows.',
+    benchmarkProfile ? 'Benchmark Profile v1 is available and mapped into shared positioning, proof, risk, and approved language.' : null,
   ]);
   pushUnique(context.provenance.benchmarkSources, [
     args.benchmarkCandidateRow ? `${args.benchmarkCandidateRow.source_product}:${args.benchmarkCandidateRow.id}` : null,
@@ -324,8 +414,23 @@ export function buildSharedContextFromLegacyBundle(args: BundleSourceRows): Shar
   context.workflowState.stage = 'loaded';
   context.workflowState.activeTask = 'provide canonical shared context to downstream products';
   context.workflowState.reviewStatus = 'not_started';
-  context.workflowState.pendingQuestions = 0;
-  context.workflowState.pendingApprovals = 0;
+  context.workflowState.pendingQuestions = benchmarkProfile
+    ? benchmarkProfile.discovery_questions.filter((question) => !asString(question.answer)).length
+    : 0;
+  context.workflowState.pendingApprovals = benchmarkProfile
+    ? [
+        benchmarkProfile.identity.benchmark_headline,
+        benchmarkProfile.identity.why_me_story,
+        benchmarkProfile.identity.why_not_me,
+        benchmarkProfile.identity.operating_identity,
+        ...benchmarkProfile.proof.signature_accomplishments,
+        ...benchmarkProfile.proof.proof_themes,
+        ...benchmarkProfile.linkedin_brand.content_pillars,
+        ...benchmarkProfile.risk_and_gaps.objections,
+        ...benchmarkProfile.risk_and_gaps.adjacent_proof_needed,
+        ...benchmarkProfile.risk_and_gaps.claims_to_soften,
+      ].filter((item) => item.review_status !== 'approved').length
+    : 0;
 
   return context;
 }

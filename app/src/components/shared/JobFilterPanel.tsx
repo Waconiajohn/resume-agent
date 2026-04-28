@@ -85,7 +85,7 @@ export function JobFilterPanel({
   }
 
   return (
-    <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3">
+    <div className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3">
       <div className="flex flex-wrap items-end gap-3">
 
         {/* Location */}

@@ -2,7 +2,7 @@
  * Profile Setup — Synthesizer Agent
  *
  * Single-prompt agent. Reads all intake analysis + the full interview transcript
- * and produces a CareerProfileV2 — the complete, polished profile.
+ * and produces a CareerProfileV2 — the complete, polished Benchmark Profile.
  *
  * One LLM call. Not an agentic loop.
  *
@@ -12,10 +12,20 @@
 import { llm, MODEL_PRIMARY } from '../../lib/llm.js';
 import { repairJSON } from '../../lib/json-repair.js';
 import logger from '../../lib/logger.js';
-import type { CareerProfileV2 } from '../../lib/career-profile-context.js';
+import type {
+  BenchmarkProfileConfidence,
+  BenchmarkProfileDiscoveryQuestion,
+  BenchmarkProfileDownstreamTool,
+  BenchmarkProfileDraftItem,
+  BenchmarkProfileReviewStatus,
+  BenchmarkProfileV1,
+  CareerProfileV2,
+} from '../../lib/career-profile-context.js';
 import type { ProfileSetupInput, IntakeAnalysis, InterviewAnswer } from './types.js';
 
-const SYSTEM_PROMPT = `You are the CareerIQ synthesis agent. The intake analysis and interview are complete. Now you must produce the finished career profile in CareerProfileV2 format.
+const SYSTEM_PROMPT = `You are the CareerIQ synthesis agent. The intake analysis and interview are complete. Now you must produce the finished Benchmark Profile in CareerProfileV2 format.
+
+This profile is the source of truth that powers role-specific resumes, LinkedIn optimization, cover letters, networking messages, interview prep, thank-you notes, follow-up, and job targeting. Write it as reusable product intelligence, not as a decorative summary.
 
 FORBIDDEN PHRASES — none of these may appear anywhere in the output:
 - "results-driven", "results-oriented", "detail-oriented", "self-starter"
@@ -92,6 +102,14 @@ completeness — Score each section 0-100 and classify as "ready" (>=85), "parti
 
 profile_summary — The 2-3 sentence positioning statement that will seed the resume summary, cover letters, and interview prep across the platform.
 
+benchmark_profile — A richer product-intelligence payload that downstream tools can use without re-interviewing the user. Use confidence and review_status honestly:
+- "high_confidence": directly supported by resume, LinkedIn, or interview answer.
+- "good_inference": strongly suggested by evidence but should be quickly confirmed.
+- "needs_answer": important but not knowable from the material.
+- "risky_claim": promising but unsafe to use until confirmed.
+
+For every claim, include evidence excerpts and used_by tools so the UI can explain why this matters.
+
 OUTPUT FORMAT: Return valid JSON matching this structure exactly:
 {
   "version": "career_profile_v2",
@@ -148,7 +166,61 @@ OUTPUT FORMAT: Return valid JSON matching this structure exactly:
       { "id": "constraints", "label": "Preferences", "status": "ready|partial|missing", "score": 65, "summary": "one sentence" }
     ]
   },
-  "profile_summary": "2-3 sentence positioning statement"
+  "profile_summary": "2-3 sentence positioning statement",
+  "benchmark_profile": {
+    "version": "benchmark_profile_v1",
+    "generated_at": "ISO 8601 timestamp",
+    "source_material_summary": {
+      "resume_quality": "assessment of resume usefulness",
+      "linkedin_quality": "assessment of LinkedIn usefulness",
+      "strongest_inputs": ["best source material found"],
+      "missing_inputs": ["important missing source material"]
+    },
+    "identity": {
+      "benchmark_headline": { "id": "identity.headline", "label": "Benchmark headline", "statement": "one-line benchmark candidate identity", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["resume", "linkedin", "cover_letter", "networking", "interview", "job_search", "thank_you", "follow_up"] },
+      "why_me_story": { "id": "identity.why_me", "label": "Why Me", "statement": "approved-quality Why Me story draft", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["resume", "linkedin", "cover_letter", "networking", "interview", "job_search", "thank_you", "follow_up"] },
+      "why_not_me": { "id": "identity.why_not_me", "label": "Why Not Me", "statement": "hardest truthful caveat or walk-away rule", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["resume", "linkedin", "cover_letter", "networking", "interview", "job_search", "thank_you", "follow_up"] },
+      "operating_identity": { "id": "identity.operating_identity", "label": "Operating identity", "statement": "how this person works when they are at their best", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["resume", "linkedin", "cover_letter", "networking", "interview", "job_search", "thank_you", "follow_up"] }
+    },
+    "proof": {
+      "signature_accomplishments": [{ "id": "proof.1", "label": "Signature proof", "statement": "specific quantified accomplishment", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["resume", "linkedin", "cover_letter", "networking", "interview", "job_search", "thank_you", "follow_up"] }],
+      "proof_themes": [{ "id": "proof.theme.1", "label": "Proof theme", "statement": "repeatable proof pattern", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["resume", "linkedin", "cover_letter", "networking", "interview", "job_search", "thank_you", "follow_up"] }],
+      "scope_markers": [{ "id": "proof.scope.1", "label": "Scope marker", "statement": "team, budget, user, revenue, geography, system, or operational scale", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["resume", "linkedin", "cover_letter", "networking", "interview", "job_search", "thank_you", "follow_up"] }]
+    },
+    "linkedin_brand": {
+      "five_second_verdict": { "id": "linkedin.five_second", "label": "Five-second test", "statement": "what a recruiter understands in five seconds", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["linkedin", "job_search"] },
+      "headline_direction": { "id": "linkedin.headline", "label": "Headline direction", "statement": "recommended headline strategy", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["linkedin", "job_search"] },
+      "about_opening": { "id": "linkedin.about_opening", "label": "About opening", "statement": "recommended first visible LinkedIn About line", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["linkedin", "networking", "cover_letter"] },
+      "recruiter_keywords": ["keyword 1", "keyword 2"],
+      "content_pillars": [{ "id": "linkedin.content.1", "label": "Content pillar", "statement": "posting/blogging theme grounded in proof", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["linkedin"] }],
+      "profile_gaps": [{ "id": "linkedin.gap.1", "label": "LinkedIn gap", "statement": "profile gap to fix", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["linkedin"] }]
+    },
+    "risk_and_gaps": {
+      "objections": [{ "id": "risk.objection.1", "label": "Objection", "statement": "likely hiring-manager concern", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["resume", "cover_letter", "interview"] }],
+      "adjacent_proof_needed": [{ "id": "risk.adjacent.1", "label": "Adjacent proof needed", "statement": "promising adjacent skill that needs confirmation", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["resume", "linkedin", "interview"] }],
+      "claims_to_soften": [{ "id": "risk.soften.1", "label": "Claim to soften", "statement": "claim that should be phrased carefully", "confidence": "high_confidence|good_inference|needs_answer|risky_claim", "review_status": "draft|needs_confirmation|approved|needs_evidence", "source": "resume|linkedin|interview|inference|user", "evidence": ["source evidence"], "used_by": ["resume", "linkedin", "cover_letter"] }]
+    },
+    "approved_language": {
+      "positioning_statement": "draft language to approve",
+      "resume_summary_seed": "draft resume summary seed",
+      "linkedin_opening": "draft LinkedIn opening",
+      "networking_intro": "draft networking intro",
+      "cover_letter_thesis": "draft cover letter thesis"
+    },
+    "discovery_questions": [
+      { "id": "dq.1", "question": "pointed confirmation question", "why_it_matters": "why this improves downstream output", "evidence_found": ["evidence that triggered question"], "recommended_answer": "optional recommended answer", "confidence_if_confirmed": "high_confidence|good_inference|needs_answer|risky_claim", "used_by": ["resume", "linkedin", "cover_letter", "networking", "interview", "job_search", "thank_you", "follow_up"] }
+    ],
+    "downstream_readiness": {
+      "resume": { "status": "ready|usable|needs_review|blocked", "summary": "one sentence" },
+      "linkedin": { "status": "ready|usable|needs_review|blocked", "summary": "one sentence" },
+      "cover_letter": { "status": "ready|usable|needs_review|blocked", "summary": "one sentence" },
+      "networking": { "status": "ready|usable|needs_review|blocked", "summary": "one sentence" },
+      "interview": { "status": "ready|usable|needs_review|blocked", "summary": "one sentence" },
+      "job_search": { "status": "ready|usable|needs_review|blocked", "summary": "one sentence" },
+      "thank_you": { "status": "ready|usable|needs_review|blocked", "summary": "one sentence" },
+      "follow_up": { "status": "ready|usable|needs_review|blocked", "summary": "one sentence" }
+    }
+  }
 }
 
 CRITICAL JSON RULES:
@@ -169,7 +241,7 @@ function buildUserMessage(
     '### Resume',
     input.resume_text,
     '',
-    '### LinkedIn About',
+    '### LinkedIn Profile Text',
     input.linkedin_about || '(not provided)',
     '',
     '### Target Roles',
@@ -204,9 +276,265 @@ function buildUserMessage(
     }
   }
 
-  parts.push('Synthesize the complete CareerIQ profile from everything above. Return compact JSON only.');
+  parts.push('Synthesize the complete Benchmark Profile from everything above. Return compact JSON only.');
 
   return parts.filter((p) => p !== undefined).join('\n');
+}
+
+const DOWNSTREAM_TOOLS: BenchmarkProfileDownstreamTool[] = [
+  'resume',
+  'linkedin',
+  'cover_letter',
+  'networking',
+  'interview',
+  'job_search',
+  'thank_you',
+  'follow_up',
+];
+
+const BENCHMARK_CONFIDENCES: BenchmarkProfileConfidence[] = [
+  'high_confidence',
+  'good_inference',
+  'needs_answer',
+  'risky_claim',
+];
+
+const BENCHMARK_REVIEW_STATUSES: BenchmarkProfileReviewStatus[] = [
+  'draft',
+  'needs_confirmation',
+  'approved',
+  'needs_evidence',
+];
+
+const BENCHMARK_SOURCES: BenchmarkProfileDraftItem['source'][] = [
+  'resume',
+  'linkedin',
+  'interview',
+  'inference',
+  'user',
+];
+
+function benchmarkItem(args: {
+  id: string;
+  label: string;
+  statement: string;
+  confidence?: BenchmarkProfileConfidence;
+  review_status?: BenchmarkProfileReviewStatus;
+  source?: BenchmarkProfileDraftItem['source'];
+  evidence?: string[];
+  used_by?: BenchmarkProfileDownstreamTool[];
+}): BenchmarkProfileDraftItem {
+  return {
+    id: args.id,
+    label: args.label,
+    statement: args.statement,
+    confidence: args.confidence ?? 'good_inference',
+    review_status: args.review_status ?? 'needs_confirmation',
+    source: args.source ?? 'inference',
+    evidence: args.evidence ?? [],
+    used_by: args.used_by ?? DOWNSTREAM_TOOLS,
+  };
+}
+
+function readiness(summary: string, status: 'ready' | 'usable' | 'needs_review' | 'blocked' = 'usable') {
+  return { status, summary };
+}
+
+function buildFallbackBenchmarkProfile(
+  input: ProfileSetupInput,
+  intake: IntakeAnalysis,
+  targetRoles: string[],
+  generatedAt: string,
+): BenchmarkProfileV1 {
+  const topCapabilities = intake.top_capabilities.length > 0
+    ? intake.top_capabilities
+    : [{ capability: 'Career positioning', evidence: intake.career_thread }];
+  const targetLabel = targetRoles.join(', ') || 'the target role';
+  const hasLinkedIn = input.linkedin_about.trim().length > 0;
+  const primaryConcern = intake.primary_concern ?? 'No single blocker is confirmed yet; validate any gaps against target jobs.';
+
+  return {
+    version: 'benchmark_profile_v1',
+    generated_at: generatedAt,
+    source_material_summary: {
+      resume_quality: input.resume_text.length > 2_000
+        ? 'Comprehensive enough to draft an initial proof map.'
+        : 'Usable, but more detail would improve proof extraction.',
+      linkedin_quality: hasLinkedIn
+        ? 'LinkedIn profile text is available for public-brand and keyword analysis.'
+        : 'LinkedIn profile text is missing; LinkedIn recommendations will be less precise.',
+      strongest_inputs: [
+        'Resume career history',
+        ...topCapabilities.slice(0, 2).map((c) => c.evidence),
+      ].filter(Boolean),
+      missing_inputs: [
+        ...(hasLinkedIn ? [] : ['LinkedIn profile text or PDF']),
+        ...intake.profile_gaps,
+      ].slice(0, 5),
+    },
+    identity: {
+      benchmark_headline: benchmarkItem({
+        id: 'identity.headline',
+        label: 'Benchmark headline',
+        statement: intake.career_thread || intake.why_me_draft,
+        confidence: 'good_inference',
+        evidence: topCapabilities.map((c) => c.evidence).slice(0, 3),
+      }),
+      why_me_story: benchmarkItem({
+        id: 'identity.why_me',
+        label: 'Why Me',
+        statement: intake.why_me_draft,
+        confidence: 'good_inference',
+        evidence: topCapabilities.map((c) => c.evidence).slice(0, 3),
+      }),
+      why_not_me: benchmarkItem({
+        id: 'identity.why_not_me',
+        label: 'Why Not Me',
+        statement: primaryConcern,
+        confidence: intake.primary_concern ? 'good_inference' : 'needs_answer',
+        review_status: intake.primary_concern ? 'needs_confirmation' : 'needs_evidence',
+        evidence: intake.primary_concern ? [intake.primary_concern] : [],
+      }),
+      operating_identity: benchmarkItem({
+        id: 'identity.operating_identity',
+        label: 'Operating identity',
+        statement: topCapabilities[0]?.capability ?? 'Career positioning',
+        confidence: 'good_inference',
+        evidence: topCapabilities.slice(0, 2).map((c) => c.evidence),
+      }),
+    },
+    proof: {
+      signature_accomplishments: topCapabilities.slice(0, 5).map((capability, index) => benchmarkItem({
+        id: `proof.signature.${index + 1}`,
+        label: capability.capability,
+        statement: capability.evidence,
+        confidence: 'good_inference',
+        source: 'resume',
+        evidence: [capability.evidence],
+        used_by: ['resume', 'linkedin', 'cover_letter', 'networking', 'interview'],
+      })),
+      proof_themes: [
+        benchmarkItem({
+          id: 'proof.theme.1',
+          label: 'Repeatable impact',
+          statement: intake.career_thread,
+          confidence: 'good_inference',
+          evidence: topCapabilities.map((c) => c.evidence).slice(0, 3),
+          used_by: ['resume', 'linkedin', 'cover_letter', 'interview'],
+        }),
+      ],
+      scope_markers: intake.structured_experience
+        .filter((entry) => entry.scope_statement.trim().length > 0)
+        .slice(0, 4)
+        .map((entry, index) => benchmarkItem({
+          id: `proof.scope.${index + 1}`,
+          label: `${entry.title} scope`,
+          statement: entry.scope_statement,
+          confidence: 'high_confidence',
+          source: 'resume',
+          evidence: [entry.scope_statement],
+          used_by: ['resume', 'linkedin', 'cover_letter', 'interview'],
+        })),
+    },
+    linkedin_brand: {
+      five_second_verdict: benchmarkItem({
+        id: 'linkedin.five_second',
+        label: 'Five-second test',
+        statement: hasLinkedIn
+          ? 'LinkedIn text is available; confirm whether the first visible lines make the benchmark angle obvious.'
+          : 'LinkedIn text is missing, so the app cannot yet score the public five-second impression.',
+        confidence: hasLinkedIn ? 'good_inference' : 'needs_answer',
+        review_status: hasLinkedIn ? 'needs_confirmation' : 'needs_evidence',
+        source: hasLinkedIn ? 'linkedin' : 'inference',
+        evidence: hasLinkedIn ? ['LinkedIn profile text provided'] : [],
+        used_by: ['linkedin', 'job_search'],
+      }),
+      headline_direction: benchmarkItem({
+        id: 'linkedin.headline',
+        label: 'Headline direction',
+        statement: `Position the profile around ${targetLabel} using the strongest proof themes, not only current job titles.`,
+        confidence: 'good_inference',
+        used_by: ['linkedin', 'job_search'],
+      }),
+      about_opening: benchmarkItem({
+        id: 'linkedin.about_opening',
+        label: 'About opening',
+        statement: intake.why_me_draft,
+        confidence: 'good_inference',
+        evidence: topCapabilities.map((c) => c.evidence).slice(0, 2),
+        used_by: ['linkedin', 'networking', 'cover_letter'],
+      }),
+      recruiter_keywords: [
+        ...targetRoles,
+        ...topCapabilities.map((c) => c.capability),
+      ].filter(Boolean).slice(0, 12),
+      content_pillars: topCapabilities.slice(0, 4).map((capability, index) => benchmarkItem({
+        id: `linkedin.content.${index + 1}`,
+        label: capability.capability,
+        statement: `Write about ${capability.capability.toLowerCase()} through real examples from the resume.`,
+        confidence: 'good_inference',
+        evidence: [capability.evidence],
+        used_by: ['linkedin'],
+      })),
+      profile_gaps: [
+        ...(hasLinkedIn ? [] : [benchmarkItem({
+          id: 'linkedin.gap.1',
+          label: 'LinkedIn source missing',
+          statement: 'Add LinkedIn profile text or a PDF to improve keyword, headline, and About-section recommendations.',
+          confidence: 'needs_answer',
+          review_status: 'needs_evidence',
+          used_by: ['linkedin'],
+        })]),
+      ],
+    },
+    risk_and_gaps: {
+      objections: [
+        benchmarkItem({
+          id: 'risk.objection.1',
+          label: 'Likely objection',
+          statement: primaryConcern,
+          confidence: intake.primary_concern ? 'good_inference' : 'needs_answer',
+          review_status: intake.primary_concern ? 'needs_confirmation' : 'needs_evidence',
+          used_by: ['resume', 'cover_letter', 'interview'],
+        }),
+      ],
+      adjacent_proof_needed: intake.profile_gaps.slice(0, 4).map((gap, index) => benchmarkItem({
+        id: `risk.adjacent.${index + 1}`,
+        label: 'Proof to confirm',
+        statement: gap,
+        confidence: 'needs_answer',
+        review_status: 'needs_evidence',
+        used_by: ['resume', 'linkedin', 'interview'],
+      })),
+      claims_to_soften: [],
+    },
+    approved_language: {
+      positioning_statement: intake.career_thread,
+      resume_summary_seed: intake.why_me_draft,
+      linkedin_opening: intake.why_me_draft,
+      networking_intro: intake.career_thread,
+      cover_letter_thesis: intake.why_me_draft,
+    },
+    discovery_questions: intake.interview_questions.slice(0, 8).map((question, index) => ({
+      id: `dq.${index + 1}`,
+      question: question.question,
+      why_it_matters: question.what_we_are_looking_for,
+      evidence_found: question.references_resume_element ? [question.references_resume_element] : [],
+      recommended_answer: question.suggested_starters.find((starter) => starter !== 'Something else'),
+      confidence_if_confirmed: 'high_confidence',
+      used_by: DOWNSTREAM_TOOLS,
+    })),
+    downstream_readiness: {
+      resume: readiness('Usable for first resume tailoring; stronger proof confirmation will improve quality.'),
+      linkedin: readiness(hasLinkedIn ? 'Usable for LinkedIn audit and rewrite.' : 'Blocked until LinkedIn profile text is provided.', hasLinkedIn ? 'usable' : 'blocked'),
+      cover_letter: readiness('Usable for a first cover-letter thesis.'),
+      networking: readiness('Usable for concise outreach positioning.'),
+      interview: readiness('Usable for first interview-prep story framing.'),
+      job_search: readiness(targetRoles.length > 0 ? 'Target roles are available for fit filtering.' : 'Needs target-role confirmation.', targetRoles.length > 0 ? 'usable' : 'needs_review'),
+      thank_you: readiness('Usable once an interview context exists.'),
+      follow_up: readiness('Usable once application context exists.'),
+    },
+  };
 }
 
 function buildDeterministicFallback(
@@ -276,6 +604,7 @@ function buildDeterministicFallback(
       ],
     },
     profile_summary: intake.why_me_draft,
+    benchmark_profile: buildFallbackBenchmarkProfile(input, intake, targetRolesArray, now),
   };
 }
 
@@ -303,6 +632,142 @@ function subRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
+}
+
+function enumField<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+function normalizeBenchmarkTools(value: unknown, fallback: BenchmarkProfileDownstreamTool[] = DOWNSTREAM_TOOLS): BenchmarkProfileDownstreamTool[] {
+  if (!Array.isArray(value)) return fallback;
+  const tools = value.filter((tool): tool is BenchmarkProfileDownstreamTool => DOWNSTREAM_TOOLS.includes(tool as BenchmarkProfileDownstreamTool));
+  return tools.length > 0 ? [...new Set(tools)] : fallback;
+}
+
+function normalizeBenchmarkItem(raw: unknown, fallback: BenchmarkProfileDraftItem): BenchmarkProfileDraftItem {
+  const item = subRecord(raw);
+  return {
+    id: str(item.id, fallback.id),
+    label: str(item.label, fallback.label),
+    statement: str(item.statement, fallback.statement),
+    confidence: enumField(item.confidence, BENCHMARK_CONFIDENCES, fallback.confidence),
+    review_status: enumField(item.review_status, BENCHMARK_REVIEW_STATUSES, fallback.review_status),
+    source: enumField(item.source, BENCHMARK_SOURCES, fallback.source),
+    evidence: strArr(item.evidence, fallback.evidence),
+    used_by: normalizeBenchmarkTools(item.used_by, fallback.used_by),
+  };
+}
+
+function normalizeBenchmarkItemArray(raw: unknown, fallback: BenchmarkProfileDraftItem[]): BenchmarkProfileDraftItem[] {
+  if (!Array.isArray(raw)) return fallback;
+  const normalized = raw
+    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object' && !Array.isArray(item)))
+    .map((item, index) => normalizeBenchmarkItem(item, fallback[index] ?? benchmarkItem({
+      id: `generated.${index + 1}`,
+      label: 'Draft item',
+      statement: '',
+      confidence: 'needs_answer',
+      review_status: 'needs_evidence',
+    })))
+    .filter((item) => item.statement.trim().length > 0);
+  return normalized.length > 0 ? normalized : fallback;
+}
+
+function normalizeDiscoveryQuestions(raw: unknown, fallback: BenchmarkProfileDiscoveryQuestion[]): BenchmarkProfileDiscoveryQuestion[] {
+  if (!Array.isArray(raw)) return fallback;
+  const normalized = raw
+    .filter((question): question is Record<string, unknown> => Boolean(question && typeof question === 'object' && !Array.isArray(question)))
+    .map((question, index) => {
+      const fallbackQuestion = fallback[index] ?? {
+        id: `dq.${index + 1}`,
+        question: '',
+        why_it_matters: '',
+        evidence_found: [],
+        confidence_if_confirmed: 'high_confidence' as BenchmarkProfileConfidence,
+        used_by: DOWNSTREAM_TOOLS,
+      };
+      const recommended = str(question.recommended_answer, fallbackQuestion.recommended_answer ?? '');
+      const answer = str(question.answer, fallbackQuestion.answer ?? '');
+      const answeredAt = str(question.answered_at, fallbackQuestion.answered_at ?? '');
+      return {
+        id: str(question.id, fallbackQuestion.id),
+        question: str(question.question, fallbackQuestion.question),
+        why_it_matters: str(question.why_it_matters, fallbackQuestion.why_it_matters),
+        evidence_found: strArr(question.evidence_found, fallbackQuestion.evidence_found),
+        ...(recommended ? { recommended_answer: recommended } : {}),
+        ...(answer ? { answer } : {}),
+        ...(answeredAt ? { answered_at: answeredAt } : {}),
+        confidence_if_confirmed: enumField(question.confidence_if_confirmed, BENCHMARK_CONFIDENCES, fallbackQuestion.confidence_if_confirmed),
+        used_by: normalizeBenchmarkTools(question.used_by, fallbackQuestion.used_by),
+      };
+    })
+    .filter((question) => question.question.trim().length > 0);
+  return normalized.length > 0 ? normalized : fallback;
+}
+
+function normalizeBenchmarkProfileV1(raw: unknown, fallback: BenchmarkProfileV1): BenchmarkProfileV1 {
+  const r = subRecord(raw);
+  const sourceMaterial = subRecord(r.source_material_summary);
+  const identity = subRecord(r.identity);
+  const proof = subRecord(r.proof);
+  const linkedinBrand = subRecord(r.linkedin_brand);
+  const riskAndGaps = subRecord(r.risk_and_gaps);
+  const approvedLanguage = subRecord(r.approved_language);
+  const readinessRaw = subRecord(r.downstream_readiness);
+
+  const downstream_readiness = DOWNSTREAM_TOOLS.reduce<BenchmarkProfileV1['downstream_readiness']>((acc, tool) => {
+    const rawTool = subRecord(readinessRaw[tool]);
+    const fallbackTool = fallback.downstream_readiness[tool];
+    acc[tool] = {
+      status: enumField(rawTool.status, ['ready', 'usable', 'needs_review', 'blocked'] as const, fallbackTool.status),
+      summary: str(rawTool.summary, fallbackTool.summary),
+    };
+    return acc;
+  }, {} as BenchmarkProfileV1['downstream_readiness']);
+
+  return {
+    version: 'benchmark_profile_v1',
+    generated_at: str(r.generated_at, fallback.generated_at),
+    source_material_summary: {
+      resume_quality: str(sourceMaterial.resume_quality, fallback.source_material_summary.resume_quality),
+      linkedin_quality: str(sourceMaterial.linkedin_quality, fallback.source_material_summary.linkedin_quality),
+      strongest_inputs: strArr(sourceMaterial.strongest_inputs, fallback.source_material_summary.strongest_inputs),
+      missing_inputs: strArr(sourceMaterial.missing_inputs, fallback.source_material_summary.missing_inputs),
+    },
+    identity: {
+      benchmark_headline: normalizeBenchmarkItem(identity.benchmark_headline, fallback.identity.benchmark_headline),
+      why_me_story: normalizeBenchmarkItem(identity.why_me_story, fallback.identity.why_me_story),
+      why_not_me: normalizeBenchmarkItem(identity.why_not_me, fallback.identity.why_not_me),
+      operating_identity: normalizeBenchmarkItem(identity.operating_identity, fallback.identity.operating_identity),
+    },
+    proof: {
+      signature_accomplishments: normalizeBenchmarkItemArray(proof.signature_accomplishments, fallback.proof.signature_accomplishments),
+      proof_themes: normalizeBenchmarkItemArray(proof.proof_themes, fallback.proof.proof_themes),
+      scope_markers: normalizeBenchmarkItemArray(proof.scope_markers, fallback.proof.scope_markers),
+    },
+    linkedin_brand: {
+      five_second_verdict: normalizeBenchmarkItem(linkedinBrand.five_second_verdict, fallback.linkedin_brand.five_second_verdict),
+      headline_direction: normalizeBenchmarkItem(linkedinBrand.headline_direction, fallback.linkedin_brand.headline_direction),
+      about_opening: normalizeBenchmarkItem(linkedinBrand.about_opening, fallback.linkedin_brand.about_opening),
+      recruiter_keywords: strArr(linkedinBrand.recruiter_keywords, fallback.linkedin_brand.recruiter_keywords),
+      content_pillars: normalizeBenchmarkItemArray(linkedinBrand.content_pillars, fallback.linkedin_brand.content_pillars),
+      profile_gaps: normalizeBenchmarkItemArray(linkedinBrand.profile_gaps, fallback.linkedin_brand.profile_gaps),
+    },
+    risk_and_gaps: {
+      objections: normalizeBenchmarkItemArray(riskAndGaps.objections, fallback.risk_and_gaps.objections),
+      adjacent_proof_needed: normalizeBenchmarkItemArray(riskAndGaps.adjacent_proof_needed, fallback.risk_and_gaps.adjacent_proof_needed),
+      claims_to_soften: normalizeBenchmarkItemArray(riskAndGaps.claims_to_soften, fallback.risk_and_gaps.claims_to_soften),
+    },
+    approved_language: {
+      positioning_statement: str(approvedLanguage.positioning_statement, fallback.approved_language.positioning_statement),
+      resume_summary_seed: str(approvedLanguage.resume_summary_seed, fallback.approved_language.resume_summary_seed),
+      linkedin_opening: str(approvedLanguage.linkedin_opening, fallback.approved_language.linkedin_opening),
+      networking_intro: str(approvedLanguage.networking_intro, fallback.approved_language.networking_intro),
+      cover_letter_thesis: str(approvedLanguage.cover_letter_thesis, fallback.approved_language.cover_letter_thesis),
+    },
+    discovery_questions: normalizeDiscoveryQuestions(r.discovery_questions, fallback.discovery_questions),
+    downstream_readiness,
+  };
 }
 
 function normalizeCareerProfileV2(raw: unknown, fallback: CareerProfileV2): CareerProfileV2 {
@@ -394,6 +859,9 @@ function normalizeCareerProfileV2(raw: unknown, fallback: CareerProfileV2): Care
       sections: sections.length > 0 ? sections : fallback.completeness.sections,
     },
     profile_summary: str(r.profile_summary, fallback.profile_summary),
+    benchmark_profile: fallback.benchmark_profile
+      ? normalizeBenchmarkProfileV1(r.benchmark_profile, fallback.benchmark_profile)
+      : undefined,
   };
 }
 

@@ -10,7 +10,7 @@ interface ExperienceEntryCardProps {
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-[var(--badge-green-text)] bg-[var(--badge-green-text)]/10';
   if (score >= 60) return 'text-[var(--badge-amber-text)] bg-[var(--badge-amber-text)]/10';
-  return 'text-red-400 bg-red-400/10';
+  return 'text-[var(--badge-red-text)] bg-[var(--badge-red-bg)]';
 }
 
 const SCORE_LABELS: Record<keyof ExperienceEntry['quality_scores'], string> = {

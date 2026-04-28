@@ -1,7 +1,8 @@
 /**
  * Interview Prep Writer — Tool definitions.
  *
- * 7 tools:
+ * 10 tools:
+ * - write_interview_advantage_brief: Write the full prep report in one efficient pass
  * - write_section: Write a single section of the interview prep report
  * - self_review_section: Quality check a written section against Rule 9
  * - build_career_story: Special handler for the Why Me section (Rule 6)
@@ -28,6 +29,7 @@ import { INTERVIEW_PREP_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderWhyMeStorySection,
   renderCareerNarrativeSection,
 } from '../../../contracts/shared-context-prompt.js';
@@ -39,6 +41,39 @@ type InterviewPrepTool = AgentTool<InterviewPrepState, InterviewPrepSSEEvent>;
 
 function wordCount(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function displayValue(value: unknown, fallback: string, genericPattern: RegExp): string {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && !genericPattern.test(trimmed) ? trimmed : fallback;
+}
+
+const ADVANTAGE_BRIEF_CHECKS = [
+  /company intelligence/i,
+  /elevator pitch/i,
+  /top\s+(?:six|6)|role requirements/i,
+  /why me/i,
+  /3-2-1|3,2,1/i,
+  /technical|role-specific/i,
+  /behavioral/i,
+  /30-60-90/i,
+  /risk|objection/i,
+  /final interview strategy/i,
+];
+
+function scoreInterviewAdvantageBrief(report: string): number {
+  const matchedChecks = ADVANTAGE_BRIEF_CHECKS.filter((check) => check.test(report)).length;
+  const wc = wordCount(report);
+  const coverageScore = Math.round((matchedChecks / ADVANTAGE_BRIEF_CHECKS.length) * 55);
+  const depthScore = wc >= 3500 ? 25 : wc >= 2200 ? 20 : wc >= 1400 ? 14 : 8;
+  const evidenceScore = /\$|%|\b\d{2,}\b/.test(report) ? 10 : 4;
+  const guardrailScore = /\[company|candidate name|your name/i.test(report) ? 0 : 10;
+  return clamp(coverageScore + depthScore + evidenceScore + guardrailScore, 50, 96);
 }
 
 function buildContextBlock(state: InterviewPrepState): string {
@@ -87,6 +122,12 @@ function buildContextBlock(state: InterviewPrepState): string {
 
   if (state.company_research) {
     parts.push('\n## Company Research');
+    if (state.company_research.source_note) {
+      parts.push(`Source note: ${state.company_research.source_note}`);
+    }
+    if (state.company_research.source_confidence) {
+      parts.push(`Source confidence: ${state.company_research.source_confidence}`);
+    }
     parts.push(state.company_research.overview);
     if (state.company_research.growth_areas.length > 0) {
       parts.push('Growth Areas:');
@@ -133,6 +174,11 @@ function buildContextBlock(state: InterviewPrepState): string {
       legacyWhyMeStory: state.platform_context.why_me_story,
     }));
   }
+
+  parts.push(...renderBenchmarkProfileDirectionSection({
+    heading: '## Benchmark Profile Direction',
+    sharedContext: state.shared_context,
+  }));
 
   // ─── Quantified Candidate Metrics (from resume pipeline) ─────────
   // These ground STAR answers with real numbers instead of generic framing.
@@ -190,7 +236,7 @@ function buildContextBlock(state: InterviewPrepState): string {
 
 // Section-specific writing instructions
 const SECTION_INSTRUCTIONS: Record<InterviewPrepSection, string> = {
-  company_research: 'Write Section 1: Company Research. Use ALL research data provided. Include: Overview (what they do, how they make money), Strategic Priorities for this year (named programs — not generic observations), Growth Areas, Potential Risks to that growth, Competitors, Culture Signals, and how this specific role impacts their revenue or operations. Be specific — name actual products, services, numbers. No tables.',
+  company_research: 'Write Section 1: Company Research. Use ALL research data provided. Include: Overview (what they do, how they make money), Strategic Priorities for this year (named programs — not generic observations), Growth Areas, Potential Risks to that growth, Competitors, Culture Signals, and how this specific role impacts their revenue or operations. If source_confidence is jd_only or the source note says public research was not reliable, say that plainly and use only the supplied JD/company context. Never import similarly named companies or competitors when the exact company was not verified. Be specific with verified/JD-provided products, services, numbers. No tables.',
   elevator_pitch: 'Write Section 2: Elevator Pitch. 60-90 seconds, first person. Open with identity statement, 2-3 proof points with metrics from resume, connect to this specific company, close with genuine enthusiasm for THIS role.',
   requirements_fit: 'Write Section 3: Why I\'m the Perfect Fit. Extract the top 4-6 requirements from the JD analysis. For each: state as header, expand the definition, write 3-5 first-person sentences with specific resume evidence (metrics, project names, team sizes). "I have experience with X" is NEVER acceptable.',
   technical_questions: 'Write Section 4: Technical/Role-Specific Interview Questions. Minimum 8 questions. Use the sourced questions where available. Each answer: 5-8 sentences minimum, first person, references specific resume experiences with metrics. Answers should be speakable aloud.',
@@ -199,6 +245,162 @@ const SECTION_INSTRUCTIONS: Record<InterviewPrepSection, string> = {
   why_me: 'Write Section 7: Why Me — My Career Story. This is the MOST IMPORTANT section. Find the career PATTERN — an archetype identity. "I am a [builder/fixer/translator/etc]." Write 200-400 words as narrative, NOT bullet points. 2-3 proof points across different roles. Connect to what THIS company needs. If insufficient resume detail, generate 5-7 discovery questions instead.',
   thirty_sixty_ninety: 'Write Section 8: 30-60-90 Day Plan. EXTENSIVE and SPECIFIC — not vague platitudes. 4-6 actions per phase, each a full sentence. Name specific systems, tools, processes from the JD. Connect to job requirements.',
   final_tips: 'Write Section 9: Final Interview Tips. 6-10 practical, senior-level tips tailored to THIS role and company. Include company-specific prep reminders, executive delivery advice, strategic framing guidance, storytelling reminders.',
+};
+
+// ─── Tool: write_interview_advantage_brief ─────────────────────────
+
+const writeInterviewAdvantageBriefTool: InterviewPrepTool = {
+  name: 'write_interview_advantage_brief',
+  description:
+    'Efficiently write the complete interview preparation report in one high-quality pass. ' +
+    'Use this as the default pre-interview workflow instead of writing and reviewing every section separately. ' +
+    'The report still covers company intelligence, top role requirements, first-person fit, Why Me story, ' +
+    '3-2-1 strategy, technical and behavioral answers, 30-60-90 plan, objection handling, and final strategy.',
+  model_tier: 'primary',
+  input_schema: {
+    type: 'object',
+    properties: {
+      emphasis: {
+        type: 'string',
+        description:
+          'Optional user-requested emphasis, such as "make the top 6 requirements section deeper" or "focus on objections".',
+      },
+    },
+    required: [],
+  },
+  async execute(input, ctx) {
+    const state = ctx.getState();
+    const contextBlock = buildContextBlock(state);
+    const candidateName = displayValue(state.resume_data?.name, 'Candidate', /^candidate$/i);
+    const companyName = displayValue(state.jd_analysis?.company_name, 'Target Company', /^(unknown|target)\s+company$/i);
+    const roleTitle = displayValue(state.jd_analysis?.role_title, 'Target Role', /^(unknown|target)\s+role$/i);
+    const emphasis = typeof input.emphasis === 'string' && input.emphasis.trim()
+      ? input.emphasis.trim()
+      : '';
+
+    ctx.emit({
+      type: 'transparency',
+      stage: 'writing',
+      message: `Building the interview brief for ${companyName} — mapping the role to the strongest real proof in the resume.`,
+    });
+    ctx.emit({ type: 'section_progress', section: 'requirements_fit', status: 'writing' });
+
+    const response = await llm.chat({
+      model: MODEL_PRIMARY,
+      max_tokens: 16000,
+      system: `You are a senior career strategist creating an interview preparation document for a real candidate.
+
+Quality is more important than speed, but this must be efficient: write the full report in ONE complete pass.
+
+## EVIDENCE-BOUND CONSTRAINT — NON-NEGOTIABLE
+
+Use ONLY the candidate data provided below. Do NOT invent companies, roles, team sizes, metrics, tools, credentials, stories, or outcomes.
+When the resume lacks evidence for a question, write a preparation prompt instead of fabricating:
+"Prepare an answer from your own experience about [topic]. Use this STAR scaffold..."
+
+Every proof point, STAR answer, fit claim, and objection answer must trace to the resume, shared context, company research, or JD analysis below.
+
+## Company Research Guardrail
+
+If source_confidence is jd_only or mixed_unverified, say that company intelligence is based on the supplied job description and do not name competitors, revenue streams, or public strategic initiatives unless they are present in the provided data.
+
+## Writing Standard
+
+- Write in first person wherever the candidate would speak.
+- No tables or charts.
+- Make the Top 6 Requirements section the spine of the document.
+- Explain what each requirement means in plain business language, then explain why the candidate can solve it with specific evidence.
+- The document should be substantial but usable: precise, interview-ready, and not an encyclopedia.
+- Include direct, speakable answers the candidate can rehearse.
+- Include a memorable "Why Me" identity story. If evidence is thin, include pointed discovery questions instead.
+- Include risk/objection handling so the candidate is ready for skeptical interviewers.
+
+${INTERVIEW_PREP_RULES}
+
+## Candidate, Role, Research, and Platform Context
+${contextBlock}`,
+      messages: [{
+        role: 'user',
+        content: `Create the complete Interview Advantage Brief now.
+
+Candidate: ${candidateName}
+Target Role: ${roleTitle}
+Company: ${companyName}
+${emphasis ? `\nUser emphasis: ${emphasis}\n` : ''}
+
+Use this exact section structure:
+
+# Interview Advantage Brief
+
+**Candidate:** ${candidateName}
+**Target Role:** ${roleTitle}
+**Company:** ${companyName}
+
+## 1. Interview Game Plan
+Give the candidate the strategy in 5-8 bullets: what to emphasize, what to avoid, and what the interviewer needs to believe by the end.
+
+## 2. Company Intelligence
+Overview, business model/revenue drivers if verified, growth areas, risks, competitors if verified, and how this role likely matters. Respect the source-confidence guardrail.
+
+## 3. Elevator Pitch
+60-90 seconds, first person, authentic, with real proof points.
+
+## 4. Top 6 Role Requirements And Why I Fit
+Extract the top 4-6 requirements. For each requirement:
+- State the requirement as a heading.
+- Explain what it really means in practice.
+- Write a strong first-person answer showing why I fit.
+- Use specific resume evidence and metrics where available.
+- Add a confidence level from 0.00 to 1.00.
+
+## 5. Why Me — Memorable Career Story
+Identify the career pattern or archetype. Write a first-person story that communicates who I am, not just what I have done.
+
+## 6. The 3-2-1 Strategy
+3 proof points, 2 insightful company/role questions, and 1 closing statement.
+
+## 7. Technical / Role-Specific Questions
+At least 6 likely questions with substantial first-person answers. If evidence is missing, give the candidate a clear STAR scaffold instead of inventing.
+
+## 8. Behavioral Story Bank
+At least 6 behavioral questions with STAR-style answers grounded in resume evidence. Include reflection where possible.
+
+## 9. 30-60-90 Plan
+Specific actions for 30, 60, and 90 days. Tie actions to the JD and company context.
+
+## 10. Risk Handling And Likely Objections
+Name gaps, adjacent-proof strategies, and honest language for answering skeptical questions.
+
+## 11. Final Interview Strategy
+Concise final guidance on tone, stories to lead with, questions to ask, and close.`,
+      }],
+    });
+
+    const report = response.text.trim();
+    const qualityScore = scoreInterviewAdvantageBrief(report);
+
+    state.final_report = report;
+    state.quality_score = qualityScore;
+    ctx.scratchpad.final_report = report;
+    ctx.scratchpad.quality_score = qualityScore;
+
+    ctx.emit({ type: 'section_progress', section: 'requirements_fit', status: 'complete' });
+    ctx.emit({ type: 'section_progress', section: 'why_me', status: 'complete' });
+    ctx.emit({ type: 'section_progress', section: 'technical_questions', status: 'complete' });
+    ctx.emit({ type: 'section_progress', section: 'behavioral_questions', status: 'complete' });
+    ctx.emit({
+      type: 'transparency',
+      stage: 'writing',
+      message: `Interview brief complete — top requirements, proof points, story bank, objections, and 30-60-90 plan are ready for review.`,
+    });
+
+    return JSON.stringify({
+      success: true,
+      report_length: report.length,
+      word_count: wordCount(report),
+      quality_score: qualityScore,
+    });
+  },
 };
 
 // ─── Tool: write_section ────────────────────────────────────────────
@@ -581,7 +783,7 @@ const assembleReportTool: InterviewPrepTool = {
   description:
     'Assemble all written sections into the final interview preparation report. ' +
     'Call this after all 9 sections have been written and reviewed. ' +
-    'Combines sections in document order and adds the closing offer (Rule 10).',
+    'Combines sections in document order into a finished user deliverable.',
   model_tier: 'light',
   input_schema: {
     type: 'object',
@@ -603,9 +805,9 @@ const assembleReportTool: InterviewPrepTool = {
     const parts: string[] = [];
 
     // Report header
-    const candidateName = state.resume_data?.name ?? 'Candidate';
-    const companyName = state.jd_analysis?.company_name ?? 'Target Company';
-    const roleTitle = state.jd_analysis?.role_title ?? 'Target Role';
+    const candidateName = displayValue(state.resume_data?.name, 'Candidate', /^candidate$/i);
+    const companyName = displayValue(state.jd_analysis?.company_name, 'Target Company', /^(unknown|target)\s+company$/i);
+    const roleTitle = displayValue(state.jd_analysis?.role_title, 'Target Role', /^(unknown|target)\s+role$/i);
 
     parts.push(`# Comprehensive Interview Preparation Report`);
     parts.push('');
@@ -634,17 +836,6 @@ const assembleReportTool: InterviewPrepTool = {
         missingSections.push(sectionKey);
       }
     }
-
-    // Add closing offer (Rule 10)
-    parts.push('## Next Steps');
-    parts.push('');
-    parts.push('I can help you go deeper on any part of this preparation:');
-    parts.push('');
-    parts.push('1. **Quick Reference Cheat Sheet** — A condensed 2-page version for final review before the interview.');
-    parts.push('2. **Deep Dive** — More STAR stories, deeper company research, or additional technical questions for any section.');
-    parts.push('3. **Mock Interview** — A simulated interview where I play the hiring manager and evaluate your responses in real time.');
-    parts.push('4. **Different Role Prep** — A customized version of this report for a different position or company.');
-    parts.push('5. **Story Builder Session** — A guided Q&A to help you craft or refine your career identity story.');
 
     const finalReport = parts.join('\n');
 
@@ -1254,6 +1445,7 @@ const saveStoryTool: InterviewPrepTool = {
 // ─── Exports ────────────────────────────────────────────────────────
 
 export const writerTools: InterviewPrepTool[] = [
+  writeInterviewAdvantageBriefTool,
   writeSectionTool,
   selfReviewSectionTool,
   buildCareerStoryTool,

@@ -449,8 +449,8 @@ export function ApplicationWorkspaceRoute({
   const networkingActive = isNetworkingActive(application);
 
   const ApplicationHeader = (
-    <GlassCard className="p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
+    <div className="panel-surface p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-widest text-[var(--link)]">
             Application
@@ -463,45 +463,45 @@ export function ApplicationWorkspaceRoute({
             {application.role_title} · Stage: <span className="font-medium text-[var(--text-strong)]">{application.stage}</span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs">
-          {(APPLICATION_WORKSPACE_TOOLS as readonly ApplicationWorkspaceTool[]).map((t) => {
-            const isSelected = t === tool;
-            // Phase 2.3b + 2.3c — Interview Prep and Offer/Negotiation render
-            // muted (dashed border, muted text) when they're not the current
-            // tool AND their toggle resolves inactive. When the user IS
-            // viewing one of them, the pill renders active-selected
-            // regardless of activation state — the activation screen lives
-            // in the body, not the pill.
-            const isMutedInactive = !isSelected && (
-              (t === 'interview-prep' && !interviewPrepActive)
-              || (t === 'offer-negotiation' && !offerActive)
-              || (t === 'follow-up-email' && !followUpEmailActive)
-              || (t === 'thank-you-note' && !thankYouNoteActive)
-              || (t === 'networking' && !networkingActive)
-            );
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, t))}
-                aria-pressed={isSelected}
-                data-state={isSelected ? 'active' : isMutedInactive ? 'muted' : 'available'}
-                className={cn(
-                  'rounded-full px-3 py-1',
-                  isSelected
-                    ? 'bg-[var(--link)] font-semibold text-[var(--link-on)]'
-                    : isMutedInactive
-                      ? 'border border-dashed border-[var(--line-soft)] text-[var(--text-muted)] hover:bg-[var(--rail-tab-hover-bg)] hover:text-[var(--text-soft)]'
-                      : 'border border-[var(--line-soft)] text-[var(--text-soft)] hover:bg-[var(--rail-tab-hover-bg)]',
-                )}
-              >
-                {t.replace(/-/g, ' ')}
-              </button>
-            );
-          })}
-        </div>
       </div>
-    </GlassCard>
+      <div className="mt-4 flex gap-2 overflow-x-auto pb-1 text-xs">
+        {(APPLICATION_WORKSPACE_TOOLS as readonly ApplicationWorkspaceTool[]).map((t) => {
+          const isSelected = t === tool;
+          // Phase 2.3b + 2.3c — Interview Prep and Offer/Negotiation render
+          // muted (dashed border, muted text) when they're not the current
+          // tool AND their toggle resolves inactive. When the user IS
+          // viewing one of them, the pill renders active-selected
+          // regardless of activation state — the activation screen lives
+          // in the body, not the pill.
+          const isMutedInactive = !isSelected && (
+            (t === 'interview-prep' && !interviewPrepActive)
+            || (t === 'offer-negotiation' && !offerActive)
+            || (t === 'follow-up-email' && !followUpEmailActive)
+            || (t === 'thank-you-note' && !thankYouNoteActive)
+            || (t === 'networking' && !networkingActive)
+          );
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, t))}
+              aria-pressed={isSelected}
+              data-state={isSelected ? 'active' : isMutedInactive ? 'muted' : 'available'}
+              className={cn(
+                'shrink-0 rounded-[8px] px-3 py-1.5 font-semibold capitalize transition-colors',
+                isSelected
+                  ? 'bg-[var(--link)] text-white'
+                  : isMutedInactive
+                    ? 'border border-dashed border-[var(--line-soft)] text-[var(--text-muted)] hover:bg-[var(--rail-tab-hover-bg)] hover:text-[var(--text-soft)]'
+                    : 'border border-[var(--line-soft)] text-[var(--text-soft)] hover:bg-[var(--rail-tab-hover-bg)]',
+              )}
+            >
+              {t.replace(/-/g, ' ')}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 
   // ── Tool dispatch ────────────────────────────────────────────────────
@@ -719,28 +719,28 @@ export function ApplicationWorkspaceRoute({
     <div className="mx-auto flex h-full max-w-[1280px] flex-col gap-6 overflow-y-auto p-6">
       {/* Sprint B6 — breadcrumb. Matches the pattern rendered by room
           screens (Workspace > Section) but adds the application's company
-          name and active tool for a full trail. Workspace and My
-          Applications are clickable back-links. */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
+          name and active tool for a full trail. Workspace and Pipeline are
+          clickable back-links. */}
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 overflow-x-auto py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
         <button
           type="button"
-          className="hover:text-[var(--text-strong)]"
+          className="shrink-0 whitespace-nowrap hover:text-[var(--text-strong)]"
           onClick={() => onNavigate?.('/workspace')}
         >
           Workspace
         </button>
-        <ChevronRight className="h-3 w-3" aria-hidden="true" />
+        <ChevronRight className="h-3 w-3 flex-none" aria-hidden="true" />
         <button
           type="button"
-          className="hover:text-[var(--text-strong)]"
+          className="shrink-0 whitespace-nowrap hover:text-[var(--text-strong)]"
           onClick={() => onNavigate?.('/workspace/applications')}
         >
-          My Applications
+          Pipeline
         </button>
-        <ChevronRight className="h-3 w-3" aria-hidden="true" />
-        <span className="text-[var(--text-strong)]">{application.company_name}</span>
-        <ChevronRight className="h-3 w-3" aria-hidden="true" />
-        <span className="text-[var(--text-strong)]" aria-current="page">
+        <ChevronRight className="h-3 w-3 flex-none" aria-hidden="true" />
+        <span className="shrink-0 whitespace-nowrap text-[var(--text-strong)]">{application.company_name}</span>
+        <ChevronRight className="h-3 w-3 flex-none" aria-hidden="true" />
+        <span className="shrink-0 whitespace-nowrap text-[var(--text-strong)]" aria-current="page">
           {tool.replace(/-/g, ' ')}
         </span>
       </nav>

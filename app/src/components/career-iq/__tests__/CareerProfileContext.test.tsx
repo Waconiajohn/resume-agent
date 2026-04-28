@@ -68,7 +68,7 @@ describe('buildCareerProfileSummary', () => {
     const summary = buildCareerProfileSummary(makeProfile());
 
     expect(summary.readinessLabel).toBe('Platform-ready');
-    expect(summary.nextRecommendedRoom).toBe('resume');
+    expect(summary.nextRecommendedRoom).toBe('jobs');
     expect(summary.highlightPoints.length).toBeGreaterThan(0);
   });
 

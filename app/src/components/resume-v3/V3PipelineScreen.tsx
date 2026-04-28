@@ -15,7 +15,7 @@
  *      │  └─ Verify panel (right)
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -25,13 +25,14 @@ import {
   type StartV3PipelineInput,
   type V3DiscoveryAnswer,
   type V3SuggestedPatch,
+  type V3Strategy,
   type V3WrittenResume,
   type V3Bullet,
   type V3VerifyResult,
 } from '@/hooks/useV3Pipeline';
 import { useV3Master } from '@/hooks/useV3Master';
 import { useV3Regenerate, type PositionWeight } from '@/hooks/useV3Regenerate';
-import { useV3SessionPersistence } from '@/hooks/useV3SessionPersistence';
+import { useV3SessionPersistence, type V3SessionSnapshot } from '@/hooks/useV3SessionPersistence';
 import { useAuth } from '@/hooks/useAuth';
 import { V3StageProgress } from './V3StageProgress';
 import { V3IntakeForm } from './V3IntakeForm';
@@ -69,6 +70,8 @@ interface V3PipelineScreenProps {
   initialJobDescription?: string;
   initialJdTitle?: string;
   initialJdCompany?: string;
+  /** Explicit saved session route: /resume-builder/session?sessionId=... */
+  initialSessionId?: string | null;
 }
 
 /**
@@ -145,6 +148,34 @@ function mergeDiscoveryAnswers(
   return [...byQuestion.values()];
 }
 
+function shouldAskDiscoveryQuestion(
+  item: NonNullable<V3Strategy['evidenceOpportunities']>[number],
+): boolean {
+  if (item.level === 'candidate_discovery_needed') return true;
+  return item.level === 'adjacent_proof' && item.risk !== 'low';
+}
+
+function buildDiscoveryReviewWarning(
+  strategy: V3Strategy | null,
+  answers: V3DiscoveryAnswer[],
+): { count: number; highRiskCount: number } | null {
+  const opportunities = strategy?.evidenceOpportunities ?? [];
+  const answered = new Set(answers.map(discoveryAnswerKey));
+  const unresolved = opportunities.filter((item) => {
+    if (!item.discoveryQuestion || !shouldAskDiscoveryQuestion(item)) return false;
+    return !answered.has(discoveryAnswerKey({
+      requirement: item.requirement,
+      question: item.discoveryQuestion,
+      answer: 'answered',
+    }));
+  });
+  if (unresolved.length === 0) return null;
+  return {
+    count: unresolved.length,
+    highRiskCount: unresolved.filter((item) => item.risk === 'high').length,
+  };
+}
+
 export function V3PipelineScreen({
   accessToken,
   initialResumeText,
@@ -152,6 +183,7 @@ export function V3PipelineScreen({
   initialJobDescription,
   initialJdTitle,
   initialJdCompany,
+  initialSessionId,
 }: V3PipelineScreenProps) {
   const pipeline = useV3Pipeline(accessToken);
   const master = useV3Master(accessToken);
@@ -187,6 +219,8 @@ export function V3PipelineScreen({
   // reverify completes, the staleness cue clears even though editedWritten
   // still diverges from the pipeline's pristine output.
   const [lastVerifiedWritten, setLastVerifiedWritten] = useState<V3WrittenResume | null>(null);
+  const autoHydratedSessionRef = useRef<string | null>(null);
+  const normalizedInitialSessionId = useMemo(() => initialSessionId?.trim() || null, [initialSessionId]);
 
   const regen = useV3Regenerate({
     accessToken,
@@ -197,6 +231,7 @@ export function V3PipelineScreen({
   const persistence = useV3SessionPersistence({
     accessToken,
     userId: user?.id ?? null,
+    initialSessionId: normalizedInitialSessionId,
     pipeline: {
       isComplete: pipeline.isComplete,
       sessionId: pipeline.sessionId,
@@ -241,6 +276,10 @@ export function V3PipelineScreen({
   const showResults = pipeline.isRunning || pipeline.isComplete || Boolean(pipeline.error);
   const effectiveWritten = editedWritten ?? pipeline.written;
   const effectiveVerify = overrideVerify ?? pipeline.verify;
+  const discoveryReviewWarning = useMemo(
+    () => buildDiscoveryReviewWarning(pipeline.strategy, confirmedDiscoveryAnswers),
+    [confirmedDiscoveryAnswers, pipeline.strategy],
+  );
 
   const resetRunViewState = useCallback(() => {
     setEditedWritten(null);
@@ -280,9 +319,7 @@ export function V3PipelineScreen({
     persistence.clear();
   };
 
-  const handleResumeLastSession = useCallback(() => {
-    const snap = persistence.lastSession;
-    if (!snap) return;
+  const hydrateSessionSnapshot = useCallback((snap: V3SessionSnapshot) => {
     pipeline.hydrate({
       sessionId: snap.sessionId,
       structured: snap.structured,
@@ -300,10 +337,35 @@ export function V3PipelineScreen({
     setRunJdCompany(snap.jdCompany ?? null);
     setLastStartInput(null);
     setConfirmedDiscoveryAnswers(snap.discoveryAnswers ?? []);
+  }, [pipeline.hydrate]);
+
+  const handleResumeLastSession = useCallback(() => {
+    const snap = persistence.lastSession;
+    if (!snap) return;
+    hydrateSessionSnapshot(snap);
     // Dismiss the banner but keep localStorage — if they refresh during
     // this hydrated session, they get the banner again next mount.
     persistence.acknowledge();
-  }, [persistence, pipeline]);
+  }, [hydrateSessionSnapshot, persistence.acknowledge, persistence.lastSession]);
+
+  useEffect(() => {
+    if (!normalizedInitialSessionId) return;
+    if (pipeline.isRunning || pipeline.isComplete) return;
+    const snap = persistence.lastSession;
+    if (!snap || snap.sessionId !== normalizedInitialSessionId) return;
+    if (autoHydratedSessionRef.current === normalizedInitialSessionId) return;
+
+    autoHydratedSessionRef.current = normalizedInitialSessionId;
+    hydrateSessionSnapshot(snap);
+    persistence.acknowledge();
+  }, [
+    hydrateSessionSnapshot,
+    normalizedInitialSessionId,
+    persistence.acknowledge,
+    persistence.lastSession,
+    pipeline.isComplete,
+    pipeline.isRunning,
+  ]);
 
   const handleDiscardLastSession = useCallback(() => {
     persistence.clear();
@@ -773,6 +835,7 @@ export function V3PipelineScreen({
             <div className="space-y-4">
               <V3VerifyPanel
                 verify={effectiveVerify}
+                discoveryWarning={discoveryReviewWarning}
                 isRunning={pipeline.isRunning}
                 currentStage={pipeline.currentStage}
                 reverifying={regen.reverifying}

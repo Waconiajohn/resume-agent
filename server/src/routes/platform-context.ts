@@ -29,6 +29,7 @@ const SUMMARY_TYPES: ContextType[] = [
   'evidence_item',
   'career_narrative',
   'client_profile',
+  'linkedin_profile',
   'positioning_foundation',
   'benchmark_candidate',
   'gap_analysis',
@@ -92,6 +93,216 @@ app.get('/career-profile', async (c) => {
   }
 });
 
+const REVIEW_STATUSES = new Set(['draft', 'needs_confirmation', 'approved', 'needs_evidence']);
+
+function cloneRecord<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function updateBenchmarkItemById(
+  value: unknown,
+  itemId: string,
+  changes: { statement?: string; review_status?: string },
+): boolean {
+  if (!value || typeof value !== 'object') return false;
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (updateBenchmarkItemById(item, itemId, changes)) return true;
+    }
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (record.id === itemId && typeof record.statement === 'string') {
+    if (typeof changes.statement === 'string') {
+      record.statement = changes.statement;
+    }
+    if (typeof changes.review_status === 'string') {
+      record.review_status = changes.review_status;
+    }
+    return true;
+  }
+
+  for (const child of Object.values(record)) {
+    if (updateBenchmarkItemById(child, itemId, changes)) return true;
+  }
+
+  return false;
+}
+
+function updateBenchmarkDiscoveryQuestion(
+  benchmarkProfile: unknown,
+  questionId: string,
+  answer: string,
+): boolean {
+  if (!benchmarkProfile || typeof benchmarkProfile !== 'object') return false;
+
+  const record = benchmarkProfile as Record<string, unknown>;
+  const questions = Array.isArray(record.discovery_questions)
+    ? record.discovery_questions
+    : [];
+
+  for (const rawQuestion of questions) {
+    if (!rawQuestion || typeof rawQuestion !== 'object') continue;
+    const question = rawQuestion as Record<string, unknown>;
+    if (question.id !== questionId) continue;
+    question.answer = answer;
+    question.answered_at = new Date().toISOString();
+    return true;
+  }
+
+  return false;
+}
+
+// ─── PATCH /career-profile/benchmark-item ───────────────────────────────────
+
+app.patch('/career-profile/benchmark-item', async (c) => {
+  const user = c.get('user') as { id: string };
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return c.json({ error: 'Body must be a JSON object' }, 400);
+  }
+
+  const record = body as Record<string, unknown>;
+  const itemId = typeof record.item_id === 'string' ? record.item_id.trim() : '';
+  const changes = record.changes && typeof record.changes === 'object' && !Array.isArray(record.changes)
+    ? record.changes as Record<string, unknown>
+    : {};
+  const statement = typeof changes.statement === 'string' ? changes.statement.trim() : undefined;
+  const reviewStatus = typeof changes.review_status === 'string' ? changes.review_status.trim() : undefined;
+
+  if (!itemId) {
+    return c.json({ error: 'item_id is required' }, 400);
+  }
+  if (statement !== undefined && statement.length === 0) {
+    return c.json({ error: 'statement cannot be empty' }, 400);
+  }
+  if (statement !== undefined && statement.length > 5_000) {
+    return c.json({ error: 'statement must be 5,000 characters or fewer' }, 400);
+  }
+  if (reviewStatus !== undefined && !REVIEW_STATUSES.has(reviewStatus)) {
+    return c.json({ error: 'Invalid review_status' }, 400);
+  }
+  if (statement === undefined && reviewStatus === undefined) {
+    return c.json({ error: 'No supported changes provided' }, 400);
+  }
+
+  try {
+    const row = await getLatestUserContext(user.id, 'career_profile');
+    if (!row || !row.content || row.content.version !== 'career_profile_v2') {
+      return c.json({ error: 'Career profile not found' }, 404);
+    }
+
+    const nextProfile = cloneRecord(row.content);
+    const benchmarkProfile = (nextProfile as Record<string, unknown>).benchmark_profile;
+    if (!benchmarkProfile || typeof benchmarkProfile !== 'object') {
+      return c.json({ error: 'Benchmark Profile draft not found' }, 404);
+    }
+
+    const updated = updateBenchmarkItemById(benchmarkProfile, itemId, {
+      ...(statement !== undefined ? { statement } : {}),
+      ...(reviewStatus !== undefined ? { review_status: reviewStatus } : {}),
+    });
+
+    if (!updated) {
+      return c.json({ error: 'Benchmark Profile item not found' }, 404);
+    }
+
+    const saved = await upsertUserContext(
+      user.id,
+      'career_profile',
+      nextProfile,
+      row.source_product || 'profile-setup',
+      row.source_session_id ?? undefined,
+    );
+
+    if (!saved) {
+      return c.json({ error: 'Failed to save Benchmark Profile update' }, 500);
+    }
+
+    return c.json({ career_profile: saved.content });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ error: message, userId: user.id, itemId }, 'benchmark profile item update failed');
+    return c.json({ error: 'Failed to update Benchmark Profile item' }, 500);
+  }
+});
+
+// ─── PATCH /career-profile/discovery-question ───────────────────────────────
+
+app.patch('/career-profile/discovery-question', async (c) => {
+  const user = c.get('user') as { id: string };
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return c.json({ error: 'Body must be a JSON object' }, 400);
+  }
+
+  const record = body as Record<string, unknown>;
+  const questionId = typeof record.question_id === 'string' ? record.question_id.trim() : '';
+  const answer = typeof record.answer === 'string' ? record.answer.trim() : '';
+
+  if (!questionId) {
+    return c.json({ error: 'question_id is required' }, 400);
+  }
+  if (!answer) {
+    return c.json({ error: 'answer is required' }, 400);
+  }
+  if (answer.length > 5_000) {
+    return c.json({ error: 'answer must be 5,000 characters or fewer' }, 400);
+  }
+
+  try {
+    const row = await getLatestUserContext(user.id, 'career_profile');
+    if (!row || !row.content || row.content.version !== 'career_profile_v2') {
+      return c.json({ error: 'Career profile not found' }, 404);
+    }
+
+    const nextProfile = cloneRecord(row.content);
+    const benchmarkProfile = (nextProfile as Record<string, unknown>).benchmark_profile;
+    if (!benchmarkProfile || typeof benchmarkProfile !== 'object') {
+      return c.json({ error: 'Benchmark Profile draft not found' }, 404);
+    }
+
+    const updated = updateBenchmarkDiscoveryQuestion(benchmarkProfile, questionId, answer);
+    if (!updated) {
+      return c.json({ error: 'Discovery question not found' }, 404);
+    }
+
+    const saved = await upsertUserContext(
+      user.id,
+      'career_profile',
+      nextProfile,
+      row.source_product || 'profile-setup',
+      row.source_session_id ?? undefined,
+    );
+
+    if (!saved) {
+      return c.json({ error: 'Failed to save discovery answer' }, 500);
+    }
+
+    return c.json({ career_profile: saved.content });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ error: message, userId: user.id, questionId }, 'benchmark profile discovery answer update failed');
+    return c.json({ error: 'Failed to update discovery answer' }, 500);
+  }
+});
+
 // ─── GET /linkedin-profile ────────────────────────────────────────────────────
 
 app.get('/linkedin-profile', async (c) => {
@@ -122,22 +333,25 @@ app.put('/linkedin-profile', async (c) => {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }
 
+  const record = body as Record<string, unknown> | null;
   if (
     typeof body !== 'object' ||
     body === null ||
-    typeof (body as Record<string, unknown>).headline !== 'string' ||
-    typeof (body as Record<string, unknown>).about !== 'string'
+    typeof record?.headline !== 'string' ||
+    typeof record?.about !== 'string' ||
+    (record.experience !== undefined && typeof record.experience !== 'string')
   ) {
-    return c.json({ error: 'Body must contain headline (string) and about (string)' }, 400);
+    return c.json({ error: 'Body must contain headline (string), about (string), and optional experience (string)' }, 400);
   }
 
-  const { headline, about } = body as { headline: string; about: string };
+  const { headline, about } = record as { headline: string; about: string };
+  const experience = typeof record.experience === 'string' ? record.experience : '';
 
   try {
     const row = await upsertUserContext(
       user.id,
       'linkedin_profile',
-      { headline, about },
+      { headline, about, experience },
       'your_profile',
     );
     if (!row) {

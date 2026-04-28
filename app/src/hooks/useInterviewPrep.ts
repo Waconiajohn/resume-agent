@@ -29,6 +29,46 @@ const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 30;
 const STAR_STORIES_GATE = 'star_stories_review' as const;
 
+const RAW_AGENT_ROUND_RE = /^(?:writer|researcher|analyst|runner)\s*:?\s*round\s+\d+\/\d+/i;
+
+const SECTION_LABELS: Record<string, string> = {
+  company_research: 'company intelligence',
+  elevator_pitch: 'elevator pitch',
+  requirements_fit: 'top role requirements and proof points',
+  technical_questions: 'role-specific interview answers',
+  behavioral_questions: 'behavioral story bank',
+  three_two_one: '3-2-1 interview strategy',
+  why_me: 'Why Me career story',
+  thirty_sixty_ninety: '30-60-90 plan',
+  final_tips: 'final interview strategy',
+};
+
+function sanitizeActivityMessage(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed || RAW_AGENT_ROUND_RE.test(trimmed)) return null;
+
+  const normalized = trimmed
+    .replace(/^(Writer|Researcher)(?=[A-Z])/i, '$1: ')
+    .replace(/^(?:writer|researcher)\s*:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized || RAW_AGENT_ROUND_RE.test(normalized)) return null;
+  return normalized;
+}
+
+function sectionProgressMessage(section: string, status: string): string | null {
+  const label = SECTION_LABELS[section] ?? section.replace(/_/g, ' ');
+  if (status === 'writing') {
+    if (section === 'requirements_fit') return 'Mapping your proof to the top requirements in the role.';
+    if (section === 'why_me') return 'Finding the memorable Why Me story that should stick in the interview.';
+    return `Building ${label}.`;
+  }
+  if (status === 'reviewing') return `Checking ${label} for specificity and overclaims.`;
+  if (status === 'complete') return `${label.charAt(0).toUpperCase()}${label.slice(1)} is ready.`;
+  return null;
+}
+
 function asInterviewPrepGate(value: unknown): typeof STAR_STORIES_GATE | null {
   return value === STAR_STORIES_GATE ? STAR_STORIES_GATE : null;
 }
@@ -67,11 +107,13 @@ export function useInterviewPrep() {
 
   const addActivity = useCallback((text: string, stage: string) => {
     if (!mountedRef.current) return;
+    const message = sanitizeActivityMessage(text);
+    if (!message) return;
     setState((prev) => ({
       ...prev,
       activityMessages: [
         ...prev.activityMessages.slice(-(MAX_ACTIVITY_MESSAGES - 1)),
-        { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, message: text, stage, timestamp: Date.now() },
+        { id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, message, stage, timestamp: Date.now() },
       ],
     }));
   }, []);
@@ -105,12 +147,9 @@ export function useInterviewPrep() {
           const section = safeString(data.section);
           const progressStatus = safeString(data.status);
           if (!section) break;
-          if (progressStatus === 'writing') {
-            addActivity(`Writing section: ${section}`, 'writing');
-          } else if (progressStatus === 'reviewing') {
-            addActivity(`Reviewing section: ${section}`, 'writing');
-          } else if (progressStatus === 'complete') {
-            addActivity(`Section complete: ${section}`, 'writing');
+          const message = sectionProgressMessage(section, progressStatus);
+          if (message) {
+            addActivity(message, 'writing');
           }
           break;
         }
@@ -255,6 +294,7 @@ export function useInterviewPrep() {
       resumeText: string;
       jobDescription: string;
       companyName: string;
+      roleTitle?: string;
       jobApplicationId?: string;
     }): Promise<boolean> => {
       if (statusRef.current !== 'idle') return false;
@@ -290,6 +330,7 @@ export function useInterviewPrep() {
             resume_text: input.resumeText,
             job_description: input.jobDescription,
             company_name: input.companyName,
+            role_title: input.roleTitle,
             job_application_id: input.jobApplicationId,
           }),
         });

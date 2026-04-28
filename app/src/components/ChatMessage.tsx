@@ -33,7 +33,7 @@ export function ChatMessage({ role, content, animate = true }: ChatMessageProps)
 
       <div
         className={cn(
-          'max-w-[80%] min-w-0 rounded-2xl border border-[var(--line-soft)] px-4 py-3 text-sm break-words',
+          'max-w-[80%] min-w-0 rounded-[8px] border border-[var(--line-soft)] px-4 py-3 text-sm break-words',
           role === 'user'
             ? 'bg-[var(--accent-muted)] text-[var(--text-strong)]'
             : 'bg-[var(--accent-muted)] text-[var(--text-muted)]',

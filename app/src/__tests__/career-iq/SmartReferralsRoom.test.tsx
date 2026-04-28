@@ -107,7 +107,7 @@ describe('SmartReferralsRoom', () => {
     expect(screen.getByText('Insider Jobs')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Network path' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bonus path' })).toBeInTheDocument();
-    expect(screen.getByText(/You need an active session/i)).toBeInTheDocument();
+    expect(screen.getByText(/Please sign in to use Networking tools/i)).toBeInTheDocument();
   });
 
   it('renders the import uploader by default when there are no connections yet', async () => {
@@ -227,7 +227,7 @@ describe('SmartReferralsRoom', () => {
     rerender(<SmartReferralsRoom />);
 
     await waitFor(() => {
-      expect(screen.getByText(/You need an active session/i)).toBeInTheDocument();
+      expect(screen.getByText(/Please sign in to use Networking tools/i)).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
     expect(screen.queryByTestId('connections-browser')).not.toBeInTheDocument();

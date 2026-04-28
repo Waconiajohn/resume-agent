@@ -121,9 +121,9 @@ describe('resolveContextChip (via ResumeDocumentCard render)', () => {
     const chip = findChip(container);
     expect(chip).not.toBeNull();
     expect(chip!.textContent).toBe('Chief Operations Officer | Manufacturing Transformation');
-    // positioning source → indigo classes
-    expect(chip!.className).toContain('bg-indigo-50');
-    expect(chip!.className).toContain('text-indigo-600');
+    // positioning source → purple studio token classes
+    expect(chip!.className).toContain('bg-[var(--badge-purple-bg)]');
+    expect(chip!.className).toContain('text-[var(--badge-purple-text)]');
   });
 
   it('no requirements + no branded title → chip not rendered for summary section', () => {
@@ -147,10 +147,10 @@ describe('resolveContextChip (via ResumeDocumentCard render)', () => {
     const chip = findChip(container);
     expect(chip).not.toBeNull();
     expect(chip!.textContent).toBe('Operational excellence');
-    // requirement source → blue classes, NOT indigo
-    expect(chip!.className).toContain('bg-blue-50');
-    expect(chip!.className).toContain('text-blue-600');
-    expect(chip!.className).not.toContain('bg-indigo-50');
+    // requirement source → active studio blue token classes, NOT positioning purple
+    expect(chip!.className).toContain('bg-[var(--badge-blue-bg)]');
+    expect(chip!.className).toContain('text-[var(--badge-blue-text)]');
+    expect(chip!.className).not.toContain('bg-[var(--badge-purple-bg)]');
   });
 
   it('custom section with rationale and no requirements → rationale chip rendered', () => {
@@ -182,9 +182,9 @@ describe('resolveContextChip (via ResumeDocumentCard render)', () => {
     const chip = findChip(container);
     expect(chip).not.toBeNull();
     expect(chip!.textContent).toBe('Signals governance experience for board-level roles.');
-    // rationale source → slate classes
-    expect(chip!.className).toContain('bg-slate-50');
-    expect(chip!.className).toContain('text-slate-600');
+    // rationale source → neutral studio classes
+    expect(chip!.className).toContain('bg-[var(--surface-2)]');
+    expect(chip!.className).toContain('text-[var(--text-muted)]');
   });
 
   it('custom section with both rationale and requirements → requirements win (priority 1 beats priority 2)', () => {
@@ -200,10 +200,10 @@ describe('resolveContextChip (via ResumeDocumentCard render)', () => {
 
     const chip = findChip(container);
     expect(chip).not.toBeNull();
-    // Requirement chip wins → blue, not slate or indigo
-    expect(chip!.className).toContain('bg-blue-50');
-    expect(chip!.className).not.toContain('bg-slate-50');
-    expect(chip!.className).not.toContain('bg-indigo-50');
+    // Requirement chip wins → blue token, not neutral or purple
+    expect(chip!.className).toContain('bg-[var(--badge-blue-bg)]');
+    expect(chip!.className).not.toContain('bg-[var(--surface-2)]');
+    expect(chip!.className).not.toContain('bg-[var(--badge-purple-bg)]');
   });
 });
 
@@ -224,17 +224,17 @@ describe('ContextChipTag (via ResumeDocumentCard render)', () => {
     expect(chipIsAbsent(container)).toBe(true);
   });
 
-  it("chip with source 'requirement' → has bg-blue-50 text-blue-600 classes", () => {
+  it("chip with source 'requirement' uses blue studio token classes", () => {
     const resume = makeResume({ addresses_requirements: ['Operational excellence'] });
     const container = renderCard(resume, { section: 'executive_summary', index: 0 });
 
     const chip = findChip(container);
     expect(chip).not.toBeNull();
-    expect(chip!.className).toContain('bg-blue-50');
-    expect(chip!.className).toContain('text-blue-600');
+    expect(chip!.className).toContain('bg-[var(--badge-blue-bg)]');
+    expect(chip!.className).toContain('text-[var(--badge-blue-text)]');
   });
 
-  it("chip with source 'positioning' → has bg-indigo-50 text-indigo-600 classes", () => {
+  it("chip with source 'positioning' uses purple studio token classes", () => {
     const resume = makeResume(
       { addresses_requirements: [] },
       { branded_title: 'Enterprise Transformation Leader' },
@@ -243,11 +243,11 @@ describe('ContextChipTag (via ResumeDocumentCard render)', () => {
 
     const chip = findChip(container);
     expect(chip).not.toBeNull();
-    expect(chip!.className).toContain('bg-indigo-50');
-    expect(chip!.className).toContain('text-indigo-600');
+    expect(chip!.className).toContain('bg-[var(--badge-purple-bg)]');
+    expect(chip!.className).toContain('text-[var(--badge-purple-text)]');
   });
 
-  it("chip with source 'rationale' → has bg-slate-50 text-slate-600 classes", () => {
+  it("chip with source 'rationale' uses neutral studio token classes", () => {
     const resume: ResumeDraft = {
       ...makeResume(),
       custom_sections: [
@@ -275,8 +275,8 @@ describe('ContextChipTag (via ResumeDocumentCard render)', () => {
 
     const chip = findChip(container);
     expect(chip).not.toBeNull();
-    expect(chip!.className).toContain('bg-slate-50');
-    expect(chip!.className).toContain('text-slate-600');
+    expect(chip!.className).toContain('bg-[var(--surface-2)]');
+    expect(chip!.className).toContain('text-[var(--text-muted)]');
   });
 
   it('isVisible=true (activeBullet matches section/index) → chip has opacity-100 class', () => {

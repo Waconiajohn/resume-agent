@@ -131,8 +131,8 @@ export function WorkspaceShell({
         Skip to main content
       </a>
       {activeGate?.active && (
-        <div className="border-b border-[var(--line-soft)] bg-[rgba(255,255,255,0.02)] px-3 py-3">
-          <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-[14px] border border-[var(--badge-amber-text)]/18 bg-[var(--badge-amber-bg)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="border-b border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-3">
+          <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-[8px] border border-[var(--badge-amber-text)]/30 bg-[var(--surface-3)] px-4 py-3 shadow-[inset_5px_0_0_var(--badge-amber-text)]">
             <Sparkles className="h-3.5 w-3.5 text-[var(--badge-amber-text)]/90" />
             <p className="min-w-0 flex-1 truncate text-[13px] uppercase tracking-[0.12em] text-[var(--badge-amber-text)]/85">
               {selectedNode === activeGate.activeNode
@@ -168,9 +168,9 @@ export function WorkspaceShell({
         <aside
           aria-label="Workflow navigation"
           className={cn(
-            'hidden shrink-0 border-r border-[var(--line-soft)] bg-[linear-gradient(180deg,rgba(15,21,28,0.96),rgba(11,16,22,0.98))] lg:block',
+            'hidden shrink-0 border-r border-[var(--line-soft)] bg-[var(--sidebar-bg)] lg:block',
             'transition-[width] duration-200 ease-in-out',
-            sidebarExpanded ? 'absolute inset-y-0 left-0 z-10 w-[284px] shadow-[8px_0_34px_-20px_rgba(0,0,0,0.7)]' : 'relative w-16',
+            sidebarExpanded ? 'absolute inset-y-0 left-0 z-10 w-[284px] shadow-[8px_0_34px_-20px_rgba(0,0,0,0.35)]' : 'relative w-16',
           )}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
@@ -193,17 +193,17 @@ export function WorkspaceShell({
                       onClick={() => onSelectNode(node.key)}
                       aria-label={!sidebarExpanded ? `${node.label}${node.detailLabel ? ` – ${node.detailLabel}` : ''}` : undefined}
                       className={cn(
-                        'relative flex w-full items-center gap-3 rounded-[14px] border px-3 py-3 text-left transition-all',
+                        'relative flex w-full items-center gap-3 rounded-[8px] border px-3 py-3 text-left transition-all',
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]',
                         isLocked
                           ? 'cursor-not-allowed border-transparent opacity-40'
-                          : 'border-transparent hover:border-[rgba(238,243,248,0.14)] hover:bg-[rgba(255,255,255,0.035)]',
-                        isSelected && 'border-[rgba(238,243,248,0.28)] bg-[rgba(255,255,255,0.05)] shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset]',
-                        node.key === activeNode && !isSelected && 'border-[rgba(238,243,248,0.12)]',
+                          : 'border-transparent hover:border-white/20 hover:bg-white/[0.06]',
+                        isSelected && 'border-[#05668d] bg-[#05668d] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset]',
+                        node.key === activeNode && !isSelected && 'border-white/20',
                       )}
                     >
                       <div className="relative shrink-0">
-                        <Icon className={cn('h-5 w-5', isSelected ? 'text-[var(--accent)]' : 'text-[var(--text-soft)]')} />
+                        <Icon className={cn('h-5 w-5', isSelected ? 'text-white' : 'text-white/60')} />
                         {/* Status dot */}
                         <span className={cn('absolute -right-0.5 -top-0.5', styles.dot)} />
                       </div>
@@ -211,12 +211,12 @@ export function WorkspaceShell({
                       {sidebarExpanded && (
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="truncate text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--text-strong)]">{node.label}</span>
-                            {node.status === 'locked' && <Lock className="h-3 w-3 text-[var(--text-soft)]" />}
+                            <span className={cn('truncate text-[12px] font-extrabold uppercase tracking-[0.08em]', isSelected ? 'text-white' : 'text-white/90')}>{node.label}</span>
+                            {node.status === 'locked' && <Lock className="h-3 w-3 text-white/50" />}
                           </div>
-                          <div className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-[var(--text-soft)]">{node.description}</div>
+                          <div className={cn('mt-1 line-clamp-2 text-[13px] leading-relaxed', isSelected ? 'text-white/80' : 'text-white/60')}>{node.description}</div>
                           {node.detailLabel && (
-                            <div className="mt-2 text-[13px] text-[var(--text-muted)]">{node.detailLabel}</div>
+                            <div className={cn('mt-2 text-[13px]', isSelected ? 'text-white/80' : 'text-white/70')}>{node.detailLabel}</div>
                           )}
                         </div>
                       )}
@@ -224,9 +224,9 @@ export function WorkspaceShell({
 
                     {/* Tooltip on hover when collapsed */}
                     {!sidebarExpanded && (
-                      <div className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 -translate-y-1/2 whitespace-nowrap rounded-[12px] border border-[var(--line-soft)] bg-[rgba(12,18,24,0.96)] px-3 py-2 text-xs text-[var(--text-strong)] opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+                      <div className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 -translate-y-1/2 whitespace-nowrap rounded-[8px] border border-white/20 bg-[#121a26] px-3 py-2 text-xs text-white opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
                         {node.label}
-                        {node.detailLabel && <span className="ml-1 text-[var(--text-soft)]">&middot; {node.detailLabel}</span>}
+                        {node.detailLabel && <span className="ml-1 text-white/60">&middot; {node.detailLabel}</span>}
                       </div>
                     )}
                   </div>
@@ -237,7 +237,7 @@ export function WorkspaceShell({
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="border-b border-[var(--line-soft)] px-3 py-3 lg:hidden">
+          <div className="border-b border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-3 lg:hidden">
             <div className="flex gap-2 overflow-x-auto pb-1">
               {nodes.map((node) => {
                 const styles = statusStyles(node.status);
@@ -249,10 +249,10 @@ export function WorkspaceShell({
                     disabled={isLocked}
                     onClick={() => onSelectNode(node.key)}
                     className={cn(
-                      'shrink-0 rounded-[12px] border px-3 py-2 text-[13px] font-semibold uppercase tracking-[0.08em] transition-colors',
+                      'shrink-0 rounded-[8px] border px-3 py-2 text-[13px] font-extrabold transition-colors',
                       selectedNode === node.key
-                        ? 'border-[rgba(238,243,248,0.3)] bg-[rgba(255,255,255,0.06)] text-[var(--text-strong)]'
-                        : 'border-[var(--line-soft)] bg-[rgba(255,255,255,0.02)] text-[var(--text-muted)]',
+                        ? 'border-[var(--link)] bg-[var(--link)] text-white'
+                        : 'border-[var(--line-strong)] bg-[var(--surface-3)] text-[var(--text-muted)]',
                       isLocked && 'opacity-60',
                     )}
                     aria-label={`${node.label} (${styles.label})`}

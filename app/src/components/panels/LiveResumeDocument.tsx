@@ -279,24 +279,24 @@ function PlaceholderSection({ name }: { name: string }) {
 function SectionStatusBadge({ source, isActive }: { source: string; isActive: boolean }) {
   if (isActive) {
     return (
-      <span className="ml-2 inline-flex items-center gap-1 text-[12px] font-medium text-blue-500" role="status" aria-live="polite">
-        <span className="h-1.5 w-1.5 animate-pulse bg-blue-400" />
+      <span className="ml-2 inline-flex items-center gap-1 text-[12px] font-medium text-[var(--link)]" role="status" aria-live="polite">
+        <span className="h-1.5 w-1.5 animate-pulse bg-[var(--link)]" />
         Creating...
       </span>
     );
   }
   if (source === 'draft') {
     return (
-      <span className="ml-2 inline-flex items-center gap-1 text-[12px] font-medium text-amber-500">
-        <span className="h-1.5 w-1.5 bg-amber-400" />
+      <span className="ml-2 inline-flex items-center gap-1 text-[12px] font-medium text-[var(--badge-amber-text)]">
+        <span className="h-1.5 w-1.5 bg-[var(--badge-amber-text)]" />
         Draft
       </span>
     );
   }
   if (source === 'approved' || source === 'resume') {
     return (
-      <span className="ml-2 inline-flex items-center gap-1 text-[12px] font-medium text-emerald-500">
-        <span className="h-1.5 w-1.5 bg-emerald-400" />
+      <span className="ml-2 inline-flex items-center gap-1 text-[12px] font-medium text-[var(--badge-green-text)]">
+        <span className="h-1.5 w-1.5 bg-[var(--badge-green-text)]" />
         Complete
       </span>
     );
@@ -326,8 +326,8 @@ function SectionWrapper({
   return (
     <section
       className={`group mb-5 rounded transition-all duration-300 ${
-        isActive ? 'border-l-[3px] border-blue-500 bg-blue-50/30 pl-3 shadow-sm' : ''
-      } ${canEdit && !editing ? 'cursor-pointer hover:ring-2 hover:ring-blue-300/30' : ''}`}
+        isActive ? 'border-l-[3px] border-[var(--link)] bg-[var(--badge-blue-bg)] pl-3 shadow-sm' : ''
+      } ${canEdit && !editing ? 'cursor-pointer hover:ring-2 hover:ring-[var(--link)]/25' : ''}`}
       onClick={canEdit && !editing ? onStartEdit : undefined}
     >
       <h2 className="mb-2 flex items-center border-b border-gray-300 pb-1 text-sm font-bold uppercase tracking-wider text-gray-700">
@@ -337,7 +337,7 @@ function SectionWrapper({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
-            className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-normal normal-case tracking-normal text-gray-400 opacity-40 transition-opacity hover:bg-gray-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 group-hover:opacity-100"
+            className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-normal normal-case tracking-normal text-gray-400 opacity-40 transition-opacity hover:bg-gray-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40 group-hover:opacity-100"
             aria-label={`Edit ${SECTION_DISPLAY_NAMES[sectionKey] ?? toTitleCase(sectionKey)}`}
           >
             <Pencil className="h-3 w-3" />
@@ -381,7 +381,7 @@ function InlineEditOverlay({
         value={editValue}
         onChange={(e) => setEditValue(e.target.value)}
         aria-label="Edit section content"
-        className="w-full resize-y rounded-lg border-2 border-blue-400 bg-blue-50 p-3 text-sm leading-relaxed text-gray-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+        className="w-full resize-y rounded-lg border-2 border-[var(--link)] bg-[var(--badge-blue-bg)] p-3 text-sm leading-relaxed text-gray-800 shadow-inner focus:outline-none focus:ring-2 focus:ring-[var(--link)]/40 focus:ring-offset-1"
         rows={Math.max(4, editValue.split('\n').length + 1)}
         onKeyDown={(e) => {
           if (e.key === 'Escape') onCancel();
@@ -406,7 +406,7 @@ function InlineEditOverlay({
           <button
             type="button"
             onClick={() => onSave(editValue)}
-            className="rounded bg-blue-500 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-600"
+            className="rounded bg-[var(--link)] px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-[var(--link-hover)]"
           >
             Save
           </button>
@@ -532,9 +532,9 @@ const StructuredResumeSection = React.memo(function StructuredResumeSection({
 // ─── Quality Badge (outside the document) ─────────────────────────────────────
 
 function qualityScoreColor(score: number): string {
-  if (score >= 80) return 'text-emerald-400 border-emerald-400/40 bg-emerald-400/10';
-  if (score >= 60) return 'text-amber-400 border-amber-400/40 bg-amber-400/10';
-  return 'text-red-400 border-red-400/40 bg-red-400/10';
+  if (score >= 80) return 'text-[var(--badge-green-text)] border-[var(--badge-green-text)]/40 bg-[var(--badge-green-bg)]';
+  if (score >= 60) return 'text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/40 bg-[var(--badge-amber-bg)]';
+  return 'text-[var(--badge-red-text)] border-[var(--badge-red-text)]/40 bg-[var(--badge-red-bg)]';
 }
 
 function QualityBadge({ data }: { data: QualityDashboardData }) {
@@ -580,7 +580,7 @@ function QualityBadge({ data }: { data: QualityDashboardData }) {
             {scores.map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">{label}</span>
-                <span className={`font-semibold ${value >= 80 ? 'text-emerald-600' : value >= 60 ? 'text-amber-600' : 'text-red-600'}`}>
+                <span className={`font-semibold ${value >= 80 ? 'text-[var(--badge-green-text)]' : value >= 60 ? 'text-[var(--badge-amber-text)]' : 'text-[var(--badge-red-text)]'}`}>
                   {value}%
                 </span>
               </div>
@@ -652,7 +652,7 @@ function ExportToolbar({ resume }: { resume: FinalResume }) {
 
   return (
     <>
-      {exportError && <span className="mr-auto text-xs text-red-400">{exportError}</span>}
+      {exportError && <span className="mr-auto text-xs text-[var(--badge-red-text)]">{exportError}</span>}
       <button
         type="button"
         onClick={handleDownloadText}
@@ -727,7 +727,7 @@ function QuickFixPopover({
 
   return (
     <div
-      className="mt-2 rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
+      className="mt-2 rounded-lg border border-[var(--line-soft)] bg-white p-3 shadow-lg"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex flex-wrap gap-1.5 mb-2">
@@ -738,7 +738,7 @@ function QuickFixPopover({
             onClick={() => toggleChip(chip)}
             className={`rounded-md border px-2.5 py-1 text-[13px] font-semibold uppercase tracking-[0.18em] transition-colors ${
               selectedChips.has(chip)
-                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                ? 'border-[var(--meta-strip-border)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]'
                 : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
             }`}
           >
@@ -750,7 +750,7 @@ function QuickFixPopover({
         value={customText}
         onChange={(e) => setCustomText(e.target.value)}
         placeholder="Additional feedback..."
-        className="w-full resize-none rounded border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:border-blue-300 focus:outline-none focus:ring-1 focus:ring-blue-200"
+        className="w-full resize-none rounded border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:border-[var(--link)] focus:outline-none focus:ring-1 focus:ring-[var(--link)]/30"
         rows={2}
       />
       <div className="mt-2 flex justify-end gap-2">
@@ -765,7 +765,7 @@ function QuickFixPopover({
           type="button"
           onClick={handleSend}
           disabled={selectedChips.size === 0 && !customText.trim()}
-          className="rounded bg-amber-500 px-2.5 py-1 text-[13px] font-medium text-white hover:bg-amber-600 disabled:opacity-40"
+          className="rounded bg-[#c2410c] px-2.5 py-1 text-[13px] font-medium text-white hover:bg-[#a45711] disabled:opacity-40"
         >
           Send
         </button>
@@ -805,7 +805,7 @@ function InlineReviewBar({
         <button
           type="button"
           onClick={onApprove}
-          className="flex items-center gap-1.5 rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-600"
+          className="flex items-center gap-1.5 rounded-md bg-[var(--badge-green-text)] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:brightness-95"
           title={`${/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'}+Enter`}
         >
           Approve
@@ -815,7 +815,7 @@ function InlineReviewBar({
           onClick={() => setShowQuickFix(!showQuickFix)}
           className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
             showQuickFix
-              ? 'border-amber-300 bg-amber-50 text-amber-700'
+              ? 'border-[var(--badge-amber-text)]/35 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]'
               : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
           }`}
         >
@@ -824,7 +824,7 @@ function InlineReviewBar({
         <button
           type="button"
           onClick={onEdit}
-          className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+          className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-[var(--meta-strip-border)] hover:bg-[var(--badge-blue-bg)] hover:text-[var(--badge-blue-text)]"
         >
           Edit
         </button>
@@ -852,7 +852,7 @@ function EditModeHint() {
   if (!visible) return null;
 
   return (
-    <div className="edit-hint-fade mb-2 rounded-md bg-blue-50 px-3 py-1.5 text-center text-xs font-medium text-blue-600">
+    <div className="edit-hint-fade mb-2 rounded-md bg-[var(--badge-blue-bg)] px-3 py-1.5 text-center text-xs font-medium text-[var(--badge-blue-text)]">
       Click any section to edit
     </div>
   );
@@ -910,9 +910,9 @@ export function LiveResumeDocument({
       <div className="mb-3 flex w-full max-w-[8.5in] items-center gap-3 px-1">
         {isProcessing && !allComplete && (
           <div className="flex flex-1 items-center gap-3">
-            <div className="h-1.5 flex-1 overflow-hidden bg-gray-700">
+            <div className="h-1.5 flex-1 overflow-hidden bg-[var(--line-soft)]">
               <div
-                className="h-full bg-blue-400 transition-all duration-500"
+                className="h-full bg-[var(--link)] transition-all duration-500"
                 style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
               />
             </div>

@@ -13,15 +13,15 @@ describe('workspaceHomeGuidance', () => {
     expect(guidance.secondary).toBeUndefined();
   });
 
-  it('sends ready users without saved work to Resume Builder first', () => {
+  it('sends ready users without saved work to Find Jobs first', () => {
     const guidance = deriveWorkspaceHomeGuidance({
       dashboardState: 'strong',
       hasResumeSessions: false,
       sessionCount: 0,
     });
 
-    expect(guidance.primary.room).toBe('resume');
-    expect(guidance.secondary?.room).toBe('jobs');
+    expect(guidance.primary.room).toBe('jobs');
+    expect(guidance.secondary?.room).toBe('resume');
   });
 
   it('uses a coach-backed live-search step when saved work already exists', () => {

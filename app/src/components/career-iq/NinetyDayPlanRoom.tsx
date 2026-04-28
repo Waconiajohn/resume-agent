@@ -522,7 +522,7 @@ export function NinetyDayPlanRoom({
     const resolvedResume = resumeRef.current || manualResumeText.trim();
     if (!resolvedResume) {
       setFormError(
-        'Resume text is required. Paste your resume below or complete the Resume Builder to auto-load it.',
+        'Resume text is required. Paste your resume below or complete Tailor Resume to auto-load it.',
       );
       return;
     }

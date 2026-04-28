@@ -206,7 +206,7 @@ export function SettingsPage({ user, onNavigate, onSignOut }: SettingsPageProps)
           <div className="flex-1 min-w-0">
             <h2 className="text-sm font-semibold text-[var(--text-strong)]">Delete account</h2>
             <p className="mt-1 text-xs text-[var(--text-soft)]">
-              Permanently removes your account and every artifact tied to it: your Career Vault,
+              Permanently removes your account and every artifact tied to it: your Benchmark Profile,
               all applications and resumes, cover letters, interview prep, networking history, and
               any active subscription. This cannot be undone.
             </p>

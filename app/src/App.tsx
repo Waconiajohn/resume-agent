@@ -133,7 +133,6 @@ export default function App() {
     replayTourRef.current?.();
   }, []);
   const [checkoutStatus, setCheckoutStatus] = useState<'success' | 'cancelled' | null>(null);
-  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
   const [intakeInitialResumeText, setIntakeInitialResumeText] = useState('');
   const [intakeDefaultResumeId, setIntakeDefaultResumeId] = useState<string | null>(null);
   const currentView = getAppView(location.pathname);
@@ -159,6 +158,11 @@ export default function App() {
       || (currentPhase && currentPhase !== 'onboarding')
     ),
   );
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('jsdom')) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -272,7 +276,7 @@ export default function App() {
   const handleResumeSession = useCallback(
     async (sessionId: string) => {
       // Look the session up in our cached list first (cheaper than re-fetch).
-      const session = sessions.find((s) => s.id === sessionId);
+      const session = sessions.find((s) => s.id === sessionId) ?? await loadSession(sessionId);
       const jobApplicationId = session?.job_application_id ?? null;
 
       if (!jobApplicationId) {
@@ -304,7 +308,7 @@ export default function App() {
         navigate(buildResumeBuilderSessionRoute({ sessionId }));
       }
     },
-    [accessToken, navigate, sessions],
+    [accessToken, loadSession, navigate, sessions],
   );
 
   const handleDeleteSession = useCallback(
@@ -411,7 +415,7 @@ export default function App() {
         if (!updated) {
           return {
             success: false,
-            message: 'Failed to update your Career Evidence.',
+            message: 'Failed to update your Career Proof.',
           };
         }
 
@@ -423,8 +427,8 @@ export default function App() {
           success: true,
           resumeId: updated.id,
           message: selectedPromotionItems.length > 0 || clarificationMemory.length > 0
-            ? `Synced your selected edits${clarificationMemory.length > 0 ? ' and clarification evidence' : ''} to your Career Evidence.`
-            : 'Career Evidence updated.',
+            ? `Synced your selected edits${clarificationMemory.length > 0 ? ' and clarification evidence' : ''} to your Career Proof.`
+            : 'Career Proof updated.',
         };
       }
 
@@ -435,7 +439,7 @@ export default function App() {
       if (!created.success) {
         return {
           success: false,
-          message: created.error ?? 'Failed to create a Career Evidence.',
+          message: created.error ?? 'Failed to create Career Proof.',
         };
       }
 
@@ -462,7 +466,7 @@ export default function App() {
       return {
         success: true,
         resumeId: createdResumeId ?? undefined,
-        message: 'Created your default Career Evidence.',
+        message: 'Created your default Career Proof.',
       };
     },
     [
@@ -629,15 +633,6 @@ export default function App() {
               onNavigate={navigateTo}
             />
 
-            {!verifyBannerDismissed && user && !user.email_confirmed_at && (
-              <div className="mx-auto max-w-6xl px-4 pt-3">
-                <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[#afc4ff]/30 bg-[#afc4ff]/10 px-4 py-3 text-sm text-[#afc4ff]">
-                  <span>Please check your email to verify your account.</span>
-                  <button type="button" onClick={() => setVerifyBannerDismissed(true)} className="ml-4 text-xs text-[#afc4ff] hover:text-[#afc4ff]/80">Dismiss</button>
-                </div>
-              </div>
-            )}
-
             {checkoutStatus === 'success' && (
               <div className="mx-auto max-w-6xl px-4 pt-3">
                 <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] px-4 py-3 text-sm text-[var(--badge-green-text)]">
@@ -676,6 +671,7 @@ export default function App() {
                     <V3PipelineScreen
                       accessToken={accessToken}
                       initialResumeText={intakeInitialResumeText}
+                      initialSessionId={resumeRouteSessionId}
                     />
                   </WorkspaceLayout>
                 )}
@@ -687,7 +683,7 @@ export default function App() {
                     <ErrorBoundary key="profile-setup">
                       <Suspense fallback={
                         <div className="flex h-full items-center justify-center" style={{ background: 'var(--bg-0)' }}>
-                          <div className="h-8 w-8 rounded-full border-2 border-[var(--line-soft)] border-t-[#afc4ff] motion-safe:animate-spin" />
+                          <div className="h-8 w-8 rounded-full border-2 border-[var(--line-soft)] border-t-[var(--link)] motion-safe:animate-spin" />
                         </div>
                       }>
                         <ProfileSetupPage />
@@ -742,7 +738,14 @@ export default function App() {
                 )}
               />
               <Route path="/pricing" element={<Navigate to="/billing" replace />} />
-              <Route path="/billing" element={<BillingDashboard accessToken={accessToken} />} />
+              <Route
+                path="/billing"
+                element={(
+                  <WorkspaceLayout>
+                    <BillingDashboard accessToken={accessToken} />
+                  </WorkspaceLayout>
+                )}
+              />
               {/* Sprint E5 — Settings / Help page. */}
               <Route
                 path="/settings"

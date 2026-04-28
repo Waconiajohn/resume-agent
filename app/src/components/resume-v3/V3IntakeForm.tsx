@@ -121,18 +121,21 @@ export function V3IntakeForm({
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(body?.error ?? `Fetch failed (${res.status})`);
       }
-      const data = (await res.json()) as { text: string; title?: string };
+      const data = (await res.json()) as { text: string; title?: string; company?: string };
       setJobDescription(data.text);
       setJdUrlLoadedFrom(trimmed);
       if (data.title && !jdTitle.trim()) {
         setJdTitle(data.title);
+      }
+      if (data.company && !jdCompany.trim()) {
+        setJdCompany(data.company);
       }
     } catch (err) {
       setJdUrlError(err instanceof Error ? err.message : String(err));
     } finally {
       setJdUrlLoading(false);
     }
-  }, [accessToken, jdTitle]);
+  }, [accessToken, jdCompany, jdTitle]);
 
   // Auto-fetch when the form mounts with an initial JD URL (NI hand-off).
   useEffect(() => {

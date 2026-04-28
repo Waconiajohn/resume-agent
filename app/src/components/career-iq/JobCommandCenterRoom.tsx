@@ -383,7 +383,7 @@ function SmartMatches({
                 )}
                 {!job.evaluation && (
                   <div className="mt-2 text-[12px] text-[var(--text-soft)]">
-                    Save the worthwhile ones to your shortlist, then come back to build resumes for them.
+                    Save the worthwhile ones to your shortlist, then come back to tailor resumes for them.
                   </div>
                 )}
               </div>
@@ -395,7 +395,7 @@ function SmartMatches({
                   onClick={() => onBuildResume(job)}
                   className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--accent-muted)] transition-colors"
                 >
-                  Build Resume
+                  Tailor Resume
                 </button>
               </div>
             </div>
@@ -543,18 +543,21 @@ export function JobCommandCenterRoom({
       source: 'job_board' | 'suggestions',
       roleTitle: string | null = null,
       companyName: string | null = null,
+      jobUrl: string | null = null,
     ) => {
       trackProductEvent('job_resume_build_requested', {
         source,
         company_name: companyName,
         role_title: roleTitle,
+        has_job_url: Boolean(jobUrl),
       });
       // Phase 2 (pursuit timeline) — funnel through picker. Pass JCC's
-      // role/company context as picker prefills.
+      // role/company/URL context as picker prefills.
       openPicker({
         source: source === 'job_board' ? 'jcc_job_board' : 'jcc_suggestions',
         companyName: companyName ?? undefined,
         roleTitle: roleTitle ?? undefined,
+        jobUrl: jobUrl ?? undefined,
       });
     },
     [openPicker],
@@ -634,7 +637,7 @@ export function JobCommandCenterRoom({
             onSearch={radar.search}
             onDismiss={radar.dismissJob}
             onPromote={handlePromoteRadarJob}
-            onBuildResume={(job) => handleBuildResumeRequest('job_board', job.title, job.company)}
+            onBuildResume={(job) => handleBuildResumeRequest('job_board', job.title, job.company, job.apply_url)}
             location={getBroadSearchLocation(jobFilters)}
             datePosted={jobFilters.postedWithin}
             remoteType={deriveRemoteType(jobFilters.workModes)}
@@ -657,7 +660,7 @@ export function JobCommandCenterRoom({
                 error={jobFinder.error}
                 onNavigate={onNavigate}
                 onRequestSuggestions={handleRequestMoreSuggestions}
-                onBuildResume={(job) => handleBuildResumeRequest('suggestions', job.title, job.company)}
+                onBuildResume={(job) => handleBuildResumeRequest('suggestions', job.title, job.company, job.url ?? null)}
                 onRespondGate={jobFinder.respondToGate}
                 onReset={jobFinder.reset}
               />

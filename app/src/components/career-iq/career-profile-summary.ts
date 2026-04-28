@@ -100,16 +100,16 @@ export function buildCareerProfileSummary(profile: CareerProfileV2 | null): Care
     .filter(Boolean)
     .slice(0, 3);
 
-  const readyForResume = dashboardState === 'strong';
+  const readyForSearch = dashboardState === 'strong';
 
   return {
     readinessPercent,
-    readinessLabel: readyForResume
+    readinessLabel: readyForSearch
       ? 'Platform-ready'
       : dashboardState === 'refining'
         ? 'Needs refinement'
         : 'Not started',
-    statusLine: readyForResume
+    statusLine: readyForSearch
       ? 'This profile is strong enough to guide resume, job-search, LinkedIn, and interview work.'
       : dashboardState === 'refining'
         ? 'This profile is usable, but stronger detail here will make the rest of the platform sharper.'
@@ -119,7 +119,7 @@ export function buildCareerProfileSummary(profile: CareerProfileV2 | null): Care
     differentiationSnapshot,
     highlightPoints,
     focusAreas,
-    nextRecommendedRoom: readyForResume ? 'resume' : 'career-profile',
-    nextRecommendedAction: readyForResume ? 'Open Resume Builder' : 'Finish Career Profile',
+    nextRecommendedRoom: readyForSearch ? 'jobs' : 'career-profile',
+    nextRecommendedAction: readyForSearch ? 'Find Jobs' : 'Finish Benchmark Profile',
   };
 }

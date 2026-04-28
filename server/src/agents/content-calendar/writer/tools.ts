@@ -22,6 +22,7 @@ import { CONTENT_CALENDAR_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderWhyMeStorySection,
@@ -33,6 +34,21 @@ type ContentCalendarTool = AgentTool<ContentCalendarState, ContentCalendarSSEEve
 
 function wordCount(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
+}
+
+const AI_FILLER_PATTERNS: RegExp[] = [
+  /\bin today'?s (?:fast-paced|rapidly evolving|ever-changing) (?:world|landscape|environment)\b/i,
+  /\bit'?s not (?:just )?about\b/i,
+  /\bmore important than ever\b/i,
+  /\bgame[- ]changer\b/i,
+  /\bunlock(?:ing)? (?:the )?(?:power|potential)\b/i,
+  /\bdrive (?:meaningful )?success\b/i,
+  /\bdelve\b/i,
+  /\bleverage\b/i,
+];
+
+function countAIFillerHits(text: string): number {
+  return AI_FILLER_PATTERNS.filter((pattern) => pattern.test(text)).length;
 }
 
 function buildContextBlock(state: ContentCalendarState): string {
@@ -142,6 +158,11 @@ function buildContextBlock(state: ContentCalendarState): string {
       legacyWhyMeStory: state.platform_context?.why_me_story,
     }));
   }
+
+  parts.push(...renderBenchmarkProfileDirectionSection({
+    heading: '## Benchmark Profile Direction',
+    sharedContext: state.shared_context,
+  }));
 
   parts.push(...renderEvidenceInventorySection({
     heading: '## Evidence Inventory',
@@ -265,7 +286,9 @@ Return JSON:
 
     // Hook strength: penalize short or generic hooks
     if (hook.length < 30) qualityScore -= 15;
-    if (/^(I'm excited|Happy Monday|Here's a thought)/i.test(hook)) qualityScore -= 20;
+    if (hook.length > 210) qualityScore -= 10;
+    if (/^(I'm excited|Happy Monday|Here's a thought|In today'?s)/i.test(hook)) qualityScore -= 20;
+    if (!/\d|\bI\b|\bwe\b|\bmy\b|\bour\b|[?!]/i.test(hook)) qualityScore -= 8;
 
     // Body length: target the product's 250-word blog/article contract.
     if (wc < 150) qualityScore -= 20;
@@ -279,6 +302,9 @@ Return JSON:
     // Hashtag count
     if (hashtags.length < 3) qualityScore -= 10;
     if (hashtags.length > 5) qualityScore -= 5;
+
+    const fillerHits = countAIFillerHits(body);
+    if (fillerHits > 0) qualityScore -= Math.min(25, fillerHits * 10);
 
     qualityScore = Math.max(0, qualityScore);
 

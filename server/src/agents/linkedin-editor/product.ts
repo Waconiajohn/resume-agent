@@ -22,6 +22,7 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { getToneGuidanceFromInput, getDistressFromInput } from '../../lib/emotional-baseline.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderCareerNarrativeSection,
   renderCareerProfileSection,
   renderEvidenceInventorySection,
@@ -142,6 +143,9 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
         const parts: string[] = [
           'Optimize this professional\'s LinkedIn profile, one section at a time.',
           '',
+          '## Quality Bar',
+          'The finished profile must pass a human five-second scan and a LinkedIn recruiter-search scan. The headline should make the target reader understand role, value, proof, and keywords immediately. The first 300 characters of About must work before "see more" and clearly answer why this person is a benchmark candidate. Every strong claim must be source-grounded.',
+          '',
         ];
 
         if (completed.length > 0) {
@@ -186,6 +190,11 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
             sharedNarrative: sharedContext?.careerNarrative,
           }));
         }
+
+        parts.push(...renderBenchmarkProfileDirectionSection({
+          heading: '## Benchmark Profile Direction',
+          sharedContext,
+        }));
 
         if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(...renderPositioningStrategySection({

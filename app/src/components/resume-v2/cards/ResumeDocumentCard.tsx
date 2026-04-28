@@ -16,10 +16,10 @@ import { getEnabledResumeSectionPlan, getResumeCustomSectionMap } from '@/lib/re
 // ─── Context Chip Resolution ─────────────────────────────────────────
 
 const CHIP_STYLES: Record<ActiveContextChip['source'], string> = {
-  requirement: 'bg-blue-50 text-blue-600',
-  positioning: 'bg-indigo-50 text-indigo-600',
-  rationale: 'bg-slate-50 text-slate-600',
-  gap_prompt: 'bg-amber-50 text-amber-700',
+  requirement: 'border border-[var(--meta-strip-border)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]',
+  positioning: 'border border-[var(--badge-purple-text)]/25 bg-[var(--badge-purple-bg)] text-[var(--badge-purple-text)]',
+  rationale: 'border border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-muted)]',
+  gap_prompt: 'border border-[var(--badge-amber-text)]/25 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]',
 };
 
 function resolveContextChip(
@@ -179,7 +179,7 @@ export function ResumeDocumentCard({
         <div
           data-resume-line={getResumeLineToken('executive_summary', 0)}
           data-active-line={activeBullet?.section === 'executive_summary' && activeBullet.index === 0 ? 'true' : undefined}
-          className={`resume-line-card group relative cursor-pointer rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50 ${
+          className={`resume-line-card group relative cursor-pointer rounded-[8px] px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-[var(--badge-blue-bg)] ${
             activeBullet?.section === 'executive_summary' && activeBullet.index === 0
               ? 'resume-line-active'
               : executiveSummaryReviewState === 'code_red'
@@ -303,7 +303,7 @@ export function ResumeDocumentCard({
                 }
               } : undefined}
               className={`resume-competency-chip rounded-full border border-stone-200 bg-stone-50/90 px-3 py-1.5 min-h-[44px] flex items-center text-[11px] font-semibold tracking-[0.08em] text-stone-600 ${
-                onBulletClick ? 'cursor-pointer transition-colors hover:bg-stone-100 active:bg-blue-50/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300/60' : ''
+                onBulletClick ? 'cursor-pointer transition-colors hover:bg-stone-100 active:bg-[var(--badge-blue-bg)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--link)]/40' : ''
               }${
                 activeBullet?.section === 'core_competencies' && activeBullet.index === i
                   ? ' resume-line-active border-[var(--link)] bg-[var(--link)]/6 text-[var(--link)]'
@@ -400,7 +400,7 @@ export function ResumeDocumentCard({
                     data-scope-id={`professional_experience-${i}-scope`}
                     data-resume-line={getResumeLineToken('professional_experience', i * 100 - 1)}
                     data-active-line={activeBullet?.section === 'professional_experience' && activeBullet.index === i * 100 - 1 ? 'true' : undefined}
-                    className={`resume-line-card group relative mt-1.5 rounded-xl px-2.5 py-1.5 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50${
+                    className={`resume-line-card group relative mt-1.5 rounded-[8px] px-2.5 py-1.5 -mx-2.5 transition-all hover:bg-white/70 active:bg-[var(--badge-blue-bg)]${
                       activeBullet?.section === 'professional_experience' && activeBullet.index === i * 100 - 1
                         ? ' resume-line-active'
                         : ''
@@ -578,7 +578,7 @@ export function ResumeDocumentCard({
             <div
               data-resume-line={getResumeLineToken(customSectionKey, -1)}
               data-active-line={activeBullet?.section === customSectionKey && activeBullet.index === -1 ? 'true' : undefined}
-              className={`resume-line-card group relative mb-2 rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50 ${
+              className={`resume-line-card group relative mb-2 rounded-[8px] px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-[var(--badge-blue-bg)] ${
                 activeBullet?.section === customSectionKey && activeBullet.index === -1
                   ? 'resume-line-active'
                   : ''
@@ -643,7 +643,7 @@ export function ResumeDocumentCard({
                   key={index}
                   data-resume-line={getResumeLineToken(customSectionKey, index)}
                   data-active-line={activeBullet?.section === customSectionKey && activeBullet.index === index ? 'true' : undefined}
-                  className={`resume-line-card group relative rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50 ${
+                  className={`resume-line-card group relative rounded-[8px] px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-[var(--badge-blue-bg)] ${
                     activeBullet?.section === customSectionKey && activeBullet.index === index
                       ? 'resume-line-active'
                       : ''
@@ -704,7 +704,7 @@ export function ResumeDocumentCard({
                       <div
                         data-resume-line={getResumeLineToken(customSectionKey, index)}
                         data-active-line={activeBullet?.section === customSectionKey && activeBullet.index === index ? 'true' : undefined}
-                        className={`resume-line-card group relative rounded-xl px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-blue-50/50 ${
+                        className={`resume-line-card group relative rounded-[8px] px-2.5 py-2 -mx-2.5 transition-all hover:bg-white/70 active:bg-[var(--badge-blue-bg)] ${
                         activeBullet?.section === customSectionKey && activeBullet.index === index
                           ? 'resume-line-active'
                           : ''
@@ -774,7 +774,7 @@ export function ResumeDocumentCard({
       {/* Header */}
       <div data-section="header" className="resume-document-header text-center border-b border-gray-200 pb-6 sm:pb-7">
         <h2 className="resume-document-name text-[2.08rem] font-semibold tracking-[-0.028em] text-gray-900 sm:text-[2.62rem]">{resume.header.name}</h2>
-        <p className="resume-document-title mt-2.5 text-[0.76rem] font-semibold tracking-[0.24em] text-blue-700 uppercase sm:text-[0.9rem] max-w-full overflow-hidden text-ellipsis">
+        <p className="resume-document-title mt-2.5 text-[0.76rem] font-semibold tracking-[0.24em] text-[var(--link)] uppercase sm:text-[0.9rem] max-w-full overflow-hidden text-ellipsis">
           {resume.header.branded_title}
         </p>
         <div className="resume-document-contact mt-4 flex flex-wrap items-center justify-center gap-x-0 gap-y-1 text-[11.5px] text-gray-500 sm:flex-row sm:text-[12.5px]">
@@ -890,7 +890,7 @@ function BulletLineContent({
                   handleActivate();
                 }
               }}
-              className="resume-bullet-interactive resume-bullet-interactive--flagged block rounded-xl px-2.5 py-1.5 -mx-2.5 min-h-[44px] flex items-center cursor-pointer font-normal text-gray-900 active:bg-blue-50/50 focus-visible:ring-1 focus-visible:ring-blue-300/60 focus-visible:outline-none"
+              className="resume-bullet-interactive resume-bullet-interactive--flagged block rounded-[8px] px-2.5 py-1.5 -mx-2.5 min-h-[44px] flex items-center cursor-pointer font-normal text-gray-900 active:bg-[var(--badge-blue-bg)] focus-visible:ring-1 focus-visible:ring-[var(--link)]/40 focus-visible:outline-none"
             >
               {text}
             </span>

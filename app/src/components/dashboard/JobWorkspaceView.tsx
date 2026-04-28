@@ -138,12 +138,12 @@ export function JobWorkspaceView({
               <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-strong)]">
                   <FileText size={14} className="text-[var(--link)]" />
-                  Resume Builder
+                  Tailor Resume
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
                   {resumeAsset || coverLetterAsset
                     ? 'Your role-specific resume and cover letter live together here. Reopen the active session or review the saved draft assets.'
-                    : 'Use Resume Builder for the role-specific resume first. Add a cover letter there only when this job actually needs one.'}
+                    : 'Tailor the resume for this role first. Add a cover letter there only when this job actually needs one.'}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {resumeAsset ? (
@@ -164,7 +164,7 @@ export function JobWorkspaceView({
                       roleTitle: record.role ?? undefined,
                     })}>
                       <FileText size={12} className="mr-1.5" />
-                      Open Resume Builder
+                      Tailor Resume
                     </GlassButton>
                   )}
                   {coverLetterAsset ? (

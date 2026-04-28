@@ -188,8 +188,8 @@ describe('ExperienceEntryCard — quality score badges (expanded)', () => {
     fireEvent.click(getExpandButton());
 
     const impactBadge = screen.getByText(/Impact 59/);
-    expect(impactBadge.className).toContain('text-red-400');
-    expect(impactBadge.className).toContain('bg-red-400/10');
+    expect(impactBadge.className).toContain('text-[var(--badge-red-text)]');
+    expect(impactBadge.className).toContain('bg-[var(--badge-red-bg)]');
   });
 
   it('applies green at exactly 80 (boundary)', () => {
@@ -222,7 +222,7 @@ describe('ExperienceEntryCard — quality score badges (expanded)', () => {
     fireEvent.click(getExpandButton());
 
     const badge = screen.getByText(/Impact 59/);
-    expect(badge.className).toContain('text-red-400');
+    expect(badge.className).toContain('text-[var(--badge-red-text)]');
   });
 
   it('applies correct color independently for each score when they differ in tier', () => {
@@ -234,7 +234,7 @@ describe('ExperienceEntryCard — quality score badges (expanded)', () => {
 
     expect(screen.getByText(/Impact 90/).className).toContain('text-[var(--badge-green-text)]');
     expect(screen.getByText(/Metrics 70/).className).toContain('text-[var(--badge-amber-text)]');
-    expect(screen.getByText(/Context 40/).className).toContain('text-red-400');
+    expect(screen.getByText(/Context 40/).className).toContain('text-[var(--badge-red-text)]');
     expect(screen.getByText(/Keywords 80/).className).toContain('text-[var(--badge-green-text)]');
   });
 });

@@ -154,10 +154,10 @@ describe('RadarSection — job result cards', () => {
     expect(screen.getByRole('link', { name: /open job/i })).toHaveAttribute('href', 'https://example.com/job');
   });
 
-  it('renders a Build Resume button when the handler is provided', () => {
+  it('renders a Tailor Resume button when the handler is provided', () => {
     const job = makeJob('j1');
     render(<RadarSection {...defaultProps({ jobs: [job], onBuildResume: vi.fn() })} />);
-    expect(screen.getByRole('button', { name: /build resume/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /tailor resume/i })).toBeInTheDocument();
   });
 });
 
@@ -209,12 +209,12 @@ describe('RadarSection — button callbacks', () => {
     expect(onDismiss).toHaveBeenCalledWith('jsearch_j1');
   });
 
-  it('calls onBuildResume with the job data when Build Resume is clicked', () => {
+  it('calls onBuildResume with the job data when Tailor Resume is clicked', () => {
     const onBuildResume = vi.fn();
     const job = makeJob('j1');
     render(<RadarSection {...defaultProps({ jobs: [job], onBuildResume })} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /build resume/i }));
+    fireEvent.click(screen.getByRole('button', { name: /tailor resume/i }));
 
     expect(onBuildResume).toHaveBeenCalledOnce();
     expect(onBuildResume).toHaveBeenCalledWith(job);

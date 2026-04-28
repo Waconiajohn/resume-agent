@@ -23,6 +23,7 @@ import type {
 } from '../types.js';
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import { renderBenchmarkProfileDirectionSection } from '../../../contracts/shared-context-prompt.js';
 
 type FollowUpTool = AgentTool<FollowUpEmailState, FollowUpEmailSSEEvent>;
 
@@ -121,6 +122,13 @@ export const draftFollowUpEmailTool: FollowUpTool = {
       );
     }
 
+    contextLines.push(...renderBenchmarkProfileDirectionSection({
+      heading: 'Benchmark Profile Direction',
+      sharedContext: state.shared_context,
+      maxApprovedFraming: 5,
+      maxConfirmationItems: 4,
+    }));
+
     if (focusNotes) {
       contextLines.push('', 'Focus for this draft pass:', focusNotes);
     }
@@ -165,10 +173,15 @@ Return JSON:
     });
 
     let parsed: Partial<FollowUpEmailDraft> = {};
-    try {
-      parsed = JSON.parse(repairJSON(response.text) ?? response.text) as Partial<FollowUpEmailDraft>;
-    } catch {
-      parsed = { body: response.text.trim() };
+    const repaired = repairJSON<unknown>(response.text);
+    if (repaired && typeof repaired === 'object' && !Array.isArray(repaired)) {
+      parsed = repaired as Partial<FollowUpEmailDraft>;
+    } else {
+      try {
+        parsed = JSON.parse(response.text) as Partial<FollowUpEmailDraft>;
+      } catch {
+        parsed = { body: response.text.trim() };
+      }
     }
 
     const draft: FollowUpEmailDraft = {

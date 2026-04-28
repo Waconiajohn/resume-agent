@@ -198,12 +198,12 @@ export function LinkedInAuditReportRenderer({ report }: LinkedInAuditReportProps
       <Section title="Diagnostic Findings">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {report.diagnostic_findings.what_is_working.length > 0 && (
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-3">
-              <p className="text-[12px] font-medium text-emerald-400 uppercase tracking-wider mb-2">What is working</p>
+            <div className="rounded-[8px] border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-bg)] p-3">
+              <p className="text-[12px] font-medium text-[var(--badge-green-text)] uppercase tracking-wider mb-2">What is working</p>
               <ul className="flex flex-col gap-1">
                 {report.diagnostic_findings.what_is_working.map((item) => (
                   <li key={item} className="text-[13px] text-[var(--text-soft)] leading-relaxed flex items-start gap-2">
-                    <span className="text-emerald-400 mt-0.5 flex-shrink-0">+</span>
+                    <span className="text-[var(--badge-green-text)] mt-0.5 flex-shrink-0">+</span>
                     {item}
                   </li>
                 ))}
@@ -211,12 +211,12 @@ export function LinkedInAuditReportRenderer({ report }: LinkedInAuditReportProps
             </div>
           )}
           {report.diagnostic_findings.what_is_weak.length > 0 && (
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
-              <p className="text-[12px] font-medium text-amber-400 uppercase tracking-wider mb-2">What is weak</p>
+            <div className="rounded-[8px] border border-[var(--badge-amber-text)]/25 bg-[var(--badge-amber-bg)] p-3">
+              <p className="text-[12px] font-medium text-[var(--badge-amber-text)] uppercase tracking-wider mb-2">What is weak</p>
               <ul className="flex flex-col gap-1">
                 {report.diagnostic_findings.what_is_weak.map((item) => (
                   <li key={item} className="text-[13px] text-[var(--text-soft)] leading-relaxed flex items-start gap-2">
-                    <span className="text-amber-400 mt-0.5 flex-shrink-0">!</span>
+                    <span className="text-[var(--badge-amber-text)] mt-0.5 flex-shrink-0">!</span>
                     {item}
                   </li>
                 ))}
@@ -237,12 +237,12 @@ export function LinkedInAuditReportRenderer({ report }: LinkedInAuditReportProps
             </div>
           )}
           {report.diagnostic_findings.where_profile_undersells_candidate.length > 0 && (
-            <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-3">
-              <p className="text-[12px] font-medium text-blue-400 uppercase tracking-wider mb-2">Where profile undersells you</p>
+            <div className="rounded-[8px] border border-[var(--meta-strip-border)] bg-[var(--badge-blue-bg)] p-3">
+              <p className="text-[12px] font-medium text-[var(--badge-blue-text)] uppercase tracking-wider mb-2">Where profile undersells you</p>
               <ul className="flex flex-col gap-1">
                 {report.diagnostic_findings.where_profile_undersells_candidate.map((item) => (
                   <li key={item} className="text-[13px] text-[var(--text-soft)] leading-relaxed flex items-start gap-2">
-                    <span className="text-blue-400 mt-0.5 flex-shrink-0">^</span>
+                    <span className="text-[var(--badge-blue-text)] mt-0.5 flex-shrink-0">^</span>
                     {item}
                   </li>
                 ))}
@@ -349,7 +349,7 @@ export function LinkedInAuditReportRenderer({ report }: LinkedInAuditReportProps
                 <ul className="flex flex-col gap-1.5">
                   {report.experience_alignment.resume_strengths_to_surface_more.map((item) => (
                     <li key={item} className="text-[13px] text-[var(--text-soft)] leading-relaxed flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5 flex-shrink-0">+</span>
+                      <span className="text-[var(--badge-green-text)] mt-0.5 flex-shrink-0">+</span>
                       {item}
                     </li>
                   ))}
@@ -361,7 +361,7 @@ export function LinkedInAuditReportRenderer({ report }: LinkedInAuditReportProps
                 <ul className="flex flex-col gap-1.5">
                   {report.experience_alignment.claims_that_need_stronger_proof.map((item) => (
                     <li key={item} className="text-[13px] text-[var(--text-soft)] leading-relaxed flex items-start gap-2">
-                      <span className="text-amber-400 mt-0.5 flex-shrink-0">!</span>
+                      <span className="text-[var(--badge-amber-text)] mt-0.5 flex-shrink-0">!</span>
                       {item}
                     </li>
                   ))}
@@ -430,8 +430,8 @@ export function LinkedInAuditReportRenderer({ report }: LinkedInAuditReportProps
             <div className="flex-shrink-0">
               <span className={cn(
                 'inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-bold',
-                report.final_benchmark_assessment.confidence >= 0.8 ? 'bg-emerald-500/10 text-emerald-400' :
-                report.final_benchmark_assessment.confidence >= 0.6 ? 'bg-amber-500/10 text-amber-400' :
+                report.final_benchmark_assessment.confidence >= 0.8 ? 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]' :
+                report.final_benchmark_assessment.confidence >= 0.6 ? 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]' :
                 'bg-[var(--badge-red-text)]/10 text-[var(--badge-red-text)]',
               )}>
                 {Math.round(report.final_benchmark_assessment.confidence * 100)}% confidence

@@ -41,7 +41,7 @@ export function CompanyPickerList({
   }, [companies, search]);
 
   return (
-    <GlassCard className="rounded-xl p-4">
+    <GlassCard className="rounded-[8px] p-4">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between gap-3">
         <h4 className="text-sm font-semibold text-[var(--text-muted)]">Select Companies to Scan</h4>

@@ -566,7 +566,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
         setResumeText(text);
         setMasterResumeNotice(null);
       } else {
-        setMasterResumeNotice('No Career Evidence yet — upload your resume below.');
+        setMasterResumeNotice('No Career Proof yet — upload your resume below.');
       }
     } finally {
       setMasterResumeLoading(false);
@@ -583,7 +583,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
 
   return (
     <div className="relative h-[calc(100vh-3.5rem)] overflow-y-auto">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-300/[0.07] via-transparent to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(5,102,141,0.07),transparent_42%)]" />
 
       {onBack && (
         <div className="relative z-10 px-4 pt-4">

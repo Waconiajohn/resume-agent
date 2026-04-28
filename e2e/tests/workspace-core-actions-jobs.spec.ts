@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { mockWorkspaceApp } from '../helpers/mock-workspace-app';
 
 test.describe('workspace core actions — jobs', () => {
@@ -6,10 +6,14 @@ test.describe('workspace core actions — jobs', () => {
     await mockWorkspaceApp(page);
   });
 
+  const visibleJobCard = (page: Page, company: string) =>
+    page.locator('div.rounded-xl.border:visible').filter({ hasText: company }).filter({ hasText: 'Open Job' });
+
   test('Job Search generates Boolean strings and searches the public board', async ({ page }) => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /One job board, one shortlist, one pipeline/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Find your next role two ways/i })).toBeVisible();
+    await page.getByText(/Generate search strings for external job boards/i).click();
     await expect(page.getByRole('heading', { name: 'Search Strings', exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: /Generate Search Strings/i }).click();
@@ -20,55 +24,50 @@ test.describe('workspace core actions — jobs', () => {
     );
 
     await page.getByPlaceholder('Job title, keywords...').fill('VP Operations');
-    await page.getByPlaceholder('Location or Remote').fill('Remote');
+    await page.getByRole('button', { name: /^Remote$/i }).click();
     await page.getByRole('button', { name: /^Search$/i }).click();
 
-    await expect(page.getByText('Northstar SaaS', { exact: true })).toBeVisible();
-    await expect(page.getByText('ScaleCo', { exact: true })).toBeVisible();
+    await expect(visibleJobCard(page, 'Northstar SaaS').first()).toBeVisible();
+    await expect(visibleJobCard(page, 'ScaleCo').first()).toBeVisible();
   });
 
-  test('Job Search lets us save a role and work it from the shortlist', async ({ page }) => {
+  test('Job Search lets us save a role from the public board', async ({ page }) => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
     await page.getByPlaceholder('Job title, keywords...').fill('VP Operations');
-    await page.getByPlaceholder('Location or Remote').fill('Remote');
+    await page.getByRole('button', { name: /^Remote$/i }).click();
     await page.getByRole('button', { name: /^Search$/i }).click();
 
-    await expect(page.getByText('Northstar SaaS', { exact: true })).toBeVisible();
+    await expect(visibleJobCard(page, 'Northstar SaaS').first()).toBeVisible();
     await page.getByRole('button', { name: 'Save', exact: true }).first().click();
-
-    await page.getByRole('button', { name: /Open Shortlist/i }).first().click();
-    await expect(page.getByRole('heading', { name: /Application Pipeline/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Shortlist', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.locator('div:visible', { hasText: 'Northstar SaaS' }).first()).toBeVisible();
+    await expect(visibleJobCard(page, 'Northstar SaaS')).toHaveCount(0);
   });
 
   test('Job Search pipeline add-application dialog opens and submits cleanly', async ({ page }) => {
-    await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
+    await page.goto('/workspace/applications', { waitUntil: 'domcontentloaded' });
 
-    await page.getByRole('button', { name: 'Pipeline', exact: true }).click();
-    await expect(page.getByRole('button', { name: /Add Application/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /New application/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /Add Application/i }).click();
-    await expect(page.getByRole('dialog', { name: /Add opportunity/i })).toBeVisible();
+    await page.getByRole('button', { name: /New application/i }).click();
+    await expect(page.getByText(/A new application kicks off a complete job pursuit/i)).toBeVisible();
 
-    await page.getByPlaceholder('e.g. VP Operations').fill('Director of Program Management');
-    await page.getByPlaceholder('e.g. Acme Corp').fill('SignalWorks');
-    await page.getByPlaceholder('https://...').fill('https://example.com/jobs/pm-director');
-    await page.getByPlaceholder('Any notes about this role...').fill('Referral lead from former VP Product.');
+    await page.getByPlaceholder('VP Engineering').fill('Director of Program Management');
+    await page.getByPlaceholder('Acme Corp').fill('SignalWorks');
+    await page.getByPlaceholder('https://acme.com/careers/vp-eng').fill('https://example.com/jobs/pm-director');
+    await page.getByPlaceholder(/Paste the full job description/i).fill('Referral lead from former VP Product.');
 
-    await page.getByRole('button', { name: /Add to Pipeline/i }).click();
+    await page.getByRole('button', { name: /Create and open/i }).click();
 
-    await expect(page.getByRole('dialog', { name: /Add opportunity/i })).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: /Application Pipeline/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/workspace\/application\/app-\d+\/resume/);
+    await expect(page.getByRole('heading', { name: /Tailor your resume/i }).first()).toBeVisible();
   });
 
   test('Job Search watchlist manager opens, adds a company, and closes cleanly', async ({ page }) => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
-    await page.locator('button[title=\"Manage watchlist\"]:visible').first().click();
+    await page.getByRole('button', { name: /^Manage$/i }).click();
 
-    await expect(page.getByRole('dialog', { name: /Manage watchlist/i })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: /Target Companies/i })).toBeVisible();
     await page.getByPlaceholder('e.g. Acme Corp').fill('Atlas Systems');
     await page.getByPlaceholder('e.g. SaaS').fill('Enterprise Software');
     await page.getByPlaceholder(/^https:\/\/\.\.\.$/).fill('https://atlas.example.com');
@@ -76,11 +75,11 @@ test.describe('workspace core actions — jobs', () => {
     await page.getByRole('button', { name: /Add Company/i }).click();
 
     await expect(
-      page.getByRole('dialog', { name: /Manage watchlist/i }).getByText('Atlas Systems', { exact: true }),
+      page.getByRole('dialog', { name: /Target Companies/i }).getByText('Atlas Systems', { exact: true }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Done', exact: true }).click();
 
-    await expect(page.getByRole('dialog', { name: /Manage watchlist/i })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: /Target Companies/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Atlas Systems', exact: true })).toBeVisible();
   });
 });

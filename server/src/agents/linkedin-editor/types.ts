@@ -46,6 +46,16 @@ export interface SectionQualityScores {
   readability: number;
   /** Alignment with positioning strategy (0-100) */
   positioning_alignment: number;
+  /** Recruiter/hiring-manager five-second scan strength (0-100) */
+  five_second_test?: number;
+  /** Strength of the visible hook/opening line (0-100) */
+  hook_strength?: number;
+  /** How strongly this positions the user as a benchmark candidate (0-100) */
+  benchmark_strength?: number;
+  /** Specificity and source-grounding of proof (0-100) */
+  proof_specificity?: number;
+  /** LinkedIn recruiter-search keyword/search-result strength (0-100) */
+  searchability?: number;
 }
 
 // ─── Pipeline State ────────────────────────────────────────────────────

@@ -16,6 +16,8 @@ import { createFollowUpEmailProductConfig } from '../agents/follow-up-email/prod
 import { FF_FOLLOW_UP_EMAIL } from '../lib/feature-flags.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
+import { loadAgentContextBundle } from '../lib/career-profile-context.js';
+import { applySharedContextOverride } from '../contracts/shared-context-adapter.js';
 import type {
   FollowUpEmailState,
   FollowUpEmailSSEEvent,
@@ -154,6 +156,38 @@ export const followUpEmailRoutes = createProductRoutes<
       most_recent_interview_date: mostRecentInterviewDate,
       days_since_interview: computeDaysSince(mostRecentInterviewDate),
     };
+
+    try {
+      const { sharedContext } = await loadAgentContextBundle(userId, {
+        includeCareerProfile: true,
+        includePositioningStrategy: true,
+        includeEvidenceItems: true,
+        includeClientProfile: true,
+      });
+
+      enriched.shared_context = applySharedContextOverride(sharedContext, {
+        artifactTarget: {
+          artifactType: 'follow_up_email',
+          artifactGoal: 'draft a precise, confident follow-up for a live application',
+          targetAudience: 'recruiter, hiring manager, or interviewer',
+          successCriteria: [
+            'sound specific without desperation',
+            'reinforce approved Benchmark Profile proof',
+            'avoid unapproved or risky claims',
+          ],
+        },
+        workflowState: {
+          room: 'follow_up_email',
+          stage: 'context_loaded',
+          activeTask: 'turn approved brand context into a concise follow-up',
+        },
+      });
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err), userId },
+        'Follow-up email: failed to load shared Career Profile context (continuing without it)',
+      );
+    }
 
     return enriched;
   },

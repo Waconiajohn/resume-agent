@@ -62,6 +62,6 @@ describe('StageBadge — color classes', () => {
   it('applies red color class for "closed_lost"', () => {
     render(<StageBadge stage="closed_lost" />);
     const badge = screen.getByText('closed lost');
-    expect(badge.className).toContain('text-red-400');
+    expect(badge.className).toContain('badge-red-text');
   });
 });

@@ -1,7 +1,7 @@
 /**
- * Resume Builder persistence tests
+ * Tailor Resume persistence tests
  *
- * Verifies the current Job Workspaces and Master Resume tabs using mocked API
+ * Verifies the current saved tailored resume and source-material tabs using mocked API
  * data. This replaces the retired dashboard/evidence-library assumptions.
  */
 
@@ -274,10 +274,10 @@ async function mockAllWithData(
 async function openResumeBuilderWorkspace(page: Page): Promise<void> {
   await page.goto('/workspace?room=resume');
   await expect(
-    page.getByRole('heading', { name: /Choose the resume tool you need right now/i }),
+    page.getByRole('heading', { name: /Tailor your resume to a job you actually want/i }),
   ).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole('button', { name: /^Browse Job Workspaces$/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Open Master Resume$/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Browse Saved Resumes$/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Open Source Material$/i })).toBeVisible();
 }
 
 async function waitForListSettled(page: Page): Promise<void> {
@@ -285,11 +285,11 @@ async function waitForListSettled(page: Page): Promise<void> {
   await page.waitForTimeout(250);
 }
 
-test.describe('Resume Builder persistence', () => {
-  test('Job Workspaces renders all saved tailored resumes', async ({ page }) => {
+test.describe('Tailor Resume persistence', () => {
+  test('Saved Tailored Resumes renders all saved tailored resumes', async ({ page }) => {
     await mockAllWithData(page);
     await openResumeBuilderWorkspace(page);
-    await page.getByRole('button', { name: /^Browse Job Workspaces$/i }).click();
+    await page.getByRole('button', { name: /^Browse Saved Resumes$/i }).click();
     await waitForListSettled(page);
 
     await expect(page.getByText('Acme Corp')).toBeVisible();
@@ -298,10 +298,10 @@ test.describe('Resume Builder persistence', () => {
     await expect(page.getByRole('button', { name: /Delete .* session/i })).toHaveCount(MOCK_SESSIONS.length);
   });
 
-  test('Completed filter narrows Job Workspaces to finished work', async ({ page }) => {
+  test('Completed filter narrows Saved Tailored Resumes to finished work', async ({ page }) => {
     await mockAllWithData(page);
     await openResumeBuilderWorkspace(page);
-    await page.getByRole('button', { name: /^Browse Job Workspaces$/i }).click();
+    await page.getByRole('button', { name: /^Browse Saved Resumes$/i }).click();
     await waitForListSettled(page);
 
     await page.getByRole('button', { name: /^Completed$/i }).click();
@@ -312,10 +312,10 @@ test.describe('Resume Builder persistence', () => {
     await expect(page.getByText('Gamma LLC')).not.toBeVisible();
   });
 
-  test('Needs Review filter narrows Job Workspaces to recovery cases', async ({ page }) => {
+  test('Needs Review filter narrows Saved Tailored Resumes to recovery cases', async ({ page }) => {
     await mockAllWithData(page);
     await openResumeBuilderWorkspace(page);
-    await page.getByRole('button', { name: /^Browse Job Workspaces$/i }).click();
+    await page.getByRole('button', { name: /^Browse Saved Resumes$/i }).click();
     await waitForListSettled(page);
 
     await page.getByRole('button', { name: /^Needs Review$/i }).click();
@@ -330,7 +330,7 @@ test.describe('Resume Builder persistence', () => {
     const deletes: string[] = [];
     await mockAllWithData(page, { captureDeletes: deletes });
     await openResumeBuilderWorkspace(page);
-    await page.getByRole('button', { name: /^Browse Job Workspaces$/i }).click();
+    await page.getByRole('button', { name: /^Browse Saved Resumes$/i }).click();
     await waitForListSettled(page);
 
     await page.getByRole('button', { name: /Delete Acme Corp Senior Engineer session/i }).click();
@@ -343,7 +343,7 @@ test.describe('Resume Builder persistence', () => {
     await mockAllWithData(page);
     await openResumeBuilderWorkspace(page);
 
-    await page.getByRole('button', { name: /^Open Master Resume$/i }).click();
+    await page.getByRole('button', { name: /^Open Source Material$/i }).click();
     await waitForListSettled(page);
 
     await expect(page.getByText(/Experienced engineering leader with 15 years building distributed systems\./i)).toBeVisible({ timeout: 10_000 });
@@ -354,7 +354,7 @@ test.describe('Resume Builder persistence', () => {
     await mockAllWithData(page, { masterResume: null });
     await openResumeBuilderWorkspace(page);
 
-    await page.getByRole('button', { name: /^Open Master Resume$/i }).click();
+    await page.getByRole('button', { name: /^Open Source Material$/i }).click();
     await waitForListSettled(page);
 
     await expect(page.getByText(/No master resume found\./i)).toBeVisible({ timeout: 10_000 });

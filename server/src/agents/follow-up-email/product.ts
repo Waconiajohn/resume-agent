@@ -25,6 +25,7 @@ import {
 } from './types.js';
 import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
+import { renderBenchmarkProfileDirectionSection } from '../../contracts/shared-context-prompt.js';
 
 function serializeFollowUpDraft(draft: FollowUpEmailDraft): string {
   const subject = draft.subject ? `Subject: ${draft.subject}\n\n` : '';
@@ -161,6 +162,7 @@ export function createFollowUpEmailProductConfig(): ProductConfig<
         activity_signals: (input.activity_signals as FollowUpEmailState['activity_signals']) ?? {
           thank_you_sent: false,
         },
+        shared_context: input.shared_context as FollowUpEmailState['shared_context'],
       };
     },
 
@@ -204,6 +206,11 @@ export function createFollowUpEmailProductConfig(): ProductConfig<
           state.prior_interview_prep.report_excerpt.trim(),
         );
       }
+
+      parts.push(...renderBenchmarkProfileDirectionSection({
+        heading: '## Benchmark Profile Direction',
+        sharedContext: state.shared_context,
+      }));
 
       if (state.specific_context?.trim()) {
         parts.push('', '## Caller-provided context', state.specific_context.trim());

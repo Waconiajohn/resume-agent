@@ -115,6 +115,8 @@ function clearCache(userId: string, applicationId?: string | null): void {
 interface UseV3SessionPersistenceArgs {
   accessToken: string | null;
   userId: string | null;
+  /** Explicit session to hydrate, used by /resume-builder/session?sessionId=... */
+  initialSessionId?: string | null;
   /** Live pipeline state from useV3Pipeline. */
   pipeline: {
     isComplete: boolean;
@@ -161,9 +163,77 @@ export interface UseV3SessionPersistenceResult {
   acknowledge: () => void;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function buildSnapshotFromParts({
+  id,
+  updatedAt,
+  pipelineOutput,
+  jdTitle,
+  jdCompany,
+  editedWritten,
+}: {
+  id: unknown;
+  updatedAt: unknown;
+  pipelineOutput: unknown;
+  jdTitle: unknown;
+  jdCompany: unknown;
+  editedWritten: unknown;
+}): V3SessionSnapshot | null {
+  if (typeof id !== 'string' || !id.trim()) return null;
+  if (!isRecord(pipelineOutput)) return null;
+  const {
+    structured,
+    benchmark,
+    strategy,
+    written,
+    verify,
+    discoveryAnswers,
+    timings,
+    costs,
+  } = pipelineOutput;
+
+  if (
+    !isRecord(structured)
+    || !isRecord(benchmark)
+    || !isRecord(strategy)
+    || !isRecord(written)
+    || !isRecord(verify)
+  ) {
+    return null;
+  }
+
+  const savedAt = typeof updatedAt === 'string'
+    ? new Date(updatedAt).getTime() || Date.now()
+    : Date.now();
+
+  return {
+    sessionId: id,
+    structured: structured as unknown as V3StructuredResume,
+    benchmark: benchmark as unknown as V3BenchmarkProfile,
+    strategy: strategy as unknown as V3Strategy,
+    written: written as unknown as V3WrittenResume,
+    verify: verify as unknown as V3VerifyResult,
+    discoveryAnswers: Array.isArray(discoveryAnswers)
+      ? discoveryAnswers as V3DiscoveryAnswer[]
+      : [],
+    timings: (timings ?? null) as V3StageTimings | null,
+    costs: (costs ?? null) as V3StageCosts | null,
+    editedWritten: isRecord(editedWritten)
+      ? editedWritten as unknown as V3WrittenResume
+      : null,
+    jdTitle: typeof jdTitle === 'string' ? jdTitle : null,
+    jdCompany: typeof jdCompany === 'string' ? jdCompany : null,
+    savedAt,
+  };
+}
+
 export function useV3SessionPersistence({
   accessToken,
   userId,
+  initialSessionId,
   pipeline,
   editedWritten,
   discoveryAnswers,
@@ -177,6 +247,7 @@ export function useV3SessionPersistence({
   const cacheWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const serverEditsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPostedEditsRef = useRef<string | null>(null);
+  const explicitSessionId = initialSessionId?.trim() || null;
 
   // ─── Mount-time hydrate lookup ────────────────────────────────────────
   useEffect(() => {
@@ -187,6 +258,51 @@ export function useV3SessionPersistence({
         if (!cancelled) {
           setLastSession(null);
           setLoading(false);
+        }
+        return;
+      }
+
+      if (explicitSessionId) {
+        if (!accessToken) {
+          if (!cancelled) {
+            setLastSession(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/sessions/${encodeURIComponent(explicitSessionId)}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (!res.ok) {
+            if (!cancelled) {
+              setLastSession(null);
+              setLoading(false);
+            }
+            return;
+          }
+          const body = (await res.json()) as { session?: Record<string, unknown> | null };
+          const session = body.session ?? null;
+          const snapshot = session
+            ? buildSnapshotFromParts({
+                id: session.id,
+                updatedAt: session.updated_at,
+                pipelineOutput: session.v3_pipeline_output,
+                jdTitle: session.v3_jd_title,
+                jdCompany: session.v3_jd_company,
+                editedWritten: session.v3_edited_written,
+              })
+            : null;
+          if (!cancelled) {
+            setLastSession(snapshot);
+            setLoading(false);
+          }
+        } catch {
+          if (!cancelled) {
+            setLastSession(null);
+            setLoading(false);
+          }
         }
         return;
       }
@@ -249,21 +365,14 @@ export function useV3SessionPersistence({
           return;
         }
 
-        const snapshot: V3SessionSnapshot = {
-          sessionId: body.session.id,
-          structured: body.session.pipelineOutput.structured,
-          benchmark: body.session.pipelineOutput.benchmark,
-          strategy: body.session.pipelineOutput.strategy,
-          written: body.session.pipelineOutput.written,
-          verify: body.session.pipelineOutput.verify,
-          discoveryAnswers: body.session.pipelineOutput.discoveryAnswers ?? [],
-          timings: body.session.pipelineOutput.timings,
-          costs: body.session.pipelineOutput.costs,
-          editedWritten: body.session.editedWritten,
+        const snapshot = buildSnapshotFromParts({
+          id: body.session.id,
+          updatedAt: body.session.updatedAt,
+          pipelineOutput: body.session.pipelineOutput,
           jdTitle: body.session.jdTitle,
           jdCompany: body.session.jdCompany,
-          savedAt: new Date(body.session.updatedAt).getTime() || Date.now(),
-        };
+          editedWritten: body.session.editedWritten,
+        });
         setLastSession(snapshot);
         setLoading(false);
       } catch {
@@ -278,7 +387,7 @@ export function useV3SessionPersistence({
     return () => {
       cancelled = true;
     };
-  }, [userId, accessToken, applicationId]);
+  }, [userId, accessToken, applicationId, explicitSessionId]);
 
   // ─── localStorage write on completion / edits ─────────────────────────
   useEffect(() => {

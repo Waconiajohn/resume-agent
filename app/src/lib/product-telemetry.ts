@@ -116,6 +116,7 @@ export interface ProductTelemetryPayloadMap {
     source: 'job_board' | 'pipeline' | 'suggestions';
     company_name: string | null;
     role_title: string | null;
+    has_job_url?: boolean;
   };
   boolean_search_generated: {
     title_count: number;

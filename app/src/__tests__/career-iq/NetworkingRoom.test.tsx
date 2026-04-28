@@ -133,6 +133,20 @@ describe('NetworkingRoom', () => {
     expect(call.messagingMethod).toBe('connection_request');
   });
 
+  it('preserves the selected recipient type when drafting starts', () => {
+    render(<NetworkingRoom applicationId="app-1" initialCompany="Acme" initialRole="VP Ops" />);
+    fireEvent.click(screen.getByRole('button', { name: /Second-degree connection/i }));
+    fireEvent.change(screen.getByPlaceholderText('e.g. Sarah Chen'), { target: { value: 'Marcus Reed' } });
+    fireEvent.change(
+      screen.getByPlaceholderText(/What do you want from this message/),
+      { target: { value: 'Ask for a brief conversation' } },
+    );
+    fireEvent.click(screen.getByText('Draft message'));
+
+    expect(mockStartPipeline).toHaveBeenCalledTimes(1);
+    expect(mockStartPipeline.mock.calls[0][0].recipientType).toBe('second_degree');
+  });
+
   it('renders draft + review controls when status is message_review', () => {
     vi.mocked(useNetworking).mockReturnValue(reviewState);
     render(<NetworkingRoom applicationId="app-1" initialCompany="Acme" initialRole="VP Ops" />);

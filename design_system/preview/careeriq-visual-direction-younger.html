@@ -1,0 +1,1073 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CareerIQ Younger Visual Direction</title>
+  <style>
+    @font-face {
+      font-family: "DM Sans";
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url("../fonts/DMSans-latin.woff2") format("woff2");
+    }
+
+    @font-face {
+      font-family: "Inter";
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url("../fonts/Inter-latin.woff2") format("woff2");
+    }
+
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 400 700;
+      font-display: swap;
+      src: url("../fonts/IBMPlexMono-latin.woff2") format("woff2");
+    }
+
+    :root {
+      --canvas: #f6f8f2;
+      --canvas-2: #edf2e7;
+      --surface: #ffffff;
+      --surface-2: #fbfcf8;
+      --ink: #101820;
+      --muted: #384954;
+      --soft: #65747b;
+      --line: #d7ded4;
+      --line-strong: #b9c4ba;
+      --structure: #121a26;
+      --structure-2: #1b2635;
+      --primary: #05668d;
+      --primary-dark: #034b69;
+      --primary-soft: #e5f2f5;
+      --teal: #007c78;
+      --ready: #3f6f1f;
+      --input: #a45711;
+      --network: #5b2f86;
+      --risk: #b42338;
+      --spark: #c2410c;
+      --shadow: 0 18px 42px rgba(16, 24, 32, 0.1), 0 4px 12px rgba(16, 24, 32, 0.06);
+      --shadow-soft: 0 8px 20px rgba(16, 24, 32, 0.07);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: "DM Sans", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        linear-gradient(90deg, rgba(5, 102, 141, 0.08) 0 1px, transparent 1px 100%),
+        linear-gradient(180deg, #fffdfa 0, var(--canvas) 460px, #f1f4ed 100%);
+      background-size: 64px 64px, auto;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1420px, 100%);
+      margin: 0 auto;
+      padding: 28px 32px 36px;
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 36px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--structure);
+      font-weight: 850;
+    }
+
+    .mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 2px solid var(--structure);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 4px 4px 0 var(--structure);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .mode-pill {
+      display: inline-flex;
+      min-height: 34px;
+      align-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--surface);
+      padding: 6px 12px;
+      color: var(--primary-dark);
+      font-size: 13px;
+      font-weight: 800;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.65fr);
+      gap: 26px;
+      align-items: end;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 900px;
+      color: var(--ink);
+      font-size: 70px;
+      font-weight: 900;
+      line-height: 0.94;
+      letter-spacing: 0;
+    }
+
+    .hero-copy {
+      margin: 18px 0 0;
+      max-width: 800px;
+      color: var(--muted);
+      font-size: 19px;
+      font-weight: 550;
+    }
+
+    .palette-card {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .palette-card h2,
+    .panel h3,
+    .surface h3,
+    .mini h3 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .palette-card p,
+    .muted {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 560;
+    }
+
+    .swatches {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .swatch {
+      min-height: 72px;
+      border: 1px solid rgba(16, 24, 32, 0.14);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      background: var(--surface-2);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .swatch.dark {
+      color: #fff;
+    }
+
+    .swatch.rail {
+      border-left: 6px solid var(--rail);
+      background: var(--surface);
+    }
+
+    .swatch code {
+      margin-top: 2px;
+      color: var(--muted);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .studio {
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .studio-bar {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      min-height: 76px;
+      background: var(--structure);
+      padding: 16px 18px;
+      color: #fff;
+    }
+
+    .studio-bar .mark {
+      border-color: rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 4px 4px 0 rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .tab {
+      display: inline-flex;
+      min-height: 38px;
+      align-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.17);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 7px 11px;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .tab.active {
+      border-color: rgba(5, 102, 141, 0.9);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .studio-body {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(420px, 1.08fr);
+      min-height: 780px;
+      background: var(--canvas);
+    }
+
+    .left-rail {
+      border-right: 1px solid var(--line);
+      background: var(--surface-2);
+      padding: 22px;
+    }
+
+    .main-work {
+      padding: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 16px;
+    }
+
+    .surface {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 18px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .surface.dark {
+      background: var(--structure-2);
+      color: #fff;
+    }
+
+    .surface.dark h3,
+    .surface.dark .muted {
+      color: #fff;
+    }
+
+    .surface.dark .muted {
+      opacity: 0.78;
+    }
+
+    .surface-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .kicker {
+      margin: 0 0 7px;
+      color: var(--soft);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .focus-title {
+      margin: 0;
+      color: #fff;
+      font-size: 34px;
+      font-weight: 900;
+      line-height: 1.02;
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 18px;
+    }
+
+    .btn {
+      min-height: 42px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 9px 13px;
+      color: var(--structure);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .btn.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 5px 0 rgba(3, 75, 105, 0.24);
+    }
+
+    .chip {
+      display: inline-flex;
+      min-height: 30px;
+      align-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--surface);
+      padding: 4px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .chip.primary {
+      border-color: rgba(5, 102, 141, 0.36);
+      background: var(--primary-soft);
+      color: var(--primary-dark);
+    }
+
+    .chip.ready {
+      border-color: rgba(63, 111, 31, 0.36);
+      color: var(--ready);
+    }
+
+    .chip.input {
+      border-color: rgba(164, 87, 17, 0.36);
+      color: var(--input);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 14px;
+    }
+
+    .metric b {
+      display: block;
+      color: var(--ink);
+      font-size: 33px;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 6px;
+      color: var(--soft);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .lane-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .lane {
+      min-height: 148px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 14px;
+      position: relative;
+    }
+
+    .lane::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 6px;
+      border-radius: 8px 0 0 8px;
+      background: var(--lane-color);
+    }
+
+    .lane h4 {
+      margin: 0 0 8px 10px;
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .lane p {
+      margin: 0 0 0 10px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 560;
+    }
+
+    .queue {
+      display: grid;
+      gap: 10px;
+    }
+
+    .queue-item {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 58px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 10px 12px;
+    }
+
+    .token {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--token);
+      color: #fff;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .queue-item strong {
+      display: block;
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .queue-item span {
+      display: block;
+      color: var(--soft);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .score-card {
+      display: grid;
+      gap: 16px;
+      border: 1px solid rgba(5, 102, 141, 0.3);
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      padding: 18px;
+      box-shadow: 0 12px 28px rgba(5, 102, 141, 0.2);
+    }
+
+    .score-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .score-card h3 {
+      color: #fff;
+    }
+
+    .score-card p {
+      margin: 7px 0 0;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .score {
+      color: #fff;
+      font-size: 54px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .meter {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .meter span {
+      display: block;
+      width: 78%;
+      height: 100%;
+      border-radius: inherit;
+      background: #fff;
+    }
+
+    .job-card {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 16px;
+    }
+
+    .job-card + .job-card {
+      margin-top: 10px;
+    }
+
+    .job-card.selected {
+      border-color: rgba(5, 102, 141, 0.58);
+      box-shadow: inset 6px 0 0 var(--primary);
+    }
+
+    .job-card h4 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .job-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .event {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: 12px;
+      border-top: 1px solid var(--line);
+      padding: 13px;
+    }
+
+    .event:first-child {
+      border-top: 0;
+    }
+
+    .event time {
+      color: var(--primary-dark);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .event strong {
+      display: block;
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .event span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .mobile-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .phone {
+      max-width: 320px;
+      min-height: 640px;
+      border: 1px solid var(--line-strong);
+      border-radius: 28px;
+      background: var(--surface);
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .phone-screen {
+      overflow: hidden;
+      min-height: 616px;
+      border-radius: 20px;
+      background: var(--canvas);
+    }
+
+    .phone-head {
+      background: var(--structure);
+      color: #fff;
+      padding: 18px;
+    }
+
+    .phone-head h3 {
+      margin: 10px 0 0;
+      color: #fff;
+      font-size: 25px;
+      line-height: 1.05;
+    }
+
+    .phone-body {
+      display: grid;
+      gap: 10px;
+      padding: 13px;
+    }
+
+    .phone-panel {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 13px;
+    }
+
+    .phone-panel strong {
+      display: block;
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .phone-panel span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .phone-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding: 10px;
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .phone-nav span {
+      display: grid;
+      min-height: 42px;
+      place-items: center;
+      border-radius: 8px;
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .phone-nav .active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .mini {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 16px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .mini-art {
+      height: 112px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+      align-content: end;
+      background: var(--canvas);
+    }
+
+    .bar {
+      height: 12px;
+      border-radius: 999px;
+      background: var(--line-strong);
+    }
+
+    .bar.short {
+      width: 64%;
+      background: var(--primary);
+    }
+
+    @media (max-width: 1100px) {
+      .hero,
+      .studio-body,
+      .mobile-row,
+      .comparison {
+        grid-template-columns: 1fr;
+      }
+
+      .studio-bar {
+        grid-template-columns: 1fr;
+      }
+
+      .tabs {
+        justify-content: flex-start;
+      }
+
+      .phone {
+        justify-self: center;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        padding: 20px;
+      }
+
+      .topline {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      h1 {
+        font-size: 43px;
+      }
+
+      .hero-copy {
+        font-size: 16px;
+      }
+
+      .swatches,
+      .metric-grid,
+      .lane-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .left-rail,
+      .main-work {
+        padding: 16px;
+      }
+
+      .event {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topline">
+      <div class="brand">
+        <span class="mark">CIQ</span>
+        <span>CareerIQ visual direction</span>
+      </div>
+      <span class="mode-pill">Variant: younger active studio</span>
+    </header>
+
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">A sharper career studio with more momentum.</h1>
+        <p class="hero-copy">This direction drops the editorial/luxury feel and moves toward a modern, energetic product. It should work for a 32-year-old manager and a 57-year-old director without feeling childish.</p>
+      </div>
+
+      <aside class="palette-card">
+        <h2>Color attitude</h2>
+        <p>High-contrast, saturated, and practical. Color marks action, progress, and status without filling the interface with candy tints.</p>
+        <div class="swatches" aria-label="Younger color palette">
+          <div class="swatch" style="background:#f6f8f2">Canvas<code>#f6f8f2</code></div>
+          <div class="swatch dark" style="background:#121a26">Structure<code style="color:#c9d3dc">#121a26</code></div>
+          <div class="swatch dark" style="background:#05668d">Primary<code style="color:#d9eef4">#05668d</code></div>
+          <div class="swatch dark" style="background:#007c78">Teal<code style="color:#d8f1ee">#007c78</code></div>
+          <div class="swatch rail" style="--rail:#3f6f1f">Ready<code>#3f6f1f</code></div>
+          <div class="swatch rail" style="--rail:#a45711">Input<code>#a45711</code></div>
+          <div class="swatch rail" style="--rail:#5b2f86">Network<code>#5b2f86</code></div>
+          <div class="swatch rail" style="--rail:#b42338">Risk<code>#b42338</code></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="studio" aria-label="Younger CareerIQ workspace prototype">
+      <div class="studio-bar">
+        <div class="brand">
+          <span class="mark">CIQ</span>
+          <span>CareerIQ</span>
+        </div>
+        <nav class="tabs" aria-label="Workspace sections">
+          <span class="tab active">Now</span>
+          <span class="tab">Resume</span>
+          <span class="tab">Jobs</span>
+          <span class="tab">Network</span>
+          <span class="tab">Interview</span>
+          <span class="tab">Timeline</span>
+        </nav>
+        <button class="btn primary">Generate plan</button>
+      </div>
+
+      <div class="studio-body">
+        <aside class="left-rail">
+          <div class="stack">
+            <section class="surface dark">
+              <p class="kicker" style="color:rgba(255,255,255,.68)">TODAY'S MOVE</p>
+              <h2 class="focus-title">Make the resume credible for VP Ops.</h2>
+              <p class="muted">Three missing proof points are holding back the strongest version.</p>
+              <div class="action-row">
+                <button class="btn primary">Start discovery</button>
+                <button class="btn">Preview draft</button>
+              </div>
+            </section>
+
+            <section class="surface">
+              <div class="surface-head">
+                <div>
+                  <h3>Search momentum</h3>
+                  <p class="muted">A compact scan of what needs attention.</p>
+                </div>
+                <span class="chip primary">78%</span>
+              </div>
+              <div class="metric-grid">
+                <div class="metric"><b>12</b><span>target jobs</span></div>
+                <div class="metric"><b>5</b><span>warm contacts</span></div>
+                <div class="metric"><b>3</b><span>proof gaps</span></div>
+              </div>
+            </section>
+
+            <section class="surface">
+              <div class="surface-head">
+                <div>
+                  <h3>Work lanes</h3>
+                  <p class="muted">Color is used as a work signal, not decoration.</p>
+                </div>
+              </div>
+              <div class="lane-grid">
+                <article class="lane" style="--lane-color:var(--primary)">
+                  <h4>Resume</h4>
+                  <p>Rewrite lead story and prove operating scale.</p>
+                </article>
+                <article class="lane" style="--lane-color:var(--ready)">
+                  <h4>Jobs</h4>
+                  <p>Scan hybrid and remote roles separately.</p>
+                </article>
+                <article class="lane" style="--lane-color:var(--network)">
+                  <h4>Network</h4>
+                  <p>Prioritize first-level connections.</p>
+                </article>
+                <article class="lane" style="--lane-color:var(--input)">
+                  <h4>Discovery</h4>
+                  <p>Ask for adjacent proof before saying no.</p>
+                </article>
+              </div>
+            </section>
+          </div>
+        </aside>
+
+        <section class="main-work">
+          <div class="stack">
+            <section class="score-card">
+              <div class="score-top">
+                <div>
+                  <h3>Target fit is good. Proof quality is the limiter.</h3>
+                  <p>Resume and cover letter should become more specific before applications go out.</p>
+                </div>
+                <div class="score">82</div>
+              </div>
+              <div class="meter" aria-hidden="true"><span></span></div>
+            </section>
+
+            <section class="surface">
+              <div class="surface-head">
+                <div>
+                  <p class="kicker">ACTIVE QUEUE</p>
+                  <h3>What a user should do next</h3>
+                </div>
+                <span class="chip input">needs input</span>
+              </div>
+              <div class="queue">
+                <div class="queue-item">
+                  <span class="token" style="--token:var(--input)">1</span>
+                  <div><strong>Confirm measurable operations wins</strong><span>Cost, labor, throughput, safety, or service metrics.</span></div>
+                  <span class="chip">8 min</span>
+                </div>
+                <div class="queue-item">
+                  <span class="token" style="--token:var(--primary)">2</span>
+                  <div><strong>Generate resume and cover letter</strong><span>Use the newly confirmed proof in both assets.</span></div>
+                  <span class="chip">draft</span>
+                </div>
+                <div class="queue-item">
+                  <span class="token" style="--token:var(--network)">3</span>
+                  <div><strong>Send two warm outreach notes</strong><span>Use company context before asking for help.</span></div>
+                  <span class="chip">ready</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="surface">
+              <div class="surface-head">
+                <div>
+                  <p class="kicker">INSIDER JOBS</p>
+                  <h3>Selected companies are impossible to miss</h3>
+                </div>
+                <span class="chip ready">scan ready</span>
+              </div>
+              <article class="job-card selected">
+                <h4>Target - Senior Director, Operations</h4>
+                <div class="job-meta">
+                  <span class="chip primary">hybrid</span>
+                  <span class="chip">3 days old</span>
+                  <span class="chip ready">first-level connection</span>
+                </div>
+              </article>
+              <article class="job-card selected">
+                <h4>Medtronic - VP Supply Chain Operations</h4>
+                <div class="job-meta">
+                  <span class="chip primary">remote</span>
+                  <span class="chip">7 days old</span>
+                  <span class="chip ready">2 connections</span>
+                </div>
+              </article>
+              <article class="job-card">
+                <h4>General Mills - Operations Transformation Lead</h4>
+                <div class="job-meta">
+                  <span class="chip">city + radius</span>
+                  <span class="chip">14 days old</span>
+                </div>
+              </article>
+            </section>
+
+            <div class="mobile-row">
+              <section class="surface">
+                <div class="surface-head">
+                  <div>
+                    <p class="kicker">TIMELINE</p>
+                    <h3>Cleaner, more urgent timeline</h3>
+                  </div>
+                </div>
+                <div class="timeline">
+                  <div class="event">
+                    <time>Today</time>
+                    <div><strong>Finish discovery questions</strong><span>Unlock resume and cover letter quality.</span></div>
+                  </div>
+                  <div class="event">
+                    <time>Tue</time>
+                    <div><strong>Send outreach to Erin</strong><span>Ask for hiring-manager context at Medtronic.</span></div>
+                  </div>
+                  <div class="event">
+                    <time>Fri</time>
+                    <div><strong>Practice turnaround story</strong><span>Prepare interview proof in plain language.</span></div>
+                  </div>
+                </div>
+              </section>
+
+              <aside class="phone" aria-label="Mobile mockup">
+                <div class="phone-screen">
+                  <div class="phone-head">
+                    <span class="chip primary">mobile first</span>
+                    <h3>Three moves to improve your search.</h3>
+                  </div>
+                  <div class="phone-body">
+                    <div class="phone-panel"><strong>Confirm proof</strong><span>Cost, labor, throughput, service.</span></div>
+                    <div class="phone-panel"><strong>Generate assets</strong><span>Resume, cover letter, thank-you note.</span></div>
+                    <div class="phone-panel"><strong>Scan jobs</strong><span>Hybrid and remote scans queued.</span></div>
+                    <button class="btn primary">Continue</button>
+                  </div>
+                  <nav class="phone-nav">
+                    <span class="active">Now</span>
+                    <span>Jobs</span>
+                    <span>Net</span>
+                    <span>Time</span>
+                  </nav>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="comparison" aria-label="Design notes">
+      <article class="mini">
+        <div class="mini-art">
+          <div class="bar short"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+        </div>
+        <h3>Younger</h3>
+        <p class="muted">Bolder sans type, stronger action color, top navigation, faster visual rhythm.</p>
+      </article>
+      <article class="mini">
+        <div class="mini-art" style="background:#fbf4e8">
+          <div class="bar short" style="background:#1d759b"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+        </div>
+        <h3>Still adult</h3>
+        <p class="muted">No pastels, no cartoon treatment, no tech-bro neon. It stays employability-serious.</p>
+      </article>
+      <article class="mini">
+        <div class="mini-art" style="background:#121a26">
+          <div class="bar short" style="background:#c2410c"></div>
+          <div class="bar" style="background:#384554"></div>
+          <div class="bar" style="background:#384554"></div>
+        </div>
+        <h3>Risk</h3>
+        <p class="muted">This is less aligned with the FirstSourceTeam editorial brand, but more product-native.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

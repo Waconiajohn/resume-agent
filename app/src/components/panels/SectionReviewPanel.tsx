@@ -177,7 +177,7 @@ export function SectionReviewPanel({
                     className={cn(
                       'rounded-md border px-3 py-1.5 text-xs font-medium uppercase tracking-[0.08em] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/45',
                       active
-                        ? 'border-[var(--link)]/55 bg-[rgba(158,184,255,0.18)] text-[var(--text-strong)]'
+                        ? 'border-[var(--link)]/55 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]'
                         : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-1)] hover:text-[var(--text-muted)]',
                     )}
                     aria-pressed={active}

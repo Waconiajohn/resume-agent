@@ -253,6 +253,96 @@ const MOCK_APPLICATIONS = [
   },
 ];
 
+function getMockApplication(id: string) {
+  return MOCK_APPLICATIONS.find((application) => application.id === id) ?? MOCK_APPLICATIONS[0];
+}
+
+function toMockApplicationRecord(application: (typeof MOCK_APPLICATIONS)[number]) {
+  const appliedHistory = application.stage_history.find((entry) => entry.stage === 'applied');
+  return {
+    ...application,
+    user_id: AUTH_SESSION.user.id,
+    jd_text: `Lead ${application.role_title} work at ${application.company_name} with executive alignment, operating cadence, and measurable execution outcomes.`,
+    applied_date: appliedHistory?.at ?? null,
+    interview_prep_enabled: null,
+    offer_enabled: null,
+    follow_up_email_enabled: null,
+    thank_you_note_enabled: null,
+    networking_enabled: null,
+  };
+}
+
+function buildMockTimelinePayload(application: (typeof MOCK_APPLICATIONS)[number]) {
+  const record = toMockApplicationRecord(application);
+  const hasApplied = application.stage_history.some((entry) => entry.stage === 'applied');
+  const hasInterview = application.stage_history.some((entry) => entry.stage === 'interviewing');
+  const hasOffer = application.stage_history.some((entry) => entry.stage === 'offer');
+
+  return {
+    application: {
+      id: record.id,
+      stage: record.stage,
+      role_title: record.role_title,
+      company_name: record.company_name,
+      stage_history: record.stage_history,
+      created_at: record.created_at,
+      applied_date: record.applied_date,
+    },
+    resume: {
+      exists: true,
+      last_at: '2026-03-09T12:00:00.000Z',
+      session_id: 'mock-resume-session',
+    },
+    cover_letter: {
+      exists: hasApplied,
+      last_at: hasApplied ? '2026-03-09T13:00:00.000Z' : null,
+    },
+    interview_prep: {
+      exists: false,
+      last_at: null,
+    },
+    thank_you: {
+      exists: false,
+      last_at: null,
+    },
+    follow_up: {
+      exists: false,
+      last_at: null,
+    },
+    networking_messages: {
+      count: 1,
+      last_at: '2026-03-08T16:00:00.000Z',
+    },
+    events: [
+      ...(hasApplied ? [{
+        id: `${record.id}-applied`,
+        type: 'applied',
+        occurred_at: record.applied_date ?? '2026-03-09T11:00:00.000Z',
+        metadata: { applied_via: 'manual' },
+      }] : []),
+      ...(hasInterview ? [{
+        id: `${record.id}-interview-scheduled`,
+        type: 'interview_scheduled',
+        occurred_at: '2026-03-11T09:30:00.000Z',
+        metadata: { scheduled_date: '2026-04-30T15:00:00.000Z' },
+      }] : []),
+      ...(hasOffer ? [{
+        id: `${record.id}-offer`,
+        type: 'offer_received',
+        occurred_at: '2026-03-13T11:00:00.000Z',
+        metadata: { source: 'recruiter' },
+      }] : []),
+    ],
+    referral_bonus: {
+      exists: false,
+      bonus_amount: null,
+      bonus_currency: null,
+      program_url: null,
+      source: null,
+    },
+  };
+}
+
 const MOCK_RESUMES = [
   {
     id: 'resume-default',
@@ -1051,6 +1141,29 @@ async function fulfillApiRoute(
     return;
   }
 
+  if (path === '/api/job-applications' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({ applications: MOCK_APPLICATIONS, count: MOCK_APPLICATIONS.length }));
+    return;
+  }
+
+  if (path === '/api/job-applications' && method === 'POST') {
+    const payload = readRouteJson(route);
+    await route.fulfill(buildJsonResponse({
+      id: `app-${Date.now()}`,
+      role_title: typeof payload.role_title === 'string' ? payload.role_title : 'New role',
+      company_name: typeof payload.company_name === 'string' ? payload.company_name : 'New company',
+      stage: typeof payload.stage === 'string' ? payload.stage : 'saved',
+      source: typeof payload.source === 'string' ? payload.source : 'manual',
+      url: typeof payload.url === 'string' ? payload.url : undefined,
+      notes: typeof payload.notes === 'string' ? payload.notes : undefined,
+      job_description: typeof payload.job_description === 'string' ? payload.job_description : undefined,
+      stage_history: Array.isArray(payload.stage_history) ? payload.stage_history : [],
+      created_at: typeof payload.created_at === 'string' ? payload.created_at : new Date().toISOString(),
+      updated_at: typeof payload.updated_at === 'string' ? payload.updated_at : new Date().toISOString(),
+    }));
+    return;
+  }
+
   if (path === '/api/applications' && method === 'GET') {
     await route.fulfill(buildJsonResponse({ applications: MOCK_APPLICATIONS, count: MOCK_APPLICATIONS.length }));
     return;
@@ -1068,6 +1181,127 @@ async function fulfillApiRoute(
           stage: 'interviewing',
         },
       ],
+    }));
+    return;
+  }
+
+  if (path === '/api/billing/subscription' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({
+      subscription: null,
+      plan: {
+        id: 'free',
+        name: 'Free',
+        monthly_price_cents: 0,
+        included_sessions: 3,
+        max_sessions_per_month: 3,
+      },
+      usage: {
+        sessions_this_period: 0,
+        cost_usd_this_period: 0,
+      },
+    }));
+    return;
+  }
+
+  if (path === '/api/affiliates/me' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({
+      affiliate: {
+        id: 'affiliate-e2e',
+        name: 'E2E User',
+        email: 'e2e@example.com',
+        referral_code: 'E2EUSER',
+        commission_rate: 0.2,
+        status: 'active',
+        created_at: '2026-03-01T00:00:00.000Z',
+      },
+      stats: {
+        total_clicks: 128,
+        total_signups: 14,
+        total_subscriptions: 4,
+        total_earnings: 238.5,
+        recent_events: [
+          {
+            id: 'ref-event-1',
+            affiliate_id: 'affiliate-e2e',
+            event_type: 'subscription',
+            referred_user_id: 'user-1',
+            subscription_id: 'sub-1',
+            revenue_amount: 199,
+            commission_amount: 39.8,
+            created_at: '2026-03-16T14:00:00.000Z',
+          },
+          {
+            id: 'ref-event-2',
+            affiliate_id: 'affiliate-e2e',
+            event_type: 'click',
+            referred_user_id: null,
+            subscription_id: null,
+            revenue_amount: null,
+            commission_amount: null,
+            created_at: '2026-03-15T10:00:00.000Z',
+          },
+        ],
+      },
+    }));
+    return;
+  }
+
+  if (path === '/api/auth/sessions' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({
+      sessions: [
+        {
+          id: 'session-current',
+          user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/124.0.0.0',
+          ip: '127.0.0.1',
+          aal: 'aal1',
+          created_at: '2026-03-15T12:00:00.000Z',
+          updated_at: '2026-03-16T12:00:00.000Z',
+          not_after: null,
+          current: true,
+        },
+      ],
+    }));
+    return;
+  }
+
+  if (path === '/api/auth/events' && method === 'GET') {
+    await route.fulfill(buildJsonResponse({
+      events: [
+        {
+          id: 'auth-event-1',
+          event_type: 'signed_in',
+          ip_address: '127.0.0.1',
+          user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/124.0.0.0',
+          metadata: null,
+          occurred_at: '2026-03-16T12:00:00.000Z',
+        },
+      ],
+      nextCursor: null,
+    }));
+    return;
+  }
+
+  const jobApplicationTimelineMatch = path.match(/^\/api\/job-applications\/([^/]+)\/timeline$/);
+  if (jobApplicationTimelineMatch && method === 'GET') {
+    const application = getMockApplication(decodeURIComponent(jobApplicationTimelineMatch[1]));
+    await route.fulfill(buildJsonResponse(buildMockTimelinePayload(application)));
+    return;
+  }
+
+  const jobApplicationMatch = path.match(/^\/api\/job-applications\/([^/]+)$/);
+  if (jobApplicationMatch && method === 'GET') {
+    const application = getMockApplication(decodeURIComponent(jobApplicationMatch[1]));
+    await route.fulfill(buildJsonResponse(toMockApplicationRecord(application)));
+    return;
+  }
+
+  if (jobApplicationMatch && method === 'PATCH') {
+    const application = getMockApplication(decodeURIComponent(jobApplicationMatch[1]));
+    const patch = readRouteJson(route);
+    await route.fulfill(buildJsonResponse({
+      ...toMockApplicationRecord(application),
+      ...patch,
+      updated_at: new Date().toISOString(),
     }));
     return;
   }

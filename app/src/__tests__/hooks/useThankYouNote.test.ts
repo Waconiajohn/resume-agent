@@ -300,6 +300,54 @@ describe('useThankYouNote', () => {
     });
   });
 
+  it('unwraps JSON-shaped note content before showing review notes', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })
+      .mockResolvedValueOnce({ ok: true, body: { [Symbol.asyncIterator]: async function* () {} } });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { parseSSEStream } = await import('@/lib/sse-parser');
+    (parseSSEStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield makeEvent('note_review_ready', {
+          notes: [
+            {
+              recipient_role: 'hiring_manager',
+              recipient_name: 'Maria Alvarez',
+              recipient_title: 'Chief People Officer',
+              format: 'email',
+              content: JSON.stringify({
+                content: 'Maria, thank you for the thoughtful conversation about the COO role.',
+                subject_line: 'Thank you for today',
+                personalization_notes: 'References the COO discussion.',
+                quality_score: 92,
+              }),
+            },
+          ],
+          quality_score: 92,
+        });
+      },
+    });
+
+    const { result } = renderHook(() => useThankYouNote());
+
+    await act(async () => {
+      await result.current.startPipeline(sampleInput);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.noteReviewData?.notes[0]).toMatchObject({
+      recipient_name: 'Maria Alvarez',
+      content: 'Maria, thank you for the thoughtful conversation about the COO role.',
+      subject_line: 'Thank you for today',
+      personalization_notes: 'References the COO discussion.',
+      quality_score: 92,
+    });
+  });
+
   it('preserves a good prior report when collection_complete arrives with an empty final report', async () => {
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ status: 'started' }) })

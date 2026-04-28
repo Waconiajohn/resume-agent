@@ -254,43 +254,49 @@ const renderSidebar = (ui: React.ReactElement) =>
 describe('Sidebar', () => {
   afterEach(() => cleanup());
 
-  it('renders the 6 target nav labels in order', () => {
+  it('renders the target nav labels in order', () => {
     renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
     );
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Career Vault')).toBeInTheDocument();
-    expect(screen.getByText('Job Search')).toBeInTheDocument();
-    expect(screen.getByText('Applications')).toBeInTheDocument();
-    expect(screen.getByText('Live Webinars')).toBeInTheDocument();
-    expect(screen.getByText('Masterclass')).toBeInTheDocument();
+    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('Benchmark Profile')).toBeInTheDocument();
+    expect(screen.getByText('LinkedIn Growth')).toBeInTheDocument();
+    expect(screen.getByText('Find Jobs')).toBeInTheDocument();
+    expect(screen.getByText('Tailor Resume')).toBeInTheDocument();
+    expect(screen.getByText('Pipeline')).toBeInTheDocument();
+    expect(screen.getByText('Interview & Offer')).toBeInTheDocument();
+    expect(screen.getByText('Playbook')).toBeInTheDocument();
   });
 
-  it('does not render removed items (Resume Builder, LinkedIn, Interview Prep, Networking, Executive Bio)', () => {
+  it('does not render removed legacy items', () => {
     renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     expect(screen.queryByText('Resume Builder')).not.toBeInTheDocument();
-    expect(screen.queryByText('LinkedIn')).not.toBeInTheDocument();
+    expect(screen.queryByText('Resume Rewriter')).not.toBeInTheDocument();
+    expect(screen.queryByText('Career Vault')).not.toBeInTheDocument();
+    expect(screen.queryByText('Job Search')).not.toBeInTheDocument();
     expect(screen.queryByText('Interview Prep')).not.toBeInTheDocument();
     expect(screen.queryByText('Networking')).not.toBeInTheDocument();
     expect(screen.queryByText('Executive Bio')).not.toBeInTheDocument();
+    expect(screen.queryByText('Live Webinars')).not.toBeInTheDocument();
+    expect(screen.queryByText('Masterclass')).not.toBeInTheDocument();
   });
 
   it('keeps all items available when dashboardState is new-user', () => {
     renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
     );
-    expect(screen.getByText('Home').closest('button')).not.toBeDisabled();
-    expect(screen.getByText('Career Vault').closest('button')).not.toBeDisabled();
-    expect(screen.getByText('Applications').closest('button')).not.toBeDisabled();
+    expect(screen.getByText('Today').closest('button')).not.toBeDisabled();
+    expect(screen.getByText('Benchmark Profile').closest('button')).not.toBeDisabled();
+    expect(screen.getByText('Pipeline').closest('button')).not.toBeDisabled();
   });
 
   it('highlights active room', () => {
     renderSidebar(
       <Sidebar activeRoom="career-profile" onNavigate={vi.fn()} dashboardState="strong" />,
     );
-    const vaultButton = screen.getByText('Career Vault').closest('button');
+    const vaultButton = screen.getByText('Benchmark Profile').closest('button');
     expect(vaultButton?.className).toContain('bg-[var(--rail-tab-active-bg)]');
   });
 
@@ -299,11 +305,11 @@ describe('Sidebar', () => {
     renderSidebar(
       <Sidebar activeRoom="dashboard" onNavigate={onNavigate} dashboardState="strong" />,
     );
-    fireEvent.click(screen.getByText('Job Search'));
+    fireEvent.click(screen.getByText('Find Jobs'));
     expect(onNavigate).toHaveBeenCalledWith('jobs');
   });
 
-  it('calls onNavigateRoute when Applications is clicked', () => {
+  it('calls onNavigateRoute when Pipeline is clicked', () => {
     const onNavigate = vi.fn();
     const onNavigateRoute = vi.fn();
     renderSidebar(
@@ -314,7 +320,7 @@ describe('Sidebar', () => {
         dashboardState="strong"
       />,
     );
-    fireEvent.click(screen.getByText('Applications'));
+    fireEvent.click(screen.getByText('Pipeline'));
     expect(onNavigateRoute).toHaveBeenCalledWith('/workspace/applications');
     expect(onNavigate).not.toHaveBeenCalled();
   });

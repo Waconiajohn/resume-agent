@@ -190,7 +190,7 @@ export function ChatPanel({
               type="button"
               variant="ghost"
               onClick={onReconnectStream}
-              className="h-auto px-2 py-1 text-[13px] uppercase tracking-[0.1em]"
+              className="h-auto px-2 py-1 text-[13px]"
             >
               Reconnect
             </GlassButton>
@@ -208,7 +208,7 @@ export function ChatPanel({
             </button>
           )}
           {isBusy && (
-            <Loader2 className="h-3 w-3 motion-safe:animate-spin text-[#aec3ff]" />
+            <Loader2 className="h-3 w-3 motion-safe:animate-spin text-[var(--link)]" />
           )}
         </div>
       </div>
@@ -223,8 +223,8 @@ export function ChatPanel({
               setUserScrolledUp(false);
             }}
             className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex items-center gap-1.5
-              rounded-md border border-[var(--line-soft)] bg-black/60 backdrop-blur-lg px-3 py-1.5
-              text-[13px] text-[var(--text-muted)] shadow-lg transition-all hover:bg-black/80 hover:text-[var(--text-strong)]"
+              rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-3)] px-3 py-1.5
+              text-[13px] text-[var(--text-muted)] shadow-lg transition-all hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
           >
             <ChevronDown className="h-3 w-3" />
             New messages
@@ -238,7 +238,7 @@ export function ChatPanel({
         {/* Tool status indicators */}
         {tools.filter((t) => t.status === 'running').map((tool) => (
           <div key={tool.name} className="flex items-center gap-2 px-4 py-2" role="status" aria-label={tool.description ?? 'Processing'}>
-            <Loader2 className="h-3 w-3 motion-safe:animate-spin text-[#aec3ff]" aria-hidden="true" />
+            <Loader2 className="h-3 w-3 motion-safe:animate-spin text-[var(--link)]" aria-hidden="true" />
             <span className="text-xs text-[var(--text-soft)]">{tool.description}</span>
           </div>
         ))}
@@ -246,7 +246,7 @@ export function ChatPanel({
         {/* Processing indicator (when agent is working but no text streaming yet) */}
         {isProcessing && !streamingText && tools.every((t) => t.status !== 'running') && (
           <div className="flex items-center gap-2 px-4 py-3" role="status" aria-label="Coach is thinking">
-            <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[#aec3ff]" aria-hidden="true" />
+            <Loader2 className="h-4 w-4 motion-safe:animate-spin text-[var(--link)]" aria-hidden="true" />
             <span className="text-sm text-[var(--text-soft)]">Your coach is thinking...</span>
           </div>
         )}
@@ -291,7 +291,7 @@ export function ChatPanel({
         )}
 
         {!hideWorkProduct && panelData && panelType !== 'section_review' && (
-          <div className="mx-4 my-3 min-h-[400px] overflow-hidden rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)]">
+          <div className="mx-4 my-3 min-h-[400px] overflow-hidden rounded-[8px] border border-[var(--line-soft)] bg-[var(--accent-muted)]">
             <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-3 py-2">
               <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--text-soft)]">
                 Current View
@@ -303,7 +303,7 @@ export function ChatPanel({
                     variant="ghost"
                     onClick={() => setShowResumePreview((prev) => !prev)}
                     aria-label={showResumePreview ? 'Back to panel view' : 'Open resume preview'}
-                    className="h-auto px-2 py-1 text-[12px] uppercase tracking-[0.1em]"
+                    className="h-auto px-2 py-1 text-[12px]"
                   >
                     {showResumePreview ? 'Back To Panel' : 'Open Resume Preview'}
                   </GlassButton>

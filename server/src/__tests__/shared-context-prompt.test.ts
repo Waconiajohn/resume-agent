@@ -6,6 +6,7 @@ import {
   renderClientProfileSection,
   renderCareerProfileSection,
   renderCareerNarrativeSection,
+  renderBenchmarkProfileDirectionSection,
   renderEvidenceInventorySection,
   renderLinkedInAnalysisSection,
   renderPositioningStrategySection,
@@ -80,6 +81,30 @@ describe('shared-context prompt formatter', () => {
     const text = lines.join('\n');
     expect(text).toContain('digital transformation');
     expect(text).toContain('operating model redesign');
+  });
+
+  it('renders benchmark profile direction as approved guidance plus guardrails', () => {
+    const shared = createEmptySharedContext();
+    shared.benchmarkCandidate.benchmarkSummary = 'Enterprise operator who turns ambiguity into delivery clarity.';
+    shared.benchmarkCandidate.benchmarkWins = ['22,000-user Salesforce delivery proof'];
+    shared.benchmarkCandidate.benchmarkSignals = ['Salesforce CRM', 'requirements traceability'];
+    shared.positioningStrategy.approvedFraming = ['I bring order to complex enterprise delivery.'];
+    shared.positioningStrategy.riskAreas = ['Do not claim direct architecture ownership without confirmation.'];
+    shared.positioningStrategy.framingStillRequiringConfirmation = ['Confirm API ownership depth.'];
+    shared.workflowState.pendingApprovals = 2;
+    shared.workflowState.pendingQuestions = 1;
+
+    const lines = renderBenchmarkProfileDirectionSection({
+      heading: '## Benchmark Profile Direction',
+      sharedContext: shared,
+    });
+
+    const text = lines.join('\n');
+    expect(text).toContain('Enterprise operator who turns ambiguity into delivery clarity.');
+    expect(text).toContain('I bring order to complex enterprise delivery.');
+    expect(text).toContain('22,000-user Salesforce delivery proof');
+    expect(text).toContain('Do not claim direct architecture ownership without confirmation.');
+    expect(text).toContain('2 pending approvals, 1 pending discovery questions');
   });
 
   it('renders shared evidence inventory with evidence labels', () => {

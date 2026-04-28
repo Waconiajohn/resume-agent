@@ -130,7 +130,7 @@ export function ResumeReadyScreen({
                 <span className="text-[11px] text-[var(--text-soft)]">After:</span>
                 <span className="text-lg font-bold text-[var(--text-strong)]">{Math.round(keywordMatchPercent)}%</span>
                 {keywordMatchPercent > beforeKeywordMatchPercent && (
-                  <span className="text-[11px] font-medium text-emerald-500">
+                  <span className="text-[11px] font-medium text-[var(--badge-green-text)]">
                     ↑ +{Math.round(keywordMatchPercent) - Math.round(beforeKeywordMatchPercent)}%
                   </span>
                 )}

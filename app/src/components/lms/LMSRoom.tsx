@@ -203,7 +203,7 @@ function CourseNavItem({
               >
                 <div className="w-[14px] flex-shrink-0">
                   {isViewed ? (
-                    <CheckCircle2 size={13} className="text-emerald-500" />
+                    <CheckCircle2 size={13} className="text-[var(--badge-green-text)]" />
                   ) : (
                     <Circle size={13} className={cn(
                       'text-[var(--text-soft)]',
@@ -362,7 +362,7 @@ function QuickStats({ dataSources }: { dataSources: AgentDataSources }) {
               <span
                 className={cn(
                   'text-[11px] font-semibold',
-                  stat.bad ? 'text-red-400' : 'text-[var(--accent)]',
+                  stat.bad ? 'text-[var(--badge-red-text)]' : 'text-[var(--accent)]',
                 )}
                 style={{ fontFamily: 'var(--font-mono, monospace)' }}
               >
@@ -412,11 +412,10 @@ function WelcomeScreen({ onSelectFirst }: { onSelectFirst: () => void }) {
         <GraduationCap size={32} className="text-[var(--accent)]" />
       </div>
       <h2 className="text-[22px] font-bold text-[var(--text-strong)]">
-        CareerIQ Learning
+        CareerIQ Playbook
       </h2>
       <p className="mt-3 max-w-[480px] text-[14px] leading-relaxed text-[var(--text-muted)]">
-        Eight courses built around your real career data. Every lesson shows your actual scores,
-        gaps, and positioning — not generic advice.
+        The 46-lesson benchmark-candidate method, built around your real career data. Every lesson shows your actual scores, gaps, and positioning.
       </p>
       <p className="mt-2 text-[13px] text-[var(--text-soft)]">
         Start with Course 1, or jump to the topic that matters most right now.
@@ -427,7 +426,7 @@ function WelcomeScreen({ onSelectFirst }: { onSelectFirst: () => void }) {
         className="mt-8 inline-flex items-center gap-2 rounded-[10px] border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-5 py-3 text-[12px] font-bold uppercase tracking-[0.08em] text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/20"
       >
         <BookOpen size={16} />
-        Start Learning
+        Open Playbook
       </button>
     </div>
   );
@@ -563,7 +562,7 @@ export function LMSRoom({ onNavigateRoom, agentDataSources = {} }: LMSRoomProps)
         <div className="px-5 pt-5 pb-4 border-b border-[var(--line-soft)]">
           <div className="flex items-center gap-2 text-[14px] font-bold">
             <GraduationCap size={18} className="text-[var(--accent)]" />
-            <span className="text-[var(--text-strong)]">Masterclass</span>
+            <span className="text-[var(--text-strong)]">Playbook</span>
           </div>
         </div>
 

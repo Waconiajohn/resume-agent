@@ -39,26 +39,23 @@ const FADE_CLASS = 'opacity-0 translate-y-4 transition-all duration-700 ease-out
 function Hero() {
   const ref = useFadeIn();
   return (
-    <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-6">
-      {/* Animated gradient overlay */}
+    <section className="relative flex min-h-[88vh] items-center justify-center overflow-hidden px-6">
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 opacity-70"
         style={{
           background:
-            'linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(139,92,246,0.06) 50%, rgba(96,165,250,0.08) 100%)',
-          backgroundSize: '200% 200%',
-          animation: 'gradient-shift 8s ease infinite',
+            'linear-gradient(90deg, rgba(5,102,141,0.08) 1px, transparent 1px), linear-gradient(180deg, rgba(5,102,141,0.06) 1px, transparent 1px)',
+          backgroundSize: '64px 64px',
         }}
       />
-      <style>{`@keyframes gradient-shift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }`}</style>
 
       <div ref={ref} className={`relative z-10 mx-auto max-w-3xl text-center ${FADE_CLASS}`}>
-        <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
+        <h1 className="text-4xl font-extrabold tracking-normal text-[var(--text-strong)] sm:text-5xl md:text-6xl">
           Your resume undersells you.
           <br />
           We fix that.
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-lg text-white/60">
+        <p className="mx-auto mt-6 max-w-xl text-lg font-medium text-[var(--text-muted)]">
           Ten specialized AI agents that find what you've already done —
           and position you as the benchmark candidate.
         </p>
@@ -72,12 +69,12 @@ function Hero() {
           </a>
           <a
             href="#methodology"
-            className="rounded-lg border border-white/20 px-5 py-2.5 text-sm font-medium text-white/80 transition-colors hover:border-white/40 hover:text-white"
+            className="rounded-[var(--radius-control)] border border-[var(--line-strong)] bg-[var(--surface-3)] px-5 py-2.5 text-sm font-bold text-[var(--text-strong)] shadow-[var(--shadow-low)] transition-colors hover:border-[var(--link)] hover:bg-[var(--badge-blue-bg)] hover:text-[var(--badge-blue-text)]"
           >
             See how it works
           </a>
         </div>
-        <p className="mt-5 text-xs text-white/40">
+        <p className="mt-5 text-xs font-semibold text-[var(--text-soft)]">
           No credit card required · 3 free Resume Runs every month
         </p>
       </div>
@@ -99,13 +96,13 @@ const TRUST_STATS = [
 function TrustStrip() {
   const ref = useFadeIn();
   return (
-    <section className="border-y border-white/[0.06] bg-white/[0.015] py-10">
+    <section className="border-y border-[var(--line-soft)] bg-[var(--accent-muted)] py-10">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
         <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
           {TRUST_STATS.map((stat) => (
             <div key={stat.label} className="text-center">
-              <div className="text-2xl font-semibold text-white md:text-3xl">{stat.value}</div>
-              <div className="mt-1 text-xs uppercase tracking-wider text-white/50">{stat.label}</div>
+              <div className="text-2xl font-extrabold text-[var(--text-strong)] md:text-3xl">{stat.value}</div>
+              <div className="mt-1 text-xs font-bold text-[var(--text-soft)]">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -138,18 +135,18 @@ function BuiltForSection() {
   return (
     <section className="py-20 md:py-28">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
-        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+        <h2 className="text-center text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
           Built for executives the job boards forget
         </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-white/60">
+        <p className="mx-auto mt-3 max-w-2xl text-center text-[var(--text-muted)]">
           Most executives have 20 years of real experience and a resume that shows 2.
           We work best when there's a lot beneath the surface to surface.
         </p>
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {PERSONAS.map((p) => (
             <GlassCard key={p.role} className="p-6">
-              <h3 className="text-lg font-semibold text-white">{p.role}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-white/60">{p.desc}</p>
+              <h3 className="text-lg font-bold text-[var(--text-strong)]">{p.role}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{p.desc}</p>
             </GlassCard>
           ))}
         </div>
@@ -173,15 +170,15 @@ function ProblemSection() {
   return (
     <section className="py-20 md:py-32">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
-        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+        <h2 className="text-center text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
           ChatGPT writes resumes. It doesn't build careers.
         </h2>
         <div className="mt-14 grid gap-6 md:grid-cols-3">
           {PROBLEMS.map((p) => (
             <GlassCard key={p.title} className="p-6">
               <div className={`mb-4 h-2.5 w-2.5 rounded-full ${p.accent}`} />
-              <h3 className="text-lg font-semibold text-white">{p.title}</h3>
-              <p className="mt-2 text-sm text-white/60">{p.desc}</p>
+              <h3 className="text-lg font-bold text-[var(--text-strong)]">{p.title}</h3>
+              <p className="mt-2 text-sm text-[var(--text-muted)]">{p.desc}</p>
             </GlassCard>
           ))}
         </div>
@@ -218,10 +215,10 @@ function CoachingSection() {
   return (
     <section id="methodology" className="py-20 md:py-32 scroll-mt-16">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
-        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+        <h2 className="text-center text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
           We start with the question hiring managers actually ask
         </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-center text-white/60">
+        <p className="mx-auto mt-4 max-w-2xl text-center text-[var(--text-muted)]">
           Before writing a single word, we uncover what makes you the obvious choice
         </p>
 
@@ -234,10 +231,10 @@ function CoachingSection() {
                 </div>
               )}
               <div
-                className={`rounded-2xl px-5 py-3.5 text-sm leading-relaxed ${
+                className={`rounded-[8px] px-5 py-3.5 text-sm leading-relaxed ${
                   line.isCoach
-                    ? 'border border-[var(--link)]/20 bg-[var(--badge-blue-bg)] text-white/90'
-                    : 'border border-white/[0.12] bg-white/[0.07] text-white/80'
+                    ? 'border border-[var(--link)]/24 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]'
+                    : 'border border-[var(--line-strong)] bg-[var(--surface-3)] text-[var(--text-muted)]'
                 }`}
                 style={{ maxWidth: '78%' }}
               >
@@ -247,7 +244,7 @@ function CoachingSection() {
           ))}
         </div>
 
-        <p className="mt-10 text-center text-sm font-medium text-white/50">
+        <p className="mt-10 text-center text-sm font-bold text-[var(--text-soft)]">
           A strategic conversation, not a form to fill out
         </p>
       </div>
@@ -271,13 +268,13 @@ function BlueprintSection() {
   return (
     <section className="py-20 md:py-32">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
-        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+        <h2 className="text-center text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
           Built with a blueprint. Not a template.
         </h2>
 
         <div className="relative mt-14">
           {/* Connector line (desktop only) */}
-          <div className="absolute left-0 right-0 top-8 hidden h-px bg-white/10 md:block" />
+          <div className="absolute left-0 right-0 top-8 hidden h-px bg-[var(--line-soft)] md:block" />
 
           <div className="grid gap-8 md:grid-cols-4">
             {STEPS.map((s) => (
@@ -286,8 +283,8 @@ function BlueprintSection() {
                 <div className="absolute -top-4 left-6 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--link)]/30 bg-[var(--badge-blue-bg)] text-sm font-bold text-[var(--link)]">
                   {s.num}
                 </div>
-                <h3 className="text-base font-semibold text-white">{s.title}</h3>
-                <p className="mt-2 text-sm text-white/60">{s.desc}</p>
+                <h3 className="text-base font-bold text-[var(--text-strong)]">{s.title}</h3>
+                <p className="mt-2 text-sm text-[var(--text-muted)]">{s.desc}</p>
               </GlassCard>
             ))}
           </div>
@@ -318,7 +315,7 @@ function AgeSmartSection() {
   return (
     <section className="py-20 md:py-32">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
-        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+        <h2 className="text-center text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
           20 years of experience is an asset.
           <br className="hidden sm:block" />
           Unless your resume says otherwise.
@@ -358,7 +355,7 @@ function AgeSmartSection() {
           </GlassCard>
         </div>
 
-        <p className="mx-auto mt-10 max-w-xl text-center text-sm text-white/50">
+        <p className="mx-auto mt-10 max-w-xl text-center text-sm font-medium text-[var(--text-soft)]">
           We help detect and neutralize age signals that trigger unconscious bias
         </p>
       </div>
@@ -381,7 +378,7 @@ function QualitySection() {
   return (
     <section className="py-20 md:py-32">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
-        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+        <h2 className="text-center text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
           Triple-checked. Not just spell-checked.
         </h2>
 
@@ -390,7 +387,7 @@ function QualitySection() {
             {QUALITY_METRICS.map((m) => (
               <div key={m.label} className="flex flex-col items-center gap-3">
                 <ScoreRing score={m.score} max={m.max} label={m.label} color={m.color} />
-                <p className="max-w-[140px] text-center text-xs text-white/50">{m.desc}</p>
+                <p className="max-w-[140px] text-center text-xs font-medium text-[var(--text-soft)]">{m.desc}</p>
               </div>
             ))}
           </div>
@@ -409,20 +406,20 @@ function PositioningSection() {
   return (
     <section className="py-20 md:py-32">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
-        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+        <h2 className="text-center text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
           Answer once. Apply everywhere.
         </h2>
 
         <div className="mx-auto mt-14 flex max-w-2xl flex-col items-center gap-8 md:flex-row md:justify-center">
           {/* Profile card */}
           <GlassCard className="w-52 shrink-0 p-5">
-            <div className="mb-3 h-10 w-10 rounded-full bg-gradient-to-br from-[var(--link)] to-[var(--link)]/60" />
-            <div className="h-3 w-28 rounded bg-white/20" />
-            <div className="mt-2 h-2 w-20 rounded bg-white/10" />
+            <div className="mb-3 h-10 w-10 rounded-[8px] bg-[var(--link)]" />
+            <div className="h-3 w-28 rounded bg-[var(--line-strong)]" />
+            <div className="mt-2 h-2 w-20 rounded bg-[var(--line-soft)]" />
             <div className="mt-4 space-y-1.5">
-              <div className="h-2 w-full rounded bg-white/10" />
-              <div className="h-2 w-3/4 rounded bg-white/10" />
-              <div className="h-2 w-5/6 rounded bg-white/10" />
+              <div className="h-2 w-full rounded bg-[var(--line-soft)]" />
+              <div className="h-2 w-3/4 rounded bg-[var(--line-soft)]" />
+              <div className="h-2 w-5/6 rounded bg-[var(--line-soft)]" />
             </div>
           </GlassCard>
 
@@ -434,14 +431,14 @@ function PositioningSection() {
                   <path d="M0 8h20m0 0l-5-5m5 5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <GlassCard className="px-3 py-1.5">
-                  <span className="text-xs text-white/60">{label}</span>
+                  <span className="text-xs font-semibold text-[var(--text-muted)]">{label}</span>
                 </GlassCard>
               </div>
             ))}
           </div>
         </div>
 
-        <p className="mx-auto mt-10 max-w-lg text-center text-sm text-white/50">
+        <p className="mx-auto mt-10 max-w-lg text-center text-sm font-medium text-[var(--text-soft)]">
           Your career story gets sharper with every application. One strategic
           conversation builds a positioning profile that adapts to every role you
           target.
@@ -466,7 +463,7 @@ function RoleTagsSection() {
   return (
     <section className="py-20 md:py-32">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
-        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+        <h2 className="text-center text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
           Built for leaders who've outgrown templates
         </h2>
 
@@ -475,7 +472,7 @@ function RoleTagsSection() {
             {ROLES.map((role) => (
               <span
                 key={role}
-                className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.06] px-4 py-2 text-sm text-white/70"
+                className="shrink-0 rounded-full border border-[var(--line-strong)] bg-[var(--surface-3)] px-4 py-2 text-sm font-bold text-[var(--text-muted)]"
               >
                 {role}
               </span>
@@ -517,21 +514,21 @@ const FAQ_ITEMS = [
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-white/[0.08] last:border-none">
+    <div className="border-b border-[var(--line-soft)] last:border-none">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className="flex w-full items-center justify-between gap-4 py-5 text-left"
         aria-expanded={open}
       >
-        <span className="text-base font-medium text-white">{q}</span>
+        <span className="text-base font-bold text-[var(--text-strong)]">{q}</span>
         <ChevronDown
           size={18}
-          className={`shrink-0 text-white/40 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 text-[var(--text-soft)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />
       </button>
       {open && (
-        <p className="pb-5 text-sm leading-relaxed text-white/60">{a}</p>
+        <p className="pb-5 text-sm leading-relaxed text-[var(--text-muted)]">{a}</p>
       )}
     </div>
   );
@@ -542,7 +539,7 @@ function FAQSection() {
   return (
     <section className="py-20 md:py-32">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
-        <h2 className="text-center text-3xl font-bold text-white sm:text-4xl">
+        <h2 className="text-center text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
           Common Questions
         </h2>
         <GlassCard className="mx-auto mt-14 max-w-2xl px-6 py-2">
@@ -565,10 +562,10 @@ function CTASection() {
     <section className="py-20 md:py-32">
       <div ref={ref} className={`mx-auto max-w-5xl px-6 ${FADE_CLASS}`}>
         <div className="mx-auto max-w-lg text-center">
-          <h2 className="text-3xl font-bold text-white sm:text-4xl">
+          <h2 className="text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
             Ready to stop underselling yourself?
           </h2>
-          <p className="mt-4 text-white/60">
+          <p className="mt-4 text-[var(--text-muted)]">
             Create your free account and build a resume that lands interviews
           </p>
           <div className="mt-8">
@@ -590,21 +587,21 @@ function CTASection() {
 
 function Footer() {
   return (
-    <footer className="border-t border-white/[0.08] py-10">
-      <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-6 text-sm text-white/40">
+    <footer className="border-t border-[var(--line-soft)] py-10">
+      <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 px-6 text-sm font-medium text-[var(--text-soft)]">
         <span>CareerIQ by Agentic.AI</span>
         <span>&copy; 2026 All rights reserved</span>
         <div className="flex flex-wrap items-center justify-center gap-5">
-          <a href="/workspace" className="text-white/50 transition-colors hover:text-white">
+          <a href="/workspace" className="text-[var(--text-muted)] transition-colors hover:text-[var(--link)]">
             Sign In
           </a>
-          <Link to="/terms" className="text-white/50 transition-colors hover:text-white">
+          <Link to="/terms" className="text-[var(--text-muted)] transition-colors hover:text-[var(--link)]">
             Terms of Service
           </Link>
-          <Link to="/privacy" className="text-white/50 transition-colors hover:text-white">
+          <Link to="/privacy" className="text-[var(--text-muted)] transition-colors hover:text-[var(--link)]">
             Privacy Policy
           </Link>
-          <Link to="/contact" className="text-white/50 transition-colors hover:text-white">
+          <Link to="/contact" className="text-[var(--text-muted)] transition-colors hover:text-[var(--link)]">
             Contact
           </Link>
         </div>
@@ -624,16 +621,15 @@ function Footer() {
 function SalesNav() {
   return (
     <header
-      className="sticky top-0 z-40 border-b border-white/10"
-      style={{ background: 'rgba(10,10,20,0.75)', backdropFilter: 'blur(16px)' }}
+      className="sticky top-0 z-40 border-b border-white/10 bg-[var(--header-bg)]"
     >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-        <span className="text-[18px] font-normal tracking-tight text-white">
-          Career<span className="font-bold text-blue-400">IQ</span>
+        <span className="text-[18px] font-extrabold tracking-tight text-white">
+          Career<span className="text-[#63c4e6]">IQ</span>
         </span>
         <a
           href="/workspace"
-          className="text-[13px] font-medium uppercase tracking-[0.1em] text-white/70 transition-colors hover:text-white"
+          className="rounded-[8px] border border-white/20 bg-white/[0.04] px-3 py-2 text-[13px] font-bold text-white/80 transition-colors hover:border-white/30 hover:bg-white/[0.08] hover:text-white"
         >
           Sign In
         </a>

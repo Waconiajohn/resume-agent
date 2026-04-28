@@ -15,9 +15,178 @@ import { repairJSON } from '../../../lib/json-repair.js';
 import { createSessionLogger } from '../../../lib/logger.js';
 
 type InterviewPrepTool = AgentTool<InterviewPrepState, InterviewPrepSSEEvent>;
+type ResumeData = NonNullable<InterviewPrepState['resume_data']>;
+type JdAnalysis = NonNullable<InterviewPrepState['jd_analysis']>;
+type CompanyResearchData = NonNullable<InterviewPrepState['company_research']>;
 
 /** Maximum Perplexity calls allowed per session across all researcher tools. */
 const MAX_PERPLEXITY_CALLS = 3;
+
+function parseLlmJsonObject(text: string): Record<string, unknown> | null {
+  const repaired = repairJSON<unknown>(text);
+  if (repaired && typeof repaired === 'object' && !Array.isArray(repaired)) {
+    return repaired as Record<string, unknown>;
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function isGenericValue(value: unknown, genericPattern: RegExp): boolean {
+  return typeof value !== 'string' || value.trim().length === 0 || genericPattern.test(value.trim());
+}
+
+function normalizeForMatch(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function splitReadableList(value: string): string[] {
+  return value
+    .split(/,\s+|;\s+|\s+and\s+/i)
+    .map((item) => item.replace(/^[-•\s]+/, '').trim())
+    .filter((item) => item.length > 3);
+}
+
+function extractOperatingDivisions(jdText: string): string[] {
+  const match = jdText.match(/operating divisions\s*[—-]\s*([^.\n]+)/i);
+  return match ? splitReadableList(match[1]) : [];
+}
+
+function buildJdAnchoredCompanyResearch(
+  companyName: string,
+  industryHint: string,
+  state: InterviewPrepState,
+) {
+  const jd = state.jd_analysis;
+  const jdText = jd?.raw_job_description ?? '';
+  const roleTitle = jd?.role_title || 'the target role';
+  const divisions = extractOperatingDivisions(jdText);
+  const requirements = (jd?.requirements ?? []).map((r) => r.requirement).filter(Boolean);
+  const cultureCues = jd?.culture_cues ?? [];
+  const industry =
+    industryHint
+    || (/manufactur/i.test(jdText) ? 'industrial manufacturing' : 'company described in the supplied job description');
+
+  const revenueStreams =
+    divisions.length > 0
+      ? divisions
+      : requirements
+          .filter((req) => /manufactur|supply chain|procurement|division|operation|product|service/i.test(req))
+          .slice(0, 4);
+
+  const strategicPriorities = [
+    ...requirements
+      .filter((req) => /p&l|integration|standard|erp|procurement|lean|continuous|capital|working capital|board|recapital/i.test(req))
+      .slice(0, 5),
+  ];
+
+  const growthAreas = [
+    ...strategicPriorities.slice(0, 4),
+    ...requirements
+      .filter((req) => /team|leadership|planning|savings|modernization|supplier/i.test(req))
+      .slice(0, 3),
+  ].filter((value, index, all) => all.indexOf(value) === index);
+
+  const risks = [
+    'Cross-division integration can stall if operating standards, systems, and leadership accountability are not made explicit.',
+    'A value-creation plan can lose credibility if EBITDA, working-capital, and capital-project improvements are not traceable to weekly operating metrics.',
+    'Modernization and procurement changes can disrupt delivery performance if plants, suppliers, and finance are not aligned before rollout.',
+    'Board and sponsor expectations can outpace site-level readiness if the operating cadence is not translated into practical frontline routines.',
+  ];
+
+  const roleImpact =
+    `${roleTitle} appears to be central to the supplied job description: the role connects manufacturing, supply chain, ` +
+    'capital allocation, operating standards, leadership accountability, and board-level reporting to the company’s value-creation plan.';
+
+  const overviewLines = [
+    `Using the supplied job description, ${companyName} is presented as a ${industry} business.`,
+    divisions.length > 0
+      ? `The posting describes four operating divisions: ${divisions.join(', ')}.`
+      : 'The posting does not provide verified public business-line detail beyond the role description.',
+    'Because I could not verify a clean public company profile from the available research, this brief intentionally relies on the supplied JD rather than importing similarly named companies.',
+  ];
+
+  return {
+    company_name: companyName,
+    overview: overviewLines.join(' '),
+    revenue_streams: revenueStreams,
+    industry,
+    growth_areas: growthAreas.length > 0 ? growthAreas : strategicPriorities,
+    risks,
+    competitors: [],
+    strategic_priorities: strategicPriorities,
+    culture_signals:
+      cultureCues.length > 0
+        ? cultureCues
+        : [
+            'Private equity-style accountability and measurable value creation',
+            'Hands-on operating leadership rather than coordination-only oversight',
+            'Board-ready communication around cost, capital, quality, delivery, and working capital',
+          ],
+    role_impact: roleImpact,
+    source_note:
+      'Public company research was not reliable enough to use directly; this company brief is anchored to the supplied job description.',
+    source_confidence: 'jd_only' as const,
+    raw_research: jdText,
+  };
+}
+
+function shouldUseJdAnchoredResearch(rawResearch: string, companyName: string): boolean {
+  const normalizedCompany = normalizeForMatch(companyName);
+  const normalizedResearch = normalizeForMatch(rawResearch);
+  if (!normalizedCompany || normalizedCompany === 'unknown company') return true;
+  if (/\bclosest matches?\b|\bcould not find\b|\bcould not verify\b|\bnot find a verified\b|\bno verified public\b/i.test(rawResearch)) {
+    return true;
+  }
+  if (companyName.length > 8 && !normalizedResearch.includes(normalizedCompany)) {
+    return true;
+  }
+  return false;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+}
+
+function normalizeCompetitors(value: unknown): CompanyResearchData['competitors'] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const candidate = item as Record<string, unknown>;
+      const name = String(candidate.name ?? '').trim();
+      const differentiation = String(candidate.differentiation ?? '').trim();
+      if (!name || !differentiation) return null;
+      return { name, differentiation };
+    })
+    .filter((item): item is { name: string; differentiation: string } => item !== null);
+}
+
+function normalizeCompanyResearch(
+  raw: Record<string, unknown>,
+  companyName: string,
+  industryHint: string,
+  rawResearch: string,
+): CompanyResearchData {
+  return {
+    company_name: String(raw.company_name ?? companyName).trim() || companyName,
+    overview: String(raw.overview ?? rawResearch).trim() || rawResearch,
+    revenue_streams: asStringArray(raw.revenue_streams),
+    industry: String(raw.industry ?? industryHint ?? 'Unknown').trim() || industryHint || 'Unknown',
+    growth_areas: asStringArray(raw.growth_areas),
+    risks: asStringArray(raw.risks),
+    competitors: normalizeCompetitors(raw.competitors),
+    raw_research: rawResearch,
+  };
+}
 
 // ─── Tool: parse_inputs ─────────────────────────────────────────────
 
@@ -44,6 +213,10 @@ const parseInputsTool: InterviewPrepTool = {
         type: 'string',
         description: 'Company name (if known from pipeline data)',
       },
+      role_title: {
+        type: 'string',
+        description: 'Role title (if known from application data)',
+      },
     },
     required: ['resume_text', 'job_description'],
   },
@@ -51,6 +224,7 @@ const parseInputsTool: InterviewPrepTool = {
     const resumeText = String(input.resume_text ?? '');
     const jdText = String(input.job_description ?? '');
     const companyHint = String(input.company_name ?? '');
+    const roleHint = String(input.role_title ?? '');
 
     // Use LLM to extract structured data from resume
     const resumeResponse = await llm.chat({
@@ -81,10 +255,8 @@ ${resumeText}`,
       }],
     });
 
-    let resumeData;
-    try {
-      resumeData = JSON.parse(repairJSON(resumeResponse.text) ?? resumeResponse.text);
-    } catch {
+    let resumeData = parseLlmJsonObject(resumeResponse.text) as ResumeData | null;
+    if (!resumeData) {
       resumeData = {
         name: 'Candidate',
         current_title: 'Professional',
@@ -94,6 +266,9 @@ ${resumeText}`,
         work_history: [],
       };
     }
+    resumeData.key_skills = Array.isArray(resumeData.key_skills) ? resumeData.key_skills : [];
+    resumeData.key_achievements = Array.isArray(resumeData.key_achievements) ? resumeData.key_achievements : [];
+    resumeData.work_history = Array.isArray(resumeData.work_history) ? resumeData.work_history : [];
 
     // Use LLM to extract structured data from JD
     const jdResponse = await llm.chat({
@@ -121,17 +296,25 @@ ${jdText}`,
       }],
     });
 
-    let jdAnalysis;
-    try {
-      jdAnalysis = JSON.parse(repairJSON(jdResponse.text) ?? jdResponse.text);
-    } catch {
+    let jdAnalysis = parseLlmJsonObject(jdResponse.text) as JdAnalysis | null;
+    if (!jdAnalysis) {
       jdAnalysis = {
         company_name: companyHint || 'Unknown Company',
-        role_title: 'Unknown Role',
+        role_title: roleHint || 'Unknown Role',
         requirements: [],
         culture_cues: [],
         seniority_level: 'other',
       };
+    }
+    jdAnalysis.requirements = Array.isArray(jdAnalysis.requirements) ? jdAnalysis.requirements : [];
+    jdAnalysis.culture_cues = Array.isArray(jdAnalysis.culture_cues) ? jdAnalysis.culture_cues : [];
+    jdAnalysis.raw_job_description = jdText;
+
+    if (companyHint && isGenericValue(jdAnalysis.company_name, /^(unknown|target)\s+company$/i)) {
+      jdAnalysis.company_name = companyHint;
+    }
+    if (roleHint && isGenericValue(jdAnalysis.role_title, /^(unknown|target)\s+role$/i)) {
+      jdAnalysis.role_title = roleHint;
     }
 
     // Store in state
@@ -178,6 +361,7 @@ const researchCompanyTool: InterviewPrepTool = {
     const industryHint = String(input.industry_hint ?? '');
     const log = createSessionLogger(ctx.getState().session_id);
     const sessionId = ctx.getState().session_id;
+    const state = ctx.getState();
 
     if (!companyName || companyName === 'Unknown Company') {
       return JSON.stringify({ success: false, error: 'No company name available for research' });
@@ -234,9 +418,32 @@ const researchCompanyTool: InterviewPrepTool = {
       })).text;
     }
 
+    if (shouldUseJdAnchoredResearch(rawResearch, companyName)) {
+      const companyResearch = buildJdAnchoredCompanyResearch(companyName, industryHint, state);
+      state.company_research = companyResearch;
+      log.info(
+        {
+          company: companyName,
+          source_confidence: companyResearch.source_confidence,
+          reason: 'unverified_public_research',
+        },
+        'research_company: using JD-anchored company brief',
+      );
+      return JSON.stringify({
+        success: true,
+        company: companyName,
+        source_confidence: companyResearch.source_confidence,
+        growth_areas_count: companyResearch.growth_areas?.length ?? 0,
+        risks_count: companyResearch.risks?.length ?? 0,
+        competitors_count: 0,
+        strategic_priorities_count: companyResearch.strategic_priorities?.length ?? 0,
+        culture_signals_count: companyResearch.culture_signals?.length ?? 0,
+        has_role_impact: !!companyResearch.role_impact,
+      });
+    }
+
     // ── Query 2: Role-specific intelligence (strategic priorities, culture, role impact) ──
 
-    const state = ctx.getState();
     const roleTitle = state.jd_analysis?.role_title ?? '';
 
     const roleQuery =
@@ -312,10 +519,11 @@ ${rawResearch}`,
       }],
     });
 
-    let companyResearch;
+    let companyResearch: CompanyResearchData;
     try {
-      companyResearch = JSON.parse(repairJSON(parseResponse.text) ?? parseResponse.text);
-      companyResearch.raw_research = rawResearch;
+      const parsedResearch = parseLlmJsonObject(parseResponse.text);
+      if (!parsedResearch) throw new Error('Unable to parse company research JSON');
+      companyResearch = normalizeCompanyResearch(parsedResearch, companyName, industryHint, rawResearch);
     } catch {
       companyResearch = {
         company_name: companyName,
@@ -351,7 +559,8 @@ ${rawRoleResearch}`,
       });
 
       try {
-        const roleParsed = JSON.parse(repairJSON(roleParseResponse.text) ?? roleParseResponse.text);
+        const roleParsed = parseLlmJsonObject(roleParseResponse.text);
+        if (!roleParsed) throw new Error('Unable to parse role research JSON');
         if (Array.isArray(roleParsed.strategic_priorities) && roleParsed.strategic_priorities.length > 0) {
           companyResearch.strategic_priorities = roleParsed.strategic_priorities;
         }

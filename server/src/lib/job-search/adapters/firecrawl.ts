@@ -18,9 +18,6 @@ function extractCompanyFromResult(title: string, url: string): string {
   const atMatch = title.match(/\bat\s+(.+?)(?:\s*[-–|]|\s*$)/i);
   if (atMatch) return atMatch[1].trim();
 
-  const dashMatch = title.match(/^(.+?)\s*[-–|]\s*.+/);
-  if (dashMatch && dashMatch[1].length < 60) return dashMatch[1].trim();
-
   try {
     const hostname = new URL(url).hostname.replace(/^(www|jobs|careers|boards)\./i, '');
     const name = hostname.split('.')[0];
@@ -40,6 +37,61 @@ function normalizeIdentityUrl(rawUrl: string | undefined): string {
   } catch {
     return rawUrl.trim().toLowerCase();
   }
+}
+
+export function isLikelyJobPostingResult(title: string, rawUrl: string): boolean {
+  const normalizedTitle = title.toLowerCase();
+  if (
+    (/\bjobs?\b/.test(normalizedTitle) && !/\bat\s+/.test(normalizedTitle))
+    || /\b(job listings|career opportunities)\b/.test(normalizedTitle)
+    || /\b(jobs|employment|openings)\s+in\b/.test(normalizedTitle)
+    || /\b(hiring now|best .+ jobs|job search|salary|salaries|compensation)\b/.test(normalizedTitle)
+    || /\b\d+\s+(chief|director|vp|manager|operations?|manufacturing|engineer).+\s+jobs?\b/.test(normalizedTitle)
+  ) {
+    return false;
+  }
+
+  try {
+    const url = new URL(rawUrl);
+    const host = url.hostname.toLowerCase();
+    const path = url.pathname.toLowerCase();
+    const search = url.search.toLowerCase();
+    const full = `${host}${path}${search}`;
+
+    if (
+      full.includes('/salaries/')
+      || full.includes('/research/salary/')
+      || path === '/jobs'
+      || path === '/search'
+      || path.endsWith('/jobs.html')
+      || path.includes('/q-') && path.includes('-jobs')
+      || path.includes('/job/') && path.includes('/search')
+      || (host.includes('linkedin.com') && /\/jobs\/[^/]+-jobs(?:-|$)/.test(path))
+      || (host.includes('ziprecruiter.com') && /^\/jobs\//.test(path))
+      || (host.includes('glassdoor.com') && path.includes('-jobs-'))
+      || (host.includes('simplyhired.com') && path.includes('/search'))
+      || (host.includes('indeed.com') && path !== '/viewjob')
+    ) {
+      return false;
+    }
+
+    if (
+      (host.includes('indeed.com') && path === '/viewjob' && search.includes('jk='))
+      || (host.includes('linkedin.com') && path.includes('/jobs/view/'))
+      || host.includes('greenhouse.io')
+      || host.includes('lever.co')
+      || host.includes('workdayjobs.com')
+      || path.includes('/job-listing/opening/')
+      || /\/jobs?\/[^/]+/.test(path)
+    ) {
+      return true;
+    }
+  } catch {
+    // Fall through to conservative title heuristic.
+  }
+
+  return /\b(chief|coo|cto|cfo|vp|vice president|director|manager|lead|head)\b/i.test(title)
+    && !/\bjobs?\b/i.test(title);
 }
 
 function buildStableExternalId(title: string, company: string, url: string | undefined): string {
@@ -71,6 +123,7 @@ export class FirecrawlAdapter implements SearchAdapter {
 
       return webResults
         .filter((r) => r.title && r.url)
+        .filter((r) => isLikelyJobPostingResult(r.title ?? '', r.url ?? ''))
         .map(
           (r): JobResult => {
             const company = extractCompanyFromResult(r.title ?? '', r.url ?? '');

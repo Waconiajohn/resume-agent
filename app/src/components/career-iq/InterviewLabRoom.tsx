@@ -547,7 +547,7 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
           <Mic size={24} className="text-[var(--text-soft)] mx-auto mb-2" />
           <p className="text-[13px] text-[var(--text-soft)]">No interviews scheduled</p>
           <p className="text-[13px] text-[var(--text-soft)] mt-1">
-            Open an application from My Applications, or move an application into the Interviewing stage.
+            Open a role from Pipeline, or move an application into the Interviewing stage.
           </p>
         </div>
       ) : (
@@ -774,42 +774,108 @@ function PrepProgress({ company, activityMessages, currentStage }: {
   }, [activityMessages.length]);
 
   const stageLabels: Record<string, string> = {
-    research: 'Researching',
-    writing: 'Writing Report',
+    research: 'Researching the company and role',
+    writing: 'Building your interview brief',
   };
 
+  const latestMessages = activityMessages.slice(-5);
+  const activeIndex = currentStage === 'writing' ? 3 : currentStage === 'research' ? 1 : 0;
+  const progressSteps = [
+    {
+      title: 'Read the role like a hiring team',
+      body: 'We identify what the company is really buying, not just the words in the posting.',
+    },
+    {
+      title: 'Verify company context',
+      body: 'We separate reliable company signals from weak or unverified research so the brief stays honest.',
+    },
+    {
+      title: 'Map your proof',
+      body: 'Your resume evidence is matched to the top requirements, gaps, and likely objections.',
+    },
+    {
+      title: 'Build speakable answers',
+      body: 'The output becomes first-person language: pitch, stories, questions, and closing strategy.',
+    },
+    {
+      title: 'Package the game plan',
+      body: 'We finish with a practical 30-60-90 plan and the points you should lead with.',
+    },
+  ];
+
   return (
-    <GlassCard className="p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="rounded-lg bg-[var(--link)]/10 p-2">
+    <GlassCard className="p-6 max-w-4xl mx-auto">
+      <div className="flex items-start gap-3 mb-6">
+        <div className="rounded-lg bg-[var(--link)]/10 p-2 mt-0.5">
           <Loader2 size={18} className="text-[var(--link)] animate-spin" />
         </div>
         <div>
-          <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">
-            Preparing for {company}
+          <h3 className="text-[18px] font-semibold text-[var(--text-strong)]">
+            Building your interview brief
           </h3>
-          <p className="text-[12px] text-[var(--text-soft)]">
-            {currentStage ? stageLabels[currentStage] ?? currentStage : 'Starting...'}
+          <p className="mt-1 text-[13px] text-[var(--text-soft)]">
+            {company ? `Preparing for ${company}. ` : ''}
+            {currentStage ? stageLabels[currentStage] ?? currentStage : 'Starting the interview prep engine...'}
           </p>
         </div>
       </div>
 
-      <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
-        {activityMessages.map((msg) => (
-          <div key={msg.id} className="flex items-start gap-2 py-1">
-            <div className="h-1.5 w-1.5 rounded-full bg-[var(--link)]/40 mt-1.5 flex-shrink-0" />
-            <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
-          </div>
-        ))}
-        <div ref={bottomRef} />
+      <div className="grid gap-3 md:grid-cols-5">
+        {progressSteps.map((step, index) => {
+          const isDone = index < activeIndex;
+          const isActive = index === activeIndex;
+          return (
+            <div
+              key={step.title}
+              className={cn(
+                'rounded-lg border p-3 transition-colors',
+                isActive
+                  ? 'border-[var(--link)] bg-[var(--link)]/10'
+                  : isDone
+                    ? 'border-[var(--ready)]/25 bg-[var(--ready)]/10'
+                    : 'border-[var(--line-soft)] bg-white/70',
+              )}
+            >
+              <div className="mb-2 flex items-center gap-2">
+                {isDone ? (
+                  <CheckCircle2 size={15} className="text-[var(--ready)]" />
+                ) : isActive ? (
+                  <Loader2 size={15} className="text-[var(--link)] animate-spin" />
+                ) : (
+                  <div className="h-[15px] w-[15px] rounded-full border border-[var(--line-strong)]" />
+                )}
+                <span className="text-[11px] font-semibold uppercase text-[var(--text-muted)]">
+                  Step {index + 1}
+                </span>
+              </div>
+              <div className="text-[13px] font-semibold text-[var(--text-strong)] leading-snug">{step.title}</div>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-soft)]">{step.body}</p>
+            </div>
+          );
+        })}
       </div>
 
-      {activityMessages.length === 0 && (
-        <div className="text-center py-8">
-          <Loader2 size={20} className="text-[var(--text-soft)] mx-auto mb-2 animate-spin" />
-          <p className="text-[12px] text-[var(--text-soft)]">Connecting to pipeline...</p>
+      <div className="mt-6 rounded-lg border border-[var(--line-soft)] bg-white/75 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h4 className="text-[12px] font-semibold uppercase text-[var(--text-muted)]">Latest checks</h4>
+          <span className="text-[12px] text-[var(--text-soft)]">{activityMessages.length} updates</span>
         </div>
-      )}
+        <div className="space-y-2 max-h-[180px] overflow-y-auto">
+          {latestMessages.map((msg) => (
+            <div key={msg.id} className="flex items-start gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-[var(--link)]/50 mt-1.5 flex-shrink-0" />
+              <span className="text-[12px] text-[var(--text-soft)] leading-relaxed">{msg.message}</span>
+            </div>
+          ))}
+          {latestMessages.length === 0 && (
+            <div className="flex items-center gap-2 text-[12px] text-[var(--text-soft)]">
+              <Loader2 size={14} className="animate-spin" />
+              Connecting to the prep pipeline...
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+      </div>
     </GlassCard>
   );
 }
@@ -966,7 +1032,7 @@ function PostInterviewFollowUpEmailForm({
         <p className="text-[13px] leading-relaxed text-[var(--text-soft)]">
           The follow-up email tool is scoped to a specific application so it can pull your
           prior interview-prep notes, the interview date, and whether you&rsquo;ve already
-          sent a thank-you. Open this from <span className="font-medium text-[var(--text-strong)]">My Applications</span> to
+          sent a thank-you. Open this from <span className="font-medium text-[var(--text-strong)]">Pipeline</span> to
           draft one.
         </p>
         <div className="flex justify-end">
@@ -1034,7 +1100,7 @@ function InLabThankYouNoteEntry({
         <p className="text-[13px] leading-relaxed text-[var(--text-soft)]">
           Thank-you notes are scoped to a specific application so the agent can reference the interview
           context, recipient roles, and any prior interview-prep notes you captured. Open this from{' '}
-          <span className="font-medium text-[var(--text-strong)]">My Applications</span> to draft notes.
+          <span className="font-medium text-[var(--text-strong)]">Pipeline</span> to draft notes.
         </p>
         <div className="flex justify-end">
           <GlassButton variant="ghost" onClick={onBack} className="text-[13px]">
@@ -1305,6 +1371,7 @@ export function InterviewLabRoom({
         resumeText,
         jobDescription: jdText || `${interview.role} at ${interview.company}`,
         companyName: interview.company,
+        roleTitle: interview.role,
         jobApplicationId: interview.jobApplicationId,
       });
     } catch (err) {

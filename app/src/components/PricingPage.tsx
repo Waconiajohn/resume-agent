@@ -214,8 +214,8 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
   return (
     <div className="flex flex-col items-center gap-8 px-4 py-12">
       <div className="text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-white">Choose your plan</h2>
-        <p className="mt-3 text-base text-white/60">
+        <h2 className="text-3xl font-extrabold tracking-normal text-[var(--text-strong)]">Choose your plan</h2>
+        <p className="mt-3 text-base text-[var(--text-muted)]">
           Every plan includes the full 3-agent workflow — strategy, writing, and quality review.
         </p>
         {referralCode && (
@@ -233,7 +233,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
       </div>
 
       {errorMessage && (
-        <div className="w-full max-w-md rounded-xl border border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/70">
+        <div className="w-full max-w-md rounded-[8px] border border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]/70">
           {errorMessage}
         </div>
       )}
@@ -252,24 +252,24 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
               )}
             >
               {plan.highlighted && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-[var(--link)]/40 bg-[linear-gradient(180deg,rgba(158,184,255,0.25),rgba(158,184,255,0.12))] px-3 py-0.5 text-xs font-semibold text-[var(--link)]">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-[var(--link)]/40 bg-[var(--badge-blue-bg)] px-3 py-0.5 text-xs font-bold text-[var(--badge-blue-text)]">
                   Most popular
                 </div>
               )}
 
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70">
+                <div className="flex h-9 w-9 items-center justify-center rounded-[8px] border border-[var(--line-strong)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]">
                   {plan.icon}
                 </div>
                 <div>
-                  <div className="font-semibold text-white">{plan.name}</div>
-                  <div className="text-xl font-bold text-white">{formatPrice(plan.monthly_price_cents)}</div>
+                  <div className="font-bold text-[var(--text-strong)]">{plan.name}</div>
+                  <div className="text-xl font-extrabold text-[var(--text-strong)]">{formatPrice(plan.monthly_price_cents)}</div>
                 </div>
               </div>
 
               <ul className="flex flex-col gap-2">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-sm text-white/70">
+                  <li key={feature} className="flex items-start gap-2 text-sm text-[var(--text-muted)]">
                     <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--badge-green-text)]" />
                     {feature}
                   </li>
@@ -278,11 +278,11 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
 
               <div className="mt-auto">
                 {isCurrentPlan ? (
-                  <div className="flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm text-white/50">
+                  <div className="flex h-11 items-center justify-center rounded-[8px] border border-[var(--line-strong)] bg-[var(--accent-muted)] text-sm font-bold text-[var(--text-muted)]">
                     Current plan
                   </div>
                 ) : plan.id === 'free' ? (
-                  <div className="flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm text-white/40">
+                  <div className="flex h-11 items-center justify-center rounded-[8px] border border-[var(--line-strong)] bg-[var(--accent-muted)] text-sm font-bold text-[var(--text-soft)]">
                     Free tier
                   </div>
                 ) : (
@@ -311,16 +311,16 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
 
       {/* Comparison table */}
       <section className="w-full max-w-4xl">
-        <h3 className="mb-4 text-center text-lg font-semibold text-white">Compare plans</h3>
+        <h3 className="mb-4 text-center text-lg font-bold text-[var(--text-strong)]">Compare plans</h3>
         <GlassCard className="overflow-hidden p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-white/[0.02]">
-                  <th className="px-4 py-3 text-left font-medium text-white/60">Feature</th>
-                  <th className="px-4 py-3 text-center font-medium text-white/80">Free</th>
+                <tr className="border-b border-[var(--line-soft)] bg-[var(--accent-muted)]">
+                  <th className="px-4 py-3 text-left font-bold text-[var(--text-muted)]">Feature</th>
+                  <th className="px-4 py-3 text-center font-bold text-[var(--text-muted)]">Free</th>
                   <th className="px-4 py-3 text-center font-medium text-[var(--link)]">Starter</th>
-                  <th className="px-4 py-3 text-center font-medium text-white/80">Pro</th>
+                  <th className="px-4 py-3 text-center font-bold text-[var(--text-muted)]">Pro</th>
                 </tr>
               </thead>
               <tbody>
@@ -328,11 +328,11 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
                   <tr
                     key={row.feature}
                     className={cn(
-                      'border-b border-white/5 last:border-0',
-                      i % 2 === 1 && 'bg-white/[0.01]',
+                      'border-b border-[var(--line-soft)] last:border-0',
+                      i % 2 === 1 && 'bg-[var(--accent-muted)]',
                     )}
                   >
-                    <td className="px-4 py-3 text-white/70">{row.feature}</td>
+                    <td className="px-4 py-3 text-[var(--text-muted)]">{row.feature}</td>
                     {(['free', 'starter', 'pro'] as const).map((plan) => {
                       const value = row[plan];
                       return (
@@ -341,10 +341,10 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
                             value ? (
                               <Check className="mx-auto h-4 w-4 text-[var(--badge-green-text)]" />
                             ) : (
-                              <Minus className="mx-auto h-4 w-4 text-white/20" />
+                              <Minus className="mx-auto h-4 w-4 text-[var(--text-soft)]" />
                             )
                           ) : (
-                            <span className="text-white/90">{value}</span>
+                            <span className="text-[var(--text-strong)]">{value}</span>
                           )}
                         </td>
                       );
@@ -359,18 +359,18 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
 
       {/* FAQ */}
       <section className="w-full max-w-2xl">
-        <h3 className="mb-4 text-center text-lg font-semibold text-white">Frequently asked questions</h3>
+        <h3 className="mb-4 text-center text-lg font-bold text-[var(--text-strong)]">Frequently asked questions</h3>
         <div className="flex flex-col gap-2">
           {FAQ_ITEMS.map((item) => (
             <details
               key={item.q}
-              className="group rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/20"
+              className="group rounded-[8px] border border-[var(--line-strong)] bg-[var(--surface-3)] px-4 py-3 transition-colors hover:border-[var(--link)]"
             >
-              <summary className="flex cursor-pointer items-center justify-between gap-4 text-sm font-medium text-white/90 [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer items-center justify-between gap-4 text-sm font-bold text-[var(--text-strong)] [&::-webkit-details-marker]:hidden">
                 {item.q}
-                <ChevronDown className="h-4 w-4 flex-shrink-0 text-white/40 transition-transform group-open:rotate-180" />
+                <ChevronDown className="h-4 w-4 flex-shrink-0 text-[var(--text-soft)] transition-transform group-open:rotate-180" />
               </summary>
-              <p className="mt-2 text-sm leading-relaxed text-white/60">{item.a}</p>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{item.a}</p>
             </details>
           ))}
         </div>
@@ -380,14 +380,14 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
       <div className="flex w-full max-w-md flex-col items-center gap-2">
         <div className="flex w-full items-center gap-2">
           <div className="relative flex-1">
-            <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+            <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-soft)]" />
             <input
               type="text"
               value={promoCode}
               onChange={(e) => { setPromoCode(e.target.value); setPromoResult(null); }}
               onKeyDown={(e) => { if (e.key === 'Enter') void handleValidatePromo(); }}
               placeholder="Have a promo code?"
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-4 text-sm text-white placeholder:text-white/30 focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
+              className="w-full rounded-[8px] border border-[var(--line-strong)] bg-[var(--surface-3)] py-2.5 pl-9 pr-4 text-sm font-medium text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:border-[var(--link)]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
             />
           </div>
           <GlassButton
@@ -403,7 +403,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
         {promoResult && (
           <div
             className={cn(
-              'w-full rounded-xl border px-4 py-3 text-sm',
+              'w-full rounded-[8px] border px-4 py-3 text-sm',
               promoResult.valid
                 ? 'border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]'
                 : 'border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]/70',
@@ -422,7 +422,7 @@ export function PricingPage({ accessToken, currentPlanId, onUpgradeSuccess }: Pr
         )}
       </div>
 
-      <p className="text-center text-xs text-white/30">
+      <p className="text-center text-xs text-[var(--text-soft)]">
         Payments are processed securely by Stripe. Cancel anytime from your billing dashboard.
       </p>
     </div>

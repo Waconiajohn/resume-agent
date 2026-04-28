@@ -47,10 +47,10 @@ function ScoreBadge({ value }: { value: number }) {
       className={cn(
         'inline-flex items-center gap-2 rounded-[10px] border px-4 py-2',
         isHigh
-          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+          ? 'border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]'
           : isMid
-            ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
-            : 'border-red-500/30 bg-red-500/10 text-red-400',
+            ? 'border-[var(--badge-amber-text)]/30 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]'
+            : 'border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]',
       )}
     >
       <TrendingUp size={16} />

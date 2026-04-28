@@ -15,6 +15,7 @@ import { supabaseAdmin } from '../../lib/supabase.js';
 import logger from '../../lib/logger.js';
 import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderCareerProfileSection,
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
@@ -153,6 +154,11 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
             sharedNarrative: sharedContext?.careerNarrative,
           }));
         }
+
+        parts.push(...renderBenchmarkProfileDirectionSection({
+          heading: '## Benchmark Profile Direction',
+          sharedContext,
+        }));
 
         if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
           parts.push(

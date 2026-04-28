@@ -6,19 +6,19 @@ const AUDIT_PAGES = [
     slug: 'workspace-home',
     path: '/workspace',
     readyRole: 'text',
-    readyText: 'Career Profile backbone',
+    readyText: 'Your Pipeline',
   },
   {
     slug: 'career-profile',
     path: '/workspace?room=career-profile',
     readyRole: 'heading',
-    readyText: 'Build the story every room works from',
+    readyText: 'Benchmark Profile',
   },
   {
-    slug: 'resume-builder',
+    slug: 'tailor-resume',
     path: '/workspace?room=resume',
     readyRole: 'heading',
-    readyText: 'Choose the resume tool you need right now',
+    readyText: 'Tailor your resume to a job you actually want',
   },
   {
     slug: 'linkedin-studio',
@@ -30,7 +30,19 @@ const AUDIT_PAGES = [
     slug: 'job-command-center',
     path: '/workspace?room=jobs',
     readyRole: 'heading',
-    readyText: 'Run the search from one working surface',
+    readyText: 'Find your next role two ways.',
+  },
+  {
+    slug: 'applications-list',
+    path: '/workspace/applications',
+    readyRole: 'heading',
+    readyText: 'Job applications',
+  },
+  {
+    slug: 'application-workspace',
+    path: '/workspace/application/job-techcorp/overview',
+    readyRole: 'text',
+    readyText: 'TechCorp',
   },
   {
     slug: 'interview-lab',
@@ -42,7 +54,64 @@ const AUDIT_PAGES = [
     slug: 'tools',
     path: '/tools',
     readyRole: 'text',
-    readyText: 'Career Profile backbone',
+    readyText: 'Your Pipeline',
+  },
+  {
+    slug: 'settings',
+    path: '/settings',
+    readyRole: 'heading',
+    readyText: 'Settings',
+  },
+  {
+    slug: 'billing',
+    path: '/billing',
+    readyRole: 'heading',
+    readyText: 'Billing',
+  },
+  {
+    slug: 'affiliate',
+    path: '/affiliate',
+    readyRole: 'heading',
+    readyText: 'Affiliate Dashboard',
+  },
+  {
+    slug: 'admin-gate',
+    path: '/admin',
+    readyRole: 'heading',
+    readyText: 'Admin Dashboard',
+  },
+  {
+    slug: 'terms',
+    path: '/terms',
+    readyRole: 'heading',
+    readyText: 'Terms of Service',
+  },
+  {
+    slug: 'privacy',
+    path: '/privacy',
+    readyRole: 'heading',
+    readyText: 'Privacy Policy',
+  },
+  {
+    slug: 'contact',
+    path: '/contact',
+    readyRole: 'heading',
+    readyText: 'Get in touch',
+  },
+] as const;
+
+const PUBLIC_AUDIT_PAGES = [
+  {
+    slug: 'sales',
+    path: '/sales',
+    readyRole: 'heading',
+    readyText: 'Your resume undersells you.',
+  },
+  {
+    slug: 'auth-signup',
+    path: '/workspace?auth=signup',
+    readyRole: 'text',
+    readyText: 'Create Account',
   },
 ] as const;
 
@@ -67,10 +136,31 @@ test.describe('workspace responsive audit', () => {
     test(`audit/${auditPage.slug}: renders without horizontal overflow`, async ({ page }, testInfo) => {
       await page.goto(auditPage.path, { waitUntil: 'domcontentloaded' });
       const readyLocator = (auditPage.slug === 'workspace-home' || auditPage.slug === 'tools') && testInfo.project.name === 'mock-mobile'
-        ? page.getByText('Career Profile powers the rest of Workspace').first()
+        ? page.getByText('Benchmark Profile powers CareerIQ').first()
         : auditPage.readyRole === 'heading'
           ? page.getByRole('heading', { name: auditPage.readyText }).first()
           : page.getByText(auditPage.readyText).first();
+      await expect(readyLocator).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+      await page.screenshot({
+        path: testInfo.outputPath(`${testInfo.project.name}-${auditPage.slug}.png`),
+        fullPage: true,
+      });
+    });
+  }
+});
+
+test.describe('public responsive audit', () => {
+  for (const auditPage of PUBLIC_AUDIT_PAGES) {
+    test(`audit/${auditPage.slug}: renders without horizontal overflow`, async ({ page }, testInfo) => {
+      await page.addInitScript(() => {
+        window.localStorage.setItem('e2e_disable_mock_auth', 'true');
+        window.sessionStorage.setItem('e2e_disable_mock_auth', 'true');
+      });
+      await page.goto(auditPage.path, { waitUntil: 'domcontentloaded' });
+      const readyLocator = auditPage.readyRole === 'heading'
+        ? page.getByRole('heading', { name: auditPage.readyText }).first()
+        : page.getByText(auditPage.readyText).first();
       await expect(readyLocator).toBeVisible();
       await expectNoHorizontalOverflow(page);
       await page.screenshot({

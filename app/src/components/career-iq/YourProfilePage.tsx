@@ -1,11 +1,11 @@
 /**
- * YourProfilePage — renders at the "Career Vault" sidebar destination.
+ * YourProfilePage — renders at the "Benchmark Profile" workspace destination.
  *
  * Phase 3 — three explicit sections matching the product model:
  *   Section 1 — Positioning
  *     Why-Me Story today. Future surfaces: Why-Not-Me, target industries /
  *     ideal companies / target roles.
- *   Section 2 — Career Evidence
+ *   Section 2 — Career Proof
  *     Resume summary (ResumeSection) + Story Bank (STAR+R stories reused
  *     across Interview Prep). Future surface: Signature Accomplishments as
  *     a first-class managed list.
@@ -32,6 +32,7 @@ import {
   Loader2,
   MessageSquare,
   Save,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
@@ -46,7 +47,13 @@ import { useLinkedInProfile } from '@/hooks/useLinkedInProfile';
 import { useStoryBank } from '@/hooks/useStoryBank';
 import type { InterviewStory, StoryBankRow } from '@/hooks/useStoryBank';
 import type { MasterResume } from '@/types/resume';
-import type { CareerProfileV2 } from '@/types/career-profile';
+import type {
+  BenchmarkProfileDraftItem,
+  BenchmarkProfileDiscoveryQuestion,
+  BenchmarkProfileReviewStatus,
+  BenchmarkProfileV1,
+  CareerProfileV2,
+} from '@/types/career-profile';
 
 // ─── Section header ───────────────────────────────────────────────────────────
 
@@ -74,7 +81,346 @@ function SectionHeader({
   );
 }
 
-// ─── ResumeSection (Career Evidence inner card) ───────────────────────────────
+function labelFromToken(token: string) {
+  return token
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function ConfidencePill({ value }: { value: BenchmarkProfileDraftItem['confidence'] }) {
+  const className = value === 'high_confidence'
+    ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.07] text-[var(--badge-green-text)]'
+    : value === 'good_inference'
+      ? 'border-[var(--link)]/20 bg-[var(--link)]/[0.07] text-[var(--link)]'
+      : value === 'risky_claim'
+        ? 'border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.07] text-[var(--badge-red-text)]'
+        : 'border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.07] text-[var(--badge-amber-text)]';
+
+  return (
+    <span className={cn('rounded-md border px-2 py-0.5 text-[11px] font-semibold', className)}>
+      {labelFromToken(value)}
+    </span>
+  );
+}
+
+function ReviewStatusPill({ value }: { value: BenchmarkProfileDraftItem['review_status'] }) {
+  const className = value === 'approved'
+    ? 'border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.07] text-[var(--badge-green-text)]'
+    : value === 'needs_evidence'
+      ? 'border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.07] text-[var(--badge-red-text)]'
+      : 'border-[var(--line-soft)] bg-[var(--accent-muted)] text-[var(--text-soft)]';
+
+  return (
+    <span className={cn('rounded-md border px-2 py-0.5 text-[11px] font-semibold', className)}>
+      {labelFromToken(value)}
+    </span>
+  );
+}
+
+function BenchmarkItemCard({
+  item,
+  onUpdate,
+}: {
+  item: BenchmarkProfileDraftItem;
+  onUpdate?: (itemId: string, changes: { statement?: string; review_status?: BenchmarkProfileReviewStatus }) => Promise<boolean>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draftStatement, setDraftStatement] = useState(item.statement);
+  const [saving, setSaving] = useState<BenchmarkProfileReviewStatus | 'statement' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraftStatement(item.statement);
+  }, [item.statement]);
+
+  const handleStatus = async (reviewStatus: BenchmarkProfileReviewStatus) => {
+    if (!onUpdate || saving) return;
+    setSaving(reviewStatus);
+    setError(null);
+    const ok = await onUpdate(item.id, { review_status: reviewStatus });
+    setSaving(null);
+    if (!ok) setError('Could not save review status.');
+  };
+
+  const handleSaveStatement = async () => {
+    if (!onUpdate || saving) return;
+    const trimmed = draftStatement.trim();
+    if (!trimmed) {
+      setError('Statement cannot be empty.');
+      return;
+    }
+    setSaving('statement');
+    setError(null);
+    const ok = await onUpdate(item.id, {
+      statement: trimmed,
+      review_status: item.review_status === 'approved' ? 'draft' : item.review_status,
+    });
+    setSaving(null);
+    if (ok) {
+      setEditing(false);
+    } else {
+      setError('Could not save draft language.');
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[13px] font-semibold text-[var(--text-strong)]">{item.label}</p>
+        <ConfidencePill value={item.confidence} />
+        <ReviewStatusPill value={item.review_status} />
+      </div>
+      {editing ? (
+        <textarea
+          value={draftStatement}
+          onChange={(event) => setDraftStatement(event.target.value)}
+          rows={5}
+          className={cn(
+            'mt-3 w-full resize-y rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5',
+            'text-sm leading-relaxed text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
+            'focus:border-[var(--link)]/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/30',
+          )}
+        />
+      ) : (
+        <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{item.statement}</p>
+      )}
+      {item.evidence.length > 0 && (
+        <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
+          Evidence: {item.evidence.slice(0, 2).join(' · ')}
+        </p>
+      )}
+      {item.used_by.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {item.used_by.slice(0, 5).map((tool) => (
+            <span
+              key={tool}
+              className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-0.5 text-[11px] text-[var(--text-soft)]"
+            >
+              {labelFromToken(tool)}
+            </span>
+          ))}
+        </div>
+      )}
+      {onUpdate && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--line-soft)] pt-3">
+          {editing ? (
+            <>
+              <button
+                type="button"
+                onClick={() => void handleSaveStatement()}
+                disabled={Boolean(saving)}
+                className="rounded-md bg-[var(--link)] px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {saving === 'statement' ? 'Saving...' : 'Save draft'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false);
+                  setDraftStatement(item.statement);
+                  setError(null);
+                }}
+                disabled={Boolean(saving)}
+                className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => void handleStatus('approved')}
+                disabled={Boolean(saving) || item.review_status === 'approved'}
+                className="rounded-md border border-[var(--badge-green-text)]/25 bg-[var(--badge-green-text)]/[0.08] px-3 py-1.5 text-[12px] font-semibold text-[var(--badge-green-text)] transition-opacity hover:opacity-85 disabled:opacity-50"
+              >
+                {saving === 'approved' ? 'Saving...' : 'Approve'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleStatus('needs_evidence')}
+                disabled={Boolean(saving) || item.review_status === 'needs_evidence'}
+                className="rounded-md border border-[var(--badge-amber-text)]/25 bg-[var(--badge-amber-text)]/[0.08] px-3 py-1.5 text-[12px] font-semibold text-[var(--badge-amber-text)] transition-opacity hover:opacity-85 disabled:opacity-50"
+              >
+                {saving === 'needs_evidence' ? 'Saving...' : 'Needs evidence'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                disabled={Boolean(saving)}
+                className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)] disabled:opacity-50"
+              >
+                Edit
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      {error && (
+        <p className="mt-2 text-[12px] text-[var(--badge-red-text)]">{error}</p>
+      )}
+    </div>
+  );
+}
+
+function DiscoveryQuestionCard({
+  question,
+  onAnswer,
+}: {
+  question: BenchmarkProfileDiscoveryQuestion;
+  onAnswer?: (questionId: string, answer: string) => Promise<boolean>;
+}) {
+  const [answer, setAnswer] = useState(question.answer ?? question.recommended_answer ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAnswer(question.answer ?? question.recommended_answer ?? '');
+  }, [question.answer, question.recommended_answer]);
+
+  const trimmed = answer.trim();
+  const existingAnswer = question.answer?.trim() ?? '';
+  const canSave = Boolean(onAnswer) && trimmed.length > 0 && trimmed !== existingAnswer && !saving;
+
+  const handleSave = async () => {
+    if (!onAnswer || !canSave) return;
+    setSaving(true);
+    setError(null);
+    const ok = await onAnswer(question.id, trimmed);
+    setSaving(false);
+    if (!ok) {
+      setError('Could not save this answer.');
+    }
+  };
+
+  return (
+    <div className="border-t border-[var(--line-soft)] pt-4 first:border-t-0 first:pt-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm font-semibold leading-relaxed text-[var(--text-strong)]">{question.question}</p>
+        {existingAnswer && (
+          <span className="rounded-md border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.07] px-2 py-0.5 text-[11px] font-semibold text-[var(--badge-green-text)]">
+            Answered
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-soft)]">{question.why_it_matters}</p>
+      {question.evidence_found.length > 0 && (
+        <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
+          Evidence we found: {question.evidence_found.slice(0, 2).join(' · ')}
+        </p>
+      )}
+      <textarea
+        value={answer}
+        onChange={(event) => setAnswer(event.target.value)}
+        rows={3}
+        placeholder="Answer in your own words. Specific tools, scope, metrics, and examples help most."
+        className={cn(
+          'mt-3 w-full resize-y rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2.5',
+          'text-sm leading-relaxed text-[var(--text-strong)] placeholder:text-[var(--text-soft)]',
+          'focus:border-[var(--link)]/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/30',
+        )}
+      />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={!canSave}
+          className="rounded-md bg-[var(--link)] px-3 py-1.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? 'Saving...' : existingAnswer ? 'Update answer' : 'Save answer'}
+        </button>
+        {question.used_by.slice(0, 5).map((tool) => (
+          <span
+            key={tool}
+            className="rounded-md border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-0.5 text-[11px] text-[var(--text-soft)]"
+          >
+            {labelFromToken(tool)}
+          </span>
+        ))}
+      </div>
+      {error && (
+        <p className="mt-2 text-[12px] text-[var(--badge-red-text)]">{error}</p>
+      )}
+    </div>
+  );
+}
+
+function BenchmarkProfileDraftPanel({
+  benchmarkProfile,
+  onUpdateItem,
+  onAnswerQuestion,
+}: {
+  benchmarkProfile: BenchmarkProfileV1;
+  onUpdateItem?: (itemId: string, changes: { statement?: string; review_status?: BenchmarkProfileReviewStatus }) => Promise<boolean>;
+  onAnswerQuestion?: (questionId: string, answer: string) => Promise<boolean>;
+}) {
+  const primaryItems = [
+    benchmarkProfile.identity.benchmark_headline,
+    benchmarkProfile.identity.why_me_story,
+    benchmarkProfile.identity.why_not_me,
+    benchmarkProfile.linkedin_brand.five_second_verdict,
+  ];
+
+  const topProof = benchmarkProfile.proof.signature_accomplishments.slice(0, 3);
+  const questions = benchmarkProfile.discovery_questions.slice(0, 4);
+
+  return (
+    <GlassCard className="p-6">
+      <div className="flex items-start justify-between gap-4">
+        <SectionHeader icon={Sparkles} label="AI Draft" title="Benchmark Profile Draft" />
+        <span className="rounded-md border border-[var(--link)]/20 bg-[var(--link)]/[0.07] px-2.5 py-1 text-[12px] font-semibold text-[var(--link)]">
+          Ready for review
+        </span>
+      </div>
+      <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
+        This is the pre-populated foundation CareerIQ will use across resume tailoring, LinkedIn, cover letters,
+        networking, interview prep, thank-you notes, follow-ups, and job targeting. Confirming the draft language
+        here makes every downstream tool sharper.
+      </p>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        {primaryItems.map((item) => (
+          <BenchmarkItemCard key={item.id} item={item} onUpdate={onUpdateItem} />
+        ))}
+      </div>
+
+      {topProof.length > 0 && (
+        <div className="mt-6">
+          <div className="mb-3 text-[12px] font-semibold uppercase tracking-widest text-[var(--text-soft)]">
+            Signature Proof
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {topProof.map((item) => (
+              <BenchmarkItemCard key={item.id} item={item} onUpdate={onUpdateItem} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {questions.length > 0 && (
+        <div className="mt-6 rounded-lg border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.06] p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <AlertCircle size={14} className="text-[var(--badge-amber-text)]" />
+            <p className="text-[13px] font-semibold text-[var(--text-strong)]">
+              Pointed questions that would improve the foundation
+            </p>
+          </div>
+          <div className="space-y-3">
+            {questions.map((question) => (
+              <DiscoveryQuestionCard
+                key={question.id}
+                question={question}
+                onAnswer={onAnswerQuestion}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </GlassCard>
+  );
+}
+
+// ─── ResumeSection (Career Proof inner card) ─────────────────────────────────
 
 interface ResumeSectionProps {
   onGetDefaultResume?: () => Promise<MasterResume | null>;
@@ -123,10 +469,10 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   if (resumeLoading) {
     return (
       <GlassCard className="p-6">
-        <SectionHeader icon={FileText} label="Resume" title="Your Career Evidence" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Career Proof" />
         <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-soft)]">
           <Loader2 size={16} className="animate-spin text-[var(--link)]" />
-          Loading your Career Evidence...
+          Loading your Career Proof...
         </div>
       </GlassCard>
     );
@@ -135,26 +481,26 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   if (!resume) {
     return (
       <GlassCard className="p-6">
-        <SectionHeader icon={FileText} label="Resume" title="Your Career Evidence" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Career Proof" />
         <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-          Your Career Evidence is the source of truth for every tool in the workspace. Upload it once
+          Your Career Proof is the source material for every tool in the workspace. Upload it once
           and every application starts with full context.
         </p>
         <div className="mt-5 text-center py-6">
           {resumeError ? (
             <div className="text-sm text-[var(--text-soft)]">
-              <p>We couldn't load your Career Evidence. You may not have uploaded one yet.</p>
+              <p>We couldn't load your Career Proof. You may not have uploaded a source resume yet.</p>
               <button onClick={() => navigate('/workspace?room=resume')} className="mt-2 text-[var(--link)] hover:underline text-sm">
-                Go to Resume Builder →
+                Go to Tailor Resume →
               </button>
             </div>
           ) : (
             <>
               <p className="text-sm text-[var(--text-muted)] mb-3">
-                No Career Evidence yet.
+                No Career Proof yet.
               </p>
               <GlassButton onClick={() => navigate('/workspace?room=resume')}>
-                Go to Resume Builder
+                Go to Tailor Resume
               </GlassButton>
             </>
           )}
@@ -173,7 +519,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   return (
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-4">
-        <SectionHeader icon={FileText} label="Resume" title="Your Career Evidence" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Career Proof" />
         <div className="flex items-center gap-2 shrink-0">
           {onNavigateResume && (
             <GlassButton variant="ghost" size="sm" onClick={onNavigateResume}>
@@ -228,7 +574,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
             onClick={onNavigateResume}
             className="text-[13px] text-[var(--link)] transition-colors hover:text-[var(--link)]/70"
           >
-            Upload a new version in Resume Builder
+            Upload a new version in Tailor Resume
           </button>
         </div>
       )}
@@ -532,7 +878,7 @@ function StoryCard({ row, onDelete, onSave }: StoryCardProps) {
                   type="button"
                   onClick={() => void handleDelete()}
                   disabled={deleting}
-                  className="inline-flex items-center gap-1.5 text-[13px] text-red-400/70 transition-colors hover:text-red-400 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 text-[13px] text-[var(--badge-red-text)] transition-colors hover:brightness-90 disabled:opacity-50"
                 >
                   <Trash2 size={12} />
                   {deleting ? 'Deleting...' : 'Delete'}
@@ -623,6 +969,11 @@ interface YourProfilePageProps {
   onGetDefaultResume?: () => Promise<MasterResume | null>;
   onNavigateResume?: () => void;
   careerProfile?: CareerProfileV2 | null;
+  onUpdateBenchmarkItem?: (
+    itemId: string,
+    changes: { statement?: string; review_status?: BenchmarkProfileReviewStatus },
+  ) => Promise<boolean>;
+  onAnswerDiscoveryQuestion?: (questionId: string, answer: string) => Promise<boolean>;
   /**
    * Phase 3.1 — section id to scroll to on mount/when the param changes.
    * Passed in from CareerIQScreen's workspaceLaunchContext.focus. Recognised
@@ -641,7 +992,9 @@ const KNOWN_SECTION_IDS = new Set([
 export function YourProfilePage({
   onGetDefaultResume,
   onNavigateResume,
-  careerProfile: _careerProfile = null,
+  careerProfile = null,
+  onUpdateBenchmarkItem,
+  onAnswerDiscoveryQuestion,
   focusSection = null,
 }: YourProfilePageProps) {
   const { story, signals, updateField, hasStarted, lastSavedAt } = useWhyMeStory();
@@ -659,7 +1012,7 @@ export function YourProfilePage({
     return () => clearTimeout(t);
   }, [lastSavedAt]);
 
-  // Phase 3.1 — deep-link into a specific Career Vault section when the
+  // Phase 3.1 — deep-link into a specific Benchmark Profile section when the
   // `focus` URL param matches one of the three section ids. Uses rAF to let
   // the layout settle (education strips default-collapsed, but the outer
   // career-vault strip may reflow as it reads localStorage on mount).
@@ -678,9 +1031,9 @@ export function YourProfilePage({
       {/* Page title */}
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Career Vault</h1>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Benchmark Profile</h1>
           <p className="mt-1 text-sm text-[var(--text-soft)]">
-            Your career foundation. Everything here feeds into your resumes, cover letters, and interview prep. The stronger this vault, the better every tool works for you.
+            Your positioning foundation. Everything here feeds LinkedIn growth, job search, tailored resumes, cover letters, and interview prep.
           </p>
         </div>
         <button
@@ -694,13 +1047,21 @@ export function YourProfilePage({
 
       <EducationStrip
         screenId="career-vault"
-        title="Career Vault"
-        whatThisIs="Your Career Vault is the foundation every application draws from — your positioning, career evidence, and LinkedIn brand in one place."
+        title="Benchmark Profile"
+        whatThisIs="Your Benchmark Profile is the foundation every application draws from: positioning, career proof, and LinkedIn visibility in one place."
         whyItMatters="Benchmark candidates build this once and refine it over time, so every tailored resume and cover letter stays consistent."
         whatWeDo="We analyze what you upload and generate drafts across all three sections."
         whatYouDo="You review, refine, and decide which parts are ready."
         defaultExpanded
       />
+
+      {careerProfile?.benchmark_profile && (
+        <BenchmarkProfileDraftPanel
+          benchmarkProfile={careerProfile.benchmark_profile}
+          onUpdateItem={onUpdateBenchmarkItem}
+          onAnswerQuestion={onAnswerDiscoveryQuestion}
+        />
+      )}
 
       {/* ─── Section 1 — Positioning ────────────────────────────────────── */}
       <section
@@ -755,7 +1116,7 @@ export function YourProfilePage({
               )}
             </div>
             <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-              Three answers that define how Resume Builder, LinkedIn, Interview Prep, and every other
+              Three answers that define how LinkedIn Growth, Find Jobs, Tailor Resume, Interview & Offer, and every other
               tool frames your positioning. This is the most important section on this page.
             </p>
             <div className="mt-5">
@@ -764,16 +1125,16 @@ export function YourProfilePage({
           </GlassCard>
         )}
 
-        {/* TODO: Surface Why-Not-Me here when built. See product model — Career Vault / Positioning section. */}
-        {/* TODO: Surface Target Industries / Ideal Companies / Target Roles here when built. See product model — Career Vault / Positioning section. */}
+        {/* TODO: Surface Why-Not-Me here when built. See product model — Benchmark Profile / Positioning section. */}
+        {/* TODO: Surface Target Industries / Ideal Companies / Target Roles here when built. See product model — Benchmark Profile / Positioning section. */}
       </section>
 
-      {/* ─── Section 2 — Career Evidence ────────────────────────────────── */}
+      {/* ─── Section 2 — Career Proof ───────────────────────────────────── */}
       <section
         id="career-evidence"
         className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
       >
-        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Career Evidence</h2>
+        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Career Proof</h2>
 
         <ResumeSection
           onGetDefaultResume={onGetDefaultResume}
@@ -782,7 +1143,7 @@ export function YourProfilePage({
 
         <StoryBankSection />
 
-        {/* TODO: Surface Signature Accomplishments as a first-class managed list here when built. See product model — Career Vault / Career Evidence section. */}
+        {/* TODO: Surface Signature Accomplishments as a first-class managed list here when built. See product model — Benchmark Profile / Career Proof section. */}
       </section>
 
       {/* ─── Section 3 — Benchmark LinkedIn Brand ────────────────────────── */}
@@ -804,8 +1165,8 @@ export function YourProfilePage({
 
         <LinkedInSection />
 
-        {/* TODO: Surface the five-second LinkedIn test audit here when built. See product model — Career Vault / Benchmark LinkedIn Brand section. */}
-        {/* TODO: Surface Blogging / carousels here when built. See product model — Career Vault / Benchmark LinkedIn Brand section. */}
+        {/* TODO: Surface the five-second LinkedIn test audit here when built. See product model — Benchmark Profile / Benchmark LinkedIn Brand section. */}
+        {/* TODO: Surface Blogging / carousels here when built. See product model — Benchmark Profile / Benchmark LinkedIn Brand section. */}
       </section>
     </div>
   );

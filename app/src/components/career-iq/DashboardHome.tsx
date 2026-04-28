@@ -71,10 +71,10 @@ function formatRelativeTime(isoString: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Section 1 — Career Vault Health
+// Section 1 — Benchmark Profile Health
 // ─────────────────────────────────────────────────────────────
 
-function CareerVaultHealth({
+function BenchmarkProfileHealth({
   dashboardState,
   hasMasterResume,
   onOpenCareerProfile,
@@ -84,14 +84,14 @@ function CareerVaultHealth({
   hasMasterResume: boolean;
   onOpenCareerProfile: () => void;
   /**
-   * Phase 3.1 — deep-link into a specific Career Vault section from the
-   * Section 1 home strip. Falls back to opening the top of Career Vault
+   * Phase 3.1 — deep-link into a specific Benchmark Profile section from the
+   * Section 1 home strip. Falls back to opening the top of Benchmark Profile
    * if no handler is wired.
    */
   onOpenCareerVaultSection: (section: 'positioning' | 'career-evidence' | 'benchmark-linkedin-brand') => void;
 }) {
   const whyMeItem: HealthItem = (() => {
-    const base = { key: 'why-me', label: 'Why-Me', onOpen: () => onOpenCareerVaultSection('positioning') };
+    const base = { key: 'why-me', label: 'Why Me', onOpen: () => onOpenCareerVaultSection('positioning') };
     if (dashboardState === 'strong') return { ...base, state: 'done', stateLabel: 'Strong' };
     if (dashboardState === 'refining') return { ...base, state: 'in-progress', stateLabel: 'Building' };
     return { ...base, state: 'not-started', stateLabel: 'Not started' };
@@ -102,15 +102,15 @@ function CareerVaultHealth({
   // their LinkedIn profile, so every user ships as "Not started".
   const linkedInItem: HealthItem = {
     key: 'linkedin-brand',
-    label: 'Benchmark LinkedIn Brand',
+    label: 'LinkedIn Visibility',
     state: 'not-started',
     stateLabel: 'Not started',
     onOpen: () => onOpenCareerVaultSection('benchmark-linkedin-brand'),
   };
 
   const careerRecordItem: HealthItem = hasMasterResume
-    ? { key: 'career-record', label: 'Career Evidence', state: 'done', stateLabel: 'Strong', onOpen: () => onOpenCareerVaultSection('career-evidence') }
-    : { key: 'career-record', label: 'Career Evidence', state: 'not-started', stateLabel: 'Not started', onOpen: () => onOpenCareerVaultSection('career-evidence') };
+    ? { key: 'career-record', label: 'Career Proof', state: 'done', stateLabel: 'Strong', onOpen: () => onOpenCareerVaultSection('career-evidence') }
+    : { key: 'career-record', label: 'Career Proof', state: 'not-started', stateLabel: 'Not started', onOpen: () => onOpenCareerVaultSection('career-evidence') };
 
   const items: HealthItem[] = [whyMeItem, linkedInItem, careerRecordItem];
   const allStrong = items.every((item) => item.state === 'done');
@@ -123,7 +123,7 @@ function CareerVaultHealth({
           onClick={onOpenCareerProfile}
           className="flex w-full items-center justify-between gap-3 text-left text-[13px] text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)]"
         >
-          <span>Your Career Vault is in good shape.</span>
+      <span>Your Benchmark Profile is in good shape.</span>
           <ChevronRight size={14} className="text-[var(--text-soft)]" aria-hidden="true" />
         </button>
       </GlassCard>
@@ -289,7 +289,7 @@ function ApplicationsSection({
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Your Applications</h2>
+        <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Your Pipeline</h2>
         {hasApplications && (
           <div className="flex items-center gap-3 text-[12px] text-[var(--text-muted)]">
             <span>{totalActive} active</span>
@@ -319,17 +319,20 @@ function ApplicationsSection({
         </div>
       ) : (
         <GlassCard className="px-5 py-4">
-          <p className="text-[13px] text-[var(--text-soft)]">No active applications yet.</p>
+          <p className="text-[13px] text-[var(--text-soft)]">No saved jobs yet.</p>
         </GlassCard>
       )}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <GlassButton variant="primary" size="sm" onClick={openApplicationsList}>
-          <Plus size={14} aria-hidden="true" />
-          New Application
+        <GlassButton variant="primary" size="sm" onClick={() => onNavigateRoute?.('/workspace?room=jobs')}>
+          Find Jobs
         </GlassButton>
         <GlassButton variant="ghost" size="sm" onClick={openTailoredResume}>
-          Tailor a Resume
+          Tailor Resume
+        </GlassButton>
+        <GlassButton variant="ghost" size="sm" onClick={openApplicationsList}>
+          <Plus size={14} aria-hidden="true" />
+          Add Job
         </GlassButton>
       </div>
     </section>
@@ -337,7 +340,7 @@ function ApplicationsSection({
 }
 
 // ─────────────────────────────────────────────────────────────
-// Section 3 — This Week (Live Webinars placeholder)
+// Section 3 — This Week
 // ─────────────────────────────────────────────────────────────
 
 function ThisWeekSection({
@@ -345,11 +348,10 @@ function ThisWeekSection({
 }: {
   onNavigateRoom?: (room: CareerIQRoom) => void;
 }) {
-  // TODO Phase 6: replace placeholder with the real schedule source
-  // (see Phase 6 backlog / Live Webinars product).
+  // TODO Phase 6: replace placeholder with the real schedule source.
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Live Webinars this week</h2>
+      <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Live coaching this week</h2>
       <GlassCard className="px-5 py-4">
         <p className="text-[13px] text-[var(--text-soft)]">
           Upcoming sessions will appear here once the schedule goes live.
@@ -359,7 +361,7 @@ function ThisWeekSection({
           onClick={() => onNavigateRoom?.('live-webinars')}
           className="mt-3 inline-flex items-center gap-1 text-[13px] text-[var(--link)] transition-colors hover:underline"
         >
-          See Live Webinars
+          See upcoming sessions
           <ArrowRight size={12} aria-hidden="true" />
         </button>
       </GlassCard>
@@ -387,7 +389,7 @@ export function DashboardHome({
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 p-6">
-      <CareerVaultHealth
+      <BenchmarkProfileHealth
         dashboardState={dashboardState}
         hasMasterResume={hasMasterResume}
         onOpenCareerProfile={openCareerProfile}

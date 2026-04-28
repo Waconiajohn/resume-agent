@@ -1,0 +1,486 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>HR Admin — UI Kit</title>
+<style>
+/* ==========================================================================
+   FirstSourceTeam — Colors & Type Foundations
+   Sourced directly from firstsourceteam.com/careers production stylesheet.
+   ========================================================================== */
+
+/* -------- WEBFONTS ------------------------------------------------------ */
+/* Primary stack pulled from the shipped site. Local woff2 files in /fonts/. */
+
+@font-face {
+  font-family: "Playfair Display";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("./fonts/PlayfairDisplay-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bree Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/BreeSerif-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/Inter-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./fonts/IBMPlexMono-latin.woff2") format("woff2");
+}
+/* Fallback metric-matched families, mirrors site @font-face aliases */
+@font-face { font-family: "Inter Fallback"; src: local(Arial);
+  ascent-override: 90.44%; descent-override: 22.52%; line-gap-override: 0%; size-adjust: 107.12%; }
+@font-face { font-family: "Playfair Display Fallback"; src: local("Times New Roman");
+  ascent-override: 97.25%; descent-override: 22.56%; line-gap-override: 0%; size-adjust: 111.26%; }
+
+/* -------- TOKENS -------------------------------------------------------- */
+:root {
+  /* Base surfaces — warm paper, not pure white */
+  --fst-bg:          #fcf9f5;   /* page background (warm cream) */
+  --fst-bg-alt:      #f7f3ed;   /* alternate section */
+  --fst-bg-warm:     #f2ede5;   /* deeper warm band */
+  --fst-surface:     #ffffff;   /* cards / elevated */
+  --fst-bg-dark:     #0f1729;   /* wealth / dark hero */
+  --fst-bg-wealth:   #0b1120;   /* deepest (FirstSourceWealth sibling brand) */
+  --fst-surface-dark:#1e2636;
+
+  /* Text */
+  --fst-heading:     #111110;   /* near-black, warm */
+  --fst-text:        #1f292e;   /* body */
+  --fst-muted:       #394b52;   /* secondary */
+  --fst-subtle:      #718096;   /* tertiary / meta */
+  --fst-invert:      #fcf9f5;   /* text on dark surfaces */
+
+  /* Brand accents */
+  --fst-accent:          #003147;   /* deep teal/navy — primary brand accent */
+  --fst-accent-deep:     #1f292e;   /* deepest ink */
+  --fst-accent-muted:    #0031471f; /* accent @ 12% alpha — focus rings, tints */
+  --fst-career:          #46A1EC;   /* CareerIQ / outplacement product blue */
+  --fst-career-light:    #6bb5f0;
+  --fst-career-dark:     #2e8ad4;
+  --fst-career-bg:       #eff6fe;   /* blue-tinted surface */
+
+  /* System / semantic */
+  --fst-border:      #e5e2db;       /* warm paper divider */
+  --fst-border-cool: #e2e8f0;       /* for blue/cool contexts */
+  --fst-success:     #6b8e4e;       /* moss green */
+  --fst-warn:        #fbbf24;
+  --fst-danger:      #dc2626;
+
+  /* Type families */
+  --fst-font-display:  "Playfair Display", "Playfair Display Fallback", Georgia, serif;
+  --fst-font-serif:    "Bree Serif", "Playfair Display", Georgia, serif;
+  --fst-font-sans:     "Inter", "Inter Fallback", system-ui, -apple-system, Segoe UI, sans-serif;
+  --fst-font-mono:     "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Type scale (responsive clamp from site) */
+  --fst-size-display: clamp(2.5rem, 6vw, 4rem);
+  --fst-size-h1:      clamp(2rem, 5vw, 3.5rem);
+  --fst-size-h2:      clamp(1.75rem, 4vw, 2.5rem);
+  --fst-size-h3:      1.5rem;
+  --fst-size-h4:      1.25rem;
+  --fst-size-body:    1.125rem;
+  --fst-size-small:   0.875rem;
+  --fst-size-xs:      0.75rem;
+  --fst-size-mono:    1rem;
+
+  /* Letter-spacing */
+  --fst-track-display: -0.03em;
+  --fst-track-body:    0;
+  --fst-track-mono:    0.02em;
+  --fst-track-eyebrow: 0.12em;
+
+  /* Line-heights */
+  --fst-lh-display:  1.05;
+  --fst-lh-heading:  1.15;
+  --fst-lh-body:     1.65;
+  --fst-lh-tight:    1.25;
+
+  /* Spacing (8-pt, soft) */
+  --fst-space-1:  4px;
+  --fst-space-2:  8px;
+  --fst-space-3:  12px;
+  --fst-space-4:  16px;
+  --fst-space-5:  24px;
+  --fst-space-6:  32px;
+  --fst-space-7:  48px;
+  --fst-space-8:  64px;
+  --fst-space-9:  96px;
+  --fst-space-10: 128px;
+
+  /* Radii — restrained, never pill unless specific */
+  --fst-radius-sm: 4px;
+  --fst-radius:    8px;
+  --fst-radius-md: 12px;
+  --fst-radius-lg: 16px;
+  --fst-radius-xl: 24px;
+  --fst-radius-pill: 999px;
+
+  /* Shadows — soft, warm, rarely heavy */
+  --fst-shadow-sm: 0 1px 2px rgba(17,17,16,0.04), 0 1px 1px rgba(17,17,16,0.03);
+  --fst-shadow:    0 2px 8px rgba(17,17,16,0.06), 0 1px 2px rgba(17,17,16,0.04);
+  --fst-shadow-md: 0 8px 24px rgba(17,17,16,0.08), 0 2px 6px rgba(17,17,16,0.04);
+  --fst-shadow-lg: 0 24px 48px rgba(17,17,16,0.12), 0 8px 16px rgba(17,17,16,0.06);
+  --fst-shadow-inset: inset 0 1px 0 rgba(255,255,255,0.5);
+
+  /* Motion */
+  --fst-ease-standard:    cubic-bezier(.4, 0, .2, 1);
+  --fst-ease-emphasized:  cubic-bezier(.2, 0, 0, 1);
+  --fst-ease-decelerate:  cubic-bezier(0, 0, .2, 1);
+  --fst-ease-organic:     cubic-bezier(.25, .1, .25, 1);
+  --fst-dur-fast:    0.3s;
+  --fst-dur-normal:  0.5s;
+  --fst-dur-slow:    0.8s;
+  --fst-dur-premium: 1.2s;
+}
+
+/* -------- SEMANTIC ELEMENT STYLES ---------------------------------------- */
+
+html, body {
+  background: var(--fst-bg);
+  color: var(--fst-text);
+  font-family: var(--fst-font-sans);
+  font-size: var(--fst-size-body);
+  line-height: var(--fst-lh-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings use Playfair Display for editorial weight — the marketing signature */
+h1, h2, h3, h4, h5, h6,
+.fst-h1, .fst-h2, .fst-h3, .fst-h4 {
+  font-family: var(--fst-font-display);
+  color: var(--fst-heading);
+  line-height: var(--fst-lh-heading);
+  letter-spacing: var(--fst-track-display);
+  font-weight: 500;
+  text-wrap: balance;
+  margin: 0;
+}
+
+.fst-display, h1 {
+  font-size: var(--fst-size-display);
+  line-height: var(--fst-lh-display);
+  font-weight: 500;
+}
+h2, .fst-h2 { font-size: var(--fst-size-h2); font-weight: 500; }
+h3, .fst-h3 { font-size: var(--fst-size-h3); font-weight: 500; }
+h4, .fst-h4 { font-size: var(--fst-size-h4); font-weight: 600; }
+
+/* Bree Serif is the secondary display / feature callout (bento titles, callouts) */
+.fst-callout {
+  font-family: var(--fst-font-serif);
+  font-weight: 400;
+  color: var(--fst-heading);
+  letter-spacing: -0.005em;
+}
+
+/* Eyebrows — the little kicker labels above section headings */
+.fst-eyebrow {
+  font-family: var(--fst-font-sans);
+  font-size: var(--fst-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--fst-track-eyebrow);
+  color: var(--fst-muted);
+}
+
+/* Body */
+p, .fst-p {
+  font-family: var(--fst-font-sans);
+  font-size: var(--fst-size-body);
+  line-height: var(--fst-lh-body);
+  color: var(--fst-text);
+  text-wrap: pretty;
+  margin: 0;
+}
+
+.fst-lead {
+  font-size: 1.25rem;
+  line-height: 1.55;
+  color: var(--fst-muted);
+}
+
+small, .fst-small {
+  font-size: var(--fst-size-small);
+  color: var(--fst-muted);
+}
+
+code, pre, .fst-mono {
+  font-family: var(--fst-font-mono);
+  font-size: var(--fst-size-mono);
+  letter-spacing: var(--fst-track-mono);
+}
+
+/* Editorial blockquotes — review callouts use large Playfair */
+blockquote, .fst-quote {
+  font-family: var(--fst-font-display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.35;
+  color: var(--fst-heading);
+  font-style: italic;
+  font-weight: 400;
+  margin: 0;
+}
+
+/* Links */
+a, .fst-link {
+  color: var(--fst-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color var(--fst-dur-fast) var(--fst-ease-standard),
+              text-decoration-color var(--fst-dur-fast) var(--fst-ease-standard);
+}
+a:hover { color: var(--fst-career); }
+
+/* Selection */
+::selection { background: var(--fst-accent); color: var(--fst-bg); }
+
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body style="margin:0">
+<div id="root"></div>
+<script type="text/x-jsx" id="jsx-0">
+
+// HR Admin — employer dashboard for managing outplacement participants.
+// Separate surface from the participant-facing CareerIQ: more data-dense,
+// uses neutral slate chrome (still on cream) to feel enterprise-appropriate.
+
+const Ic = ({ d, size=16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d={d}/></svg>;
+const I = {
+  home: 'M3 12 12 4l9 8M5 10v10h14V10',
+  users: 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M15 3.13a4 4 0 0 1 0 7.75',
+  doc: 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6ZM14 3v6h6M9 13h6M9 17h4',
+  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z',
+  billing: 'M2 7h20v12H2zM2 11h20M6 15h4',
+  plus: 'M12 5v14M5 12h14',
+  dl: 'M12 3v12m-5-5 5 5 5-5M5 21h14',
+  arrow: 'M5 12h14M12 5l7 7-7 7',
+  filter: 'M3 6h18M6 12h12M10 18h4',
+};
+
+const SideNav = () => (
+  <aside style={{width:220,background:'#1f2937',color:'#cbd5e1',padding:'22px 14px',height:'100vh',position:'sticky',top:0,display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>
+    <div style={{display:'flex',alignItems:'center',gap:10,padding:'4px 10px 22px',borderBottom:'1px solid #374151',marginBottom:10}}>
+      <div style={{width:34,height:34,borderRadius:8,background:'#e8dcc6',display:'flex',alignItems:'center',justifyContent:'center',color:'#2A241C',fontFamily:'"Playfair Display",serif',fontWeight:600,fontSize:18,letterSpacing:'-0.02em'}}>F</div>
+      <div>
+        <div style={{fontFamily:'"Playfair Display",serif',fontSize:15,fontWeight:500,color:'#fff',letterSpacing:'-0.01em'}}>FirstSource</div>
+        <div style={{fontFamily:'var(--fst-font-sans)',fontSize:11,color:'#94a3b8'}}>Employer Console</div>
+      </div>
+    </div>
+    {[
+      ['Overview','home',true],
+      ['Participants','users'],
+      ['Programs','doc'],
+      ['Compliance','shield'],
+      ['Billing','billing'],
+    ].map(([label,icon,active])=>(
+      <div key={label} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',borderRadius:7,background: active ? '#334155':'transparent',color: active?'#fff':'#cbd5e1',fontFamily:'var(--fst-font-sans)',fontSize:14,fontWeight: active?600:500,cursor:'pointer'}}>
+        <Ic d={I[icon]}/> {label}
+      </div>
+    ))}
+    <div style={{flex:1}}/>
+    <div style={{padding:12,background:'#334155',borderRadius:10,fontFamily:'var(--fst-font-sans)'}}>
+      <div style={{fontSize:12,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:600,marginBottom:6}}>Evernote Co.</div>
+      <div style={{fontSize:14,color:'#fff',fontWeight:500}}>Q2 RIF Program</div>
+      <div style={{fontSize:12,color:'#94a3b8',marginTop:2}}>Deployed 48h · Active</div>
+    </div>
+  </aside>
+);
+
+const TopBar = () => (
+  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'24px 36px',borderBottom:'1px solid var(--fst-border)',background:'var(--fst-bg)'}}>
+    <div>
+      <div className="fst-eyebrow">Evernote Co. · Q2 RIF</div>
+      <h1 style={{fontFamily:'"Playfair Display",serif',fontSize:30,fontWeight:500,margin:'4px 0 0',letterSpacing:'-0.02em',color:'var(--fst-heading)'}}>Program overview</h1>
+    </div>
+    <div style={{display:'flex',gap:10}}>
+      <button style={{display:'inline-flex',alignItems:'center',gap:7,padding:'9px 14px',borderRadius:8,background:'var(--fst-surface)',border:'1px solid var(--fst-border)',fontFamily:'var(--fst-font-sans)',fontSize:13,color:'var(--fst-text)',fontWeight:500,cursor:'pointer'}}><Ic d={I.dl} size={13}/> Export audit log</button>
+      <button style={{display:'inline-flex',alignItems:'center',gap:7,padding:'9px 14px',borderRadius:8,background:'var(--fst-accent)',color:'var(--fst-bg)',border:0,fontFamily:'var(--fst-font-sans)',fontSize:13,fontWeight:600,cursor:'pointer'}}><Ic d={I.plus} size={13}/> Add participants</button>
+    </div>
+  </div>
+);
+
+const KPI = ({ label, value, sub, tone }) => (
+  <div style={{background:'var(--fst-surface)',border:'1px solid var(--fst-border)',borderRadius:14,padding:'20px 22px',flex:1,minWidth:180}}>
+    <div className="fst-eyebrow">{label}</div>
+    <div style={{fontFamily:'"Playfair Display",serif',fontSize:36,fontWeight:500,letterSpacing:'-0.02em',color: tone==='career'?'var(--fst-career-dark)':'var(--fst-heading)',marginTop:8,lineHeight:1}}>{value}</div>
+    <div style={{fontFamily:'var(--fst-font-sans)',fontSize:12,color:'var(--fst-muted)',marginTop:6}}>{sub}</div>
+  </div>
+);
+
+// Tiny pie-ish visualization
+const Donut = ({ pct, color, size=76 }) => {
+  const r = size/2 - 6;
+  const c = 2*Math.PI*r;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--fst-border)" strokeWidth="6"/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
+        strokeDasharray={`${c*pct/100} ${c}`} transform={`rotate(-90 ${size/2} ${size/2})`}/>
+      <text x={size/2} y={size/2+4} textAnchor="middle" fontFamily='"Playfair Display",serif' fontSize="18" fontWeight="500" fill="var(--fst-heading)">{pct}%</text>
+    </svg>
+  );
+};
+
+const EngagementCard = () => (
+  <div style={{background:'var(--fst-surface)',border:'1px solid var(--fst-border)',borderRadius:16,padding:24,flex:2,minWidth:360}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+      <div>
+        <h3 style={{fontFamily:'"Bree Serif",serif',fontSize:19,margin:0,color:'var(--fst-heading)'}}>Participant engagement</h3>
+        <div style={{fontSize:13,color:'var(--fst-muted)',fontFamily:'var(--fst-font-sans)',marginTop:2}}>Last 30 days · across 42 active</div>
+      </div>
+      <button style={{fontSize:12,color:'var(--fst-muted)',background:'transparent',border:'1px solid var(--fst-border)',borderRadius:6,padding:'5px 10px',fontFamily:'var(--fst-font-sans)',cursor:'pointer'}}>30d ▾</button>
+    </div>
+    <div style={{display:'flex',gap:28,marginTop:22,flexWrap:'wrap'}}>
+      {[['Activated',92,'var(--fst-career)'],['In active coaching',78,'var(--fst-success)'],['Placed',34,'var(--fst-warn)']].map(([l,p,c])=>(
+        <div key={l} style={{display:'flex',gap:14,alignItems:'center'}}>
+          <Donut pct={p} color={c}/>
+          <div>
+            <div style={{fontFamily:'var(--fst-font-sans)',fontSize:13,color:'var(--fst-muted)',fontWeight:500}}>{l}</div>
+            <div style={{fontFamily:'"Playfair Display",serif',fontSize:20,color:'var(--fst-heading)',marginTop:2,fontWeight:500}}>{Math.round(42*p/100)} <span style={{fontSize:14,color:'var(--fst-muted)'}}>of 42</span></div>
+          </div>
+        </div>
+      ))}
+    </div>
+    <div style={{marginTop:22,padding:'12px 14px',background:'var(--fst-bg-alt)',borderRadius:10,fontFamily:'var(--fst-font-sans)',fontSize:13,color:'var(--fst-text)'}}>
+      <b style={{color:'var(--fst-career-dark)'}}>3x faster placement</b> than industry average for this cohort.
+    </div>
+  </div>
+);
+
+const BillingCard = () => (
+  <div style={{background:'var(--fst-surface)',border:'1px solid var(--fst-border)',borderRadius:16,padding:24,flex:1,minWidth:280}}>
+    <h3 style={{fontFamily:'"Bree Serif",serif',fontSize:19,margin:0,color:'var(--fst-heading)'}}>Billing this quarter</h3>
+    <div style={{fontFamily:'"Playfair Display",serif',fontSize:38,color:'var(--fst-heading)',margin:'10px 0 2px',fontWeight:500,letterSpacing:'-0.02em'}}>$186,400</div>
+    <div style={{fontFamily:'var(--fst-font-sans)',fontSize:12,color:'var(--fst-muted)'}}>42 seats · Extended tier</div>
+    <div style={{marginTop:18,borderTop:'1px solid var(--fst-border)',paddingTop:14,display:'flex',flexDirection:'column',gap:10}}>
+      {[
+        ['Seats purchased','46'],
+        ['Declined (refunded)','4'],
+        ['Net billed','42 × $4,200'],
+      ].map(([l,v])=>(
+        <div key={l} style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--fst-font-sans)',fontSize:13}}>
+          <span style={{color:'var(--fst-muted)'}}>{l}</span>
+          <span style={{color:'var(--fst-text)',fontWeight:500}}>{v}</span>
+        </div>
+      ))}
+    </div>
+    <button style={{marginTop:18,width:'100%',padding:'10px',borderRadius:8,background:'transparent',border:'1px solid var(--fst-border)',fontFamily:'var(--fst-font-sans)',fontSize:13,color:'var(--fst-text)',fontWeight:500,cursor:'pointer'}}>Download invoice →</button>
+  </div>
+);
+
+const ParticipantTable = () => {
+  const rows = [
+    ['Sarah K.','Director, Marketing','Activated · 42 sessions','Interview','#1b4f8b'],
+    ['Mike S.','VP Engineering','Activated · 38 sessions','Offer','#4a7a3d'],
+    ['Priya R.','Senior PM','Onboarding','Resume draft','#9a7b2e'],
+    ['James O.','Director, Finance','Activated · 24 sessions','Applying','#c45c3a'],
+    ['Lena T.','Staff Designer','Declined · Refunded','—','#6D6456'],
+    ['Amar V.','VP Sales','Activated · 15 sessions','Networking','#1b4f8b'],
+  ];
+  return (
+    <div style={{background:'var(--fst-surface)',border:'1px solid var(--fst-border)',borderRadius:16,overflow:'hidden'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 24px',borderBottom:'1px solid var(--fst-border)'}}>
+        <div>
+          <h3 style={{fontFamily:'"Bree Serif",serif',fontSize:19,margin:0,color:'var(--fst-heading)'}}>Participants</h3>
+          <div style={{fontSize:13,color:'var(--fst-muted)',marginTop:2,fontFamily:'var(--fst-font-sans)'}}>42 active · 4 declined · sorted by last activity</div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button style={{padding:'7px 11px',borderRadius:7,background:'var(--fst-surface)',border:'1px solid var(--fst-border)',fontFamily:'var(--fst-font-sans)',fontSize:12,color:'var(--fst-text)',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6}}><Ic d={I.filter} size={13}/> Filter</button>
+          <button style={{padding:'7px 11px',borderRadius:7,background:'var(--fst-surface)',border:'1px solid var(--fst-border)',fontFamily:'var(--fst-font-sans)',fontSize:12,color:'var(--fst-text)',cursor:'pointer'}}>Last 30d ▾</button>
+        </div>
+      </div>
+      <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'var(--fst-font-sans)',fontSize:14}}>
+        <thead>
+          <tr style={{background:'var(--fst-bg-alt)'}}>
+            {['Participant','Role','Status','Current stage',''].map(h=>(
+              <th key={h} style={{textAlign:'left',padding:'10px 24px',fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.08em',color:'var(--fst-muted)'}}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([n,r,s,stage,c],i)=>(
+            <tr key={i} style={{borderTop:'1px solid var(--fst-border)'}}>
+              <td style={{padding:'14px 24px'}}>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <div style={{width:30,height:30,borderRadius:'50%',background:'var(--fst-bg-warm)',border:'1px solid var(--fst-border)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'var(--fst-heading)'}}>{n.split(' ').map(x=>x[0]).join('')}</div>
+                  <span style={{color:'var(--fst-heading)',fontWeight:500}}>{n}</span>
+                </div>
+              </td>
+              <td style={{padding:'14px 24px',color:'var(--fst-text)'}}>{r}</td>
+              <td style={{padding:'14px 24px',color:'var(--fst-muted)'}}>{s}</td>
+              <td style={{padding:'14px 24px'}}>
+                <span style={{display:'inline-flex',alignItems:'center',gap:7}}>
+                  <span style={{width:8,height:8,borderRadius:999,background:c}}/>
+                  <span style={{color:'var(--fst-text)'}}>{stage}</span>
+                </span>
+              </td>
+              <td style={{padding:'14px 24px',textAlign:'right'}}><a style={{color:'var(--fst-accent)',fontSize:13,fontWeight:600,fontFamily:'var(--fst-font-sans)',textDecoration:'none'}}>Details →</a></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const App = () => (
+  <div style={{display:'flex',minHeight:'100vh',background:'var(--fst-bg)'}}>
+    <SideNav/>
+    <main style={{flex:1}}>
+      <TopBar/>
+      <div style={{padding:'24px 36px 60px',display:'flex',flexDirection:'column',gap:20}}>
+        <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+          <KPI label="Total participants" value="46" sub="4 declined · 42 active"/>
+          <KPI label="Placed to date" value="14" sub="34% · goal 40%" tone="career"/>
+          <KPI label="Avg. time to offer" value="47d" sub="vs. 142d industry avg"/>
+          <KPI label="Net promoter score" value="72" sub="24 responses"/>
+        </div>
+        <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+          <EngagementCard/>
+          <BillingCard/>
+        </div>
+        <ParticipantTable/>
+      </div>
+    </main>
+  </div>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+
+
+</script>
+<script>
+(function(){
+  const tags = document.querySelectorAll('script[type="text/x-jsx"]');
+  tags.forEach(t => {
+    try {
+      const out = Babel.transform(t.textContent, { presets: ['react'] }).code;
+      const s = document.createElement('script');
+      s.textContent = out;
+      document.body.appendChild(s);
+    } catch(e) { console.error('JSX compile error in', t.id, e); }
+  });
+})();
+</script>
+</body>
+</html>

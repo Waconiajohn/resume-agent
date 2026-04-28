@@ -36,10 +36,10 @@ function TodaySkeleton() {
     <div className="flex flex-col gap-6" data-testid="today-view-skeleton">
       {[0, 1, 2].map((i) => (
         <div key={i} className="flex flex-col gap-3">
-          <div className="h-3 w-20 animate-pulse rounded bg-white/10" />
+          <div className="h-3 w-20 animate-pulse rounded bg-[var(--line-soft)]" />
           <GlassCard className="p-5">
-            <div className="h-4 w-1/2 animate-pulse rounded bg-white/10" />
-            <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-white/10" />
+            <div className="h-4 w-1/2 animate-pulse rounded bg-[var(--line-soft)]" />
+            <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-[var(--line-soft)]" />
           </GlassCard>
         </div>
       ))}
@@ -87,11 +87,11 @@ function TodayItemCard({
     >
       {/* Icon */}
       {isUrgent ? (
-        <AlertCircle className="h-4 w-4 flex-none mt-0.5 text-amber-300" aria-hidden="true" />
+        <AlertCircle className="h-4 w-4 flex-none mt-0.5 text-[var(--badge-amber-text)]" aria-hidden="true" />
       ) : item.tier === 'B' ? (
-        <Sparkles className="h-4 w-4 flex-none mt-0.5 text-sky-300" aria-hidden="true" />
+        <Sparkles className="h-4 w-4 flex-none mt-0.5 text-[var(--link)]" aria-hidden="true" />
       ) : (
-        <Hourglass className="h-4 w-4 flex-none mt-0.5 text-white/50" aria-hidden="true" />
+        <Hourglass className="h-4 w-4 flex-none mt-0.5 text-[var(--text-soft)]" aria-hidden="true" />
       )}
 
       {/* Body */}
@@ -99,21 +99,21 @@ function TodayItemCard({
         <button
           type="button"
           onClick={onCardClick}
-          className="group flex items-center gap-1.5 text-left text-sm font-medium text-white hover:text-[var(--link)]"
+          className="group flex items-center gap-1.5 text-left text-sm font-semibold text-[var(--text-strong)] hover:text-[var(--link)]"
           data-testid="today-item-pursuit-link"
         >
-          <Building2 className="h-3.5 w-3.5 text-white/50 group-hover:text-[var(--link)]" aria-hidden="true" />
+          <Building2 className="h-3.5 w-3.5 text-[var(--text-soft)] group-hover:text-[var(--link)]" aria-hidden="true" />
           <span className="truncate">{item.companyName}</span>
-          <span className="text-white/40">·</span>
-          <span className="truncate text-white/70">{item.roleTitle}</span>
+          <span className="text-[var(--text-soft)]">·</span>
+          <span className="truncate text-[var(--text-muted)]">{item.roleTitle}</span>
         </button>
-        <p className="mt-1 text-xs text-white/70 whitespace-pre-line">{item.label}</p>
+        <p className="mt-1 text-xs text-[var(--text-muted)] whitespace-pre-line">{item.label}</p>
       </div>
 
       {/* Action */}
       <div className="flex flex-none items-center gap-2">
         {typeof item.days === 'number' && (
-          <div className="flex items-center gap-1 text-[11px] text-white/50">
+          <div className="flex items-center gap-1 text-[11px] text-[var(--text-soft)]">
             <Clock className="h-3 w-3" aria-hidden="true" />
             <span>{daysIndicator(item.days)}</span>
           </div>
@@ -190,7 +190,7 @@ function Region({
   if (items.length === 0) return null;
   return (
     <section className="flex flex-col gap-3" data-testid={`today-region-${label.toLowerCase().replace(/\s+/g, '-')}`}>
-      <div className="text-xs uppercase tracking-[0.18em] text-white/40">{label}</div>
+      <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-soft)]">{label}</div>
       <div className="flex flex-col gap-2">
         {items.map((item, idx) => (
           <TodayItemCard
@@ -212,8 +212,8 @@ export function TodayView({ onNavigate }: TodayViewProps) {
   return (
     <div className="flex flex-col gap-6" data-testid="today-view">
       <header>
-        <h2 className="text-lg font-semibold text-white">Today</h2>
-        <p className="mt-1 text-sm text-white/60">
+        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Today</h2>
+        <p className="mt-1 text-sm text-[var(--text-soft)]">
           What needs your attention across all your pursuits.
         </p>
       </header>
@@ -222,13 +222,13 @@ export function TodayView({ onNavigate }: TodayViewProps) {
         <TodaySkeleton />
       ) : error ? (
         <GlassCard className="p-5">
-          <p className="text-sm text-white/70">
+          <p className="text-sm text-[var(--text-muted)]">
             We couldn&apos;t load Today. Try refreshing in a moment.
           </p>
         </GlassCard>
       ) : totalCount === 0 ? (
         <GlassCard className="p-6" data-testid="today-empty-state">
-          <p className="text-sm text-white/80">
+          <p className="text-sm text-[var(--text-muted)]">
             Nothing urgent right now. Good time for prospecting —{' '}
             <button
               type="button"

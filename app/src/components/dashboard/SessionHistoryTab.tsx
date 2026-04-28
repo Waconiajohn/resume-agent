@@ -238,7 +238,7 @@ export function SessionHistoryTab({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--text-strong)]">Job Workspaces</h3>
+          <h3 className="text-sm font-semibold text-[var(--text-strong)]">Saved Tailored Resumes</h3>
           <p className="mt-1 text-xs text-[var(--text-soft)]">
             Each record stays lightweight until the job advances. Interview and offer-stage assets only show up when the stage justifies them.
           </p>
@@ -379,7 +379,7 @@ export function SessionHistoryTab({
                             type="button"
                             disabled={isDeleting}
                             onClick={() => void handleDeleteRecord(record)}
-                            className="inline-flex h-8 items-center rounded-lg border border-red-500/30 bg-red-500/10 px-3 text-xs text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                            className="inline-flex h-8 items-center rounded-lg border border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] px-3 text-xs text-[var(--badge-red-text)] transition-colors hover:brightness-95 disabled:opacity-50"
                           >
                             {isDeleting ? 'Deleting...' : 'Confirm'}
                           </button>

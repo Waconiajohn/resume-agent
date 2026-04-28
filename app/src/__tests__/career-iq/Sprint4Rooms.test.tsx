@@ -121,11 +121,10 @@ describe('LinkedInStudioRoom', () => {
     expect(screen.getByText('Content Plan')).toBeInTheDocument();
   });
 
-  it('renders platform metrics in the Profile Audit tab', () => {
+  it('keeps platform metrics hidden until profile score data is available', () => {
     render(<LinkedInStudioRoom signals={greenSignals} />);
-    // ResultsSnapshot always renders in profile tab — shows Total Posts / Avg Post Score
-    expect(screen.getByText('Total Posts')).toBeInTheDocument();
-    expect(screen.getByText('Avg Post Score')).toBeInTheDocument();
+    expect(screen.queryByText('Total Posts')).not.toBeInTheDocument();
+    expect(screen.queryByText('Avg Post Score')).not.toBeInTheDocument();
   });
 
   it('renders LinkedIn header', () => {

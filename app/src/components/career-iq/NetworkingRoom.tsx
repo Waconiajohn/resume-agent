@@ -109,6 +109,7 @@ export function NetworkingRoom({
   // Form state.
   const [recipientName, setRecipientName] = useState('');
   const [recipientType, setRecipientType] = useState<RecipientType>('former_colleague');
+  const recipientTypeRef = useRef<RecipientType>('former_colleague');
   const [recipientTitle, setRecipientTitle] = useState('');
   const [recipientCompany, setRecipientCompany] = useState('');
   const [recipientLinkedin, setRecipientLinkedin] = useState('');
@@ -116,6 +117,10 @@ export function NetworkingRoom({
   const [goal, setGoal] = useState('');
   const [context, setContext] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    recipientTypeRef.current = recipientType;
+  }, [recipientType]);
 
   // Review state.
   const [revisionFeedback, setRevisionFeedback] = useState('');
@@ -146,6 +151,11 @@ export function NetworkingRoom({
   const charCap = MESSAGING_METHOD_CHAR_CAP[latestDraft?.messaging_method ?? messagingMethod];
   const overCap = latestDraft ? latestDraft.char_count > charCap : false;
 
+  const handleRecipientTypeChange = useCallback((type: RecipientType) => {
+    recipientTypeRef.current = type;
+    setRecipientType(type);
+  }, []);
+
   const handleStart = useCallback(async () => {
     setFormError(null);
     if (!recipientName.trim()) {
@@ -164,7 +174,7 @@ export function NetworkingRoom({
       applicationId,
       resumeText: resumeRef.current,
       recipientName: recipientName.trim(),
-      recipientType,
+      recipientType: recipientTypeRef.current,
       recipientTitle: recipientTitle.trim() || undefined,
       recipientCompany: recipientCompany.trim() || undefined,
       recipientLinkedinUrl: recipientLinkedin.trim() || undefined,
@@ -175,7 +185,6 @@ export function NetworkingRoom({
   }, [
     applicationId,
     recipientName,
-    recipientType,
     recipientTitle,
     recipientCompany,
     recipientLinkedin,
@@ -260,8 +269,9 @@ export function NetworkingRoom({
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setRecipientType(opt.value)}
+                onClick={() => handleRecipientTypeChange(opt.value)}
                 disabled={!canStart}
+                aria-pressed={recipientType === opt.value}
                 className={cn(
                   'w-full flex items-start gap-3 rounded-lg border px-3 py-2 text-left transition-colors disabled:opacity-60',
                   recipientType === opt.value

@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CareerIQ Visual Direction</title>
+  <style>
+    @font-face {
+      font-family: "Inter";
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url("../fonts/Inter-latin.woff2") format("woff2");
+    }
+
+    @font-face {
+      font-family: "Playfair Display";
+      font-style: normal;
+      font-weight: 400 900;
+      font-display: swap;
+      src: url("../fonts/PlayfairDisplay-latin.woff2") format("woff2");
+    }
+
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 400 700;
+      font-display: swap;
+      src: url("../fonts/IBMPlexMono-latin.woff2") format("woff2");
+    }
+
+    :root {
+      --paper: #fbf4e8;
+      --paper-deep: #eadcc7;
+      --surface: #ffffff;
+      --surface-soft: #fffdf8;
+      --line: #d8c8b6;
+      --line-strong: #bda68d;
+      --ink: #162127;
+      --muted: #374f59;
+      --soft: #627479;
+      --brand: #002f3f;
+      --brand-soft: #d8e7eb;
+      --career: #1d759b;
+      --career-dark: #155b78;
+      --career-soft: #e5f0f4;
+      --success: #426f2f;
+      --success-soft: #f5f3ea;
+      --warn: #985c16;
+      --warn-soft: #f7efe2;
+      --risk: #a2332e;
+      --risk-soft: #f7eeeb;
+      --network: #684078;
+      --network-soft: #f0edf0;
+      --shadow: 0 20px 52px rgba(22, 33, 39, 0.1), 0 4px 12px rgba(22, 33, 39, 0.06);
+      --shadow-soft: 0 9px 26px rgba(22, 33, 39, 0.075);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0) 220px),
+        var(--paper);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .page {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 32px;
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--brand);
+      font-weight: 750;
+    }
+
+    .mark {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border: 1px solid rgba(0, 47, 63, 0.26);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .tag {
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      padding: 5px 11px;
+      color: var(--career-dark);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .intro {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(300px, 0.55fr);
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 32px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 900px;
+      color: var(--ink);
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 56px;
+      font-weight: 560;
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .intro p {
+      margin: 14px 0 0;
+      max-width: 780px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .decision-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 18px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .decision-card h2,
+    .section-title,
+    .card h3,
+    .panel-title {
+      margin: 0;
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .decision-card p,
+    .muted {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .palette {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .swatch {
+      min-height: 72px;
+      border: 1px solid rgba(22, 33, 39, 0.1);
+      border-radius: 8px;
+      padding: 9px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 720;
+    }
+
+    .swatch.dark {
+      color: #fff;
+    }
+
+    .swatch.status {
+      background: var(--surface-soft);
+      border-left: 5px solid var(--status);
+      color: var(--ink);
+    }
+
+    .swatch.status span {
+      color: var(--muted);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .prototype {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .app-frame {
+      display: grid;
+      grid-template-columns: 264px minmax(0, 1fr);
+      min-height: 760px;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      background: var(--brand);
+      color: #f8fbfc;
+      padding: 22px 18px;
+    }
+
+    .sidebar .brand-lockup {
+      color: #fff;
+    }
+
+    .sidebar .mark {
+      border-color: rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.09);
+      color: #fff;
+      box-shadow: none;
+    }
+
+    .coach {
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 14px;
+    }
+
+    .coach strong {
+      display: block;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    .coach span {
+      display: block;
+      margin-top: 4px;
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 13px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav-item {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      align-items: center;
+      min-height: 46px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 14px;
+      font-weight: 680;
+    }
+
+    .nav-item.active {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(47, 120, 158, 0.34);
+      color: #fff;
+    }
+
+    .nav-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.76;
+    }
+
+    .nav-count {
+      min-width: 26px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      padding: 2px 7px;
+      text-align: center;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .workspace {
+      background: var(--paper);
+      padding: 24px;
+    }
+
+    .workspace-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      margin: 0 0 7px;
+      color: var(--soft);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .workspace-header h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 28px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn {
+      min-height: 40px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 8px 13px;
+      color: var(--brand);
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .btn.primary {
+      border-color: var(--career);
+      background: var(--career);
+      color: #fff;
+    }
+
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.72fr);
+      gap: 18px;
+    }
+
+    .main-stack,
+    .side-stack {
+      display: grid;
+      align-content: start;
+      gap: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 18px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 9px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .badge.blue {
+      border-color: rgba(31, 120, 159, 0.34);
+      background: var(--career-soft);
+      color: var(--career-dark);
+    }
+
+    .badge.green {
+      border-color: rgba(66, 111, 47, 0.34);
+      background: var(--success-soft);
+      color: #385e28;
+    }
+
+    .badge.amber {
+      border-color: rgba(152, 92, 22, 0.36);
+      background: var(--warn-soft);
+      color: #71420d;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      padding: 13px;
+    }
+
+    .metric b {
+      display: block;
+      color: var(--ink);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 6px;
+      color: var(--soft);
+      font-size: 13px;
+    }
+
+    .progress-shell {
+      height: 10px;
+      border-radius: 999px;
+      background: var(--paper-deep);
+      overflow: hidden;
+    }
+
+    .progress {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--career);
+    }
+
+    .split-card {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(260px, 0.8fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .editor {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      padding: 16px;
+    }
+
+    .editor p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .letter-block {
+      margin-top: 14px;
+      border-left: 3px solid var(--career);
+      padding-left: 13px;
+      color: var(--ink);
+      font-size: 15px;
+    }
+
+    .proof-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .proof {
+      display: grid;
+      grid-template-columns: 8px 1fr;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      padding: 11px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .proof::before {
+      content: "";
+      width: 8px;
+      height: 100%;
+      min-height: 38px;
+      border-radius: 999px;
+      background: var(--warn);
+    }
+
+    .scan-panel {
+      display: grid;
+      gap: 12px;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter {
+      display: inline-flex;
+      min-height: 34px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      padding: 6px 10px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .filter.selected {
+      border-color: rgba(66, 111, 47, 0.52);
+      background: var(--surface);
+      color: #375a27;
+      box-shadow: inset 5px 0 0 var(--success), inset 0 0 0 1px rgba(66, 111, 47, 0.18);
+    }
+
+    .company-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .company {
+      display: grid;
+      grid-template-columns: 22px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      padding: 9px 11px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 720;
+    }
+
+    .company.selected {
+      border-color: rgba(31, 120, 159, 0.58);
+      background: var(--surface);
+      box-shadow: inset 5px 0 0 var(--career), inset 0 0 0 1px rgba(31, 120, 159, 0.2);
+    }
+
+    .check {
+      display: grid;
+      width: 20px;
+      height: 20px;
+      place-items: center;
+      border: 2px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--surface);
+      color: transparent;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .selected .check {
+      border-color: var(--career);
+      background: var(--career);
+      color: #fff;
+    }
+
+    .company small {
+      color: var(--soft);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 12px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 12px;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+
+    .timeline-item:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .date {
+      color: var(--soft);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .timeline-item strong {
+      display: block;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .timeline-item span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .mobile-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .phone {
+      max-width: 320px;
+      min-height: 660px;
+      border: 1px solid var(--line-strong);
+      border-radius: 28px;
+      background: #fff;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .phone-screen {
+      min-height: 636px;
+      border-radius: 20px;
+      background: var(--paper);
+      overflow: hidden;
+    }
+
+    .phone-top {
+      background: var(--brand);
+      color: #fff;
+      padding: 18px;
+    }
+
+    .phone-top h3 {
+      margin: 10px 0 0;
+      color: #fff;
+      font-size: 21px;
+    }
+
+    .phone-body {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .phone-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      padding: 10px;
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .phone-nav span {
+      display: grid;
+      min-height: 44px;
+      place-items: center;
+      border-radius: 8px;
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .phone-nav .active {
+      background: var(--career-soft);
+      color: var(--career-dark);
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .option {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 16px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .option h3 {
+      margin: 12px 0 6px;
+      color: var(--ink);
+      font-size: 18px;
+    }
+
+    .option p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .mini-mood {
+      height: 116px;
+      border: 1px solid rgba(22, 33, 39, 0.12);
+      border-radius: 8px;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+      align-content: end;
+    }
+
+    .mini-mood.warm {
+      background: var(--paper);
+    }
+
+    .mini-mood.cool {
+      background: #f8fafc;
+    }
+
+    .mini-mood.dark {
+      background: #0d1218;
+      color: #fff;
+    }
+
+    .mini-bar {
+      height: 12px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.2;
+    }
+
+    .mini-bar.short {
+      width: 60%;
+      opacity: 0.45;
+    }
+
+    .mini-mood.warm .mini-bar.short {
+      color: var(--career);
+    }
+
+    .mini-mood.cool .mini-bar.short {
+      color: #2563eb;
+    }
+
+    .mini-mood.dark .mini-bar.short {
+      color: #afc4ff;
+    }
+
+    @media (max-width: 1100px) {
+      .intro,
+      .workspace-grid,
+      .split-card,
+      .mobile-row,
+      .options {
+        grid-template-columns: 1fr;
+      }
+
+      .app-frame {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        min-height: auto;
+      }
+
+      .nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .phone {
+        justify-self: center;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .page {
+        padding: 18px;
+      }
+
+      .topline,
+      .workspace-header {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      h1 {
+        font-size: 38px;
+      }
+
+      .intro p {
+        font-size: 16px;
+      }
+
+      .workspace {
+        padding: 16px;
+      }
+
+      .metric-row,
+      .palette {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .nav {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline-item {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="topline">
+      <div class="brand-lockup">
+        <span class="mark">CIQ</span>
+        <span>CareerIQ visual direction</span>
+      </div>
+      <span class="tag">Variant: higher-contrast mineral color</span>
+    </div>
+
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">A warmer, more confident product surface for serious job-search work.</h1>
+        <p>This version keeps the executive restraint, but turns the color volume up. The accents feel more alive without drifting into pastel product-template territory.</p>
+      </div>
+      <aside class="decision-card">
+        <h2>Design call</h2>
+        <p>Use warm-light as the default. Keep deep teal for structure, richer slate blue for primary action, and stronger mineral accents for scanability.</p>
+        <div class="palette" aria-label="Suggested palette">
+          <div class="swatch" style="background:#fbf4e8">Paper<br>#fbf4e8</div>
+          <div class="swatch" style="background:#ffffff">Surface<br>#ffffff</div>
+          <div class="swatch dark" style="background:#002f3f">Structure<br>#002f3f</div>
+          <div class="swatch dark" style="background:#1d759b">Action<br>#1d759b</div>
+          <div class="swatch status" style="--status:#426f2f">Ready<br><span>#426f2f</span></div>
+          <div class="swatch status" style="--status:#985c16">Input<br><span>#985c16</span></div>
+          <div class="swatch status" style="--status:#684078">Network<br><span>#684078</span></div>
+          <div class="swatch status" style="--status:#a2332e">Risk<br><span>#a2332e</span></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="prototype" aria-label="Richer mineral workspace prototype">
+      <div class="app-frame">
+        <aside class="sidebar">
+          <div class="brand-lockup">
+            <span class="mark">CIQ</span>
+            <span>CareerIQ</span>
+          </div>
+
+          <div class="coach">
+            <strong>Next best move</strong>
+            <span>Confirm two operations metrics before generating the final resume.</span>
+          </div>
+
+          <nav class="nav" aria-label="Workspace sections">
+            <div class="nav-item active"><span class="nav-dot"></span><span>Resume</span><span class="nav-count">4</span></div>
+            <div class="nav-item"><span class="nav-dot"></span><span>Jobs</span><span class="nav-count">12</span></div>
+            <div class="nav-item"><span class="nav-dot"></span><span>Network</span><span class="nav-count">7</span></div>
+            <div class="nav-item"><span class="nav-dot"></span><span>Interview</span><span class="nav-count">2</span></div>
+            <div class="nav-item"><span class="nav-dot"></span><span>Timeline</span><span class="nav-count">9</span></div>
+          </nav>
+        </aside>
+
+        <section class="workspace">
+          <header class="workspace-header">
+            <div>
+              <p class="eyebrow">VP operations search workspace</p>
+              <h2>Turn a strong career story into targeted proof.</h2>
+            </div>
+            <div class="actions">
+              <button class="btn">Preview</button>
+              <button class="btn primary">Generate resume</button>
+            </div>
+          </header>
+
+          <div class="workspace-grid">
+            <div class="main-stack">
+              <article class="card">
+                <div class="card-header">
+                  <div>
+                    <h3>Resume strategy</h3>
+                    <p class="muted">Targeting a VP Operations role in multi-site manufacturing.</p>
+                  </div>
+                  <span class="badge blue">82 percent match</span>
+                </div>
+                <div class="progress-shell" aria-hidden="true"><div class="progress" style="width:82%"></div></div>
+                <div class="metric-row" style="margin-top:14px">
+                  <div class="metric"><b>6</b><span>proof points used</span></div>
+                  <div class="metric"><b>3</b><span>claims to confirm</span></div>
+                  <div class="metric"><b>2</b><span>risk areas reduced</span></div>
+                </div>
+              </article>
+
+              <article class="card split-card">
+                <div class="editor">
+                  <span class="badge blue">Cover letter draft</span>
+                  <div class="letter-block">
+                    I help complex operations teams turn fragmented execution into repeatable performance. In my last role, I led distribution, labor planning, vendor accountability, and site-level operating rhythms across a national footprint.
+                  </div>
+                  <p style="margin-top:14px">Tone: direct, senior, specific. Avoids generic enthusiasm and leads with operational evidence.</p>
+                </div>
+
+                <div>
+                  <h3>Evidence still needed</h3>
+                  <p class="muted">Ask before inventing. Infer only where the resume gives a credible bridge.</p>
+                  <div class="proof-list" style="margin-top:12px">
+                    <div class="proof">Can we quantify cost reduction, throughput, or labor efficiency?</div>
+                    <div class="proof">Any adjacent ERP, WMS, or planning-system experience?</div>
+                    <div class="proof">Which operating cadence best matches the target company?</div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card scan-panel">
+                <div class="card-header">
+                  <div>
+                    <h3>Insider Jobs scan</h3>
+                    <p class="muted">Selected companies should be unmistakable, even in a dense list.</p>
+                  </div>
+                  <span class="badge green">Ready to scan</span>
+                </div>
+                <div class="filter-row">
+                  <span class="filter selected">3 days old</span>
+                  <span class="filter">7 days old</span>
+                  <span class="filter">14 days old</span>
+                  <span class="filter selected">Hybrid</span>
+                  <span class="filter">Remote</span>
+                  <span class="filter">City + radius</span>
+                </div>
+                <div class="company-list">
+                  <div class="company selected"><span class="check">✓</span><span>Medtronic</span><small>4 openings</small></div>
+                  <div class="company selected"><span class="check">✓</span><span>Target</span><small>2 openings</small></div>
+                  <div class="company"><span class="check">✓</span><span>General Mills</span><small>0 openings</small></div>
+                </div>
+              </article>
+            </div>
+
+            <aside class="side-stack">
+              <article class="card">
+                <div class="card-header">
+                  <h3>Application timeline</h3>
+                  <span class="badge amber">2 due</span>
+                </div>
+                <div class="timeline">
+                  <div class="timeline-item">
+                    <span class="date">Today</span>
+                    <div><strong>Send thank-you note</strong><span>VP Operations, Apex Components</span></div>
+                  </div>
+                  <div class="timeline-item">
+                    <span class="date">Tue</span>
+                    <div><strong>Follow up with first-level connection</strong><span>Ask for hiring-manager context.</span></div>
+                  </div>
+                  <div class="timeline-item">
+                    <span class="date">Fri</span>
+                    <div><strong>Mock interview</strong><span>Focus on turnaround story and labor model.</span></div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="card-header">
+                  <h3>Networking tone</h3>
+                  <span class="badge" style="background:var(--network-soft);color:#563264;border-color:rgba(104,64,120,.36)">Warm</span>
+                </div>
+                <p class="muted">The visual system gives outreach a separate relationship cue without making every message look playful.</p>
+              </article>
+
+              <article class="card">
+                <div class="card-header">
+                  <h3>Color rules</h3>
+                  <span class="badge green">Consistent</span>
+                </div>
+                <p class="muted">Richer slate blue means action or progress. Umber means user input. Moss means ready or opportunity. Oxblood means risk. Teal anchors the product.</p>
+              </article>
+            </aside>
+          </div>
+
+          <div class="mobile-row">
+            <article class="card">
+              <h3>Why this direction is stronger</h3>
+              <p class="muted">It keeps the product serious but less cold. It also gives users faster visual answers: what is selected, what needs proof, what is ready, and what to do next.</p>
+              <div class="metric-row" style="margin-top:14px">
+                <div class="metric"><b>1</b><span>primary action color</span></div>
+                <div class="metric"><b>5</b><span>workflow accents</span></div>
+                <div class="metric"><b>0</b><span>decorative color noise</span></div>
+              </div>
+            </article>
+
+            <aside class="phone" aria-label="Mobile mockup">
+              <div class="phone-screen">
+                <div class="phone-top">
+                  <span class="badge blue">Mobile workspace</span>
+                  <h3>Resume needs 3 proof points.</h3>
+                </div>
+                <div class="phone-body">
+                  <div class="card">
+                    <h3>Next action</h3>
+                    <p class="muted">Confirm WMS experience and savings metric.</p>
+                  </div>
+                  <div class="card">
+                    <h3>Insider Jobs</h3>
+                    <p class="muted">8 hybrid roles found across selected companies.</p>
+                  </div>
+                  <button class="btn primary">Continue</button>
+                </div>
+                <div class="phone-nav">
+                  <span class="active">Resume</span>
+                  <span>Jobs</span>
+                  <span>Network</span>
+                  <span>Timeline</span>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="options" aria-label="Design direction comparison">
+      <article class="option">
+        <div class="mini-mood warm">
+          <div class="mini-bar short"></div>
+          <div class="mini-bar"></div>
+          <div class="mini-bar"></div>
+        </div>
+        <h3>Richer mineral workspace</h3>
+        <p>More color confidence while staying grounded, professional, and free of pastel status blocks.</p>
+      </article>
+      <article class="option">
+        <div class="mini-mood cool">
+          <div class="mini-bar short"></div>
+          <div class="mini-bar"></div>
+          <div class="mini-bar"></div>
+        </div>
+        <h3>Clean cool SaaS</h3>
+        <p>Stable and familiar, but easier to confuse with every other career tool.</p>
+      </article>
+      <article class="option">
+        <div class="mini-mood dark">
+          <div class="mini-bar short"></div>
+          <div class="mini-bar"></div>
+          <div class="mini-bar"></div>
+        </div>
+        <h3>Dark premium cockpit</h3>
+        <p>Visually dramatic, but heavier for writing, resume review, and long sessions.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

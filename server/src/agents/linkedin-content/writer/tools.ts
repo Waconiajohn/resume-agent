@@ -17,6 +17,7 @@ import { createEmitTransparency } from '../../runtime/shared-tools.js';
 import type { LinkedInContentState, LinkedInContentSSEEvent } from '../types.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
@@ -87,6 +88,67 @@ function buildSeriesContext(state: LinkedInContentState): string {
   return lines.join('\n');
 }
 
+const BLOG_WORD_MIN = 200;
+const BLOG_WORD_TARGET = 250;
+const BLOG_WORD_MAX = 300;
+
+const AI_FILLER_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
+  { label: 'rapidly evolving landscape', pattern: /\bin today'?s (?:fast-paced|rapidly evolving|ever-changing) (?:world|landscape|environment)\b/i },
+  { label: 'not just about', pattern: /\bit'?s not (?:just )?about\b/i },
+  { label: 'more important than ever', pattern: /\bmore important than ever\b/i },
+  { label: 'game-changer', pattern: /\bgame[- ]changer\b/i },
+  { label: 'unlock potential', pattern: /\bunlock(?:ing)? (?:the )?(?:power|potential)\b/i },
+  { label: 'drive success', pattern: /\bdrive (?:meaningful )?success\b/i },
+  { label: 'delve', pattern: /\bdelve\b/i },
+  { label: 'leverage', pattern: /\bleverage\b/i },
+  { label: 'thought leader filler', pattern: /\bthought leader(?:ship)?\b/i },
+];
+
+function countWords(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+function findAIFiller(text: string): string[] {
+  return AI_FILLER_PATTERNS
+    .filter(({ pattern }) => pattern.test(text))
+    .map(({ label }) => label);
+}
+
+function estimateHookScore(hookText: string): number {
+  const hook = hookText.trim();
+  if (!hook) return 35;
+
+  let score = 72;
+  if (hook.length > 210) score -= 15;
+  if (hook.length < 35) score -= 10;
+  if (/\d/.test(hook)) score += 8;
+  if (/\bI\b|\bwe\b|\bmy\b|\bour\b/i.test(hook)) score += 6;
+  if (/[?!]/.test(hook)) score += 4;
+  if (/^(I'?m excited|Happy Monday|Here'?s a thought|In today'?s)/i.test(hook)) score -= 25;
+  if (findAIFiller(hook).length > 0) score -= 20;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+function normalizeHashtags(raw: unknown, fallback: string[] = ['#Leadership']): string[] {
+  const source = Array.isArray(raw) ? raw.map(String) : fallback;
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const tag of source) {
+    const cleaned = tag.trim().replace(/\s+/g, '');
+    if (!cleaned) continue;
+    const withHash = cleaned.startsWith('#') ? cleaned : `#${cleaned}`;
+    const key = withHash.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    normalized.push(withHash);
+    if (normalized.length >= 5) break;
+  }
+
+  return normalized.length > 0 ? normalized : fallback;
+}
+
 // ─── Helper: build series-aware post requirements ────────────────────────
 
 function buildPostRequirements(state: LinkedInContentState, isRevision: boolean): string[] {
@@ -101,9 +163,11 @@ function buildPostRequirements(state: LinkedInContentState, isRevision: boolean)
     '- Use line breaks after every 1-3 sentences. LinkedIn rewards visual scannability.',
     '- CTA: End with a genuine question that invites disagreement or experience-sharing.',
     '- Hashtags: 3-5 relevant hashtags, placed at the end.',
-    '- Total length: 1,000-1,300 characters. Develop one idea fully, then stop.',
+    `- Blog/post length: target about ${BLOG_WORD_TARGET} words. Acceptable range: ${BLOG_WORD_MIN}-275 words. Never exceed ${BLOG_WORD_MAX} words. Develop one idea fully, then stop.`,
+    '- Character guidance: 1,000-1,300 characters is ideal when it fits the word contract, but the 300-word maximum wins.',
     '- Voice: Sound like a practitioner sharing hard-won insight, not a content creator.',
     '- Be specific: name companies, projects, dollar figures, team sizes where relevant.',
+    '- Avoid AI filler phrases, generic thought-leadership language, and inspirational slogans. Use concrete operating detail instead.',
   ];
 
   if (isSeries) {
@@ -144,7 +208,7 @@ function buildPostRequirements(state: LinkedInContentState, isRevision: boolean)
 const writePostTool: LinkedInContentTool = {
   name: 'write_post',
   description:
-    'Drafts a full LinkedIn post (1,000-1,300 characters) with hook, body, CTA, and hashtags. ' +
+    'Drafts a full LinkedIn post/blog-style article around 250 words with hook, body, CTA, and hashtags. ' +
     'In series mode, incorporates series context: "Part X of Y" reference, callback to ' +
     'the previous post\'s theme, and teaser for the next. Stores draft in scratchpad.',
   model_tier: 'primary',
@@ -220,6 +284,11 @@ const writePostTool: LinkedInContentTool = {
       }));
     }
 
+    contextParts.push(...renderBenchmarkProfileDirectionSection({
+      heading: '## Benchmark Profile Direction',
+      sharedContext,
+    }));
+
     if (hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
       contextParts.push(...renderPositioningStrategySection({
         heading: '## Positioning Strategy (ensure post reinforces this)',
@@ -279,15 +348,23 @@ const writePostTool: LinkedInContentTool = {
     }
 
     let postText = String(parsed.post ?? '');
-    const hashtags = Array.isArray(parsed.hashtags)
-      ? (parsed.hashtags as unknown[]).map(String)
-      : ['#Leadership'];
+    const hashtags = normalizeHashtags(parsed.hashtags);
 
-    // 360Brew length enforcement for text posts
+    // 360Brew length enforcement for text posts, now aligned to the product's
+    // ~250-word blog/post contract.
     const charCount = postText.length;
     let lengthNote: string | undefined;
+    const initialWordCount = countWords(postText);
+    if (initialWordCount < 150) {
+      lengthNote = `Post is ${initialWordCount} words — below the 200-275 word target. Consider expanding with more specific evidence or a deeper development of the main idea.`;
+      logger.warn({ wordCount: initialWordCount, topic }, 'linkedin-content: write_post below target word count');
+    } else if (initialWordCount > BLOG_WORD_MAX) {
+      lengthNote = `Post is ${initialWordCount} words — above the ${BLOG_WORD_MAX}-word maximum. Consider tightening to one idea with stronger proof.`;
+      logger.warn({ wordCount: initialWordCount, topic }, 'linkedin-content: write_post above maximum word count');
+    }
+
     if (charCount < 800) {
-      lengthNote = `Post is ${charCount} characters — below the 360Brew minimum of 1,000. Consider expanding with more specific evidence or a deeper development of the main idea.`;
+      lengthNote ??= `Post is ${charCount} characters — below the 360Brew minimum of 1,000. Consider expanding with more specific evidence or a deeper development of the main idea.`;
       logger.warn({ charCount, topic }, 'linkedin-content: write_post below 360Brew minimum length');
     } else if (charCount > 1500) {
       // Truncate at the last complete sentence before 1,300 characters
@@ -305,6 +382,11 @@ const writePostTool: LinkedInContentTool = {
         lengthNote = `Post was ${charCount} characters — trimmed to ${postText.length} to stay within the 360Brew optimal range (1,000–1,300).`;
         logger.info({ originalLength: charCount, trimmedLength: postText.length }, 'linkedin-content: write_post trimmed to 360Brew optimal length');
       }
+    }
+
+    const fillerHits = findAIFiller(postText);
+    if (fillerHits.length > 0) {
+      logger.warn({ fillerHits, topic }, 'linkedin-content: write_post contains generic AI-style filler');
     }
 
     // 360Brew carousel slide count check (applies when content is a carousel)
@@ -352,6 +434,8 @@ const selfReviewPostTool: LinkedInContentTool = {
     });
 
     const hookText = postDraft.slice(0, 210);
+    const wc = countWords(postDraft);
+    const fillerHits = findAIFiller(postDraft);
 
     const response = await llm.chat({
       model: MODEL_MID,
@@ -368,6 +452,11 @@ ${postDraft}
 
 ## Hook (first 210 characters -- what shows before "see more")
 ${hookText}
+
+## Deterministic Checks
+Word count: ${wc}
+Target: ${BLOG_WORD_MIN}-275 words, ideal about ${BLOG_WORD_TARGET}, never over ${BLOG_WORD_MAX}.
+AI-style filler detected: ${fillerHits.length > 0 ? fillerHits.join(', ') : 'none'}
 
 Evaluate and return:
 {
@@ -387,6 +476,8 @@ Scoring guide:
 - engagement_potential: 90+ = strong hook + scannable + clear CTA. 70-89 = good but improvable. <70 = weak hook or poor structure.
 - keyword_density: 90+ = excellent industry coverage. 70-89 = good. <70 = missing key terms.
 - hook_score: 90+ = stops the scroll immediately. 70-89 = compelling but improvable. <70 = weak -- generic opener, buried lead, or no curiosity gap.
+- Posts under 150 words or over 300 words should score below 75 on engagement even if well written.
+- Any AI-style filler phrase should score below 70 on authenticity unless the rest of the post is extremely specific.
 - hook_type examples: contrarian = "Most execs do X backwards". specific_number = "3 things I learned from a $40M turnaround". story_opener = "The day I walked into a plant losing $2M/month...". direct_challenge = "Your supply chain isn't as resilient as you think". vulnerable_admission = "I made a $10M mistake at 42."`,
         },
       ],
@@ -407,10 +498,27 @@ Scoring guide:
       keyword_density: typeof scores.keyword_density === 'number' ? scores.keyword_density : 70,
     };
 
+    if (fillerHits.length > 0) {
+      qualityScores.authenticity = Math.min(qualityScores.authenticity, 65);
+    }
+    if (wc < 150 || wc > BLOG_WORD_MAX) {
+      qualityScores.engagement_potential = Math.min(qualityScores.engagement_potential, 70);
+    } else if (wc < BLOG_WORD_MIN || wc > 275) {
+      qualityScores.engagement_potential = Math.min(qualityScores.engagement_potential, 82);
+    }
+
     // Hook analysis -- persisted for display in post review UI
-    const hookScore = typeof scores.hook_score === 'number' ? scores.hook_score : null;
+    const estimatedHookScore = estimateHookScore(hookText);
+    const hookScore = typeof scores.hook_score === 'number'
+      ? Math.min(Math.max(Math.round(scores.hook_score), 0), 100)
+      : estimatedHookScore;
+    if (hookScore < 70) {
+      qualityScores.engagement_potential = Math.min(qualityScores.engagement_potential, 68);
+    }
     const hookType = typeof scores.hook_type === 'string' ? scores.hook_type : null;
-    const hookAssessment = typeof scores.hook_assessment === 'string' ? scores.hook_assessment : null;
+    const hookAssessment = typeof scores.hook_assessment === 'string'
+      ? scores.hook_assessment
+      : `Estimated hook score: ${estimatedHookScore}. The first 210 characters should create immediate specificity, tension, or proof.`;
 
     ctx.scratchpad.quality_scores = qualityScores;
     ctx.scratchpad.hook_score = hookScore;
@@ -508,6 +616,12 @@ const revisePostTool: LinkedInContentTool = {
 
     revisionParts.push(
       '',
+      '## Non-Negotiable Quality Standard',
+      `- Keep the revised post around ${BLOG_WORD_TARGET} words (${BLOG_WORD_MIN}-275 preferred, ${BLOG_WORD_MAX} maximum).`,
+      '- Keep the first 210 characters strong enough to stop the scroll before "see more".',
+      '- Remove AI filler, generic thought-leadership language, and slogans.',
+      '- Preserve source-grounded proof and the user\'s practitioner voice.',
+      '',
       'Return ONLY valid JSON:',
       '{',
       '  "post": "The revised full post text",',
@@ -541,9 +655,7 @@ const revisePostTool: LinkedInContentTool = {
     }
 
     const postText = String(parsed.post ?? currentDraft);
-    const hashtags = Array.isArray(parsed.hashtags)
-      ? (parsed.hashtags as unknown[]).map(String)
-      : currentHashtags;
+    const hashtags = normalizeHashtags(parsed.hashtags, currentHashtags);
 
     ctx.scratchpad.post_draft = postText;
     ctx.scratchpad.post_hashtags = hashtags;

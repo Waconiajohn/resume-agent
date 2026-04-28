@@ -43,6 +43,7 @@ vi.mock('../lib/perplexity.js', () => ({
 
 vi.mock('../lib/platform-context.js', () => ({
   getUserContext: vi.fn().mockResolvedValue([]),
+  insertUserContext: vi.fn().mockResolvedValue({ id: 'mock-id' }),
   upsertUserContext: vi.fn().mockResolvedValue({ id: 'mock-id' }),
 }));
 
@@ -59,6 +60,8 @@ import '../agents/interview-prep/writer/agent.js';
 import { createInterviewPrepProductConfig } from '../agents/interview-prep/product.js';
 import { researcherTools } from '../agents/interview-prep/researcher/tools.js';
 import { writerTools } from '../agents/interview-prep/writer/tools.js';
+import { llm } from '../lib/llm.js';
+import { queryWithFallback } from '../lib/perplexity.js';
 import { createEmptySharedContext } from '../contracts/shared-context.js';
 import {
   INTERVIEW_PREP_RULES,
@@ -119,10 +122,11 @@ describe('Interview Prep Agent Registration', () => {
     expect(desc!.tools).toContain('emit_transparency');
   });
 
-  it('writer has 10 tools (9 + emit_transparency)', () => {
+  it('writer has 11 tools (10 + emit_transparency)', () => {
     const desc = agentRegistry.describe('interview-prep', 'writer');
     expect(desc).toBeDefined();
-    expect(desc!.tools).toHaveLength(10);
+    expect(desc!.tools).toHaveLength(11);
+    expect(desc!.tools).toContain('write_interview_advantage_brief');
     expect(desc!.tools).toContain('write_section');
     expect(desc!.tools).toContain('self_review_section');
     expect(desc!.tools).toContain('build_career_story');
@@ -164,6 +168,7 @@ describe('Interview Prep Tool Model Tiers', () => {
 
   it('writer tools have correct model tiers', () => {
     const tierMap: Record<string, string> = {
+      write_interview_advantage_brief: 'primary',
       write_section: 'primary',
       self_review_section: 'mid',
       build_career_story: 'primary',
@@ -309,11 +314,99 @@ describe('Interview Prep ProductConfig', () => {
       resume_text: 'John Doe, VP Operations...',
       job_description: 'We are seeking a VP...',
       company_name: 'Medtronic',
+      role_title: 'VP Operations',
     });
     expect(msg).toContain('Resume');
     expect(msg).toContain('John Doe, VP Operations...');
     expect(msg).toContain('Medtronic');
+    expect(msg).toContain('VP Operations');
     expect(msg).toContain('parse_inputs');
+  });
+
+  it('parse_inputs uses application company and role hints when the JD parser is generic', async () => {
+    const config = createInterviewPrepProductConfig();
+    const state = config.createInitialState('s', 'u', {});
+    (llm.chat as ReturnType<typeof vi.fn>).mockReset();
+    (llm.chat as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        text: JSON.stringify({
+          name: 'David Harrington',
+          current_title: 'VP Operations',
+          career_summary: 'Manufacturing operations leader.',
+          key_skills: [],
+          key_achievements: [],
+          work_history: [],
+        }),
+      })
+      .mockResolvedValueOnce({
+        text: JSON.stringify({
+          company_name: 'Unknown Company',
+          role_title: 'Unknown Role',
+          requirements: [],
+          culture_cues: [],
+          seniority_level: 'other',
+        }),
+      });
+
+    const tool = researcherTools.find((t) => t.name === 'parse_inputs');
+    await tool?.execute({
+      resume_text: 'David Harrington, VP Operations',
+      job_description: 'Chief operator needed.',
+      company_name: 'Coventry Industrial Holdings',
+      role_title: 'Chief Operating Officer',
+    }, {
+      getState: () => state,
+      scratchpad: {},
+      emit: vi.fn(),
+    } as never);
+
+    expect(state.resume_data?.name).toBe('David Harrington');
+    expect(state.jd_analysis?.company_name).toBe('Coventry Industrial Holdings');
+    expect(state.jd_analysis?.role_title).toBe('Chief Operating Officer');
+    expect(state.jd_analysis?.raw_job_description).toBe('Chief operator needed.');
+  });
+
+  it('research_company falls back to the supplied JD when public research is unverified', async () => {
+    const config = createInterviewPrepProductConfig();
+    const state = config.createInitialState('s', 'u', {});
+    state.jd_analysis = {
+      company_name: 'Coventry Industrial Holdings QA',
+      role_title: 'Chief Operating Officer',
+      seniority_level: 'c_suite',
+      culture_cues: [],
+      requirements: [
+        {
+          requirement: 'Lead cross-divisional integration of operating standards, ERP systems, and procurement contracts',
+          expanded_definition: 'Unify the operating model across divisions.',
+          rank: 1,
+        },
+        {
+          requirement: 'Drive enterprise-wide Lean program targeting $25M in savings over 24 months',
+          expanded_definition: 'Own measurable transformation savings.',
+          rank: 2,
+        },
+      ],
+      raw_job_description:
+        'Coventry is a private equity-backed industrial manufacturer with revenues of $480M across four operating divisions — precision machined components, specialty coatings, engineered plastics, and contract assembly. The COO will report directly to the CEO.',
+    };
+
+    (queryWithFallback as ReturnType<typeof vi.fn>).mockReset();
+    (queryWithFallback as ReturnType<typeof vi.fn>).mockResolvedValue(
+      'I could not find a verified public profile for Coventry Industrial Holdings QA. Closest matches include Coventry Group Ltd and Park Sheet Metal.',
+    );
+
+    const tool = researcherTools.find((t) => t.name === 'research_company');
+    const result = await tool?.execute({ company_name: 'Coventry Industrial Holdings QA' }, {
+      getState: () => state,
+      scratchpad: {},
+      emit: vi.fn(),
+    } as never);
+
+    expect(JSON.parse(String(result)).source_confidence).toBe('jd_only');
+    expect(state.company_research?.overview).toContain('supplied job description');
+    expect(state.company_research?.overview).toContain('precision machined components');
+    expect(state.company_research?.overview).not.toContain('Park Sheet Metal');
+    expect(state.company_research?.competitors).toHaveLength(0);
   });
 
   it('buildAgentMessage includes Why-Me story when available', () => {
@@ -380,6 +473,147 @@ describe('Interview Prep ProductConfig', () => {
     expect(msg).toContain('interview preparation report');
     expect(msg).toMatch(/resume/i);
     expect(msg).toContain('assemble_report');
+  });
+
+  it('assemble_report creates a finished deliverable without assistant-style next steps', async () => {
+    const config = createInterviewPrepProductConfig();
+    const state = config.createInitialState('s', 'u', {});
+    state.resume_data = {
+      name: 'David Harrington',
+      current_title: 'VP Operations',
+      career_summary: '',
+      key_skills: [],
+      key_achievements: [],
+      work_history: [],
+    };
+    state.jd_analysis = {
+      company_name: 'Coventry Industrial Holdings',
+      role_title: 'Chief Operating Officer',
+      requirements: [],
+      culture_cues: [],
+      seniority_level: 'c_suite',
+    };
+    state.sections = {} as typeof state.sections;
+    state.sections[SECTION_ORDER[0]] = {
+      section: SECTION_ORDER[0],
+      content: '## Company Research\nUse the post-close integration story.',
+      reviewed: true,
+      word_count: 7,
+    };
+
+    const tool = writerTools.find((t) => t.name === 'assemble_report');
+    await tool?.execute({}, {
+      getState: () => state,
+      scratchpad: {},
+      emit: vi.fn(),
+    } as never);
+
+    expect(state.final_report).toContain('**Candidate:** David Harrington');
+    expect(state.final_report).toContain('**Target Role:** Chief Operating Officer');
+    expect(state.final_report).toContain('**Company:** Coventry Industrial Holdings');
+    expect(state.final_report).not.toContain('I can help you go deeper');
+    expect(state.final_report).not.toContain('Mock Interview');
+  });
+
+  it('write_interview_advantage_brief creates the full prep report in one LLM call', async () => {
+    const config = createInterviewPrepProductConfig();
+    const state = config.createInitialState('s', 'u', {});
+    state.resume_data = {
+      name: 'David Harrington',
+      current_title: 'VP Operations',
+      career_summary: 'Industrial operations executive.',
+      key_skills: ['Lean transformation', 'ERP integration', 'Board reporting'],
+      key_achievements: ['$25M savings program', 'Led four-division integration'],
+      work_history: [
+        {
+          company: 'Northstar Components',
+          title: 'VP Operations',
+          duration: '2018 - 2025',
+          highlights: ['$25M savings program', 'Integrated ERP across four divisions'],
+        },
+      ],
+    };
+    state.jd_analysis = {
+      company_name: 'Coventry Industrial Holdings',
+      role_title: 'Chief Operating Officer',
+      requirements: [
+        {
+          requirement: 'Lead post-acquisition operating integration',
+          expanded_definition: 'Unify divisions, systems, and operating cadence.',
+          rank: 1,
+        },
+      ],
+      culture_cues: ['board visibility'],
+      seniority_level: 'c_suite',
+    };
+    state.company_research = {
+      company_name: 'Coventry Industrial Holdings',
+      overview: 'JD-only private equity-backed manufacturer.',
+      revenue_streams: [],
+      industry: 'Industrial manufacturing',
+      growth_areas: ['Margin recovery'],
+      risks: ['Integration complexity'],
+      competitors: [],
+      source_confidence: 'jd_only',
+    };
+
+    const report = `# Interview Advantage Brief
+
+**Candidate:** David Harrington
+**Target Role:** Chief Operating Officer
+**Company:** Coventry Industrial Holdings
+
+## 1. Interview Game Plan
+Lead with integration, margin recovery, and board-level operating cadence.
+
+## 2. Company Intelligence
+This is based on supplied JD context.
+
+## 3. Elevator Pitch
+I help complex operators turn scattered execution into measurable operating rhythm.
+
+## 4. Top 6 Role Requirements And Why I Fit
+### Lead post-acquisition operating integration
+I have led four-division integration work and a $25M savings program. Confidence: 0.94
+
+## 5. Why Me — Memorable Career Story
+I am an operating integrator.
+
+## 6. The 3-2-1 Strategy
+3 proof points, 2 questions, 1 close.
+
+## 7. Technical / Role-Specific Questions
+Question 1: How would I approach ERP integration?
+
+## 8. Behavioral Story Bank
+Question 1: Tell me about leading under pressure.
+
+## 9. 30-60-90 Plan
+30 days: assess cadence. 60 days: align systems. 90 days: improve margin controls.
+
+## 10. Risk Handling And Likely Objections
+Prepare for questions about integration risk.
+
+## 11. Final Interview Strategy
+Speak like the owner of operating results.`;
+
+    (llm.chat as ReturnType<typeof vi.fn>).mockReset();
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ text: report });
+
+    const tool = writerTools.find((t) => t.name === 'write_interview_advantage_brief');
+    const scratchpad: Record<string, unknown> = {};
+    const result = await tool?.execute({ emphasis: 'focus on the top six requirements' }, {
+      getState: () => state,
+      scratchpad,
+      emit: vi.fn(),
+    } as never);
+
+    expect(JSON.parse(String(result)).success).toBe(true);
+    expect(llm.chat).toHaveBeenCalledTimes(1);
+    expect(state.final_report).toContain('Interview Advantage Brief');
+    expect(state.final_report).toContain('Top 6 Role Requirements');
+    expect(scratchpad.final_report).toBe(state.final_report);
+    expect(state.quality_score).toBeGreaterThanOrEqual(80);
   });
 
   it('buildAgentMessage returns empty string for unknown agent', () => {

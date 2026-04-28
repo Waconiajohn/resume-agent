@@ -444,6 +444,91 @@ export function renderBenchmarkCandidateSection(args: {
   return section(args.heading, lines);
 }
 
+export function renderBenchmarkProfileDirectionSection(args: {
+  heading: string;
+  sharedContext?: SharedContext | null;
+  maxApprovedFraming?: number;
+  maxConfirmationItems?: number;
+}): string[] {
+  const sharedContext = args.sharedContext;
+  if (!sharedContext) return [];
+
+  const benchmark = sharedContext.benchmarkCandidate;
+  const strategy = sharedContext.positioningStrategy;
+  const narrative = sharedContext.careerNarrative;
+  const maxApprovedFraming = typeof args.maxApprovedFraming === 'number'
+    ? Math.max(1, args.maxApprovedFraming)
+    : 8;
+  const maxConfirmationItems = typeof args.maxConfirmationItems === 'number'
+    ? Math.max(1, args.maxConfirmationItems)
+    : 6;
+
+  const lines: string[] = [
+    '- Use this as the candidate brand source of truth. Prefer approved language when useful; use risk and confirmation items as softening notes, discovery questions, or gaps, not final claims.',
+  ];
+
+  pushLine(
+    lines,
+    'Benchmark identity',
+    firstMeaningful(
+      benchmark.benchmarkSummary,
+      strategy.positioningAngle,
+      narrative.leadershipIdentity,
+      narrative.careerArc,
+      sharedContext.candidateProfile.factualSummary,
+    ),
+  );
+  pushListLine(
+    lines,
+    'Approved language to reuse or adapt',
+    uniqueNonEmpty(strategy.approvedFraming),
+    maxApprovedFraming,
+  );
+  pushListLine(
+    lines,
+    'Proof themes to reinforce',
+    uniqueNonEmpty([
+      ...benchmark.benchmarkWins,
+      ...benchmark.differentiators,
+      ...narrative.signatureStrengths,
+      ...narrative.careerThemes,
+    ]),
+    10,
+  );
+  pushListLine(
+    lines,
+    'Recruiter and search signals',
+    uniqueNonEmpty(benchmark.benchmarkSignals),
+    10,
+  );
+  pushListLine(
+    lines,
+    'Risk areas to avoid overclaiming',
+    uniqueNonEmpty([
+      ...strategy.riskAreas,
+      ...benchmark.benchmarkGapsRelativeToCandidate,
+    ]),
+    8,
+  );
+  pushListLine(
+    lines,
+    'Needs candidate confirmation before final claims',
+    uniqueNonEmpty(strategy.framingStillRequiringConfirmation),
+    maxConfirmationItems,
+  );
+
+  if (sharedContext.workflowState.pendingApprovals > 0 || sharedContext.workflowState.pendingQuestions > 0) {
+    lines.push(`- Review state: ${sharedContext.workflowState.pendingApprovals} pending approvals, ${sharedContext.workflowState.pendingQuestions} pending discovery questions.`);
+  }
+
+  const meaningfulLines = lines.slice(1);
+  if (meaningfulLines.length === 0 && !hasMeaningfulSharedValue(benchmark) && !hasMeaningfulSharedValue(strategy)) {
+    return [];
+  }
+
+  return section(args.heading, lines);
+}
+
 export function renderGapAnalysisSection(args: {
   heading: string;
   sharedGapAnalysis?: SharedGapAnalysis | null;

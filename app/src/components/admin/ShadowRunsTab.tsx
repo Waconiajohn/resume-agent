@@ -110,7 +110,7 @@ function statusBadgeClass(status: ComparisonStatus): string {
   if (status === 'reviewed_v3_better') return 'bg-[var(--badge-green-bg,rgba(34,197,94,0.12))] text-[var(--badge-green-text)]';
   if (status === 'reviewed_v2_better') return 'bg-[var(--badge-blue-bg)] text-[var(--link)]';
   if (status === 'reviewed_equivalent') return 'bg-[var(--accent-muted)] text-[var(--text-muted)]';
-  return 'bg-[#f0a0a0]/10 text-[#f0a0a0]';
+  return 'bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]';
 }
 
 export function ShadowRunsTab({ adminKey }: ShadowRunsTabProps) {
@@ -272,7 +272,7 @@ export function ShadowRunsTab({ adminKey }: ShadowRunsTabProps) {
       <GlassCard className="p-0 overflow-hidden">
         {listError && (
           <div className="p-4 border-b border-[var(--line-soft)]">
-            <p className="text-sm text-[#f0a0a0]">Error: {listError}</p>
+            <p className="text-sm text-[var(--badge-red-text)]">Error: {listError}</p>
           </div>
         )}
         <table className="w-full text-xs">
@@ -301,11 +301,11 @@ export function ShadowRunsTab({ adminKey }: ShadowRunsTabProps) {
                 <td className="px-3 py-2 font-mono text-[10px]">{r.request_id.slice(0, 10)}…</td>
                 <td className="px-3 py-2">
                   {r.v3_pipeline_error
-                    ? <span className="text-[#f0a0a0]">ERROR ({r.v3_pipeline_error_stage ?? 'unknown'})</span>
+                    ? <span className="text-[var(--badge-red-text)]">ERROR ({r.v3_pipeline_error_stage ?? 'unknown'})</span>
                     : r.v3_passed === true
                       ? <span className="text-[var(--badge-green-text)]">PASS</span>
                       : r.v3_passed === false
-                        ? <span className="text-[#f0a0a0]">FAIL</span>
+                        ? <span className="text-[var(--badge-red-text)]">FAIL</span>
                         : '—'}
                 </td>
                 <td className="px-3 py-2 text-[var(--text-muted)]">
@@ -358,12 +358,12 @@ export function ShadowRunsTab({ adminKey }: ShadowRunsTabProps) {
           {detailLoading && (
             <p className="text-sm text-[var(--text-soft)]">Loading detail…</p>
           )}
-          {detailError && <p className="text-sm text-[#f0a0a0]">Error: {detailError}</p>}
+          {detailError && <p className="text-sm text-[var(--badge-red-text)]">Error: {detailError}</p>}
           {detail && !detailLoading && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-white">Shadow run detail</h3>
+                  <h3 className="text-sm font-semibold text-[var(--text-strong)]">Shadow run detail</h3>
                   <p className="text-xs text-[var(--text-soft)]">
                     session {detail.request_id} • {formatDate(detail.created_at)}
                   </p>
@@ -381,8 +381,8 @@ export function ShadowRunsTab({ adminKey }: ShadowRunsTabProps) {
               </div>
 
               {detail.v3_pipeline_error && (
-                <div className="p-3 rounded bg-[#f0a0a0]/10 border border-[#f0a0a0]/20">
-                  <p className="text-xs font-medium text-[#f0a0a0]">
+                <div className="p-3 rounded-[8px] bg-[var(--badge-red-bg)] border border-[var(--badge-red-text)]/20">
+                  <p className="text-xs font-medium text-[var(--badge-red-text)]">
                     v3 pipeline error (stage: {detail.v3_pipeline_error_stage ?? 'unknown'})
                   </p>
                   <pre className="mt-1 text-[10px] text-[var(--text-muted)] whitespace-pre-wrap">
@@ -429,7 +429,7 @@ export function ShadowRunsTab({ adminKey }: ShadowRunsTabProps) {
 
               {/* Review form */}
               <div className="border-t border-[var(--line-soft)] pt-3 space-y-2">
-                <h4 className="text-sm font-semibold text-white">Reviewer decision</h4>
+                <h4 className="text-sm font-semibold text-[var(--text-strong)]">Reviewer decision</h4>
                 <div className="flex flex-wrap gap-2">
                   {(['reviewed_v3_better', 'reviewed_v2_better', 'reviewed_equivalent', 'reviewed_v3_unacceptable'] as const).map(
                     (s) => (
@@ -456,7 +456,7 @@ export function ShadowRunsTab({ adminKey }: ShadowRunsTabProps) {
                   rows={2}
                   className="w-full bg-[var(--surface-strong,rgba(255,255,255,0.02))] border border-[var(--line-soft)] rounded p-2 text-xs"
                 />
-                {reviewError && <p className="text-xs text-[#f0a0a0]">{reviewError}</p>}
+                {reviewError && <p className="text-xs text-[var(--badge-red-text)]">{reviewError}</p>}
                 <div className="flex items-center gap-3">
                   <button
                     type="button"

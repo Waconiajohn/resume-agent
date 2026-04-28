@@ -159,7 +159,7 @@ function StatCard({
       ? 'text-[var(--badge-red-text)]'
       : accent === 'blue'
       ? 'text-[var(--link)]'
-      : 'text-white';
+      : 'text-[var(--text-strong)]';
 
   return (
     <GlassCard className="p-4">
@@ -302,12 +302,12 @@ export function AdminDashboard() {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center p-6">
         <GlassCard className="p-8 max-w-sm w-full">
-          <h1 className="text-xl font-semibold text-white mb-1">Admin Dashboard</h1>
+          <h1 className="text-xl font-bold text-[var(--text-strong)] mb-1">Admin Dashboard</h1>
           <p className="text-sm text-[var(--text-soft)] mb-6">Enter your admin API key to continue.</p>
           <div className="flex flex-col gap-3">
             <input
               type="password"
-              className="rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] text-white text-sm px-3 py-2.5 outline-none focus:border-[var(--link)]/50 placeholder-[var(--text-soft)]"
+              className="rounded-[8px] bg-[var(--surface-3)] border border-[var(--line-strong)] text-[var(--text-strong)] text-sm px-3 py-2.5 outline-none focus:border-[var(--link)]/50 placeholder-[var(--text-soft)]"
               placeholder="Admin API key"
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
@@ -318,7 +318,7 @@ export function AdminDashboard() {
               }}
               autoComplete="off"
             />
-            {authError && <p className="text-xs text-[#f0a0a0]">{authError}</p>}
+            {authError && <p className="text-xs text-[var(--badge-red-text)]">{authError}</p>}
             <button
               type="button"
               onClick={() => { if (keyInput.trim()) void authenticate(keyInput.trim()); }}
@@ -470,7 +470,7 @@ export function AdminDashboard() {
                       {row.product_type ?? 'unknown product'} — user {row.user_id.slice(0, 8)}...
                     </p>
                     {row.error_message && (
-                      <p className="text-xs text-[#f0a0a0] mt-1 truncate">{row.error_message}</p>
+                    <p className="text-xs text-[var(--badge-red-text)] mt-1 truncate">{row.error_message}</p>
                     )}
                   </div>
                   <p className="text-xs text-[var(--text-soft)] whitespace-nowrap shrink-0">
@@ -535,7 +535,7 @@ export function AdminDashboard() {
           {primaryAlert ? (
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white">{primaryAlert.label}</p>
+                <p className="text-sm font-medium text-[var(--text-strong)]">{primaryAlert.label}</p>
                 <p className="text-xs text-[var(--text-soft)] mt-1">{primaryAlert.note}</p>
               </div>
               <div className="text-right shrink-0">
@@ -599,32 +599,32 @@ export function AdminDashboard() {
             <div className="min-w-0">
               <p className="text-xs text-[var(--text-soft)] uppercase tracking-wider">Profile Setup Recovery</p>
               <p className="text-sm text-[var(--text-muted)] mt-1">
-                Monitor whether reveal-screen retry is being used and whether it actually recovers Career Evidence creation.
+                Monitor whether reveal-screen retry is being used and whether it actually recovers Career Proof creation.
               </p>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-lg font-semibold text-white">{retryRecovery.succeeded}</p>
+              <p className="text-lg font-semibold text-[var(--text-strong)]">{retryRecovery.succeeded}</p>
               <p className="text-xs text-[var(--text-soft)]">recovered</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
+            <div className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
               <p className="text-[11px] uppercase tracking-wider text-[var(--text-soft)]">Needed</p>
-              <p className="mt-1 text-lg font-semibold text-white">{retryRecovery.needed_initial}</p>
+              <p className="mt-1 text-lg font-semibold text-[var(--text-strong)]">{retryRecovery.needed_initial}</p>
               <p className="text-xs text-[var(--text-soft)]">after first build</p>
             </div>
-            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
+            <div className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
               <p className="text-[11px] uppercase tracking-wider text-[var(--text-soft)]">Retry Clicked</p>
-              <p className="mt-1 text-lg font-semibold text-white">{retryRecovery.requested}</p>
+              <p className="mt-1 text-lg font-semibold text-[var(--text-strong)]">{retryRecovery.requested}</p>
               <p className="text-xs text-[var(--text-soft)]">from reveal screen</p>
             </div>
-            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
+            <div className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
               <p className="text-[11px] uppercase tracking-wider text-[var(--text-soft)]">Succeeded</p>
               <p className="mt-1 text-lg font-semibold text-[var(--badge-green-text)]">{retryRecovery.succeeded}</p>
-              <p className="text-xs text-[var(--text-soft)]">Career Evidence recovered</p>
+              <p className="text-xs text-[var(--text-soft)]">Career Proof recovered</p>
             </div>
-            <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
+            <div className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--accent-muted)]/40 px-3 py-2.5">
               <p className="text-[11px] uppercase tracking-wider text-[var(--text-soft)]">Still Failing</p>
               <p className="mt-1 text-lg font-semibold text-[var(--badge-red-text)]">
                 {retryRecovery.failures_by_reason.master_resume_not_created}
@@ -652,7 +652,7 @@ export function AdminDashboard() {
                   <p className="text-xs text-[var(--text-soft)]">{step.event_names.join(', ')}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-white font-medium">{step.users} users</p>
+                  <p className="text-[var(--text-strong)] font-medium">{step.users} users</p>
                   <p className="text-xs text-[var(--text-soft)]">{step.events} events</p>
                 </div>
               </div>
@@ -666,11 +666,11 @@ export function AdminDashboard() {
             <div className="space-y-1.5 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[var(--text-muted)]">Network</span>
-                <span className="text-white">{funnel.path_breakdown.smart_referrals.network ?? 0}</span>
+                <span className="text-[var(--text-strong)]">{funnel.path_breakdown.smart_referrals.network ?? 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[var(--text-muted)]">Bonus</span>
-                <span className="text-white">{funnel.path_breakdown.smart_referrals.bonus ?? 0}</span>
+                <span className="text-[var(--text-strong)]">{funnel.path_breakdown.smart_referrals.bonus ?? 0}</span>
               </div>
             </div>
           </GlassCard>
@@ -680,11 +680,11 @@ export function AdminDashboard() {
             <div className="space-y-1.5 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[var(--text-muted)]">Overview CTA</span>
-                <span className="text-white">{funnel.path_breakdown.shortlist_entry_points.overview_cta ?? 0}</span>
+                <span className="text-[var(--text-strong)]">{funnel.path_breakdown.shortlist_entry_points.overview_cta ?? 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[var(--text-muted)]">Board Target</span>
-                <span className="text-white">{funnel.path_breakdown.shortlist_entry_points.board_target ?? 0}</span>
+                <span className="text-[var(--text-strong)]">{funnel.path_breakdown.shortlist_entry_points.board_target ?? 0}</span>
               </div>
             </div>
           </GlassCard>
@@ -694,15 +694,15 @@ export function AdminDashboard() {
             <div className="space-y-1.5 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[var(--text-muted)]">LinkedIn</span>
-                <span className="text-white">{funnel.path_breakdown.boolean_copy_targets.linkedin ?? 0}</span>
+                <span className="text-[var(--text-strong)]">{funnel.path_breakdown.boolean_copy_targets.linkedin ?? 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[var(--text-muted)]">Indeed</span>
-                <span className="text-white">{funnel.path_breakdown.boolean_copy_targets.indeed ?? 0}</span>
+                <span className="text-[var(--text-strong)]">{funnel.path_breakdown.boolean_copy_targets.indeed ?? 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[var(--text-muted)]">Titles</span>
-                <span className="text-white">{funnel.path_breakdown.boolean_copy_targets.titles ?? 0}</span>
+                <span className="text-[var(--text-strong)]">{funnel.path_breakdown.boolean_copy_targets.titles ?? 0}</span>
               </div>
             </div>
           </GlassCard>
@@ -778,7 +778,7 @@ export function AdminDashboard() {
                       {row.product_type ?? 'unknown product'} — user {row.user_id.slice(0, 8)}...
                     </p>
                     {row.error_message && (
-                      <p className="text-xs text-[#f0a0a0] mt-1 truncate">{row.error_message}</p>
+                      <p className="text-xs text-[var(--badge-red-text)] mt-1 truncate">{row.error_message}</p>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
@@ -813,7 +813,7 @@ export function AdminDashboard() {
       <div className="mx-auto max-w-5xl px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Admin Dashboard</h1>
+            <h1 className="text-2xl font-bold text-[var(--text-strong)]">Admin Dashboard</h1>
             <p className="text-sm text-[var(--text-soft)] mt-0.5">Platform analytics and session management</p>
           </div>
           <button
@@ -869,8 +869,8 @@ export function AdminDashboard() {
         )}
 
         {fetchError && !loading && (
-          <GlassCard className="p-4 border-[#f0a0a0]/20">
-            <p className="text-sm text-[#f0a0a0]">Error: {fetchError}</p>
+          <GlassCard className="p-4 border-[var(--badge-red-text)]/20">
+            <p className="text-sm text-[var(--badge-red-text)]">Error: {fetchError}</p>
           </GlassCard>
         )}
 

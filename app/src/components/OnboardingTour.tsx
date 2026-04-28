@@ -52,12 +52,12 @@ const TOUR_STEPS = [
   {
     target: '[data-tour="nav-career-profile"]',
     placement: 'right' as const,
-    title: 'Career Profile — Start Here',
+    title: 'Benchmark Profile — Start Here',
     content: (
       <p>
-        Your Career Profile is the foundation. It captures your background,
-        strengths, and goals. Every other tool in the workspace uses this
-        information to personalise its output for you.
+        Your Benchmark Profile is the foundation. It captures your positioning,
+        proof, strengths, and goals so the rest of CareerIQ can make you look
+        like the benchmark candidate.
       </p>
     ),
     disableBeacon: true,
@@ -65,12 +65,11 @@ const TOUR_STEPS = [
   {
     target: '[data-tour="nav-resume"]',
     placement: 'right' as const,
-    title: 'Resume Builder',
+    title: 'Tailor Resume',
     content: (
       <p>
-        Once your profile is set, paste in any job description and the Resume
-        Builder creates a role-specific, ATS-optimised resume positioned specifically
-        for that role.
+        After you find a real role, tailor your resume to that company, job
+        description, and benchmark-candidate standard.
       </p>
     ),
     disableBeacon: true,
@@ -78,10 +77,10 @@ const TOUR_STEPS = [
   {
     target: '[data-tour="nav-linkedin"]',
     placement: 'right' as const,
-    title: 'LinkedIn',
+    title: 'LinkedIn Growth',
     content: (
       <p>
-        Optimise your LinkedIn profile and generate thought leadership content
+        Optimize your LinkedIn profile and generate thought leadership content
         grounded in your real experience — not generic templates.
       </p>
     ),
@@ -90,7 +89,7 @@ const TOUR_STEPS = [
   {
     target: '[data-tour="nav-jobs"]',
     placement: 'right' as const,
-    title: 'Job Search',
+    title: 'Find Jobs',
     content: (
       <p>
         Search multiple job boards at once, track every application in a
@@ -102,7 +101,7 @@ const TOUR_STEPS = [
   {
     target: '[data-tour="nav-interview"]',
     placement: 'right' as const,
-    title: 'Interview Prep',
+    title: 'Interview & Offer',
     content: (
       <p>
         Get deep company research, practice questions tailored to the role, a

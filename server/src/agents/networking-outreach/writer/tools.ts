@@ -20,6 +20,7 @@ import { NETWORKING_OUTREACH_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
@@ -29,6 +30,76 @@ import {
 type NetworkingOutreachTool = AgentTool<NetworkingOutreachState, NetworkingOutreachSSEEvent>;
 
 // ─── Helpers ────────────────────────────────────────────────────────
+
+function parseLlmJsonObject(text: string): Record<string, unknown> | null {
+  const repaired = repairJSON<unknown>(text);
+  if (repaired && typeof repaired === 'object' && !Array.isArray(repaired)) {
+    return repaired as Record<string, unknown>;
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function cleanGeneratedMessage(text: string): string {
+  return text
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/i, '')
+    .replace(/\[([^\]]+)\]/g, '$1')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .trim()
+    .replace(/^["']|["']$/g, '');
+}
+
+function hasInstructionalPlaceholder(text: string): boolean {
+  return /\b(?:specific personalization hook|insert|placeholder|target name|company name|mutual connection)\b/i.test(text);
+}
+
+function trimMessageAtBoundary(text: string, maxChars: number): string {
+  const cleaned = cleanGeneratedMessage(text);
+  if (cleaned.length <= maxChars) return cleaned;
+
+  const candidate = cleaned.slice(0, maxChars + 1);
+  const sentenceMatches = [...candidate.matchAll(/[.!?](?=\s|$)/g)];
+  const lastSentence = sentenceMatches.at(-1);
+  if (lastSentence && typeof lastSentence.index === 'number' && lastSentence.index >= Math.floor(maxChars * 0.55)) {
+    return candidate.slice(0, lastSentence.index + 1).trim();
+  }
+
+  const lastSpace = candidate.lastIndexOf(' ', maxChars);
+  const trimmed = (lastSpace >= Math.floor(maxChars * 0.55)
+    ? candidate.slice(0, lastSpace)
+    : candidate.slice(0, maxChars)
+  )
+    .replace(/[,\s;:—-]+$/g, '')
+    .trim();
+
+  if (trimmed.length < maxChars && !/[.!?]$/.test(trimmed)) {
+    return `${trimmed}.`;
+  }
+  return trimmed;
+}
+
+function fallbackConnectionRequest(state: NetworkingOutreachState): string {
+  const target = state.target_analysis?.target_name?.split(/\s+/)[0] || 'there';
+  const company = state.target_analysis?.target_company || 'your team';
+  const angle = cleanGeneratedMessage(
+    state.common_ground?.recommended_angle
+      || state.connection_path?.connection_rationale
+      || 'your work connecting business priorities with execution',
+  );
+  return trimMessageAtBoundary(
+    `Hi ${target}, I noticed ${angle}. Your work at ${company} caught my attention, and I would be glad to connect.`,
+    300,
+  );
+}
 
 function buildContextBlock(state: NetworkingOutreachState): string {
   const parts: string[] = [];
@@ -155,6 +226,11 @@ function buildContextBlock(state: NetworkingOutreachState): string {
     }));
   }
 
+  parts.push(...renderBenchmarkProfileDirectionSection({
+    heading: '## Benchmark Profile Direction',
+    sharedContext: state.shared_context,
+  }));
+
   if (state.platform_context?.positioning_strategy || state.shared_context?.positioningStrategy) {
     parts.push(...renderPositioningStrategySection({
       heading: '## Positioning Strategy',
@@ -236,19 +312,20 @@ Return JSON:
       }],
     });
 
-    let result;
-    try {
-      result = JSON.parse(repairJSON(response.text) ?? response.text);
-    } catch {
+    let result = parseLlmJsonObject(response.text);
+    if (!result) {
       const text = response.text.trim();
       result = {
         subject: '',
-        body: text.slice(0, 300),
+        body: text,
         personalization_hooks: [],
       };
     }
 
-    let body = String(result.body ?? '').trim();
+    let body = trimMessageAtBoundary(String(result.body ?? ''), 300);
+    if (!body || hasInstructionalPlaceholder(body)) {
+      body = fallbackConnectionRequest(state);
+    }
     const subject = String(result.subject ?? '');
     const personalizationHooks: string[] = Array.isArray(result.personalization_hooks)
       ? result.personalization_hooks.map(String)
@@ -260,7 +337,10 @@ Return JSON:
     // Hard limit: penalize heavily if over 300 chars, then truncate
     if (body.length > 300) {
       qualityScore -= 30;
-      body = body.slice(0, 300);
+      body = trimMessageAtBoundary(body, 300);
+    }
+    if (hasInstructionalPlaceholder(body)) {
+      qualityScore -= 30;
     }
     const charCount = body.length;
 
@@ -403,18 +483,16 @@ Return JSON:
       }],
     });
 
-    let result;
-    try {
-      result = JSON.parse(repairJSON(response.text) ?? response.text);
-    } catch {
+    let result = parseLlmJsonObject(response.text);
+    if (!result) {
       const text = response.text.trim();
       result = {
-        body: text.slice(0, 500),
+        body: text,
         personalization_hooks: [],
       };
     }
 
-    const body = String(result.body ?? '').trim();
+    const body = trimMessageAtBoundary(String(result.body ?? ''), 500);
     const personalizationHooks: string[] = Array.isArray(result.personalization_hooks)
       ? result.personalization_hooks.map(String)
       : [];
@@ -551,10 +629,8 @@ Return JSON:
       }],
     });
 
-    let result;
-    try {
-      result = JSON.parse(repairJSON(response.text) ?? response.text);
-    } catch {
+    let result = parseLlmJsonObject(response.text);
+    if (!result) {
       const text = response.text.trim();
       result = {
         body: text,
@@ -562,7 +638,7 @@ Return JSON:
       };
     }
 
-    const body = String(result.body ?? '').trim();
+    const body = cleanGeneratedMessage(String(result.body ?? ''));
     const personalizationHooks: string[] = Array.isArray(result.personalization_hooks)
       ? result.personalization_hooks.map(String)
       : [];
@@ -700,10 +776,8 @@ Return JSON:
       }],
     });
 
-    let result;
-    try {
-      result = JSON.parse(repairJSON(response.text) ?? response.text);
-    } catch {
+    let result = parseLlmJsonObject(response.text);
+    if (!result) {
       const text = response.text.trim();
       result = {
         body: text,
@@ -711,7 +785,7 @@ Return JSON:
       };
     }
 
-    const body = String(result.body ?? '').trim();
+    const body = cleanGeneratedMessage(String(result.body ?? ''));
     const personalizationHooks: string[] = Array.isArray(result.personalization_hooks)
       ? result.personalization_hooks.map(String)
       : [];
@@ -852,14 +926,12 @@ Return JSON:
       }],
     });
 
-    let result;
-    try {
-      result = JSON.parse(repairJSON(response.text) ?? response.text);
-    } catch {
+    let result = parseLlmJsonObject(response.text);
+    if (!result) {
       result = { body: response.text.trim().slice(0, 500), personalization_hooks: [] };
     }
 
-    const body = String(result.body ?? '').trim();
+    const body = trimMessageAtBoundary(String(result.body ?? ''), 500);
     const personalizationHooks: string[] = Array.isArray(result.personalization_hooks)
       ? result.personalization_hooks.map(String)
       : [];
@@ -1165,10 +1237,8 @@ Return JSON:
       }],
     });
 
-    let result;
-    try {
-      result = JSON.parse(repairJSON(response.text) ?? response.text);
-    } catch {
+    let result = parseLlmJsonObject(response.text);
+    if (!result) {
       result = {
         three_ways: [
           {

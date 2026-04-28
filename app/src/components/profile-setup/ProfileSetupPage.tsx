@@ -36,11 +36,11 @@ type SetupAction =
 // ─── Processing messages ─────────────────────────────────────────────────────
 
 const PROCESSING_MESSAGES = [
-  'Reading your career history...',
-  'Finding the thread that connects it all...',
-  'Identifying where you are exceptional...',
-  'Surfacing what hiring managers will want to know...',
-  'Preparing your interview questions...',
+  'Reading your complete career history...',
+  'Extracting the proof future resumes will reuse...',
+  'Finding the thread that connects your best work...',
+  'Drafting your Benchmark Profile...',
+  'Preparing only the questions that will sharpen it...',
 ];
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ function BuildingScreen() {
           className="text-2xl font-light text-[var(--text-strong)] mb-6"
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          Building your CareerIQ profile...
+          Building your Benchmark Profile...
         </p>
         <div className="flex justify-center gap-1.5">
           {[0, 1, 2].map((i) => (
@@ -292,11 +292,11 @@ export default function ProfileSetupPage() {
         trackProductEvent('profile_setup_retry_failed', {
           session_id: state.sessionId,
           reason: 'master_resume_not_created',
-          message: 'Career Evidence creation still needs another retry.',
+          message: 'Career Proof creation still needs another retry.',
         });
         dispatch({
           type: 'SET_ERROR',
-          error: 'We saved your profile again, but your Career Evidence still needs another retry.',
+          error: 'We saved your profile again, but your Career Proof still needs another retry.',
         });
         return;
       }
@@ -320,11 +320,11 @@ export default function ProfileSetupPage() {
     trackProductEvent('profile_setup_retry_failed', {
       session_id: state.sessionId,
       reason: 'request_failed',
-      message: hookErrorRef.current ?? 'Could not create your Career Evidence yet. Please try again.',
+      message: hookErrorRef.current ?? 'Could not create your Career Proof yet. Please try again.',
     });
     dispatch({
       type: 'SET_ERROR',
-      error: hookErrorRef.current ?? 'Could not create your Career Evidence yet. Please try again.',
+      error: hookErrorRef.current ?? 'Could not create your Career Proof yet. Please try again.',
     });
   }, [complete, state.masterResumeCreated, state.screen, state.sessionId]);
 

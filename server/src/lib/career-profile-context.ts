@@ -11,6 +11,87 @@ import type { SharedContext } from '../contracts/shared-context.js';
 export type CareerProfileSignalLevel = 'green' | 'yellow' | 'red';
 export type CareerProfileDashboardState = 'new-user' | 'refining' | 'strong';
 export type CareerProfileCompletenessStatus = 'ready' | 'partial' | 'missing';
+export type BenchmarkProfileConfidence = 'high_confidence' | 'good_inference' | 'needs_answer' | 'risky_claim';
+export type BenchmarkProfileReviewStatus = 'draft' | 'needs_confirmation' | 'approved' | 'needs_evidence';
+export type BenchmarkProfileDownstreamTool =
+  | 'resume'
+  | 'linkedin'
+  | 'cover_letter'
+  | 'networking'
+  | 'interview'
+  | 'job_search'
+  | 'thank_you'
+  | 'follow_up';
+
+export interface BenchmarkProfileDraftItem {
+  id: string;
+  label: string;
+  statement: string;
+  confidence: BenchmarkProfileConfidence;
+  review_status: BenchmarkProfileReviewStatus;
+  source: 'resume' | 'linkedin' | 'interview' | 'inference' | 'user';
+  evidence: string[];
+  used_by: BenchmarkProfileDownstreamTool[];
+}
+
+export interface BenchmarkProfileDiscoveryQuestion {
+  id: string;
+  question: string;
+  why_it_matters: string;
+  evidence_found: string[];
+  recommended_answer?: string;
+  answer?: string;
+  answered_at?: string;
+  confidence_if_confirmed: BenchmarkProfileConfidence;
+  used_by: BenchmarkProfileDownstreamTool[];
+}
+
+export interface BenchmarkProfileV1 {
+  version: 'benchmark_profile_v1';
+  generated_at: string;
+  source_material_summary: {
+    resume_quality: string;
+    linkedin_quality: string;
+    strongest_inputs: string[];
+    missing_inputs: string[];
+  };
+  identity: {
+    benchmark_headline: BenchmarkProfileDraftItem;
+    why_me_story: BenchmarkProfileDraftItem;
+    why_not_me: BenchmarkProfileDraftItem;
+    operating_identity: BenchmarkProfileDraftItem;
+  };
+  proof: {
+    signature_accomplishments: BenchmarkProfileDraftItem[];
+    proof_themes: BenchmarkProfileDraftItem[];
+    scope_markers: BenchmarkProfileDraftItem[];
+  };
+  linkedin_brand: {
+    five_second_verdict: BenchmarkProfileDraftItem;
+    headline_direction: BenchmarkProfileDraftItem;
+    about_opening: BenchmarkProfileDraftItem;
+    recruiter_keywords: string[];
+    content_pillars: BenchmarkProfileDraftItem[];
+    profile_gaps: BenchmarkProfileDraftItem[];
+  };
+  risk_and_gaps: {
+    objections: BenchmarkProfileDraftItem[];
+    adjacent_proof_needed: BenchmarkProfileDraftItem[];
+    claims_to_soften: BenchmarkProfileDraftItem[];
+  };
+  approved_language: {
+    positioning_statement: string;
+    resume_summary_seed: string;
+    linkedin_opening: string;
+    networking_intro: string;
+    cover_letter_thesis: string;
+  };
+  discovery_questions: BenchmarkProfileDiscoveryQuestion[];
+  downstream_readiness: Record<BenchmarkProfileDownstreamTool, {
+    status: 'ready' | 'usable' | 'needs_review' | 'blocked';
+    summary: string;
+  }>;
+}
 
 export interface CareerProfileV2 {
   version: 'career_profile_v2';
@@ -69,6 +150,7 @@ export interface CareerProfileV2 {
     }>;
   };
   profile_summary: string;
+  benchmark_profile?: BenchmarkProfileV1;
 }
 
 export interface AgentContextBundleOptions {
@@ -79,6 +161,7 @@ export interface AgentContextBundleOptions {
   includeGapAnalysis?: boolean;
   includeCareerNarrative?: boolean;
   includeIndustryResearch?: boolean;
+  includeLinkedInProfile?: boolean;
   includeWhyMeStory?: boolean;
   includeClientProfile?: boolean;
   includeTargetRole?: boolean;
@@ -114,6 +197,7 @@ export async function loadAgentContextBundle(
 }> {
   const includeCareerProfile = options.includeCareerProfile ?? true;
   const includeEmotionalBaseline = options.includeEmotionalBaseline ?? true;
+  const includeLinkedInProfile = options.includeLinkedInProfile ?? true;
 
   const [
     careerProfile,
@@ -123,6 +207,7 @@ export async function loadAgentContextBundle(
     gapAnalysisRow,
     careerNarrativeRow,
     industryResearchRow,
+    linkedInProfileRow,
     targetRoleRow,
     clientProfileRow,
     whyMeContext,
@@ -135,6 +220,7 @@ export async function loadAgentContextBundle(
     options.includeGapAnalysis ? getLatestUserContext(userId, 'gap_analysis') : Promise.resolve(null),
     options.includeCareerNarrative ? getLatestUserContext(userId, 'career_narrative') : Promise.resolve(null),
     options.includeIndustryResearch ? getLatestUserContext(userId, 'industry_research') : Promise.resolve(null),
+    includeLinkedInProfile ? getLatestUserContext(userId, 'linkedin_profile') : Promise.resolve(null),
     options.includeTargetRole ? getLatestUserContext(userId, 'target_role') : Promise.resolve(null),
     options.includeClientProfile ? getLatestUserContext(userId, 'client_profile') : Promise.resolve(null),
     options.includeWhyMeStory ? getWhyMeContext(userId) : Promise.resolve(null),
@@ -145,6 +231,9 @@ export async function loadAgentContextBundle(
 
   if (careerProfile) {
     platformContext.career_profile = careerProfile;
+    if (careerProfile.benchmark_profile) {
+      platformContext.benchmark_profile = careerProfile.benchmark_profile;
+    }
   }
   if (positioningStrategyRow?.content) {
     platformContext.positioning_strategy = positioningStrategyRow.content;
@@ -160,6 +249,9 @@ export async function loadAgentContextBundle(
   }
   if (industryResearchRow?.content) {
     platformContext.industry_research = industryResearchRow.content;
+  }
+  if (linkedInProfileRow?.content) {
+    platformContext.linkedin_profile = linkedInProfileRow.content;
   }
   if (targetRoleRow?.content) {
     platformContext.target_role = targetRoleRow.content;
@@ -193,6 +285,7 @@ export async function loadAgentContextBundle(
     gapAnalysisRow,
     careerNarrativeRow,
     industryResearchRow,
+    linkedInProfileRow,
     targetRoleRow,
     evidenceRows,
     emotionalBaseline: baseline,

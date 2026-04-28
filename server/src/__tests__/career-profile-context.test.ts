@@ -25,6 +25,7 @@ vi.mock('../lib/logger.js', () => ({
 }));
 
 import { loadAgentContextBundle, loadCareerProfileContext } from '../lib/career-profile-context.js';
+import { buildSharedContextFromLegacyBundle } from '../contracts/shared-context-adapter.js';
 
 const v2Profile = {
   version: 'career_profile_v2' as const,
@@ -170,6 +171,21 @@ describe('loadAgentContextBundle', () => {
         return { content: { angle: 'Operator-builder' } };
       }
 
+      if (contextType === 'linkedin_profile') {
+        return {
+          id: 'linkedin-context-1',
+          context_type: 'linkedin_profile',
+          content: {
+            headline: 'Operations leader | Complex distributed teams',
+            about: 'I turn operational ambiguity into repeatable systems.',
+            experience: 'Regional operations leadership and process redesign.',
+          },
+          source_product: 'your_profile',
+          source_session_id: null,
+          updated_at: '2026-04-14T12:00:00.000Z',
+        };
+      }
+
       return null;
     });
 
@@ -194,11 +210,170 @@ describe('loadAgentContextBundle', () => {
     expect(bundle.careerProfile?.profile_summary).toContain('Operations leader');
     expect(bundle.platformContext.career_profile).toBeTruthy();
     expect(bundle.platformContext.positioning_strategy).toEqual({ angle: 'Operator-builder' });
+    expect(bundle.platformContext.linkedin_profile).toEqual({
+      headline: 'Operations leader | Complex distributed teams',
+      about: 'I turn operational ambiguity into repeatable systems.',
+      experience: 'Regional operations leadership and process redesign.',
+    });
     expect(bundle.platformContext.evidence_items).toEqual([{ proof: 'Saved $2M' }]);
+    expect(bundle.sharedContext.sourceArtifacts.linkedinProfile?.artifactType).toBe('linkedin_profile');
     expect(bundle.platformContext.why_me_story).toEqual({
       colleaguesCameForWhat: 'Messy operational fixes',
       knownForWhat: 'Scaling operational discipline',
       whyNotMe: 'Equivalent adjacent scope',
     });
+  });
+});
+
+describe('Benchmark Profile shared context mapping', () => {
+  it('turns answered discovery questions into eligible shared evidence', () => {
+    const context = buildSharedContextFromLegacyBundle({
+      userId: 'user-1',
+      careerProfile: {
+        ...v2Profile,
+        benchmark_profile: {
+          version: 'benchmark_profile_v1',
+          generated_at: '2026-04-14T00:00:00.000Z',
+          source_material_summary: {
+            resume_quality: 'strong',
+            linkedin_quality: 'partial',
+            strongest_inputs: [],
+            missing_inputs: [],
+          },
+          identity: {
+            benchmark_headline: {
+              id: 'identity.headline',
+              label: 'Benchmark headline',
+              statement: 'Enterprise delivery leader',
+              confidence: 'high_confidence',
+              review_status: 'approved',
+              source: 'resume',
+              evidence: [],
+              used_by: ['resume'],
+            },
+            why_me_story: {
+              id: 'identity.why_me',
+              label: 'Why me',
+              statement: 'I bring clarity to complex delivery.',
+              confidence: 'high_confidence',
+              review_status: 'approved',
+              source: 'resume',
+              evidence: [],
+              used_by: ['linkedin'],
+            },
+            why_not_me: {
+              id: 'identity.why_not_me',
+              label: 'Why not me',
+              statement: 'Need to confirm hands-on API ownership.',
+              confidence: 'needs_answer',
+              review_status: 'needs_confirmation',
+              source: 'inference',
+              evidence: [],
+              used_by: ['interview'],
+            },
+            operating_identity: {
+              id: 'identity.operating',
+              label: 'Operating identity',
+              statement: 'Structured operator',
+              confidence: 'good_inference',
+              review_status: 'approved',
+              source: 'resume',
+              evidence: [],
+              used_by: ['cover_letter'],
+            },
+          },
+          proof: {
+            signature_accomplishments: [],
+            proof_themes: [],
+            scope_markers: [],
+          },
+          linkedin_brand: {
+            five_second_verdict: {
+              id: 'linkedin.verdict',
+              label: 'Five-second verdict',
+              statement: 'Clear delivery brand',
+              confidence: 'good_inference',
+              review_status: 'approved',
+              source: 'linkedin',
+              evidence: [],
+              used_by: ['linkedin'],
+            },
+            headline_direction: {
+              id: 'linkedin.headline',
+              label: 'Headline direction',
+              statement: 'Enterprise delivery leader',
+              confidence: 'good_inference',
+              review_status: 'approved',
+              source: 'linkedin',
+              evidence: [],
+              used_by: ['linkedin'],
+            },
+            about_opening: {
+              id: 'linkedin.about',
+              label: 'About opening',
+              statement: 'I bring order to ambiguity.',
+              confidence: 'good_inference',
+              review_status: 'approved',
+              source: 'linkedin',
+              evidence: [],
+              used_by: ['linkedin'],
+            },
+            recruiter_keywords: [],
+            content_pillars: [],
+            profile_gaps: [],
+          },
+          risk_and_gaps: {
+            objections: [],
+            adjacent_proof_needed: [],
+            claims_to_soften: [],
+          },
+          approved_language: {
+            positioning_statement: 'Enterprise delivery leader for complex environments.',
+            resume_summary_seed: '',
+            linkedin_opening: '',
+            networking_intro: '',
+            cover_letter_thesis: '',
+          },
+          discovery_questions: [
+            {
+              id: 'dq.answered',
+              question: 'Do you own API-driven delivery?',
+              why_it_matters: 'It supports technical product roles.',
+              evidence_found: [],
+              answer: 'Yes, I owned API authentication workflow requirements with architects and QA.',
+              answered_at: '2026-04-14T01:00:00.000Z',
+              confidence_if_confirmed: 'high_confidence',
+              used_by: ['resume', 'linkedin'],
+            },
+            {
+              id: 'dq.pending',
+              question: 'Can you confirm Salesforce certification status?',
+              why_it_matters: 'It affects credential claims.',
+              evidence_found: [],
+              confidence_if_confirmed: 'high_confidence',
+              used_by: ['resume'],
+            },
+          ],
+          downstream_readiness: {
+            resume: { status: 'usable', summary: '' },
+            linkedin: { status: 'usable', summary: '' },
+            cover_letter: { status: 'usable', summary: '' },
+            networking: { status: 'usable', summary: '' },
+            interview: { status: 'usable', summary: '' },
+            job_search: { status: 'usable', summary: '' },
+            thank_you: { status: 'usable', summary: '' },
+            follow_up: { status: 'usable', summary: '' },
+          },
+        },
+      },
+    });
+
+    expect(context.workflowState.pendingQuestions).toBe(1);
+    expect(context.positioningStrategy.framingStillRequiringConfirmation).toContain('Can you confirm Salesforce certification status?');
+    expect(context.positioningStrategy.framingStillRequiringConfirmation).not.toContain('Do you own API-driven delivery?');
+    expect(context.evidenceInventory.evidenceItems.some((item) =>
+      item.sourceType === 'benchmark_profile_discovery_answer' &&
+      item.statement.includes('API authentication workflow'),
+    )).toBe(true);
   });
 });

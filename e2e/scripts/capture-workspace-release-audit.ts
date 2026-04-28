@@ -21,11 +21,11 @@ async function main() {
     await mockWorkspaceApp(page);
 
     await page.goto(`${baseUrl}/workspace`, { waitUntil: 'domcontentloaded' });
-    await page.getByText('Career story').first().waitFor();
+    await page.getByText('Your Applications').first().waitFor();
     await capture(page, 'workspace-home.png');
 
     await page.goto(`${baseUrl}/workspace?room=career-profile`, { waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { name: 'Your Profile', exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Career Vault', exact: true }).waitFor();
     await capture(page, 'career-profile.png');
 
     await page.goto(`${baseUrl}/workspace?room=resume`, { waitUntil: 'domcontentloaded' });
@@ -37,7 +37,7 @@ async function main() {
     await capture(page, 'linkedin-room.png');
 
     await page.goto(`${baseUrl}/workspace?room=jobs`, { waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { name: /One job board, one shortlist, one pipeline/i }).waitFor();
+    await page.getByRole('heading', { name: /Find your next role two ways/i }).waitFor();
     await page.getByPlaceholder('Job title, keywords...').fill('VP Operations');
     await page.getByPlaceholder('Location or Remote').fill('Remote');
     await page.getByRole('button', { name: /^Search$/i }).click();

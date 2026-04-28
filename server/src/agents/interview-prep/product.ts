@@ -57,7 +57,7 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
         stageMessage: {
           startStage: 'writing',
           start: 'Writing your interview preparation report...',
-          complete: 'STAR stories ready for review',
+          complete: 'Interview brief ready for review',
         },
         onComplete: (scratchpad, state, emit) => {
           if (scratchpad.final_report && typeof scratchpad.final_report === 'string') {
@@ -145,6 +145,7 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
           String(input.job_description ?? ''),
           '',
           `Company: ${String(input.company_name ?? 'Unknown')}`,
+          `Role: ${String(input.role_title ?? '')}`,
         ];
 
         if (state.platform_context?.career_profile || hasMeaningfulSharedValue(sharedContext?.candidateProfile)) {
@@ -188,7 +189,7 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
           }));
         }
 
-        parts.push('', 'Call parse_inputs first, then research_company, then find_interview_questions.');
+        parts.push('', 'Call parse_inputs first using the provided company_name and role_title hints, then research_company, then find_interview_questions.');
 
         // Distress resources — first agent only
         const distress = getDistressFromInput(input);
@@ -222,7 +223,7 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
 
         parts.push(
           '',
-          'Cover all required sections and call assemble_report when complete. Use self_review_section where it will materially improve specificity or catch fabricated content.',
+          'Default to write_interview_advantage_brief for the complete report. Use the older section-by-section tools only for targeted revision or fallback, then call assemble_report only if you actually wrote separate sections.',
         );
 
         // If the user requested revisions at the review gate, incorporate feedback
@@ -231,7 +232,7 @@ export function createInterviewPrepProductConfig(): ProductConfig<InterviewPrepS
             '',
             '## User Revision Requested',
             `The user reviewed the STAR stories and requested the following changes: "${state.revision_feedback}"`,
-            'Call assemble_report again incorporating this feedback.',
+            'Call write_interview_advantage_brief with the feedback as emphasis unless the feedback is limited to one narrow section.',
           );
         }
 

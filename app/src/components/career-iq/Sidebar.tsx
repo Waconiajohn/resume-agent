@@ -19,7 +19,10 @@ interface SidebarProps {
 // Maps a nav item id to its tour target attribute value.
 const ROOM_TOUR_TARGETS: Partial<Record<NavItem['id'], string>> = {
   'career-profile': 'nav-career-profile',
+  linkedin: 'nav-linkedin',
   jobs: 'nav-jobs',
+  resume: 'nav-resume',
+  interview: 'nav-interview',
 };
 
 export function Sidebar({ activeRoom, onNavigate, onNavigateRoute, defaultCollapsed }: SidebarProps) {

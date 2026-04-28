@@ -173,6 +173,55 @@ describe('useV3SessionPersistence', () => {
     expect(result.current.lastSession?.discoveryAnswers).toEqual(discoveryAnswersFixture);
   });
 
+  it('loads an explicit saved v3 session when initialSessionId is present', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            session: {
+              id: 'sess-explicit',
+              product_type: 'resume_v3',
+              updated_at: new Date().toISOString(),
+              v3_pipeline_output: {
+                structured: structuredFixture,
+                benchmark: benchmarkFixture,
+                strategy: strategyFixture,
+                written: writtenFixture,
+                verify: verifyFixture,
+                discoveryAnswers: discoveryAnswersFixture,
+                timings: null,
+                costs: null,
+              },
+              v3_jd_title: 'COO',
+              v3_jd_company: 'Northwind',
+              v3_edited_written: null,
+            },
+          }),
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useV3SessionPersistence({
+        accessToken: 'token',
+        userId: 'user-1',
+        initialSessionId: 'sess-explicit',
+        pipeline: emptyPipeline,
+        editedWritten: null,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/api/sessions/sess-explicit',
+      { headers: { Authorization: 'Bearer token' } },
+    );
+    expect(result.current.lastSession?.sessionId).toBe('sess-explicit');
+    expect(result.current.lastSession?.jdTitle).toBe('COO');
+    expect(result.current.lastSession?.discoveryAnswers).toEqual(discoveryAnswersFixture);
+  });
+
   it('writes discovery answers into the local resumable snapshot', async () => {
     vi.useFakeTimers();
 

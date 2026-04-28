@@ -333,7 +333,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
           title="New Application"
           whatThisIs="A new application kicks off a complete job pursuit — tailored resume, cover letter, interview prep, and follow-up — all scoped to one specific role."
           whyItMatters="Benchmark candidates treat each application as its own project so nothing gets mixed up between roles."
-          whatWeDo="We use your Career Vault and the job description to generate every artifact."
+          whatWeDo="We use your Benchmark Profile and the job description to generate every artifact."
           whatYouDo="You review, adjust, and apply."
           defaultExpanded
         />

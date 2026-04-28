@@ -1,0 +1,210 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FirstSourceTeam — Slide Template</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin:0; background:#111; }
+  section {
+    background: var(--fst-bg);
+    color: var(--fst-text);
+    padding: 96px 120px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--fst-font-sans);
+  }
+  .eyebrow {
+    font-family: var(--fst-font-mono);
+    font-size: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--fst-muted);
+    margin-bottom: 24px;
+  }
+  .title {
+    font-family: "Playfair Display", serif;
+    font-weight: 500;
+    font-size: 112px;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    color: var(--fst-heading);
+    margin: 0;
+  }
+  .subtitle {
+    font-family: "Playfair Display", serif;
+    font-weight: 400;
+    font-size: 40px;
+    line-height: 1.2;
+    color: var(--fst-muted);
+    margin-top: 32px;
+    max-width: 1280px;
+  }
+  h2 {
+    font-family: "Playfair Display", serif;
+    font-weight: 500;
+    font-size: 84px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--fst-heading);
+    margin: 0 0 40px;
+  }
+  h3 {
+    font-family: "Bree Serif", serif;
+    font-size: 36px;
+    color: var(--fst-heading);
+    margin: 0 0 16px;
+  }
+  p, li { font-size: 28px; line-height: 1.5; color: var(--fst-text); }
+  .mono { font-family: var(--fst-font-mono); }
+  .foot {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--fst-font-mono);
+    font-size: 18px;
+    color: var(--fst-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    border-top: 1px solid var(--fst-border);
+    padding-top: 24px;
+  }
+  .stat-num {
+    font-family: "Playfair Display", serif;
+    font-weight: 500;
+    font-size: 160px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--fst-heading);
+  }
+  .stat-label { font-size: 26px; color: var(--fst-muted); margin-top: 16px; max-width: 420px; line-height: 1.35; }
+  .row { display: flex; gap: 48px; }
+  .col { flex: 1; }
+  .card {
+    background: var(--fst-surface);
+    border: 1px solid var(--fst-border);
+    border-radius: 16px;
+    padding: 40px;
+  }
+  .card h3 { font-size: 28px; margin-bottom: 12px; }
+  .card p { font-size: 22px; line-height: 1.45; color: var(--fst-muted); }
+  blockquote {
+    font-family: "Playfair Display", serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 72px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--fst-heading);
+    margin: 0;
+    max-width: 1400px;
+  }
+  cite {
+    display: block;
+    margin-top: 40px;
+    font-family: var(--fst-font-mono);
+    font-size: 22px;
+    font-style: normal;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--fst-muted);
+  }
+  .dark {
+    background: var(--fst-bg-dark);
+    color: #f5efe6;
+  }
+  .dark .eyebrow { color: rgba(245,239,230,0.5); }
+  .dark .title, .dark h2, .dark blockquote { color: #fff; }
+  .dark .subtitle, .dark p, .dark cite { color: rgba(245,239,230,0.75); }
+  .dark .foot { border-color: rgba(255,255,255,0.1); color: rgba(245,239,230,0.5); }
+</style>
+</head>
+<body>
+<deck-stage width="1920" height="1080">
+
+  <!-- 1. Title -->
+  <section data-label="Title">
+    <div class="eyebrow">FirstSourceTeam · April 2026</div>
+    <h1 class="title">The first outplacement<br/>firm built for the people<br/>who use it.</h1>
+    <p class="subtitle">19 years of moving people forward. AI-powered tools. Unlimited coaching until placed.</p>
+    <div class="foot"><span>FirstSourceTeam</span><span>01</span></div>
+  </section>
+
+  <!-- 2. Stats -->
+  <section data-label="Proof">
+    <div class="eyebrow">Proof, not promises</div>
+    <div class="row" style="gap:80px;margin-top:40px">
+      <div class="col"><div class="stat-num">4.9</div><div class="stat-label">Over 174 verified participant reviews</div></div>
+      <div class="col"><div class="stat-num">19<span style="font-size:72px;color:var(--fst-muted)"> yrs</span></div><div class="stat-label">Proven methodology, refined since 2006</div></div>
+      <div class="col"><div class="stat-num">100K+</div><div class="stat-label">Jobseekers placed at IBM, Google, Boeing, DoD and more</div></div>
+    </div>
+    <div class="foot"><span>The numbers</span><span>02</span></div>
+  </section>
+
+  <!-- 3. The problem -->
+  <section data-label="Problem" class="dark">
+    <div class="eyebrow">The problem with legacy outplacement</div>
+    <h2 style="max-width:1400px">$5,000–$11,000 per head<br/>for a few PDFs and a portal<br/>nobody logs into.</h2>
+    <p style="font-size:32px;max-width:1400px">Outplacement sold as a line item on a severance package — not a service anyone expects to work. The buyer never uses the product. The user never chose the provider.</p>
+    <div class="foot"><span>Outplacement was broken</span><span>03</span></div>
+  </section>
+
+  <!-- 4. Comparison quote -->
+  <section data-label="Comparison">
+    <div class="eyebrow">Participant satisfaction</div>
+    <div class="row" style="gap:96px;margin-top:40px;align-items:flex-end">
+      <div class="col">
+        <div class="stat-num" style="color:var(--fst-muted)">1.7<span style="font-size:72px">/5</span></div>
+        <div class="stat-label">The world's largest outplacement firm</div>
+      </div>
+      <div class="col">
+        <div class="stat-num" style="color:var(--fst-career-dark)">4.9<span style="font-size:72px">/5</span></div>
+        <div class="stat-label">FirstSourceTeam — we turn our clients into fans of us, and you.</div>
+      </div>
+    </div>
+    <div class="foot"><span>The gap</span><span>04</span></div>
+  </section>
+
+  <!-- 5. What we built -->
+  <section data-label="Pillars">
+    <div class="eyebrow">The alternative</div>
+    <h2>Three non-negotiables.</h2>
+    <div class="row" style="margin-top:16px">
+      <div class="card">
+        <h3>Technology-driven efficiency</h3>
+        <p>AI to scale what legacy firms do with armies of generalists. Better outcomes, lower cost.</p>
+      </div>
+      <div class="card">
+        <h3>Coaches who know your field</h3>
+        <p>Matched by industry and career level. Not a rotation of generalists reading from a script.</p>
+      </div>
+      <div class="card">
+        <h3>Built for the participant</h3>
+        <p>Every decision optimized for the person going through it — not the person signing the invoice.</p>
+      </div>
+    </div>
+    <div class="foot"><span>What we built</span><span>05</span></div>
+  </section>
+
+  <!-- 6. Quote -->
+  <section data-label="Quote" style="justify-content:center">
+    <div class="eyebrow">Participant, Evernote Q2 RIF</div>
+    <blockquote>"Two days in, I got responses.<br/>Best advice I've received so far."</blockquote>
+    <cite>— Mike S., VP Engineering</cite>
+    <div class="foot" style="margin-top:120px"><span>Voice of the participant</span><span>06</span></div>
+  </section>
+
+  <!-- 7. Close -->
+  <section data-label="Close" class="dark">
+    <div class="eyebrow">Next step</div>
+    <h1 class="title" style="font-size:96px;max-width:1500px">Outplacement you'd<br/>actually recommend.</h1>
+    <p class="subtitle">Three tiers. AI platform. Deployed in 48 hours. Published pricing, one-click checkout.</p>
+    <div class="foot" style="margin-top:auto"><span>hello@firstsourceteam.com · (612) 268-0216</span><span>07</span></div>
+  </section>
+
+</deck-stage>
+<script src="deck-stage.js"></script>
+</body>
+</html>

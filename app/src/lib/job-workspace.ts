@@ -52,22 +52,22 @@ export function stageLabel(stage: PipelineStage): string {
 export function formatJobStage(stage?: string | null): { label: string; classes: string } {
   switch (stage) {
     case 'researching':
-      return { label: 'Researching', classes: 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]' };
+      return { label: 'Researching', classes: 'border-[var(--link)]/30 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]' };
     case 'applied':
-      return { label: 'Applied', classes: 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]' };
+      return { label: 'Applied', classes: 'border-[var(--link)]/30 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]' };
     case 'screening':
-      return { label: 'Screening', classes: 'border-[#f0d99f]/25 bg-[#f0d99f]/10 text-[#f3e4b5]' };
+      return { label: 'Screening', classes: 'border-[var(--badge-amber-text)]/30 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]' };
     case 'interviewing':
-      return { label: 'Interviewing', classes: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#cfe9d6]' };
+      return { label: 'Interviewing', classes: 'border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]' };
     case 'offer':
-      return { label: 'Offer', classes: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#cfe9d6]' };
+      return { label: 'Offer', classes: 'border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]' };
     case 'closed_won':
-      return { label: 'Accepted', classes: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#cfe9d6]' };
+      return { label: 'Accepted', classes: 'border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]' };
     case 'closed_lost':
-      return { label: 'Closed', classes: 'border-white/[0.10] bg-white/[0.04] text-white/60' };
+      return { label: 'Closed', classes: 'border-[var(--line-strong)] bg-[var(--surface-3)] text-[var(--text-soft)]' };
     case 'saved':
     default:
-      return { label: 'Saved', classes: 'border-white/[0.10] bg-white/[0.04] text-white/60' };
+      return { label: 'Saved', classes: 'border-[var(--line-strong)] bg-[var(--surface-3)] text-[var(--text-soft)]' };
   }
 }
 
@@ -98,7 +98,7 @@ export function stageAwareActions(stage?: string | null): {
       };
     case 'screening':
       return {
-        unlocked: ['Resume Builder'],
+        unlocked: ['Tailor Resume'],
         nextActionLabel: 'Keep this workspace lean until an interview is scheduled',
       };
     case 'researching':
@@ -106,7 +106,7 @@ export function stageAwareActions(stage?: string | null): {
     case 'saved':
     default:
       return {
-        unlocked: ['Resume Builder'],
+        unlocked: ['Tailor Resume'],
         nextActionLabel: 'Interview assets unlock when the job reaches interviewing',
       };
   }
@@ -190,11 +190,11 @@ export function formatStatus(status?: string | null): { label: string; classes: 
   switch (status) {
     case 'complete':
     case 'completed':
-      return { label: 'Completed', classes: 'border-[#b5dec2]/25 bg-[#b5dec2]/10 text-[#cfe9d6]' };
+      return { label: 'Completed', classes: 'border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]' };
     case 'error':
-      return { label: 'Needs Review', classes: 'border-[#f0b8b8]/25 bg-[#f0b8b8]/10 text-[#f6d0d0]' };
+      return { label: 'Needs Review', classes: 'border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]' };
     default:
-      return { label: 'In Progress', classes: 'border-[#98b3ff]/25 bg-[#98b3ff]/10 text-[#d4dfff]' };
+      return { label: 'In Progress', classes: 'border-[var(--link)]/30 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]' };
   }
 }
 

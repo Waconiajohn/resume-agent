@@ -17,7 +17,7 @@ describe('Profile Setup IntakeForm', () => {
     const onSubmit = vi.fn();
     render(<IntakeForm onSubmit={onSubmit} loading={false} />);
 
-    const submit = screen.getByRole('button', { name: /build my careeriq profile/i });
+    const submit = screen.getByRole('button', { name: /build my benchmark profile/i });
     const resume = screen.getByLabelText(/resume text/i);
     const targetRoles = screen.getByLabelText(/target roles/i);
 
@@ -35,17 +35,16 @@ describe('Profile Setup IntakeForm', () => {
     expect(submit).not.toBeDisabled();
   });
 
-  it('focuses the LinkedIn textarea when the skip-confirm rescue action is used', () => {
+  it('submits without LinkedIn context because that field is optional', () => {
     const onSubmit = vi.fn();
     render(<IntakeForm onSubmit={onSubmit} loading={false} />);
 
     fireEvent.change(screen.getByLabelText(/resume text/i), { target: { value: 'A'.repeat(120) } });
     fireEvent.change(screen.getByLabelText(/target roles/i), { target: { value: 'VP Engineering' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /build my careeriq profile/i }));
-    fireEvent.click(screen.getByRole('button', { name: /add it now/i }));
+    fireEvent.click(screen.getByRole('button', { name: /build my benchmark profile/i }));
 
-    expect(screen.getByLabelText(/linkedin profile text/i)).toHaveFocus();
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledWith('A'.repeat(120), '', 'VP Engineering', '');
+    expect(screen.queryByRole('button', { name: /add it now/i })).not.toBeInTheDocument();
   });
 });

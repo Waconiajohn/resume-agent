@@ -26,7 +26,7 @@ export function InterviewView({
   const [inputValue, setInputValue] = useState('');
   const [conversation, setConversation] = useState<ConversationTurn[]>([]);
   const [isComplete, setIsComplete] = useState(false);
-  const [chipUsed, setChipUsed] = useState(false);
+  const [selectedStarters, setSelectedStarters] = useState<string[]>([]);
   const [whyMeExpanded, setWhyMeExpanded] = useState(false);
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -46,12 +46,15 @@ export function InterviewView({
 
   // Scroll to bottom whenever conversation grows
   useEffect(() => {
-    scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const scrollAnchor = scrollAnchorRef.current;
+    if (typeof scrollAnchor?.scrollIntoView === 'function') {
+      scrollAnchor.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [conversation]);
 
   // Reset chip state when question advances
   useEffect(() => {
-    setChipUsed(false);
+    setSelectedStarters([]);
   }, [currentQuestionIndex]);
 
   const handleSend = useCallback(async () => {
@@ -73,7 +76,7 @@ export function InterviewView({
         ...prev,
         {
           role: 'ai',
-          text: 'I have what I need. Give me a moment — I am building your CareerIQ profile.',
+          text: 'I have what I need. Give me a moment — I am building your Benchmark Profile.',
         },
       ]);
       onComplete();
@@ -101,23 +104,45 @@ export function InterviewView({
     el.style.height = `${el.scrollHeight}px`;
   };
 
-  const handleChipClick = (starter: string) => {
+  const resizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  const handleStarterToggle = (starter: string) => {
     if (starter === 'Something else') {
-      // Dismiss chips and focus the textarea
-      setChipUsed(true);
       textareaRef.current?.focus();
       return;
     }
-    // Seed the textarea with the starter and a dash to continue
-    setInputValue(starter + ' — ');
-    setChipUsed(true);
-    // Focus and move cursor to end
+
+    const starterPrefix = `${starter} —`;
+    const isSelected = selectedStarters.includes(starter);
+
+    setSelectedStarters((prev) => (
+      isSelected ? prev.filter((item) => item !== starter) : [...prev, starter]
+    ));
+
+    setInputValue((current) => {
+      if (isSelected) {
+        return current
+          .split('\n')
+          .filter((line) => !line.trimStart().startsWith(starterPrefix))
+          .join('\n')
+          .trim();
+      }
+
+      const trimmedCurrent = current.trimEnd();
+      const nextLine = `${starterPrefix} `;
+      return trimmedCurrent ? `${trimmedCurrent}\n${nextLine}` : nextLine;
+    });
+
     setTimeout(() => {
       const el = textareaRef.current;
       if (el) {
         el.focus();
-        el.style.height = 'auto';
-        el.style.height = `${el.scrollHeight}px`;
+        resizeTextarea();
       }
     }, 0);
   };
@@ -134,7 +159,7 @@ export function InterviewView({
   // Get suggested starters for the current question
   const currentQuestion = intake.interview_questions[currentQuestionIndex];
   const starters = currentQuestion?.suggested_starters ?? [];
-  const showChips = starters.length > 0 && !chipUsed && !inputValue.trim() && !answering && !isComplete;
+  const showChips = starters.length > 0 && !answering && !isComplete;
 
   return (
     <div className="flex h-full flex-col">
@@ -227,27 +252,12 @@ export function InterviewView({
             {showChips && (
               <div className="mb-3 flex flex-wrap gap-2">
                 {starters.map((starter) => (
-                  <button
+                  <StarterChip
                     key={starter}
-                    type="button"
-                    onClick={() => handleChipClick(starter)}
-                    className="rounded-full border px-4 py-2 text-xs transition-colors"
-                    style={{
-                      borderColor: 'var(--line-soft)',
-                      color: 'var(--text-muted)',
-                      background: 'var(--surface-1)',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget).style.borderColor = 'var(--link)';
-                      (e.currentTarget).style.color = 'var(--text-strong)';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget).style.borderColor = 'var(--line-soft)';
-                      (e.currentTarget).style.color = 'var(--text-muted)';
-                    }}
-                  >
-                    {starter}
-                  </button>
+                    starter={starter}
+                    selected={selectedStarters.includes(starter)}
+                    onToggle={handleStarterToggle}
+                  />
                 ))}
               </div>
             )}
@@ -256,7 +266,7 @@ export function InterviewView({
               ref={textareaRef}
               rows={1}
               className="w-full bg-[var(--surface-1)] border border-[var(--line-soft)] rounded-lg px-4 py-3 text-sm text-[var(--text-strong)] leading-relaxed resize-none outline-none focus:border-[var(--link)] transition-colors placeholder:text-[var(--text-muted)] overflow-hidden"
-              placeholder={showChips ? 'Pick a starting point above, or type your own answer...' : 'Your answer...'}
+              placeholder={showChips ? 'Pick any starting points above, or type your own answer...' : 'Your answer...'}
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
@@ -276,5 +286,36 @@ export function InterviewView({
         </div>
       )}
     </div>
+  );
+}
+
+function StarterChip({
+  starter,
+  selected,
+  onToggle,
+}: {
+  starter: string;
+  selected: boolean;
+  onToggle: (starter: string) => void;
+}) {
+  const isFreeform = starter === 'Something else';
+
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(starter)}
+      aria-pressed={isFreeform ? undefined : selected}
+      className="rounded-full border px-4 py-2 text-xs transition-colors hover:border-[var(--link)] hover:text-[var(--text-strong)]"
+      style={{
+        borderColor: selected ? 'var(--link)' : 'var(--line-soft)',
+        color: selected ? 'var(--text-strong)' : 'var(--text-muted)',
+        background: selected
+          ? 'color-mix(in srgb, var(--link) 10%, var(--surface-1))'
+          : 'var(--surface-1)',
+        boxShadow: selected ? 'inset 0 0 0 1px var(--link)' : undefined,
+      }}
+    >
+      {starter}
+    </button>
   );
 }

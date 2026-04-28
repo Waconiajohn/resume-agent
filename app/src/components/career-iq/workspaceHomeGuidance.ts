@@ -64,7 +64,7 @@ export function deriveWorkspaceHomeGuidance(params: {
           'Your resume is loaded. Answer three positioning questions and every tool starts leaning on your strongest angles, not just your titles.',
         mobileInsight:
           'Your resume is loaded. Answer three positioning questions to sharpen every tool.',
-        primary: { label: 'Open Career Vault', room: 'career-profile' },
+        primary: { label: 'Open Benchmark Profile', room: 'career-profile' },
         secondary: { label: 'Tailor a resume', room: 'resume' },
       };
     }
@@ -82,27 +82,27 @@ export function deriveWorkspaceHomeGuidance(params: {
   if (!hasResumeSessions) {
     return {
       eyebrow: 'Next best move',
-      title: 'Build the first role-specific resume for a live role',
+      title: 'Find the right jobs before you tailor the resume',
       description:
-        'Your profile is ready enough to stop starting from scratch. Turn it into a job-specific resume you can reopen later by company, role, and date.',
+        'Your benchmark profile is ready enough to aim the search. Find a real role first, then tailor the resume around that company, job description, and benchmark candidate.',
       mobileInsight:
-        'Use your profile to build the first role-specific resume for a live role instead of waiting for the perfect job.',
-      primary: { label: 'Open Resume Builder', room: 'resume' },
-      secondary: { label: 'Open Job Search', room: 'jobs' },
+        'Find a real role first, then tailor the resume around that specific job.',
+      primary: { label: 'Find Jobs', room: 'jobs' },
+      secondary: { label: 'Tailor Resume', room: 'resume' },
       coachLine: coachRecommendation?.action ?? undefined,
     };
   }
 
   if (coachCanLead && coachRoom !== 'resume') {
     const labelByRoom: Record<CareerIQRoom, string> = {
-      dashboard: 'Open Workspace Home',
-      'career-profile': 'Open Career Profile',
-      resume: 'Open Resume Builder',
-      linkedin: 'Open LinkedIn',
-      jobs: 'Open Job Search',
+      dashboard: 'Open Today',
+      'career-profile': 'Open Benchmark Profile',
+      resume: 'Tailor Resume',
+      linkedin: 'Open LinkedIn Growth',
+      jobs: 'Find Jobs',
       networking: 'Open Network Job Search',
-      interview: 'Open Interview Prep',
-      learning: 'Open Learning',
+      interview: 'Open Interview & Offer',
+      learning: 'Open Playbook',
       'live-webinars': 'Open Live Webinars',
       'executive-bio': 'Open Executive Bio',
     };
@@ -115,19 +115,19 @@ export function deriveWorkspaceHomeGuidance(params: {
       mobileInsight:
         'Use the next live-search move first, then reopen resume work only if that step exposes a real gap.',
       primary: { label: labelByRoom[coachRoom], room: coachRoom },
-      secondary: { label: 'Open Resume Builder', room: 'resume' },
+      secondary: { label: 'Tailor Resume', room: 'resume' },
       coachLine: coachRecommendation?.action ?? undefined,
     };
   }
 
   return {
     eyebrow: 'Daily workspace',
-    title: 'Work the active search first, then reopen resume assets as needed',
-    description: `You already have ${sessionCount} saved application${sessionCount === 1 ? '' : 's'}. Home should point you to the active search and pipeline first, with Resume Builder available when a specific role needs tightening.`,
+    title: 'Work the active search first, then tailor as needed',
+    description: `You already have ${sessionCount} saved application${sessionCount === 1 ? '' : 's'}. Home should point you to the active search and pipeline first, with Tailor Resume available when a specific role needs tightening.`,
     mobileInsight:
       'Start with the active search and pipeline, then reopen resume assets only when a specific role needs work.',
-    primary: { label: 'Open Job Search', room: 'jobs' },
-    secondary: { label: 'Open Resume Builder', room: 'resume' },
+    primary: { label: 'Find Jobs', room: 'jobs' },
+    secondary: { label: 'Tailor Resume', room: 'resume' },
     coachLine: coachRecommendation?.action ?? undefined,
   };
 }

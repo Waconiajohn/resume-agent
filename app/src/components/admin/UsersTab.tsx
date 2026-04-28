@@ -155,7 +155,7 @@ export function UsersTab({ adminKey }: UsersTabProps) {
         <div className="flex-1 min-w-[240px] flex gap-2">
           <input
             type="search"
-            className="flex-1 rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] text-white text-sm px-3 py-2 outline-none focus:border-[var(--link)]/50 placeholder-[var(--text-soft)]"
+            className="flex-1 rounded-[8px] bg-[var(--surface-3)] border border-[var(--line-strong)] text-[var(--text-strong)] text-sm px-3 py-2 outline-none focus:border-[var(--link)]/50 placeholder-[var(--text-soft)]"
             placeholder="Search by email (substring)"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -187,8 +187,8 @@ export function UsersTab({ adminKey }: UsersTabProps) {
       </div>
 
       {error && (
-        <GlassCard className="p-4 border-[#f0a0a0]/20">
-          <p className="text-sm text-[#f0a0a0]">Error: {error}</p>
+        <GlassCard className="p-4 border-[var(--badge-red-text)]/20">
+          <p className="text-sm text-[var(--badge-red-text)]">Error: {error}</p>
         </GlassCard>
       )}
 
@@ -209,7 +209,7 @@ export function UsersTab({ adminKey }: UsersTabProps) {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-medium text-white truncate">{user.email ?? '(no email)'}</p>
+                      <p className="text-sm font-medium text-[var(--text-strong)] truncate">{user.email ?? '(no email)'}</p>
                       <span
                         className={cn(
                           'text-xs font-medium px-2 py-0.5 rounded-full',
@@ -246,7 +246,7 @@ export function UsersTab({ adminKey }: UsersTabProps) {
                       onChange={(e) =>
                         void changePlan(user, e.target.value as 'free' | 'starter' | 'pro')
                       }
-                      className="rounded-lg bg-[var(--accent-muted)] border border-[var(--line-soft)] text-white text-xs px-2 py-1.5 outline-none focus:border-[var(--link)]/50"
+                      className="rounded-[8px] bg-[var(--surface-3)] border border-[var(--line-strong)] text-[var(--text-strong)] text-xs px-2 py-1.5 outline-none focus:border-[var(--link)]/50"
                     >
                       {PLAN_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -258,7 +258,7 @@ export function UsersTab({ adminKey }: UsersTabProps) {
                       type="button"
                       onClick={() => void sendReset(user)}
                       disabled={!user.email}
-                      className="rounded-lg border border-[var(--line-soft)] text-[var(--text-muted)] text-xs px-3 py-1.5 hover:text-white hover:border-[var(--link)]/40 disabled:opacity-30 transition-colors"
+                      className="rounded-[8px] border border-[var(--line-soft)] text-[var(--text-muted)] text-xs px-3 py-1.5 hover:text-[var(--link)] hover:border-[var(--link)]/40 disabled:opacity-30 transition-colors"
                     >
                       Reset password
                     </button>

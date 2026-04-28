@@ -105,7 +105,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--line-soft)] bg-[var(--header-bg)] backdrop-blur-xl">
+    <header className="sticky top-0 z-[100] border-b border-[var(--line-soft)] bg-[var(--header-bg)]">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-6 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-4">
           <button
@@ -114,8 +114,8 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             className="flex items-center text-left"
             aria-label="Go to CareerIQ home"
           >
-            <span className="text-[20px] font-normal tracking-tight text-[var(--text-strong)]">
-              Career<span className="font-bold text-[var(--accent)]">IQ</span>
+            <span className="text-[20px] font-extrabold tracking-tight text-white">
+              Career<span className="text-[#63c4e6]">IQ</span>
             </span>
           </button>
 
@@ -131,7 +131,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                     value={nameFirst}
                     onChange={(e) => setNameFirst(e.target.value)}
                     placeholder="First"
-                    className="w-24 rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[var(--line-strong)]"
+                    className="w-24 rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[var(--line-strong)]"
                     autoFocus
                     onKeyDown={(e) => { if (e.key === 'Enter') void saveNameEdit(); if (e.key === 'Escape') setEditingName(false); }}
                   />
@@ -140,13 +140,13 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                     value={nameLast}
                     onChange={(e) => setNameLast(e.target.value)}
                     placeholder="Last"
-                    className="w-24 rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[var(--line-strong)]"
+                    className="w-24 rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--text-strong)] outline-none focus:border-[var(--line-strong)]"
                     onKeyDown={(e) => { if (e.key === 'Enter') void saveNameEdit(); if (e.key === 'Escape') setEditingName(false); }}
                   />
-                  <button onClick={() => void saveNameEdit()} disabled={nameSaving || !nameFirst.trim()} className="rounded-[10px] px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--text-strong)] transition-colors hover:bg-[var(--accent-muted)] disabled:opacity-50">
+                  <button onClick={() => void saveNameEdit()} disabled={nameSaving || !nameFirst.trim()} className="rounded-[8px] px-3 py-2 text-xs font-semibold text-[var(--text-strong)] transition-colors hover:bg-[var(--accent-muted)] disabled:opacity-50">
                     {nameSaving ? '...' : 'Save'}
                   </button>
-                  <button onClick={() => setEditingName(false)} className="rounded-[10px] px-2 py-2 text-xs uppercase tracking-[0.12em] text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)]">
+                  <button onClick={() => setEditingName(false)} className="rounded-[8px] px-2 py-2 text-xs font-semibold text-[var(--text-soft)] transition-colors hover:bg-[var(--accent-muted)]">
                     Cancel
                   </button>
                 </div>
@@ -156,19 +156,19 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                   onClick={() => setUserMenuOpen((prev) => !prev)}
                   aria-haspopup="true"
                   aria-expanded={userMenuOpen}
-                  className="flex items-center gap-1.5 rounded-[10px] px-2 py-1.5 transition-colors hover:bg-[var(--surface-2)]"
+                  className="flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 transition-colors hover:bg-white/10"
                 >
-                  <span className="text-[13px] font-medium text-[var(--text-strong)]">
+                  <span className="text-[13px] font-bold text-white">
                     {displayName || email}
                   </span>
-                  <ChevronDown className={`h-3.5 w-3.5 text-[var(--text-muted)] transition-transform duration-150 ${userMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  <ChevronDown className={`h-3.5 w-3.5 text-white/70 transition-transform duration-150 ${userMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
               )}
 
               {userMenuOpen && !editingName && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-[14px] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-mid)]"
+                  className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-raised)] shadow-[var(--shadow-mid)]"
                 >
                   <div className="border-b border-[var(--line-soft)] px-4 py-3">
                     <div className="eyebrow-label">Signed in as</div>
@@ -228,7 +228,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             onClick={handleHelpClick}
             aria-label="Help and settings"
             title="Help and settings"
-            className="flex items-center gap-1.5 rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] px-3 py-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
+            className="flex items-center gap-1.5 rounded-[8px] border border-white/20 bg-white/[0.04] px-3 py-2.5 text-white/80 transition-colors hover:border-white/30 hover:bg-white/[0.08] hover:text-white"
           >
             <HelpCircle className="h-5 w-5" aria-hidden="true" />
             <span className="text-[13px] font-medium hidden sm:inline">Help</span>
@@ -242,13 +242,13 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             title="Accessibility settings"
             aria-expanded={a11yOpen}
             aria-controls="accessibility-settings-panel"
-            className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
+            className="rounded-[8px] border border-white/20 bg-white/[0.04] p-2.5 text-white/80 transition-colors hover:border-white/30 hover:bg-white/[0.08] hover:text-white"
           >
             <Settings2 className="h-5 w-5" aria-hidden="true" />
           </button>
 
           <button
-            className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)] lg:hidden"
+            className="rounded-[8px] border border-white/20 bg-white/[0.04] p-2.5 text-white/80 transition-colors hover:border-white/30 hover:bg-white/[0.08] hover:text-white lg:hidden"
             onClick={() => setMenuOpen(true)}
             aria-label="Open menu"
             aria-expanded={menuOpen}
@@ -271,7 +271,7 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
 
       {/* Mobile menu overlay */}
       {menuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" aria-hidden="false">
+        <div className="fixed inset-0 z-[200] lg:hidden" aria-hidden="false">
           <div className="absolute inset-0 bg-[var(--mobile-overlay-bg)] backdrop-blur-sm" aria-hidden="true" />
 
           <div
@@ -282,12 +282,12 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
             style={{ transform: 'translateX(0)', transition: 'transform 0.2s ease-out' }}
           >
             <div className="flex h-16 items-center justify-between border-b border-[var(--line-soft)] px-5">
-              <span className="text-[18px] font-normal tracking-tight text-[var(--text-strong)]">
-                Career<span className="font-bold text-[var(--accent)]">IQ</span>
+              <span className="text-[18px] font-extrabold tracking-tight text-white">
+                Career<span className="text-[#63c4e6]">IQ</span>
               </span>
               <button
                 onClick={() => setMenuOpen(false)}
-                className="rounded-[12px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-2.5 text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text-strong)]"
+                className="rounded-[8px] border border-white/20 bg-white/[0.04] p-2.5 text-white/80 transition-colors hover:border-white/30 hover:bg-white/[0.08] hover:text-white"
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
@@ -305,9 +305,9 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
                     type="button"
                     onClick={() => handleNavClick(target)}
                     aria-current={isActive ? 'page' : undefined}
-                    className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                    className="flex w-full items-center gap-3 rounded-[8px] px-3 py-2.5 text-left text-[13px] font-bold text-white/90 transition-colors hover:bg-white/[0.08] hover:text-white"
                   >
-                    <Icon className="h-4 w-4 flex-shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
+                    <Icon className="h-4 w-4 flex-shrink-0 text-white/60" aria-hidden="true" />
                     {item.label}
                   </button>
                 );
@@ -316,23 +316,23 @@ export function Header({ email, displayName, onSignOut, onUpdateProfile, pipelin
 
             {email && (
               <div className="border-t border-[var(--line-soft)] px-5 py-5">
-                <div className="eyebrow-label">Account</div>
-                <div className="mt-1 truncate text-sm text-[var(--text-strong)]">{email}</div>
+                <div className="eyebrow-label text-white/60">Account</div>
+                <div className="mt-1 truncate text-sm font-bold text-white">{email}</div>
                 <div className="mt-4 flex flex-col gap-1">
                   <button
                     onClick={() => handleNavClick('billing')}
                     aria-label="Billing"
-                    className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[13px] text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                    className="flex w-full items-center gap-3 rounded-[8px] px-3 py-2.5 text-left text-[13px] font-bold text-white/90 transition-colors hover:bg-white/[0.08] hover:text-white"
                   >
-                    <CreditCard className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
+                    <CreditCard className="h-4 w-4 text-white/60" aria-hidden="true" />
                     Billing &amp; plan
                   </button>
                   <button
                     onClick={handleSignOut}
                     aria-label="Sign out"
-                    className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[13px] text-[var(--text-strong)] transition-colors hover:bg-[var(--surface-2)]"
+                    className="flex w-full items-center gap-3 rounded-[8px] px-3 py-2.5 text-left text-[13px] font-bold text-white/90 transition-colors hover:bg-white/[0.08] hover:text-white"
                   >
-                    <LogOut className="h-4 w-4 text-[var(--text-muted)]" aria-hidden="true" />
+                    <LogOut className="h-4 w-4 text-white/60" aria-hidden="true" />
                     Sign out
                   </button>
                 </div>

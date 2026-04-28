@@ -163,7 +163,7 @@ export function ReferralOpportunitiesPanel({ onGenerateOutreach }: ReferralOppor
                     opp.match_score >= 80
                       ? 'bg-[var(--badge-green-text)]/15 text-[var(--badge-green-text)]/80 border-[var(--badge-green-text)]/20'
                       : opp.match_score >= 60
-                        ? 'bg-amber-500/15 text-amber-400/80 border-amber-500/20'
+                        ? 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/25'
                         : 'bg-[var(--accent-muted)] text-[var(--text-soft)] border-[var(--line-soft)]',
                   )}>
                     {opp.match_score}% match

@@ -54,6 +54,67 @@ function extractTitleFromHTML(html: string): string {
     .trim();
 }
 
+function titleCaseSlug(value: string): string {
+  return value
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.length <= 3 ? part.toUpperCase() : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+    .join(' ')
+    .trim();
+}
+
+function cleanTitleSegment(value: string): string {
+  return value
+    .replace(/\s*\|\s*(LinkedIn|Indeed|Glassdoor|Greenhouse|Lever|Workday|Careers).*$/i, '')
+    .replace(/\s+-\s*(LinkedIn|Indeed|Glassdoor|Greenhouse|Lever|Workday|Careers).*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function extractJobMetadataFromTitle(title: string, rawUrl: string): { title: string; company: string } {
+  const cleaned = cleanTitleSegment(title);
+  let roleTitle = cleaned;
+  let company = '';
+
+  const linkedinHiring = cleaned.match(/^(.+?)\s+hiring\s+(.+?)(?:\s+in\s+.+)?$/i);
+  if (linkedinHiring) {
+    company = linkedinHiring[1].trim();
+    roleTitle = linkedinHiring[2].trim();
+  }
+
+  const jobApplication = cleaned.match(/^Job Application for\s+(.+?)\s+at\s+(.+)$/i);
+  if (!company && jobApplication) {
+    roleTitle = jobApplication[1].trim();
+    company = jobApplication[2].trim();
+  }
+
+  const roleAtCompany = cleaned.match(/^(.+?)\s+at\s+(.+)$/i);
+  if (!company && roleAtCompany) {
+    roleTitle = roleAtCompany[1].trim();
+    company = roleAtCompany[2].trim();
+  }
+
+  if (!company) {
+    try {
+      const url = new URL(rawUrl);
+      const greenhouse = url.hostname === 'boards.greenhouse.io' || url.hostname.endsWith('.greenhouse.io')
+        ? url.pathname.split('/').filter(Boolean)[0]
+        : '';
+      const lever = url.hostname === 'jobs.lever.co'
+        ? url.pathname.split('/').filter(Boolean)[0]
+        : '';
+      company = titleCaseSlug(greenhouse || lever || '');
+    } catch {
+      company = '';
+    }
+  }
+
+  return {
+    title: cleanTitleSegment(roleTitle || title),
+    company: cleanTitleSegment(company),
+  };
+}
+
 // ─── POST /fetch-jd ───────────────────────────────────────────────────────────
 
 discoveryJdFetchRoutes.post(
@@ -147,16 +208,18 @@ discoveryJdFetchRoutes.post(
       return c.json({ error: 'Could not extract job description from URL' }, 400);
     }
 
-    const title = extractTitleFromHTML(html);
+    const pageTitle = extractTitleFromHTML(html);
+    const metadata = extractJobMetadataFromTitle(pageTitle, rawUrl);
 
     logger.info(
-      { userId: user.id, url: rawUrl, textLength: strippedText.length, title },
+      { userId: user.id, url: rawUrl, textLength: strippedText.length, title: metadata.title, company: metadata.company },
       'discovery-jd-fetch: success',
     );
 
     return c.json({
       text: strippedText.slice(0, 15000),
-      title,
+      title: metadata.title || pageTitle,
+      company: metadata.company || undefined,
     });
   },
 );

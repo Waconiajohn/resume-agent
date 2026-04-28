@@ -19,6 +19,7 @@ import { FOLLOW_UP_LABELS, FOLLOW_UP_TIMING } from '../types.js';
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderCareerNarrativeSection,
   renderCareerProfileSection,
   renderPositioningStrategySection,
@@ -63,6 +64,11 @@ function buildCandidateContext(state: JobTrackerState): string {
       sharedNarrative: sharedContext?.careerNarrative,
     }));
   }
+
+  parts.push(...renderBenchmarkProfileDirectionSection({
+    heading: '## Benchmark Profile Direction',
+    sharedContext,
+  }));
 
   if (state.platform_context?.positioning_strategy || hasMeaningfulSharedValue(sharedContext?.positioningStrategy)) {
     parts.push(...renderPositioningStrategySection({

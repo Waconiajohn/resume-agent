@@ -152,7 +152,7 @@ function FollowUpBar({ followUps, onDone, onSnooze }: FollowUpBarProps) {
                 <span
                   className={cn(
                     'text-[13px] ml-2',
-                    overdue ? 'text-red-400' : 'text-[var(--badge-amber-text)]',
+                    overdue ? 'text-[var(--badge-red-text)]' : 'text-[var(--badge-amber-text)]',
                   )}
                 >
                   {overdue
@@ -221,7 +221,7 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
 
       {!loading && groups.length === 0 && (
         <p className="text-[12px] text-[var(--text-soft)] py-4 text-center">
-          No active applications found. Add applications in Job Search to get started.
+          No active applications found. Add roles in Find Jobs to get started.
         </p>
       )}
 
@@ -938,7 +938,7 @@ function OutreachGenerator({ prefill, onReady, initialTargetCompany }: OutreachG
           <textarea
             id="outreach-resume"
             aria-label="Resume text"
-            placeholder="Resume text * — auto-loading from your Career Evidence..."
+            placeholder="Resume text * — auto-loading from your Career Proof..."
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             rows={4}
@@ -1013,9 +1013,9 @@ function OutreachGenerator({ prefill, onReady, initialTargetCompany }: OutreachG
 
       {/* Error state */}
       {outreach.status === 'error' && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3">
-          <AlertCircle size={14} className="text-red-400 shrink-0" />
-          <span className="text-[12px] text-red-300">{outreach.error}</span>
+        <div className="flex items-center gap-2 rounded-lg border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)] px-4 py-3">
+          <AlertCircle size={14} className="text-[var(--badge-red-text)] shrink-0" />
+          <span className="text-[12px] text-[var(--badge-red-text)]">{outreach.error}</span>
         </div>
       )}
 
@@ -1266,7 +1266,7 @@ export function NetworkingHubRoom({ initialPrefill, initialJobApplicationId, ini
             'text-[12px] flex items-center gap-2 px-3 py-2 rounded-lg border',
             niImportStatus === 'success'
               ? 'text-[var(--badge-green-text)] border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.05]'
-              : 'text-red-400 border-red-400/20 bg-red-400/[0.05]',
+              : 'text-[var(--badge-red-text)] border-[var(--badge-red-text)]/20 bg-[var(--badge-red-bg)]',
           )}
         >
           {niImportStatus === 'success' ? (
@@ -1280,7 +1280,7 @@ export function NetworkingHubRoom({ initialPrefill, initialJobApplicationId, ini
 
       {/* Contacts load error */}
       {contactsError && (
-        <div className="text-[12px] text-red-400/70 flex items-center gap-2">
+        <div className="text-[12px] text-[var(--badge-red-text)] flex items-center gap-2">
           <AlertCircle size={12} />
           {contactsError}
           <button

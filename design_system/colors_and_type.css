@@ -1,0 +1,246 @@
+/* ==========================================================================
+   FirstSourceTeam — Colors & Type Foundations
+   Sourced directly from firstsourceteam.com/careers production stylesheet.
+   ========================================================================== */
+
+/* -------- WEBFONTS ------------------------------------------------------ */
+/* Primary stack pulled from the shipped site. Local woff2 files in /fonts/. */
+
+@font-face {
+  font-family: "Playfair Display";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("./fonts/PlayfairDisplay-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bree Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/BreeSerif-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/Inter-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./fonts/IBMPlexMono-latin.woff2") format("woff2");
+}
+/* Fallback metric-matched families, mirrors site @font-face aliases */
+@font-face { font-family: "Inter Fallback"; src: local(Arial);
+  ascent-override: 90.44%; descent-override: 22.52%; line-gap-override: 0%; size-adjust: 107.12%; }
+@font-face { font-family: "Playfair Display Fallback"; src: local("Times New Roman");
+  ascent-override: 97.25%; descent-override: 22.56%; line-gap-override: 0%; size-adjust: 111.26%; }
+
+/* -------- TOKENS -------------------------------------------------------- */
+:root {
+  /* Base surfaces — warm paper, not pure white */
+  --fst-bg:          #fcf9f5;   /* page background (warm cream) */
+  --fst-bg-alt:      #f7f3ed;   /* alternate section */
+  --fst-bg-warm:     #f2ede5;   /* deeper warm band */
+  --fst-surface:     #ffffff;   /* cards / elevated */
+  --fst-bg-dark:     #0f1729;   /* wealth / dark hero */
+  --fst-bg-wealth:   #0b1120;   /* deepest (FirstSourceWealth sibling brand) */
+  --fst-surface-dark:#1e2636;
+
+  /* Text */
+  --fst-heading:     #111110;   /* near-black, warm */
+  --fst-text:        #1f292e;   /* body */
+  --fst-muted:       #394b52;   /* secondary */
+  --fst-subtle:      #718096;   /* tertiary / meta */
+  --fst-invert:      #fcf9f5;   /* text on dark surfaces */
+
+  /* Brand accents */
+  --fst-accent:          #003147;   /* deep teal/navy — primary brand accent */
+  --fst-accent-deep:     #1f292e;   /* deepest ink */
+  --fst-accent-muted:    #0031471f; /* accent @ 12% alpha — focus rings, tints */
+  --fst-career:          #46A1EC;   /* CareerIQ / outplacement product blue */
+  --fst-career-light:    #6bb5f0;
+  --fst-career-dark:     #2e8ad4;
+  --fst-career-bg:       #eff6fe;   /* blue-tinted surface */
+
+  /* System / semantic */
+  --fst-border:      #e5e2db;       /* warm paper divider */
+  --fst-border-cool: #e2e8f0;       /* for blue/cool contexts */
+  --fst-success:     #6b8e4e;       /* moss green */
+  --fst-warn:        #fbbf24;
+  --fst-danger:      #dc2626;
+
+  /* Type families */
+  --fst-font-display:  "Playfair Display", "Playfair Display Fallback", Georgia, serif;
+  --fst-font-serif:    "Bree Serif", "Playfair Display", Georgia, serif;
+  --fst-font-sans:     "Inter", "Inter Fallback", system-ui, -apple-system, Segoe UI, sans-serif;
+  --fst-font-mono:     "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Type scale (responsive clamp from site) */
+  --fst-size-display: clamp(2.5rem, 6vw, 4rem);
+  --fst-size-h1:      clamp(2rem, 5vw, 3.5rem);
+  --fst-size-h2:      clamp(1.75rem, 4vw, 2.5rem);
+  --fst-size-h3:      1.5rem;
+  --fst-size-h4:      1.25rem;
+  --fst-size-body:    1.125rem;
+  --fst-size-small:   0.875rem;
+  --fst-size-xs:      0.75rem;
+  --fst-size-mono:    1rem;
+
+  /* Letter-spacing */
+  --fst-track-display: -0.03em;
+  --fst-track-body:    0;
+  --fst-track-mono:    0.02em;
+  --fst-track-eyebrow: 0.12em;
+
+  /* Line-heights */
+  --fst-lh-display:  1.05;
+  --fst-lh-heading:  1.15;
+  --fst-lh-body:     1.65;
+  --fst-lh-tight:    1.25;
+
+  /* Spacing (8-pt, soft) */
+  --fst-space-1:  4px;
+  --fst-space-2:  8px;
+  --fst-space-3:  12px;
+  --fst-space-4:  16px;
+  --fst-space-5:  24px;
+  --fst-space-6:  32px;
+  --fst-space-7:  48px;
+  --fst-space-8:  64px;
+  --fst-space-9:  96px;
+  --fst-space-10: 128px;
+
+  /* Radii — restrained, never pill unless specific */
+  --fst-radius-sm: 4px;
+  --fst-radius:    8px;
+  --fst-radius-md: 12px;
+  --fst-radius-lg: 16px;
+  --fst-radius-xl: 24px;
+  --fst-radius-pill: 999px;
+
+  /* Shadows — soft, warm, rarely heavy */
+  --fst-shadow-sm: 0 1px 2px rgba(17,17,16,0.04), 0 1px 1px rgba(17,17,16,0.03);
+  --fst-shadow:    0 2px 8px rgba(17,17,16,0.06), 0 1px 2px rgba(17,17,16,0.04);
+  --fst-shadow-md: 0 8px 24px rgba(17,17,16,0.08), 0 2px 6px rgba(17,17,16,0.04);
+  --fst-shadow-lg: 0 24px 48px rgba(17,17,16,0.12), 0 8px 16px rgba(17,17,16,0.06);
+  --fst-shadow-inset: inset 0 1px 0 rgba(255,255,255,0.5);
+
+  /* Motion */
+  --fst-ease-standard:    cubic-bezier(.4, 0, .2, 1);
+  --fst-ease-emphasized:  cubic-bezier(.2, 0, 0, 1);
+  --fst-ease-decelerate:  cubic-bezier(0, 0, .2, 1);
+  --fst-ease-organic:     cubic-bezier(.25, .1, .25, 1);
+  --fst-dur-fast:    0.3s;
+  --fst-dur-normal:  0.5s;
+  --fst-dur-slow:    0.8s;
+  --fst-dur-premium: 1.2s;
+}
+
+/* -------- SEMANTIC ELEMENT STYLES ---------------------------------------- */
+
+html, body {
+  background: var(--fst-bg);
+  color: var(--fst-text);
+  font-family: var(--fst-font-sans);
+  font-size: var(--fst-size-body);
+  line-height: var(--fst-lh-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings use Playfair Display for editorial weight — the marketing signature */
+h1, h2, h3, h4, h5, h6,
+.fst-h1, .fst-h2, .fst-h3, .fst-h4 {
+  font-family: var(--fst-font-display);
+  color: var(--fst-heading);
+  line-height: var(--fst-lh-heading);
+  letter-spacing: var(--fst-track-display);
+  font-weight: 500;
+  text-wrap: balance;
+  margin: 0;
+}
+
+.fst-display, h1 {
+  font-size: var(--fst-size-display);
+  line-height: var(--fst-lh-display);
+  font-weight: 500;
+}
+h2, .fst-h2 { font-size: var(--fst-size-h2); font-weight: 500; }
+h3, .fst-h3 { font-size: var(--fst-size-h3); font-weight: 500; }
+h4, .fst-h4 { font-size: var(--fst-size-h4); font-weight: 600; }
+
+/* Bree Serif is the secondary display / feature callout (bento titles, callouts) */
+.fst-callout {
+  font-family: var(--fst-font-serif);
+  font-weight: 400;
+  color: var(--fst-heading);
+  letter-spacing: -0.005em;
+}
+
+/* Eyebrows — the little kicker labels above section headings */
+.fst-eyebrow {
+  font-family: var(--fst-font-sans);
+  font-size: var(--fst-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--fst-track-eyebrow);
+  color: var(--fst-muted);
+}
+
+/* Body */
+p, .fst-p {
+  font-family: var(--fst-font-sans);
+  font-size: var(--fst-size-body);
+  line-height: var(--fst-lh-body);
+  color: var(--fst-text);
+  text-wrap: pretty;
+  margin: 0;
+}
+
+.fst-lead {
+  font-size: 1.25rem;
+  line-height: 1.55;
+  color: var(--fst-muted);
+}
+
+small, .fst-small {
+  font-size: var(--fst-size-small);
+  color: var(--fst-muted);
+}
+
+code, pre, .fst-mono {
+  font-family: var(--fst-font-mono);
+  font-size: var(--fst-size-mono);
+  letter-spacing: var(--fst-track-mono);
+}
+
+/* Editorial blockquotes — review callouts use large Playfair */
+blockquote, .fst-quote {
+  font-family: var(--fst-font-display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.35;
+  color: var(--fst-heading);
+  font-style: italic;
+  font-weight: 400;
+  margin: 0;
+}
+
+/* Links */
+a, .fst-link {
+  color: var(--fst-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color var(--fst-dur-fast) var(--fst-ease-standard),
+              text-decoration-color var(--fst-dur-fast) var(--fst-ease-standard);
+}
+a:hover { color: var(--fst-career); }
+
+/* Selection */
+::selection { background: var(--fst-accent); color: var(--fst-bg); }

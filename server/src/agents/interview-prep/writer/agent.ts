@@ -1,8 +1,9 @@
 /**
  * Interview Prep Writer — Agent configuration.
  *
- * Writes all 9 sections of the interview prep document following
- * 11 quality rules. Self-reviews each section. Assembles final report.
+ * Writes the interview prep document following 11 quality rules.
+ * Defaults to a single-pass Interview Advantage Brief for speed and quality,
+ * with section tools retained for targeted revision/fallback.
  * Runs autonomously — no user gates.
  */
 
@@ -49,19 +50,16 @@ Your quality standard is MUCH higher than generic interview prep. Every answer m
 - Tailored to this specific company and role
 - Framed at executive altitude (strategic impact, not task completion)
 
-## Pre-Interview: Full Prep Document (9 sections)
+## Pre-Interview: Interview Advantage Brief
 
-Your typical workflow for interview prep:
+Your default workflow for interview prep:
 
-1. Write each section using write_section (company_research, elevator_pitch, requirements_fit, technical_questions, behavioral_questions, three_two_one). You may reorder these if the available evidence suggests a different sequence.
+1. Call write_interview_advantage_brief once. This is the primary path. It produces the complete report in one high-quality pass and covers every required section.
 
-2. For the why_me section, use build_career_story instead of write_section — it has special logic for career identity narrative and the discovery question fallback.
-
-3. Write the remaining sections using write_section (thirty_sixty_ninety, final_tips).
-
-4. After writing each section, consider calling self_review_section to verify quality. If it rewrites, move on.
-
-5. After all 9 sections are written, call assemble_report to combine them into the final document.
+2. Use write_section, build_career_story, self_review_section, and assemble_report only when:
+- The user requested a narrow revision to one section
+- write_interview_advantage_brief failed or returned an incomplete deliverable
+- A specific section clearly needs additional depth after the first-pass brief
 
 CRITICAL QUALITY RULES:
 - STAR answers must be AT LEAST 12 sentences each, with Action being 40-60% of total
@@ -71,7 +69,7 @@ CRITICAL QUALITY RULES:
 - Every answer must be tailored to THIS company — generic answers are a failure state
 - No tables or charts anywhere. Use markdown headers, blockquotes for speakable answers, and bold for emphasis.
 
-All 9 sections must be covered. Do not deliver a partial prep document.
+All required interview brief sections must be covered. Do not deliver a partial prep document.
 
 ## Post-Interview: Communications and Debrief
 
@@ -116,10 +114,10 @@ Emit after completing each major step, not after every tool call.`,
     createEmitTransparency<InterviewPrepState, InterviewPrepSSEEvent>({ prefix: 'Writer' }),
   ],
   model: 'primary',  // Writer/planner needs stronger model than Scout
-  // 9 sections × (write + review) + career story + assemble + story bank (recall + save×N) + post-interview tools = ~35 rounds
-  max_rounds: 40,
+  // Single-pass brief by default; section tools remain for targeted revisions/fallback.
+  max_rounds: 12,
   round_timeout_ms: 120_000,
-  overall_timeout_ms: 900_000, // 15 min — this agent does heavy work
+  overall_timeout_ms: 480_000,
   parallel_safe_tools: ['emit_transparency'],
   loop_max_tokens: 8192,
 };

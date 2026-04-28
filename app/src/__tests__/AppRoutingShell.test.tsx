@@ -11,7 +11,7 @@ const mockGetDefaultResume = vi.fn(async () => ({
   id: 'resume-1',
   raw_text: 'Default resume text',
 }));
-const mockV2ResumeScreen = vi.fn();
+const mockV3PipelineScreen = vi.fn();
 const mockLoadSession = vi.fn<(sessionId: string) => Promise<{ id: string; product_type?: string } | undefined>>(async () => undefined);
 const mockListSessions = vi.fn();
 const mockListResumes = vi.fn();
@@ -129,15 +129,15 @@ vi.mock('@/components/career-iq/CareerIQScreen', () => ({
     <div>
       <div>Workspace room: {initialRoom ?? 'dashboard'}</div>
       <button type="button" onClick={onNewSession}>New Role-Specific Resume</button>
-      <button type="button" onClick={() => onResumeSession?.('resume-v2-extra')}>Open Saved Resume</button>
+      <button type="button" onClick={() => onResumeSession?.('resume-v3-extra')}>Open Saved Resume</button>
     </div>
   ),
 }));
 
-vi.mock('@/components/resume-v2/V2ResumeScreen', () => ({
-  V2ResumeScreen: (props: unknown) => {
-    mockV2ResumeScreen(props);
-    return <div>Resume V2 Screen</div>;
+vi.mock('@/components/resume-v3/V3PipelineScreen', () => ({
+  V3PipelineScreen: (props: unknown) => {
+    mockV3PipelineScreen(props);
+    return <div>Resume V3 Screen</div>;
   },
 }));
 
@@ -168,7 +168,7 @@ describe('App routing shell', () => {
     mockLoadSession.mockResolvedValue(undefined);
     mockListSessions.mockReset();
     mockListResumes.mockReset();
-    mockV2ResumeScreen.mockReset();
+    mockV3PipelineScreen.mockReset();
     mockSessionState.sessions = [];
     mockSessionState.currentSession = null;
   });
@@ -195,16 +195,16 @@ describe('App routing shell', () => {
     await user.click(screen.getAllByRole('button', { name: 'New Role-Specific Resume' })[0]);
 
     await waitFor(() => {
-      expect(screen.getByText('Resume V2 Screen')).toBeInTheDocument();
+      expect(screen.getByText('Resume V3 Screen')).toBeInTheDocument();
     });
     expect(mockGetDefaultResume).toHaveBeenCalled();
   });
 
-  it('reopens a saved resume-v2 session in the v2 builder even when it is not already in memory', async () => {
+  it('reopens a saved resume-v3 session in the v3 builder even when it is not already in memory', async () => {
     const user = userEvent.setup();
     mockLoadSession.mockResolvedValue({
-      id: 'resume-v2-extra',
-      product_type: 'resume_v2',
+      id: 'resume-v3-extra',
+      product_type: 'resume_v3',
     });
 
     render(
@@ -216,12 +216,12 @@ describe('App routing shell', () => {
     await user.click(screen.getAllByRole('button', { name: 'Open Saved Resume' })[0]);
 
     await waitFor(() => {
-      expect(screen.getAllByText('Resume V2 Screen').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Resume V3 Screen').length).toBeGreaterThan(0);
     });
-    expect(mockLoadSession).toHaveBeenCalledWith('resume-v2-extra');
-    expect(mockV2ResumeScreen).toHaveBeenLastCalledWith(
+    expect(mockLoadSession).toHaveBeenCalledWith('resume-v3-extra');
+    expect(mockV3PipelineScreen).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        initialSessionId: 'resume-v2-extra',
+        initialSessionId: 'resume-v3-extra',
       }),
     );
   });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Sidebar, type CareerIQRoom } from './Sidebar';
+import type { CareerIQRoom } from './Sidebar';
 import { OnboardingTour } from '@/components/OnboardingTour';
 import { CareerProfileSummaryCard } from './CareerProfileSummaryCard';
 import { useCareerProfile } from './CareerProfileContext';
@@ -22,6 +22,7 @@ import type { RealFeedEvent } from './ZoneAgentFeed';
 import type { CoachSession } from '@/types/session';
 import type { FinalResume, MasterResume, MasterResumeListItem } from '@/types/resume';
 import { resolveWorkspaceRoom, toExposedWorkspaceRoom, type WorkspaceRoom } from './workspaceRoomAccess';
+import { WorkspaceTopNav } from './WorkspaceTopNav';
 
 const FinancialWellnessRoom = lazy(() => import('./FinancialWellnessRoom').then((module) => ({ default: module.FinancialWellnessRoom })));
 const ResumeWorkshopRoom = lazy(() => import('./ResumeWorkshopRoom').then((module) => ({ default: module.ResumeWorkshopRoom })));
@@ -34,15 +35,15 @@ const ExecutiveBioRoom = lazy(() => import('./ExecutiveBioRoom').then((module) =
 const LiveWebinarsRoom = lazy(() => import('./LiveWebinarsRoom').then((module) => ({ default: module.LiveWebinarsRoom })));
 
 const ROOM_LABELS: Record<WorkspaceRoom, string> = {
-  dashboard: 'Workspace Home',
-  'career-profile': 'Career Vault',
-  resume: 'Resume Builder',
-  linkedin: 'LinkedIn',
-  jobs: 'Job Search',
+  dashboard: 'Today',
+  'career-profile': 'Benchmark Profile',
+  resume: 'Tailor Resume',
+  linkedin: 'LinkedIn Growth',
+  jobs: 'Find Jobs',
   networking: 'Networking',
-  interview: 'Interview Prep',
+  interview: 'Interview & Offer',
   financial: 'Retirement Bridge',
-  learning: 'Masterclass',
+  learning: 'Playbook',
   'live-webinars': 'Live Webinars',
   'executive-bio': 'Executive Bio',
 };
@@ -112,6 +113,8 @@ export function CareerIQScreen({
     signals,
     dashboardState,
     summary,
+    updateBenchmarkProfileItem,
+    answerBenchmarkDiscoveryQuestion,
   } = useCareerProfile();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [pipelineInterviews, setPipelineInterviews] = useState<PipelineInterviewCard[]>([]);
@@ -370,6 +373,8 @@ export function CareerIQScreen({
           onNavigateResume={() => handleRoomNavigate('resume')}
           careerProfile={profile}
           focusSection={normalizedWorkspaceFocus}
+          onUpdateBenchmarkItem={updateBenchmarkProfileItem}
+          onAnswerDiscoveryQuestion={answerBenchmarkDiscoveryQuestion}
         />
       );
     }
@@ -473,7 +478,7 @@ export function CareerIQScreen({
           <div className="px-4 pt-4">
             <CareerProfileSummaryCard
               summary={summary}
-              title="Career Profile powers the rest of Workspace"
+              title="Benchmark Profile powers CareerIQ"
               onOpenProfile={openCareerProfile}
               onContinue={() => handleRoomNavigate(summary.nextRecommendedRoom === 'career-profile' ? 'career-profile' : 'resume')}
             />
@@ -496,7 +501,7 @@ export function CareerIQScreen({
     }
 
     return (
-      <div className="flex min-h-screen flex-col pb-20">
+      <div className="flex h-[calc(100vh-4rem)] flex-col">
         <div className="border-b border-[var(--line-soft)] px-4 pb-3 pt-4">
           <Breadcrumbs items={breadcrumbItems} />
           <div className="mt-3 flex items-center gap-3">
@@ -513,7 +518,7 @@ export function CareerIQScreen({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto pb-6">
           <Suspense fallback={<RoomSkeleton />}>
             {renderContent()}
           </Suspense>
@@ -528,18 +533,19 @@ export function CareerIQScreen({
           onNavigateRoom={handleRoomNavigate}
           feedEvents={mobileFeedEvents}
           navOnly
+          navFixed={false}
         />
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
-      <Sidebar
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
+      <WorkspaceTopNav
         activeRoom={activeRoom}
         onNavigate={handleRoomNavigate}
         onNavigateRoute={onNavigate}
-        dashboardState={dashboardState}
+        pathname={location.pathname}
       />
 
       <main className="flex flex-1 flex-col overflow-y-auto">

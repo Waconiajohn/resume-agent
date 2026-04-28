@@ -18,6 +18,7 @@ import {
 import logger from '../../../lib/logger.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderEvidenceInventorySection,
   renderPositioningStrategySection,
 } from '../../../contracts/shared-context-prompt.js';
@@ -91,6 +92,13 @@ const writeLetterTool: CoverLetterTool = {
     const evidenceItems = evidenceItemsBlock
       ? `\n\n${evidenceItemsBlock}`
       : '';
+    const benchmarkProfileDirection = renderBenchmarkProfileDirectionSection({
+      heading: 'BENCHMARK PROFILE DIRECTION',
+      sharedContext,
+    }).join('\n');
+    const benchmarkDirection = benchmarkProfileDirection
+      ? `\n\n${benchmarkProfileDirection}`
+      : '';
 
     // Build work history block — this is the primary source of evidence.
     // Include company, title, duration, and all highlights so the writer
@@ -121,6 +129,9 @@ Writing philosophy:
 - Executives are better suited for far more roles than they initially believe — your job is to surface that real fit.
 - Use the candidate's own language and phrasing wherever possible; avoid generic resume-speak.
 - Tone must feel human and confident, not formulaic.
+- This is a strategic positioning letter, not a prose resume. Interpret the evidence into why the candidate fits this specific role; do not walk chronologically through the resume.
+- The first sentence must name the role's business problem, mandate, or benchmark-candidate need. Do not begin with "I am writing to express my interest."
+- Use no more than two past-employer references unless the target role genuinely requires breadth across several environments.
 - Length target: 250-350 words. No fluff.`;
 
     const userMessage = `Write a complete, polished cover letter using ONLY the information provided below. Output the letter text only — no JSON, no commentary, no markdown fencing.
@@ -132,7 +143,7 @@ Name: ${resume.name}
 Current title: ${resume.current_title}
 Key skills: ${resume.key_skills.join(', ')}
 Key achievements:
-- ${resume.key_achievements.join('\n- ')}${workHistoryBlock}${positioningStrategy}${evidenceItems}
+- ${resume.key_achievements.join('\n- ')}${workHistoryBlock}${benchmarkDirection}${positioningStrategy}${evidenceItems}
 
 TARGET ROLE
 Company: ${jd.company_name}
@@ -149,7 +160,7 @@ Closing strategy: ${plan.closing_strategy}
 
 TONE: ${tone}
 
-Write the full letter now. Start with "Dear Hiring Manager," and end with a professional sign-off using the candidate's name. Every paragraph must reference a specific role, company, or metric from the candidate data above.`;
+Write the full letter now. Start with "Dear Hiring Manager," and end with a professional sign-off using the candidate's name. Every paragraph must include at least one concrete source-backed detail, but the paragraph's job is to interpret why that proof matters for ${jd.company_name}'s ${jd.role_title} role.`;
 
     try {
       const response = await llm.chat({

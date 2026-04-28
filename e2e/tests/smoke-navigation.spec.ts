@@ -102,7 +102,7 @@ async function setupSignedInApp(page: Page) {
 
 async function expectWorkspaceHome(page: Page) {
   await expect(page).toHaveURL(/\/workspace$/, { timeout: 10_000 });
-  await expect(page.getByRole('button', { name: 'Open Resume Builder', exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Your Pipeline').first()).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe('Smoke: major routes and redirects', () => {
@@ -152,7 +152,7 @@ test.describe('Smoke: major routes and redirects', () => {
     await setupSignedInApp(page);
     await page.goto('/resume-builder', { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 10_000 });
-    await expect(page.getByRole('heading', { name: /Choose the resume tool you need right now/i })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Tailor your resume to a job you actually want/i })).toBeVisible({
       timeout: 10_000,
     });
     expect(errors).toHaveLength(0);
@@ -192,16 +192,16 @@ test.describe('Smoke: shell navigation', () => {
 
   test('header workspace button returns to workspace home', async ({ page }) => {
     await page.goto('/workspace?room=resume', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: /Choose the resume tool you need right now/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Tailor your resume to a job you actually want/i })).toBeVisible();
 
     await page.getByRole('button', { name: /^Workspace$/i }).click();
     await expectWorkspaceHome(page);
   });
 
-  test('workspace home resume builder entry opens the resume workspace', async ({ page }) => {
-    await page.getByRole('button', { name: 'Open Resume Builder', exact: true }).click();
-    await expect(page).toHaveURL(/\/resume-builder\/session/, { timeout: 10_000 });
-    await expect(page.getByRole('heading', { name: /Build Your Tailored Resume/i })).toBeVisible({
+  test('workspace home primary entry opens Find Jobs', async ({ page }) => {
+    await page.locator('section', { hasText: 'Your Pipeline' }).getByRole('button', { name: /^Find Jobs$/i }).click();
+    await expect(page).toHaveURL(/\/workspace\?room=jobs/, { timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: /Find your next role two ways/i })).toBeVisible({
       timeout: 10_000,
     });
   });
@@ -228,7 +228,7 @@ test.describe('Smoke: billing entry points', () => {
     await page.getByRole('button', { name: /^Upgrade$/i }).click();
 
     await expect(page).toHaveURL(/\/workspace\?room=resume/, { timeout: 10_000 });
-    await expect(page.getByRole('heading', { name: /Choose the resume tool you need right now/i })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Tailor your resume to a job you actually want/i })).toBeVisible({
       timeout: 10_000,
     });
   });
@@ -268,6 +268,6 @@ test.describe('Smoke: billing entry points', () => {
 
     await page.getByRole('button', { name: /^Manage$/i }).click();
     await expect(page).toHaveURL(/\/workspace\?room=career-profile/, { timeout: 10_000 });
-    await expect(page.getByRole('heading', { name: 'Your Profile', exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'Benchmark Profile', exact: true })).toBeVisible({ timeout: 10_000 });
   });
 });

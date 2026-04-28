@@ -197,6 +197,8 @@ describe('createLinkedInEditorProductConfig', () => {
     expect(editorConfig.system_prompt).toContain('Every factual claim must trace');
     expect(editorConfig.system_prompt).toContain('Evidence Ladder');
     expect(editorConfig.system_prompt).toContain('Do not include graduation years');
+    expect(editorConfig.system_prompt).toContain('Five-Second');
+    expect(editorConfig.system_prompt).toContain('first 300 characters of About');
   });
 });
 
@@ -302,6 +304,14 @@ describe('createLinkedInEditorProductConfig().buildAgentMessage', () => {
     const msg = config.buildAgentMessage('editor', state, {});
     expect(msg).toContain('Career story centered on leading product and platform scale-ups');
     expect(msg).toContain('Executive profile translating delivery proof into recruiter-friendly LinkedIn language');
+  });
+
+  it('includes the five-second quality bar in the editor kickoff message', () => {
+    const state = makeState();
+    const msg = config.buildAgentMessage('editor', state, {});
+    expect(msg).toContain('five-second scan');
+    expect(msg).toContain('first 300 characters of About');
+    expect(msg).toContain('benchmark candidate');
   });
 
   it('returns empty string for unknown agent', () => {
@@ -502,7 +512,45 @@ describe('self_review_section tool', () => {
     const res = result as { quality_scores: SectionQualityScores };
     expect(res.quality_scores.keyword_coverage).toBe(82);
     expect(res.quality_scores.readability).toBe(90);
+    expect(res.quality_scores.five_second_test).toBe(70);
     expect(ctx.scratchpad['scores_headline']).toBeDefined();
+  });
+
+  it('keeps advanced five-second and benchmark scores when the reviewer returns them', async () => {
+    const { editorTools } = await import('../agents/linkedin-editor/editor/tools.js');
+    const tool = editorTools.find((t) => t.name === 'self_review_section');
+    if (!tool) throw new Error('self_review_section tool not found');
+
+    const state = makeState();
+    const ctx = makeCtx(state);
+    ctx.scratchpad['draft_about'] = 'I help global operations teams turn complex service failures into measurable recovery plans.';
+    ctx.scratchpad.current_section = 'about';
+
+    const { llm } = await import('../lib/llm.js');
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValue({
+      text: JSON.stringify({
+        keyword_coverage: 84,
+        readability: 88,
+        positioning_alignment: 91,
+        five_second_test: 93,
+        hook_strength: 94,
+        benchmark_strength: 90,
+        proof_specificity: 86,
+        searchability: 82,
+      }),
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    const result = await tool.execute(
+      { section: 'about' },
+      ctx as unknown as Parameters<typeof tool.execute>[1],
+    );
+
+    const res = result as { quality_scores: SectionQualityScores };
+    expect(res.quality_scores.five_second_test).toBe(93);
+    expect(res.quality_scores.hook_strength).toBe(94);
+    expect(res.quality_scores.benchmark_strength).toBe(90);
   });
 
   it('returns failure when no section draft exists', async () => {

@@ -71,6 +71,7 @@ import { writerConfig } from '../agents/thank-you-note/writer/agent.js';
 // ─── Tools ───────────────────────────────────────────────────────────
 
 import { writerTools } from '../agents/thank-you-note/writer/tools.js';
+import { llm } from '../lib/llm.js';
 
 // ─── ProductConfig ───────────────────────────────────────────────────
 
@@ -165,6 +166,61 @@ describe('Thank You Note Tool Model Tiers', () => {
     const writeTool = writerTools.find((t) => t.name === 'write_thank_you_note');
     expect(writeTool).toBeDefined();
     expect(writeTool!.description.toLowerCase()).toContain('recipient_role');
+  });
+
+  it('write_thank_you_note replaces bracketed candidate-name placeholders', async () => {
+    const state: ThankYouNoteState = {
+      session_id: 's',
+      user_id: 'u',
+      current_stage: 'writing',
+      recipients: [
+        {
+          name: 'Patricia Monroe',
+          title: 'COO',
+          role: 'hiring_manager',
+          topics_discussed: ['margin recovery'],
+        },
+      ],
+      interview_context: {
+        company: 'Coventry Industrial Holdings',
+        role: 'Chief Operating Officer',
+      },
+      notes: [],
+      activity_signals: {},
+    };
+    const scratchpad = {
+      candidate_name: 'David Harrington',
+      interview_analysis: {
+        recipient_analysis: [
+          {
+            name: 'Patricia Monroe',
+            seniority_level: 'C-suite',
+            tone_recommendation: 'strategic',
+            strongest_personalization: 'margin recovery conversation',
+          },
+        ],
+      },
+    };
+
+    (llm.chat as ReturnType<typeof vi.fn>).mockReset();
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      text: JSON.stringify({
+        content: 'Patricia,\n\nThank you for the conversation about margin recovery.\n\nBest,\n[Candidate Name]',
+        subject_line: 'Margin recovery conversation',
+        personalization_notes: 'References the specific discussion.',
+      }),
+    });
+
+    const tool = writerTools.find((t) => t.name === 'write_thank_you_note');
+    await tool?.execute({ recipient_name: 'Patricia Monroe', format: 'email' }, {
+      getState: () => state,
+      scratchpad,
+      emit: vi.fn(),
+    } as never);
+
+    expect(state.notes[0].content).toContain('David Harrington');
+    expect(state.notes[0].content).not.toContain('[Candidate Name]');
+    expect(state.notes[0].content).not.toContain('[Your Name]');
   });
 
   it('analyze_interview_context description mentions themes', () => {

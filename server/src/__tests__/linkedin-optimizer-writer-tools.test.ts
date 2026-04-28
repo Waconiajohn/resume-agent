@@ -123,6 +123,12 @@ function getExperienceTool() {
   return tool;
 }
 
+function getHeadlineTool() {
+  const tool = writerTools.find(t => t.name === 'write_headline');
+  if (!tool) throw new Error('write_headline tool not found');
+  return tool;
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('write_experience_entries — structured output (Story 56-3)', () => {
@@ -444,5 +450,43 @@ describe('write_experience_entries — structured output (Story 56-3)', () => {
 
     // The optimized text of entry 0 should appear inside the combined block
     expect(combined).toContain(entries[0].optimized);
+  });
+});
+
+describe('write_headline — complete LinkedIn headline variants', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('normalizes overlong headlines at phrase boundaries instead of cutting mid-thought', async () => {
+    const state = makeState();
+    const ctx = makeMockGenericContext<LinkedInOptimizerState, LinkedInOptimizerSSEEvent>(state);
+    const overlong = 'Operations Executive | Supply Chain Transformation | P&L Management | Lean Operating Systems | Global Manufacturing Leadership | Margin Recovery | Enterprise Transformation | Strategic Vendor Management | Cross-Functional Execution | This trailing phrase should not survive because it is too long';
+
+    mockChat.mockResolvedValueOnce({
+      text: JSON.stringify({
+        options: [
+          { label: 'Option A', headline: overlong, why_it_works: 'Uses resume-backed operations language.' },
+          { label: 'Option B', headline: 'VP of Operations | Supply Chain | P&L Management', why_it_works: 'Direct and searchable.' },
+          { label: 'Option C', headline: 'Margin Recovery Operator | Lean Transformation | Global Operations', why_it_works: 'Specific value proposition.' },
+        ],
+        recommended_headline: overlong,
+        recommended_headline_rationale: 'Best fit.',
+      }),
+      tool_calls: [],
+      usage: { input_tokens: 0, output_tokens: 0 },
+    });
+
+    const result = JSON.parse(await getHeadlineTool().execute({}, ctx) as string);
+    const recommendations = ctx.scratchpad.headline_recommendations as {
+      recommended_headline: string;
+      options: Array<{ headline: string }>;
+    };
+
+    expect(result.success).toBe(true);
+    expect(recommendations.options).toHaveLength(3);
+    expect(recommendations.recommended_headline.length).toBeLessThanOrEqual(220);
+    expect(recommendations.recommended_headline).not.toMatch(/[|·•,-]\s*$/);
+    expect(recommendations.recommended_headline).not.toContain('This trailing phrase');
   });
 });

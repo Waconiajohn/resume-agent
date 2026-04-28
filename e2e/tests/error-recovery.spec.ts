@@ -1,7 +1,7 @@
 /**
  * Current error recovery tests
  *
- * Covers the current Resume Builder session route and Resume Builder workspace
+ * Covers the current Tailor Resume session route and workspace
  * route instead of the retired dashboard/session-launcher flows.
  */
 
@@ -278,15 +278,15 @@ test.describe('Current error recovery', () => {
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test('Resume Builder workspace still renders when sessions fail to load', async ({ page }) => {
+  test('Tailor Resume workspace still renders when sessions fail to load', async ({ page }) => {
     await stubSupabaseAuth(page);
     await mockWorkspaceApi(page, { sessionsStatus: 500 });
 
     await page.goto('/workspace?room=resume');
     await expect(
-      page.getByRole('heading', { name: /Choose the resume tool you need right now/i }),
+      page.getByRole('heading', { name: /Tailor your resume to a job you actually want/i }),
     ).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole('button', { name: /^Browse Job Workspaces$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Browse Saved Resumes$/i })).toBeVisible();
     await expect(page.getByText('Something went wrong')).not.toBeVisible();
   });
 
@@ -296,10 +296,10 @@ test.describe('Current error recovery', () => {
 
     await page.goto('/workspace?room=resume');
     await expect(
-      page.getByRole('heading', { name: /Choose the resume tool you need right now/i }),
+      page.getByRole('heading', { name: /Tailor your resume to a job you actually want/i }),
     ).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole('button', { name: /^Open Master Resume$/i }).click();
+    await page.getByRole('button', { name: /^Open Source Material$/i }).click();
     await expect(page.getByText(/No master resume found\./i)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Something went wrong')).not.toBeVisible();
   });

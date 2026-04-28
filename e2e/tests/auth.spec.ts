@@ -10,8 +10,8 @@ test.describe('Auth gate smoke', () => {
     await page.getByRole('button', { name: /Sign In/i }).click();
 
     await expect(page).toHaveURL(/\/workspace$/, { timeout: 10_000 });
-    await expect(page.getByText('Career Profile backbone').first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole('button', { name: /Open Resume Builder/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Your Pipeline').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('button', { name: /^Find Jobs$/i }).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test('successful sign out returns to the sales page', async ({ page }) => {
@@ -21,7 +21,7 @@ test.describe('Auth gate smoke', () => {
     await fillCredentials(page, 'test@example.com', 'password123');
     await page.getByRole('button', { name: /Sign In/i }).click();
 
-    await expect(page.getByText('Career Profile backbone').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Your Pipeline').first()).toBeVisible({ timeout: 10_000 });
     await page.getByRole('button', { name: /^Sign out$/i }).click();
 
     await expect(page).toHaveURL(/\/sales$/, { timeout: 10_000 });

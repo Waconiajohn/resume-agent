@@ -58,6 +58,7 @@ import '../agents/follow-up-email/writer/agent.js';
 import { createFollowUpEmailProductConfig } from '../agents/follow-up-email/product.js';
 import { writerTools } from '../agents/follow-up-email/writer/tools.js';
 import { FOLLOW_UP_EMAIL_RULES } from '../agents/follow-up-email/knowledge/rules.js';
+import { llm } from '../lib/llm.js';
 import {
   defaultToneForFollowUpNumber,
   defaultSituationForFollowUpNumber,
@@ -111,6 +112,40 @@ describe('Follow-Up Email Tools', () => {
     for (const tool of writerTools) {
       expect(tool.input_schema.type).toBe('object');
     }
+  });
+
+  it('parses repaired JSON into subject and body instead of showing raw JSON', async () => {
+    vi.mocked(llm.chat).mockResolvedValueOnce({
+      text: JSON.stringify({
+        subject: 'First 90 days',
+        body: 'Ellen, I appreciated the conversation about stabilizing the divisions.',
+        tone_notes: 'Warm and specific.',
+        timing_guidance: 'Send mid-morning.',
+      }),
+      usage: { input_tokens: 0, output_tokens: 0 },
+      tool_calls: [],
+    });
+
+    const cfg = createFollowUpEmailProductConfig();
+    const state = cfg.createInitialState('sess', 'user', {
+      company_name: 'Jrgpartners',
+      role_title: 'VP Manufacturing',
+      recipient_name: 'Ellen Carter',
+      recipient_title: 'COO',
+      specific_context: 'first 90 days',
+    });
+    const scratchpad: Record<string, unknown> = {};
+    const tool = writerTools.find((t) => t.name === 'draft_follow_up_email');
+
+    await tool!.execute({}, {
+      getState: () => state,
+      scratchpad,
+    } as never);
+
+    const draft = scratchpad.draft as FollowUpEmailDraft;
+    expect(draft.subject).toBe('First 90 days');
+    expect(draft.body).toBe('Ellen, I appreciated the conversation about stabilizing the divisions.');
+    expect(draft.body).not.toContain('"subject"');
   });
 });
 

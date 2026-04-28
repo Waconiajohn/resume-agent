@@ -55,14 +55,14 @@ export function ProfileReveal({
             className="text-3xl font-light text-[var(--text-strong)] mb-2"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            Your CareerIQ Profile
+            Your Benchmark Profile
           </h1>
           <p className="text-sm text-[var(--text-muted)] mb-2">
-            Built from your career history and your interview.
-            This is who you are — in language that lands.
+            Built from your resume, LinkedIn profile, and discovery answers.
+            This is the source of truth the rest of CareerIQ uses.
           </p>
           <p className="text-sm text-[var(--text-soft)] mt-1 mb-12">
-            This profile is the foundation. Every resume you build from here will use it.
+            Every tailored resume, LinkedIn update, cover letter, message, interview brief, thank-you note, and follow-up starts from this foundation.
           </p>
           {masterResumeRecovered && masterResumeCreated && (
             <div
@@ -73,10 +73,10 @@ export function ProfileReveal({
               }}
             >
               <p className="text-sm font-medium text-[var(--text-strong)] mb-1">
-                Your Career Evidence is ready now.
+                Your Career Proof is ready now.
               </p>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                The retry worked, and future Resume Builder runs will use this profile and Career Evidence together.
+                The retry worked. Future Tailor Resume runs will use this Benchmark Profile and Career Proof together.
               </p>
             </div>
           )}
@@ -89,10 +89,10 @@ export function ProfileReveal({
               }}
             >
               <p className="text-sm font-medium text-[var(--text-strong)] mb-1">
-                Your profile is saved, but your first Career Evidence still needs one more step.
+                Your profile is saved, but your first Career Proof still needs one more step.
               </p>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-3">
-                We kept your setup data so you can retry the Career Evidence creation now without losing anything.
+                We kept your setup data so you can retry Career Proof creation now without losing anything.
               </p>
               <button
                 type="button"
@@ -104,7 +104,7 @@ export function ProfileReveal({
                   color: retryingMasterResume ? 'var(--text-muted)' : 'var(--bg-0)',
                 }}
               >
-                {retryingMasterResume ? 'Retrying Career Evidence creation...' : 'Retry creating my Career Evidence'}
+                {retryingMasterResume ? 'Retrying Career Proof creation...' : 'Retry creating my Career Proof'}
               </button>
             </div>
           )}
@@ -192,7 +192,7 @@ export function ProfileReveal({
                 onClick={() => navigate('/workspace?room=resume')}
                 className="flex-1 py-4 rounded-xl text-sm text-[var(--text-strong)] border border-[var(--line-soft)] hover:border-[var(--link)] transition-colors"
               >
-                Analyze a specific job →
+                Tailor a resume for a job →
               </button>
             </div>
           </div>

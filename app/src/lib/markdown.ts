@@ -31,8 +31,8 @@ function parseTableRow(line: string): string[] {
 const TABLE_STYLES = {
   table:
     'border-collapse:collapse;width:100%;margin:1em 0;font-size:0.9em;',
-  th: 'padding:8px 12px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-weight:600;text-align:left;',
-  td: 'padding:8px 12px;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.9);',
+  th: 'padding:8px 12px;border:1px solid var(--line-soft);background:var(--surface-2);color:var(--text-strong);font-weight:600;text-align:left;',
+  td: 'padding:8px 12px;border:1px solid var(--line-soft);color:var(--text-muted);',
 };
 
 function renderTable(rows: string[]): string {

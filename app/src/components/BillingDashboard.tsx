@@ -271,14 +271,14 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
     : 0;
 
   return (
-    <div className="flex flex-col gap-5 p-1">
+    <div className="mx-auto flex h-full w-full max-w-[1120px] flex-col gap-5 overflow-y-auto p-6">
       {/* Current plan */}
       <GlassCard className="space-y-4 p-5">
-        <div className="room-meta-strip">
-          <div className="room-meta-item">
-            <span className="eyebrow-label">Billing</span>
-            <span className="text-sm text-[var(--text-soft)]">Plan status, billing controls, and account usage in one place.</span>
-          </div>
+        <div className="rounded-[8px] border-l-2 border-[var(--meta-strip-border)] bg-[var(--meta-strip-bg)] px-4 py-3">
+          <h1 className="eyebrow-label">Billing</h1>
+          <p className="mt-1 text-sm font-medium normal-case tracking-normal text-[var(--text-soft)]">
+            Plan status, billing controls, and account usage in one place.
+          </p>
         </div>
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -336,7 +336,7 @@ export function BillingDashboard({ accessToken }: BillingDashboardProps) {
 
         <div className="mt-4 flex items-end justify-between">
           <span className="text-2xl font-bold text-[var(--text-strong)]">{usage.sessions_this_period}</span>
-          <span className="text-sm text-white/40">
+          <span className="text-sm text-[var(--text-soft)]">
             of {plan.included_sessions} included runs
           </span>
         </div>

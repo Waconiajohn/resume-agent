@@ -99,7 +99,7 @@ describe('ExecutiveBioRoom', () => {
   it('shows length selector options', () => {
     render(<ExecutiveBioRoom />);
     expect(screen.getByText('Short')).toBeInTheDocument();
-    expect(screen.getByText('Long')).toBeInTheDocument();
+    expect(screen.getByText('Standard')).toBeInTheDocument();
   });
 
   it('has a generate button present in idle state', () => {

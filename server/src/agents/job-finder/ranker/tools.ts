@@ -16,6 +16,7 @@ import type { JobFinderState, JobFinderSSEEvent } from '../types.js';
 import { hasMeaningfulSharedValue } from '../../../contracts/shared-context.js';
 import {
   renderBenchmarkCandidateSection,
+  renderBenchmarkProfileDirectionSection,
   renderCareerNarrativeSection,
   renderGapAnalysisSection,
   renderIndustryContextSection,
@@ -63,6 +64,10 @@ const scoreJobFitTool: JobFinderTool = {
       : state.platform_context?.gap_analysis;
 
     const contextParts: string[] = [
+      ...renderBenchmarkProfileDirectionSection({
+        heading: 'BENCHMARK PROFILE DIRECTION',
+        sharedContext,
+      }),
       ...renderPositioningStrategySection({
         heading: 'POSITIONING STRATEGY',
         sharedStrategy: sharedContext?.positioningStrategy,

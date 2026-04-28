@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload } from 'lucide-react';
+import { Clock, Sparkles, Upload } from 'lucide-react';
 import { extractResumeTextFromUpload } from '@/lib/resume-upload';
 import { cn } from '@/lib/utils';
 
@@ -21,11 +21,9 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
   const [linkedinAbout, setLinkedinAbout] = useState('');
   const [targetRoles, setTargetRoles] = useState('');
   const [situation, setSituation] = useState('');
-  const [showLinkedInSkipConfirm, setShowLinkedInSkipConfirm] = useState(false);
   const [showLinkedInHelp, setShowLinkedInHelp] = useState(false);
   const [linkedinFileName, setLinkedinFileName] = useState<string | null>(null);
   const linkedinFileRef = useRef<HTMLInputElement>(null);
-  const linkedinTextRef = useRef<HTMLTextAreaElement>(null);
   const [resumeDragging, setResumeDragging] = useState(false);
   const [resumeFileName, setResumeFileName] = useState<string | null>(null);
   const resumeFileRef = useRef<HTMLInputElement>(null);
@@ -56,12 +54,11 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
       const text = await extractResumeTextFromUpload(file);
       setLinkedinAbout(text);
       setLinkedinFileName(file.name);
-      if (showLinkedInSkipConfirm) setShowLinkedInSkipConfirm(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not read file';
       setLinkedinFileName(message);
     }
-  }, [showLinkedInSkipConfirm]);
+  }, []);
 
   const handleResumeDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -81,11 +78,6 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
   const handleSubmit = () => {
     if (!canSubmit) return;
 
-    if (!linkedinAbout.trim() && !showLinkedInSkipConfirm) {
-      setShowLinkedInSkipConfirm(true);
-      return;
-    }
-
     onSubmit(resumeText.trim(), linkedinAbout.trim(), targetRoles.trim(), situation.trim());
   };
 
@@ -101,23 +93,47 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
       onKeyDown={handleKeyDown}
     >
       <div className="w-full max-w-2xl">
-        <h1
-          className="text-3xl font-light text-[var(--text-strong)] mb-3"
-          style={{ fontFamily: 'var(--font-display)' }}
-        >
-          Let's build your CareerIQ profile.
-        </h1>
-        <p className="text-sm text-[var(--text-muted)] mb-10">
-          About 20 minutes. Built to last your entire search.
-        </p>
+        <div className="mb-10">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-[var(--link)]/20 bg-[var(--link)]/[0.07] px-3 py-1.5 text-[12px] font-semibold text-[var(--link)]">
+            <Clock className="h-3.5 w-3.5" />
+            10-15 minutes now. Hours saved later.
+          </div>
+          <h1
+            className="text-3xl font-semibold text-[var(--text-strong)] mb-3"
+          >
+            Build the profile every future application uses.
+          </h1>
+          <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+            Upload your most complete career history once. CareerIQ turns it into the foundation for
+            role-specific resumes, LinkedIn updates, cover letters, networking messages, interview prep,
+            thank-you notes, and follow-up emails.
+          </p>
+          <div className="mt-5 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-md bg-[var(--link)]/10 p-1.5 text-[var(--link)]">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[var(--text-strong)]">
+                  Use your most comprehensive resume, not your shortest resume.
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-muted)]">
+                  This is the one place where more evidence is better: older roles, extra bullets,
+                  projects, metrics, tools, awards, certifications, leadership scope, and anything else
+                  that proves what you can do. We will trim and tailor later.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Resume */}
         <div className="mb-8">
           <label className="block text-xs uppercase tracking-widest font-semibold text-[var(--text-muted)] mb-2">
-            Your resume
+            Most comprehensive resume
           </label>
           <p className="text-xs text-[var(--text-muted)] mb-3">
-            Upload a file, drag and drop, or paste the text of your resume.
+            Upload the longest, most detailed version you have. It can be too long for a real application.
           </p>
 
           {/* File upload bar */}
@@ -160,7 +176,7 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
           >
             <textarea
               className="w-full min-h-[200px] bg-[var(--surface-1)] border border-[var(--line-soft)] rounded-lg px-4 py-3 text-sm text-[var(--text-strong)] leading-relaxed resize-y outline-none focus:border-[var(--link)] transition-colors placeholder:text-[var(--text-muted)]"
-              placeholder={resumeDragging ? 'Drop your resume here...' : 'Paste your resume text here, or drag a file onto this area...'}
+              placeholder={resumeDragging ? 'Drop your comprehensive resume here...' : 'Paste your most complete resume text here, or drag a file onto this area...'}
               value={resumeText}
               onChange={(e) => { setResumeText(e.target.value); setResumeFileName(null); }}
               aria-label="Resume text"
@@ -174,15 +190,16 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
           )}
         </div>
 
-        {/* LinkedIn Profile */}
+        {/* LinkedIn Context */}
         <div className="mb-8">
           <label className="block text-xs uppercase tracking-widest font-semibold text-[var(--text-muted)] mb-2">
-            LinkedIn profile
-            <span className="ml-2 normal-case tracking-normal font-normal opacity-60">(encouraged)</span>
+            LinkedIn context
+            <span className="ml-2 normal-case tracking-normal font-normal opacity-60">(optional)</span>
           </label>
           <p className="text-xs text-[var(--text-muted)] mb-3">
-            Your LinkedIn profile reveals how you talk about yourself — your voice, your framing, what you lead with.
-            Upload a PDF of your profile, or paste your About section below.
+            Add this only when it is your own profile or you have permission to use the content.
+            You can paste a public profile URL, add a few brand notes, upload a permitted file, or leave this blank.
+            CareerIQ can build the first Benchmark Profile from the resume alone.
           </p>
 
           {/* Upload bar + help toggle */}
@@ -193,7 +210,7 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
               className="flex items-center gap-2 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-2 text-xs text-[var(--text-muted)] hover:border-[var(--link)] hover:text-[var(--text-strong)] transition-colors"
             >
               <Upload className="h-3.5 w-3.5" />
-              Upload LinkedIn PDF
+              Upload permitted file
             </button>
             {linkedinFileName && (
               <span className="text-xs text-[var(--text-soft)] truncate max-w-[300px]">
@@ -205,7 +222,7 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
               onClick={() => setShowLinkedInHelp(!showLinkedInHelp)}
               className="ml-auto text-xs text-[var(--link)] hover:text-[var(--link-hover)] transition-colors"
             >
-              {showLinkedInHelp ? 'Hide instructions' : 'How do I get a PDF?'}
+              {showLinkedInHelp ? 'Hide guidance' : 'What can I add?'}
             </button>
             <input
               ref={linkedinFileRef}
@@ -220,66 +237,34 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
             />
           </div>
 
-          {/* Print-to-PDF instructions */}
+          {/* LinkedIn context guidance */}
           {showLinkedInHelp && (
             <div className="mb-3 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3">
               <p className="text-xs font-medium text-[var(--text-strong)] mb-2">
-                Save your LinkedIn profile as a PDF:
+                Good optional LinkedIn context:
               </p>
-              <ol className="text-xs text-[var(--text-muted)] space-y-1.5 list-decimal list-inside">
-                <li>Open your LinkedIn profile in a browser</li>
-                <li>Press <kbd className="px-1.5 py-0.5 rounded bg-[var(--bg-0)] border border-[var(--line-soft)] text-[var(--text-strong)] font-mono text-[10px]">{navigator.platform?.includes('Mac') ? 'Cmd' : 'Ctrl'}+P</kbd> to open the print dialog</li>
-                <li>Change the destination to <strong>Save as PDF</strong></li>
-                <li>Click Save, then upload the file here</li>
-              </ol>
-              <p className="mt-2 text-[10px] text-[var(--text-soft)]">
-                This captures your full profile including expanded sections.
+              <ul className="text-xs text-[var(--text-muted)] space-y-1.5 list-disc list-inside">
+                <li>Use only content you own or are allowed to process.</li>
+                <li>A public LinkedIn URL is stored as context only. CareerIQ will not scrape LinkedIn from it.</li>
+                <li>Approved headline, About, experience, recommendations, or recent post notes can improve the brand draft.</li>
+                <li>Skipping this is fine. Your comprehensive resume will drive the first version.</li>
+              </ul>
+              <p className="mt-3 text-[10px] text-[var(--text-soft)]">
+                If you upload a profile export or PDF, make sure it is your own profile or that you have permission to use it.
               </p>
             </div>
           )}
 
           <textarea
-            ref={linkedinTextRef}
             className="w-full min-h-[120px] bg-[var(--surface-1)] border border-[var(--line-soft)] rounded-lg px-4 py-3 text-sm text-[var(--text-strong)] leading-relaxed resize-y outline-none focus:border-[var(--link)] transition-colors placeholder:text-[var(--text-muted)]"
-            placeholder="Or paste your LinkedIn About section or full profile text here..."
+            placeholder="Optional: paste a public LinkedIn URL, approved profile notes, headline/About text you own, or leave this blank..."
             value={linkedinAbout}
             onChange={(e) => {
               setLinkedinAbout(e.target.value);
               setLinkedinFileName(null);
-              if (showLinkedInSkipConfirm) setShowLinkedInSkipConfirm(false);
             }}
-            aria-label="LinkedIn profile text"
+            aria-label="Optional LinkedIn context"
           />
-
-          {showLinkedInSkipConfirm && (
-            <div className="mt-3 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-4 py-3">
-              <p className="text-sm text-[var(--text-muted)] mb-3">
-                Adding your LinkedIn About section significantly improves your profile. Are you sure you want to skip it?
-              </p>
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  className="text-sm text-[var(--link)] hover:text-[var(--link-hover)] transition-colors"
-                  onClick={() => {
-                    setShowLinkedInSkipConfirm(false);
-                    linkedinTextRef.current?.focus();
-                  }}
-                >
-                  Add it now
-                </button>
-                <button
-                  type="button"
-                  className="text-sm text-[var(--text-muted)] hover:text-[var(--text-strong)] transition-colors"
-                  onClick={() => {
-                    setShowLinkedInSkipConfirm(false);
-                    onSubmit(resumeText.trim(), '', targetRoles.trim(), situation.trim());
-                  }}
-                >
-                  Continue without it
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Target Roles */}
@@ -332,9 +317,9 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
             background: canSubmit ? 'var(--link)' : 'var(--surface-1)',
             color: canSubmit ? 'var(--bg-0)' : 'var(--text-muted)',
           }}
-          aria-label="Build my CareerIQ profile"
+          aria-label="Build my Benchmark Profile"
         >
-          {loading ? 'Analyzing your background...' : 'Build my CareerIQ profile \u2192'}
+          {loading ? 'Analyzing your background...' : 'Build my Benchmark Profile \u2192'}
         </button>
       </div>
     </div>

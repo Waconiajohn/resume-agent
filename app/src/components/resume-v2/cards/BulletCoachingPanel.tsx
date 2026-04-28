@@ -381,7 +381,7 @@ export function BulletCoachingPanel({
                 {activeResult.enhancedBullet}
               </p>
             ) : enhanceError ? (
-              <p className="text-sm text-red-500">{enhanceError}</p>
+              <p className="text-sm text-[var(--badge-red-text)]">{enhanceError}</p>
             ) : null}
           </>
         )}
@@ -397,7 +397,7 @@ export function BulletCoachingPanel({
               <button
                 type="button"
                 onClick={() => handleAcceptSuggestion(activeResult.enhancedBullet)}
-                className="rounded-lg px-3 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                className="rounded-lg px-3 py-2 text-sm font-semibold bg-[var(--link)] hover:bg-[var(--link-hover)] text-white transition-colors"
               >
                 Use This
               </button>
@@ -468,8 +468,8 @@ export function BulletCoachingPanel({
             className={cn(
               'text-xs font-medium transition-colors',
               confirmRemove
-                ? 'text-red-400 font-semibold'
-                : 'text-[var(--text-soft)] hover:text-red-400',
+                ? 'text-[var(--badge-red-text)] font-semibold'
+                : 'text-[var(--text-soft)] hover:text-[var(--badge-red-text)]',
             )}
           >
             {confirmRemove ? 'Confirm removal' : 'Remove this line'}

@@ -21,6 +21,7 @@ import { LINKEDIN_OPTIMIZER_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderCareerNarrativeSection,
   renderEvidenceInventorySection,
   renderWhyMeStorySection,
@@ -47,6 +48,70 @@ function safeString(value: unknown, fallback = ''): string {
 function safeNumber(value: unknown, fallback = 5): number {
   const n = Number(value);
   return isNaN(n) ? fallback : Math.max(1, Math.min(10, n));
+}
+
+function normalizeHeadline(value: unknown, fallback = ''): string {
+  const raw = safeString(value, fallback).replace(/\s+/g, ' ').trim();
+  if (raw.length <= 220) return raw;
+
+  const boundary = Math.max(
+    raw.lastIndexOf('|', 220),
+    raw.lastIndexOf('·', 220),
+    raw.lastIndexOf('•', 220),
+  );
+  const cutAt = boundary >= 90 ? boundary : raw.lastIndexOf(' ', 220);
+  const truncated = raw.slice(0, cutAt > 90 ? cutAt : 220);
+  return truncated.replace(/[\s|·•,-]+$/g, '').trim();
+}
+
+function buildExperienceActionPlan(state: LinkedInOptimizerState): LinkedInAuditReport['experience_alignment'] {
+  const achievements = state.resume_data?.key_achievements ?? [];
+  const workHistory = state.resume_data?.work_history ?? [];
+  const currentExperience = state.current_profile?.experience_text?.trim() ?? '';
+
+  return {
+    resume_strengths_to_surface_more: achievements.length > 0
+      ? achievements.slice(0, 5)
+      : [
+          'Add the strongest measurable outcomes from the resume to the top of the LinkedIn experience section.',
+          'Move leadership scope, business scale, and transformation work out of buried bullets and into the first two lines.',
+        ],
+    claims_that_need_stronger_proof: currentExperience
+      ? [
+          'Any claim in the LinkedIn experience section that does not include scope, business impact, or a concrete operating context should be tightened.',
+        ]
+      : [
+          'Current LinkedIn experience text was not provided, so this pass can create directionally correct role entries from the resume but cannot compare against the live profile.',
+        ],
+    recommended_experience_reframing: workHistory.length > 0
+      ? workHistory.slice(0, 4).map((role) => (
+          `Rewrite ${role.title} at ${role.company} so the first line explains what changed because of the work, then support it with 2-4 searchable proof bullets.`
+        ))
+      : [
+          'Add one LinkedIn experience entry per resume role, leading each entry with impact before responsibilities.',
+        ],
+  };
+}
+
+function normalizeExperienceAlignment(
+  value: LinkedInAuditReport['experience_alignment'],
+  state: LinkedInOptimizerState,
+): LinkedInAuditReport['experience_alignment'] {
+  const fallback = buildExperienceActionPlan(state);
+  return {
+    resume_strengths_to_surface_more:
+      value.resume_strengths_to_surface_more.length > 0
+        ? value.resume_strengths_to_surface_more
+        : fallback.resume_strengths_to_surface_more,
+    claims_that_need_stronger_proof:
+      value.claims_that_need_stronger_proof.length > 0
+        ? value.claims_that_need_stronger_proof
+        : fallback.claims_that_need_stronger_proof,
+    recommended_experience_reframing:
+      value.recommended_experience_reframing.length > 0
+        ? value.recommended_experience_reframing
+        : fallback.recommended_experience_reframing,
+  };
 }
 
 function buildContextBlock(state: LinkedInOptimizerState): string {
@@ -135,6 +200,11 @@ function buildContextBlock(state: LinkedInOptimizerState): string {
     }));
   }
 
+  parts.push(...renderBenchmarkProfileDirectionSection({
+    heading: '## Benchmark Profile Direction',
+    sharedContext: state.shared_context,
+  }));
+
   parts.push(...renderEvidenceInventorySection({
     heading: '## Evidence Inventory',
     sharedInventory: state.shared_context?.evidenceInventory,
@@ -200,6 +270,7 @@ Requirements for each headline:
 - Add a proof point with a real metric if space allows
 - Use pipe (|) or bullet (·) to separate clusters if needed
 - No buzzwords without substance
+- Every headline must be a complete phrase. Never end mid-word, mid-phrase, or with a dangling separator.
 
 Return JSON:
 {
@@ -233,11 +304,11 @@ Return JSON:
       const text = response.text.trim();
       result = {
         options: [
-          { label: 'Option A — Strongest Overall', headline: text.slice(0, 220), why_it_works: 'Generated from resume data and keyword analysis.' },
-          { label: 'Option B — More Magnetic', headline: text.slice(0, 220), why_it_works: 'Generated from resume data and keyword analysis.' },
-          { label: 'Option C — ATS Optimized', headline: text.slice(0, 220), why_it_works: 'Generated from resume data and keyword analysis.' },
+          { label: 'Option A — Strongest Overall', headline: normalizeHeadline(text), why_it_works: 'Generated from resume data and keyword analysis.' },
+          { label: 'Option B — More Magnetic', headline: normalizeHeadline(text), why_it_works: 'Generated from resume data and keyword analysis.' },
+          { label: 'Option C — ATS Optimized', headline: normalizeHeadline(text), why_it_works: 'Generated from resume data and keyword analysis.' },
         ],
-        recommended_headline: text.slice(0, 220),
+        recommended_headline: normalizeHeadline(text),
         recommended_headline_rationale: 'Generated from resume data.',
       };
     }
@@ -245,13 +316,23 @@ Return JSON:
     const rawOptions = Array.isArray(result.options) ? result.options : [];
     const options = rawOptions.map((o) => ({
       label: safeString(o.label, 'Option'),
-      headline: safeString(o.headline).slice(0, 220),
+      headline: normalizeHeadline(o.headline),
       why_it_works: safeString(o.why_it_works),
-    }));
+    })).filter((o) => o.headline.length > 0);
+
+    while (options.length < 3) {
+      options.push({
+        label: `Option ${String.fromCharCode(65 + options.length)}`,
+        headline: normalizeHeadline(
+          `${state.resume_data.current_title} | ${state.resume_data.key_skills.slice(0, 3).join(' | ')}`,
+        ),
+        why_it_works: 'Fallback headline built from the candidate title and resume-backed skills.',
+      });
+    }
 
     const headlineRecommendations: LinkedInAuditReport['headline_recommendations'] = {
-      options,
-      recommended_headline: safeString(result.recommended_headline, options[0]?.headline ?? '').slice(0, 220),
+      options: options.slice(0, 3),
+      recommended_headline: normalizeHeadline(result.recommended_headline, options[0]?.headline ?? ''),
       recommended_headline_rationale: safeString(result.recommended_headline_rationale),
     };
 
@@ -452,6 +533,7 @@ Requirements for entries:
 - Use keywords naturally — experience section is heavily indexed
 - Never contradict the resume — dates, titles, companies must match exactly
 - Complement the resume, don't duplicate it — tell the story behind the title
+- Do not use placeholder language. If current LinkedIn experience text is missing, create ready-to-use entries from the resume work history and clearly say what the user should verify.
 - For each entry, score it on 4 dimensions (0-100): impact, metrics, context, keywords
 
 Return a JSON object with this exact shape:
@@ -740,12 +822,12 @@ const assembleReportTool: LinkedInOptimizerTool = {
         full_rewritten_about: sections.about?.optimized ?? '',
       };
 
-    const experienceRec = (ctx.scratchpad.experience_alignment as LinkedInAuditReport['experience_alignment'] | undefined)
+    const experienceRec = normalizeExperienceAlignment((ctx.scratchpad.experience_alignment as LinkedInAuditReport['experience_alignment'] | undefined)
       ?? {
         resume_strengths_to_surface_more: [],
         claims_that_need_stronger_proof: [],
         recommended_experience_reframing: [],
-      };
+      }, state);
 
     const skillsRec = (ctx.scratchpad.skills_recommendations as LinkedInAuditReport['skills_and_featured_recommendations'] | undefined)
       ?? {

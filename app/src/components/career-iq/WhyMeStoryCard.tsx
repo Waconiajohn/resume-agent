@@ -153,7 +153,7 @@ export function WhyMeStoryCard() {
       </div>
 
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-        This is your positioning foundation. The three answers below shape how Resume Builder, LinkedIn, Interview Prep, and Networking frame your story.
+        This is your positioning foundation. The three answers below shape how LinkedIn Growth, Find Jobs, Tailor Resume, Interview & Offer, and Networking frame your story.
       </p>
 
       {/* Signal row */}
@@ -282,7 +282,7 @@ export function WhyMeStoryCard() {
 
             <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
               <p className="text-xs leading-relaxed text-[var(--text-soft)]">
-                This narrative was saved from a Resume Builder session. To refresh it, run a new resume session and it will reflect your positioning for that specific role.
+                This narrative was saved from a Tailor Resume session. To refresh it, run a new resume session and it will reflect your positioning for that specific role.
               </p>
             </div>
           </div>

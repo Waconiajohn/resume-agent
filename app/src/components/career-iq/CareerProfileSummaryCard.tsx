@@ -54,7 +54,7 @@ export function CareerProfileSummaryCard({
               type="button"
               onClick={onOpenProfile}
               className="mt-3 flex items-center gap-3 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-left transition-colors hover:bg-[var(--accent-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
-              aria-label="View Why-Me story signals in Career Vault"
+              aria-label="View Why-Me story signals in Benchmark Profile"
             >
               <span className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
                 Why-Me

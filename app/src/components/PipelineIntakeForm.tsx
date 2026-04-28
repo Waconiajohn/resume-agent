@@ -160,7 +160,7 @@ export function PipelineIntakeForm({
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] overflow-y-auto">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-300/[0.07] via-transparent to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(5,102,141,0.07),transparent_42%)]" />
 
       <div className="relative z-10 mx-auto max-w-2xl px-4 py-12">
         {/* Back button */}
@@ -179,7 +179,7 @@ export function PipelineIntakeForm({
 
         {/* Header */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--line-soft)] bg-[var(--accent-muted)]">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[8px] border border-[var(--line-soft)] bg-[var(--accent-muted)]">
             <Sparkles className="h-8 w-8 text-[var(--link)]" />
           </div>
           <h1 className="mb-2 text-3xl font-bold text-[var(--text-strong)]">Let's Build Your Resume</h1>

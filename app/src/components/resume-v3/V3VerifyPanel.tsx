@@ -45,6 +45,7 @@ interface FocusCue {
 
 interface Props {
   verify: V3VerifyResult | null;
+  discoveryWarning?: DiscoveryReviewWarning | null;
   isRunning: boolean;
   /** The pipeline stage currently executing. Lets the placeholder copy
    *  distinguish "verify is actively working" from "an earlier stage is
@@ -99,6 +100,11 @@ interface DisplayItem {
   suggestion?: string;
   /** Additive-only patches from the translator; populated via the Phase-3 wire. */
   suggestedPatches?: V3SuggestedPatch[];
+}
+
+export interface DiscoveryReviewWarning {
+  count: number;
+  highRiskCount: number;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -194,6 +200,7 @@ function isSectionStale(
 
 export function V3VerifyPanel({
   verify,
+  discoveryWarning,
   isRunning,
   currentStage,
   reverifying,
@@ -246,6 +253,8 @@ export function V3VerifyPanel({
   const errorCount = activeItems.filter((i) => i.severity === 'error').length;
   const totalShown = activeItems.length;
   const anyErrors = errorCount > 0;
+  const unresolvedDiscoveryCount = discoveryWarning?.count ?? 0;
+  const hasDiscoveryWarning = unresolvedDiscoveryCount > 0;
 
   const handleReverifyToast = () => {
     setReverifyToast('Re-verify coming in the next phase. For now, verify reflects the original run.');
@@ -282,6 +291,13 @@ export function V3VerifyPanel({
               {totalShown} review {totalShown === 1 ? 'note' : 'notes'}
             </span>
           </>
+        ) : hasDiscoveryWarning ? (
+          <>
+            <AlertCircle className="h-5 w-5 text-[var(--badge-amber-text)]" />
+            <span className="text-sm font-semibold text-[var(--text-strong)]">
+              Discovery still needed
+            </span>
+          </>
         ) : (
           <>
             <CheckCircle2 className="h-5 w-5 text-[var(--bullet-confirm)]" />
@@ -300,7 +316,13 @@ export function V3VerifyPanel({
           </div>
         </div>
       )}
-      {totalShown === 0 && dismissedItems.length === 0 && (
+      {totalShown === 0 && dismissedItems.length === 0 && hasDiscoveryWarning && (
+        <p className="mt-1.5 text-[11px] text-[var(--badge-amber-text)]/90">
+          {unresolvedDiscoveryCount} role-specific proof {unresolvedDiscoveryCount === 1 ? 'question still needs' : 'questions still need'} an answer before this is export-ready
+          {discoveryWarning?.highRiskCount ? `, including ${discoveryWarning.highRiskCount} high-risk ${discoveryWarning.highRiskCount === 1 ? 'item' : 'items'}` : ''}.
+        </p>
+      )}
+      {totalShown === 0 && dismissedItems.length === 0 && !hasDiscoveryWarning && (
         <p className="mt-1.5 text-[11px] text-[var(--text-soft)]">
           Nothing flagged. Safe to export.
         </p>

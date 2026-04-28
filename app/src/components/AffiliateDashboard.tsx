@@ -51,11 +51,11 @@ function StatCard({
 }) {
   return (
     <GlassCard className="flex flex-col gap-2 p-5">
-      <div className="flex items-center gap-2 text-white/50">
+      <div className="flex items-center gap-2 text-[var(--text-soft)]">
         <Icon className="h-4 w-4" />
-        <span className="text-xs font-medium uppercase tracking-wider">{label}</span>
+        <span className="text-xs font-bold">{label}</span>
       </div>
-      <div className={cn('text-2xl font-bold text-white', valueClassName)}>{value}</div>
+      <div className={cn('text-2xl font-extrabold text-[var(--text-strong)]', valueClassName)}>{value}</div>
     </GlassCard>
   );
 }
@@ -144,8 +144,8 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
     return (
       <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 motion-safe:animate-spin rounded-full border-2 border-white/20 border-t-[var(--link)]" />
-          <span className="text-sm text-white/50">Loading affiliate dashboard...</span>
+          <div className="h-8 w-8 motion-safe:animate-spin rounded-full border-2 border-[var(--line-soft)] border-t-[var(--link)]" />
+          <span className="text-sm text-[var(--text-soft)]">Loading affiliate dashboard...</span>
         </div>
       </div>
     );
@@ -155,7 +155,7 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
     return (
       <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-12">
         <GlassCard className="p-6">
-          <p className="text-sm text-white/60">{error}</p>
+          <p className="text-sm text-[var(--text-muted)]">{error}</p>
           {onNavigate && (
             <GlassButton
               variant="ghost"
@@ -178,8 +178,8 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Affiliate Dashboard</h1>
-          <p className="mt-1 text-sm text-white/50">
+          <h1 className="text-2xl font-extrabold text-[var(--text-strong)]">Affiliate Dashboard</h1>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
             Welcome back, {affiliate.name}. Commission rate:{' '}
             <span className="text-[var(--badge-green-text)] font-semibold">
               {Math.round(affiliate.commission_rate * 100)}%
@@ -196,12 +196,12 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
 
       {/* Referral link */}
       <GlassCard className="mb-6 p-5">
-        <div className="mb-2 text-xs font-medium uppercase tracking-wider text-white/50">
+        <div className="mb-2 text-xs font-bold text-[var(--text-soft)]">
           Your referral link
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex-1 overflow-hidden rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-            <span className="block truncate text-sm text-white/80 font-mono">{referralLink}</span>
+          <div className="flex-1 overflow-hidden rounded-[8px] border border-[var(--line-strong)] bg-[var(--accent-muted)] px-3 py-2">
+            <span className="block truncate text-sm font-mono text-[var(--text-muted)]">{referralLink}</span>
           </div>
           <GlassButton
             variant={copied ? 'primary' : 'ghost'}
@@ -221,7 +221,7 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
             )}
           </GlassButton>
         </div>
-        <p className="mt-2 text-xs text-white/35">
+        <p className="mt-2 text-xs text-[var(--text-soft)]">
           Share this link to earn {Math.round(affiliate.commission_rate * 100)}% commission on each
           subscription you refer.
         </p>
@@ -254,18 +254,18 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
 
       {/* Recent events */}
       <GlassCard className="p-5">
-        <h2 className="mb-4 text-sm font-semibold text-white/80">Recent Activity</h2>
+        <h2 className="mb-4 text-sm font-bold text-[var(--text-strong)]">Recent Activity</h2>
         {stats.recent_events.length === 0 ? (
-          <p className="text-sm text-white/40">
+          <p className="text-sm text-[var(--text-soft)]">
             No activity yet. Share your referral link to get started.
           </p>
         ) : (
-          <div className="flex flex-col divide-y divide-white/[0.06]">
+          <div className="flex flex-col divide-y divide-[var(--line-soft)]">
             {stats.recent_events.map((event) => (
               <div key={event.id} className="flex items-center justify-between py-3">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-sm text-white/80">{formatEventType(event.event_type)}</span>
-                  <span className="text-xs text-white/35">{formatDate(event.created_at)}</span>
+                  <span className="text-sm font-medium text-[var(--text-muted)]">{formatEventType(event.event_type)}</span>
+                  <span className="text-xs text-[var(--text-soft)]">{formatDate(event.created_at)}</span>
                 </div>
                 <div className="text-right">
                   {event.commission_amount != null && event.commission_amount > 0 ? (
@@ -277,7 +277,7 @@ export function AffiliateDashboard({ accessToken, onNavigate }: AffiliateDashboa
                       className={cn(
                         'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
                         event.event_type === 'click'
-                          ? 'bg-white/5 text-white/40'
+                          ? 'bg-[var(--accent-muted)] text-[var(--text-soft)]'
                           : 'bg-[var(--badge-blue-bg)] text-[var(--link)]',
                       )}
                     >

@@ -644,7 +644,17 @@ describe('self_review_post tool', () => {
 
     const state = makeState();
     const ctx = makeCtx(state);
-    ctx.scratchpad.post_draft = 'I made a mistake that cost my company $500K. Here is what I learned.';
+    ctx.scratchpad.post_draft = [
+      'I made a mistake that cost my company $500K. Here is what I learned.',
+      'At the time, we were moving too quickly through a platform migration, and I let the team treat a risky exception as a routine dependency.',
+      'That choice created rework across operations, customer support, and finance. The repair was not glamorous. We rebuilt the intake path, added owner-level review for exceptions, and made the leading indicators visible before each release.',
+      'The lesson was simple: speed without decision quality is just motion. Since then, I have treated risk visibility as part of delivery, not a side meeting.',
+      'That changed how I run operating rhythms. Every project now needs a small number of visible risk signals, a clear owner, and a trigger for escalation before the team is already behind. It also changed how I coach managers. I ask them to explain what would break first, who would notice, and what decision we would wish we had made two weeks earlier.',
+      'Those questions slow a team down for a few minutes, but they save weeks when the pressure hits.',
+      'The best operators I know do not wait for a failure report. They build systems that make the next failure harder to miss.',
+      'Where do you see teams confusing movement with progress?',
+      '#Operations #Leadership #DeliveryExcellence',
+    ].join('\n\n');
 
     if (!tool) throw new Error('self_review_post tool not found');
 
@@ -664,6 +674,35 @@ describe('self_review_post tool', () => {
     expect(res.quality_scores.authenticity).toBe(88);
     expect(res.quality_scores.engagement_potential).toBe(82);
     expect(ctx.scratchpad.quality_scores).toBeDefined();
+  });
+
+  it('caps quality when the post has AI filler or misses the word-count contract', async () => {
+    const { writerTools } = await import('../agents/linkedin-content/writer/tools.js');
+    const tool = writerTools.find((t) => t.name === 'self_review_post');
+    expect(tool).toBeDefined();
+
+    const state = makeState();
+    const ctx = makeCtx(state);
+    ctx.scratchpad.post_draft = 'In today\'s rapidly evolving landscape, leadership is more important than ever. Thoughts?';
+
+    if (!tool) throw new Error('self_review_post tool not found');
+
+    const { llm } = await import('../lib/llm.js');
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValue({
+      text: JSON.stringify({
+        authenticity: 92,
+        engagement_potential: 91,
+        keyword_density: 70,
+        hook_score: 95,
+      }),
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    const result = await tool.execute({}, ctx as unknown as Parameters<typeof tool.execute>[1]);
+    const res = result as { quality_scores: PostQualityScores };
+    expect(res.quality_scores.authenticity).toBeLessThanOrEqual(65);
+    expect(res.quality_scores.engagement_potential).toBeLessThanOrEqual(70);
   });
 
   it('returns failure when no post draft exists', async () => {

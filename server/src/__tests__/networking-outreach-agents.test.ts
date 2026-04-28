@@ -17,6 +17,14 @@ vi.mock('../lib/supabase.js', () => ({
   },
 }));
 
+vi.mock('../lib/llm.js', () => ({
+  llm: {
+    chat: vi.fn(),
+  },
+  MODEL_PRIMARY: 'primary',
+  MODEL_MID: 'mid',
+}));
+
 // ─── Types & Constants ───────────────────────────────────────────────
 
 import {
@@ -62,6 +70,7 @@ import { researcherTools } from '../agents/networking-outreach/researcher/tools.
 // ─── Writer Tools ────────────────────────────────────────────────────
 
 import { writerTools } from '../agents/networking-outreach/writer/tools.js';
+import { llm } from '../lib/llm.js';
 
 // ─── ProductConfig ───────────────────────────────────────────────────
 
@@ -241,6 +250,60 @@ describe('Networking Outreach — Tool Model Tiers', () => {
     expect(tiers.write_value_offer).toBe('primary');
     expect(tiers.write_meeting_request).toBe('primary');
     expect(tiers.assemble_sequence).toBe('mid');
+  });
+});
+
+describe('Networking Outreach — Writer Quality Guards', () => {
+  it('keeps connection requests under 300 chars without mid-word cuts or bracket placeholders', async () => {
+    const config = createNetworkingOutreachProductConfig();
+    const state = config.createInitialState('sess-1', 'user-1', {});
+    state.target_analysis = {
+      target_name: 'Maria Alvarez',
+      target_title: 'Chief People Officer',
+      target_company: 'Coventry Industrial Holdings',
+      professional_interests: ['manufacturing leadership'],
+      recent_activity: [],
+      industry: 'Manufacturing',
+      seniority: 'Executive',
+    };
+    state.common_ground = {
+      shared_connections: ['Cincinnati Manufacturing Consortium'],
+      industry_overlap: ['operations transformation'],
+      complementary_expertise: ['labor model redesign'],
+      mutual_interests: ['frontline leadership'],
+      recommended_angle: 'a former Cincinnati Manufacturing Consortium board member and her focus on frontline leadership',
+    };
+    state.outreach_plan = {
+      sequence_length: 3,
+      message_types: ['connection_request', 'follow_up_1', 'meeting_request'],
+      tone: 'warm and direct',
+      themes: ['operations transformation'],
+      goal: 'start a professional conversation',
+    };
+
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      text: JSON.stringify({
+        subject: '',
+        body: 'Hi Maria, I noticed your work through [former Cincinnati Manufacturing Consortium board member] and the way you connect frontline leadership with enterprise operations. Your Coventry background stood out, and I would be glad to connect because my background in labor model redesign, manufacturing execution, customer recovery, field enablement, executive cadence, and post-close integration is closely aligned.',
+        personalization_hooks: ['Cincinnati Manufacturing Consortium'],
+      }),
+    });
+
+    const events: NetworkingOutreachSSEEvent[] = [];
+    const tool = writerTools.find((t) => t.name === 'write_connection_request');
+    await tool?.execute({}, {
+      getState: () => state,
+      scratchpad: {},
+      emit: (event: NetworkingOutreachSSEEvent) => events.push(event),
+    } as never);
+
+    const message = state.messages.find((m) => m.type === 'connection_request');
+    expect(message).toBeTruthy();
+    expect(message?.body.length).toBeLessThanOrEqual(300);
+    expect(message?.char_count).toBe(message?.body.length);
+    expect(message?.body).not.toMatch(/\[[^\]]+\]/);
+    expect(message?.body).not.toMatch(/backgr$/i);
+    expect(message?.body).toMatch(/[.!?]$/);
   });
 });
 

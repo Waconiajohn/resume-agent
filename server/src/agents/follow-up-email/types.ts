@@ -9,6 +9,7 @@
  */
 
 import type { BaseState } from '../runtime/agent-protocol.js';
+import type { SharedContext } from '../../contracts/shared-context.js';
 
 // ─── Tone + situation vocabulary ──────────────────────────────────────
 
@@ -101,6 +102,7 @@ export interface FollowUpEmailState extends BaseState {
   /** Pre-fetched DB context. */
   prior_interview_prep?: PriorInterviewPrepContext;
   activity_signals: FollowUpActivitySignals;
+  shared_context?: SharedContext;
 
   /** Final draft surfaced at the review gate. */
   draft?: FollowUpEmailDraft;

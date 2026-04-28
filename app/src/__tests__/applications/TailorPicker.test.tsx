@@ -228,11 +228,17 @@ describe('TailorForApplicationPicker', () => {
 
     const { getByText } = renderHarness({ source: 'jcc_job_board', jobUrl: 'https://example.com/job/2' });
     fireEvent.click(getByText('OPEN_PICKER'));
-    // jobUrl context → URL tab is the default open one.
-    fireEvent.click(screen.getByRole('button', { name: 'Fetch' }));
+    // jobUrl context → URL tab is the default open one and fetches automatically.
 
     await waitFor(() => expect(screen.getByDisplayValue('Senior PM')).toBeInTheDocument());
     expect(screen.getByDisplayValue('Charlie')).toBeInTheDocument();
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/discovery/fetch-jd'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ url: 'https://example.com/job/2' }),
+      }),
+    );
 
     // Now submit.
     fireEvent.click(screen.getByRole('button', { name: /Create.*tailor/i }));

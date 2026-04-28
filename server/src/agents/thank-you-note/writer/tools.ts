@@ -27,6 +27,7 @@ import { THANK_YOU_NOTE_RULES } from '../knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
+  renderBenchmarkProfileDirectionSection,
   renderPositioningStrategySection,
   renderWhyMeStorySection,
 } from '../../../contracts/shared-context-prompt.js';
@@ -71,6 +72,63 @@ function findLatestNoteIndex(notes: ThankYouNote[], recipientName: string): numb
   return -1;
 }
 
+function parseRecord(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed.includes('{')) return null;
+
+  try {
+    const repaired = repairJSON<unknown>(trimmed);
+    const parsed = repaired
+      ?? (trimmed.startsWith('{') && trimmed.endsWith('}') ? JSON.parse(trimmed) : null);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeGeneratedNotePayload(result: unknown): Record<string, unknown> {
+  const payload = parseRecord(result) ?? {};
+  const nestedContent = parseRecord(payload.content);
+  if (!nestedContent) return payload;
+
+  return {
+    ...payload,
+    ...Object.fromEntries(
+      Object.entries(nestedContent).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+    ),
+    content: nestedContent.content ?? payload.content,
+    subject_line: nestedContent.subject_line ?? payload.subject_line,
+    personalization_notes: nestedContent.personalization_notes ?? payload.personalization_notes,
+    word_count: nestedContent.word_count ?? payload.word_count,
+  };
+}
+
+function normalizeWhitespace(text: string): string {
+  return text.replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function normalizeCandidateSignoff(text: string, candidateName: string): string {
+  const realName = candidateName.trim();
+  const hasRealName = realName.length > 0 && !/^(candidate|the candidate|your name)$/i.test(realName);
+  const placeholderPattern = /\[(?:candidate|your)\s+name\]|\{\{(?:candidate|your)_?name\}\}|<\s*(?:candidate|your)\s+name\s*>/gi;
+
+  if (hasRealName) {
+    return normalizeWhitespace(text.replace(placeholderPattern, realName));
+  }
+
+  return normalizeWhitespace(
+    text
+      .replace(placeholderPattern, '')
+      .replace(/\n\s*(?:best|best regards|regards|sincerely),?\s*$/i, ''),
+  );
+}
+
 // ─── Tool: analyze_interview_context ──────────────────────────────
 
 const analyzeInterviewContextTool: WriterTool = {
@@ -110,6 +168,10 @@ const analyzeInterviewContextTool: WriterTool = {
 
     const sharedContext = state.shared_context;
     const platformContextSections = [
+      ...renderBenchmarkProfileDirectionSection({
+        heading: '## Benchmark Profile Direction',
+        sharedContext,
+      }),
       ...renderPositioningStrategySection({
         heading: '## Platform Positioning Strategy',
         sharedStrategy: sharedContext?.positioningStrategy,
@@ -166,10 +228,8 @@ Return JSON:
       }],
     });
 
-    let result;
-    try {
-      result = JSON.parse(repairJSON(response.text) ?? response.text);
-    } catch {
+    let result = parseRecord(response.text);
+    if (!result) {
       result = { key_themes: [], recipient_analysis: [] };
     }
 
@@ -297,6 +357,10 @@ const writeThankYouNoteTool: WriterTool = {
       ? `Key Questions: ${recipient.key_questions.join('; ')}`
       : '';
     const priorExcerpt = state.prior_interview_prep?.report_excerpt?.trim();
+    const benchmarkDirection = renderBenchmarkProfileDirectionSection({
+      heading: '## Benchmark Profile Direction',
+      sharedContext: state.shared_context,
+    }).join('\n');
 
     const analysis = scratchpad.interview_analysis as Record<string, unknown> | undefined;
     let analysisLine = '';
@@ -360,6 +424,7 @@ Role: ${state.interview_context.role}
 ${state.interview_context.interview_date ? `Date: ${state.interview_context.interview_date}` : ''}
 Candidate: ${candidateName}
 
+${benchmarkDirection ? `${benchmarkDirection}\n` : ''}
 ## Key Topics to Reference
 ${keyTopics.length > 0 ? keyTopics.map((t) => `- ${t}`).join('\n') : '(none supplied — use prior interview-prep context if available)'}
 
@@ -379,6 +444,7 @@ REQUIREMENTS:
 - Close with a forward-looking statement appropriate to the role's tone guidance.
 - Do NOT include desperation, salary mentions, cliches, or apologies.
 - Write in the first person from the candidate's perspective.
+- Never use bracketed placeholders such as [Candidate Name] or [Your Name]. Sign with "${candidateName}" only if that is a real candidate name.
 ${revisionBlock.join('\n')}
 
 Return JSON:
@@ -391,10 +457,8 @@ ${format === 'email' ? '  "subject_line": "email subject line",' : ''}
       }],
     });
 
-    let result;
-    try {
-      result = JSON.parse(repairJSON(response.text) ?? response.text);
-    } catch {
+    let result = parseRecord(response.text);
+    if (!result) {
       result = {
         content: response.text.trim(),
         subject_line: format === 'email' ? `Thank you — ${state.interview_context.role} conversation` : undefined,
@@ -403,15 +467,17 @@ ${format === 'email' ? '  "subject_line": "email subject line",' : ''}
       };
     }
 
-    const content = String(result.content ?? '');
+    result = normalizeGeneratedNotePayload(result);
+
+    const content = normalizeCandidateSignoff(String(result.content ?? ''), candidateName);
     const note: ThankYouNote = {
       recipient_role: role,
       recipient_name: recipientName,
       recipient_title: recipient.title ?? '',
       format,
       content,
-      subject_line: format === 'email' ? String(result.subject_line ?? '') : undefined,
-      personalization_notes: String(result.personalization_notes ?? ''),
+      subject_line: format === 'email' ? normalizeWhitespace(String(result.subject_line ?? '')) : undefined,
+      personalization_notes: normalizeWhitespace(String(result.personalization_notes ?? '')),
     };
 
     // Replace the existing note for this recipient (if any), else append.
@@ -562,10 +628,8 @@ Return JSON:
       }],
     });
 
-    let result;
-    try {
-      result = JSON.parse(repairJSON(response.text) ?? response.text);
-    } catch {
+    let result = parseRecord(response.text);
+    if (!result) {
       result = {
         quality_score: 70,
         role_calibration_ok: true,

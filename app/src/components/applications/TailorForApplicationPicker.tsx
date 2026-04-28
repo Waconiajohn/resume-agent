@@ -12,7 +12,7 @@
  * other inline modals in this codebase use, no Radix dependency required.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, FileText, Loader2, X, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GlassButton } from '@/components/GlassButton';
@@ -82,6 +82,7 @@ export function TailorForApplicationPicker({
   const [jdUrlFetched, setJdUrlFetched] = useState(false);
   const [jdUrlError, setJdUrlError] = useState<string | null>(null);
   const [fetchedJdText, setFetchedJdText] = useState('');
+  const autoFetchAttemptedRef = useRef(false);
 
   // Text-tab state.
   const [jdText, setJdText] = useState('');
@@ -111,8 +112,8 @@ export function TailorForApplicationPicker({
       const data = (await res.json()) as { text: string; title?: string; company?: string };
       setFetchedJdText(data.text);
       setJdUrlFetched(true);
-      if (data.title && !roleTitle.trim()) setRoleTitle(data.title);
-      if (data.company && !companyName.trim()) setCompanyName(data.company);
+      if (data.title) setRoleTitle(data.title);
+      if (data.company) setCompanyName(data.company);
     } catch (err) {
       setJdUrlError(err instanceof Error ? err.message : String(err));
       setJdUrlFetched(false);
@@ -121,6 +122,21 @@ export function TailorForApplicationPicker({
       setJdUrlFetching(false);
     }
   }, [jdUrl, accessToken, roleTitle, companyName]);
+
+  useEffect(() => {
+    if (!context.jobUrl || autoFetchAttemptedRef.current) return;
+    if (activeTab !== 'url' || !accessToken || !jdUrl.trim() || jdUrlFetched || jdUrlFetching) return;
+    autoFetchAttemptedRef.current = true;
+    void handleFetchJdUrl();
+  }, [
+    activeTab,
+    accessToken,
+    context.jobUrl,
+    handleFetchJdUrl,
+    jdUrl,
+    jdUrlFetched,
+    jdUrlFetching,
+  ]);
 
   const canSubmitFromUrl =
     jdUrlFetched && roleTitle.trim().length > 0 && companyName.trim().length > 0 && fetchedJdText.length > 0;

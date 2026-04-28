@@ -373,7 +373,7 @@ export function ResumeCoachPanel({
               <button
                 type="button"
                 onClick={onExportDocx}
-                className="w-full max-w-[240px] flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors mb-2"
+                className="w-full max-w-[240px] flex items-center justify-center gap-2 rounded-lg bg-[var(--link)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--link-hover)] transition-colors mb-2"
               >
                 Download DOCX
               </button>

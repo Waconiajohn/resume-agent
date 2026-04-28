@@ -27,8 +27,8 @@ const MARGIN_Y = 16;
 const CONTENT_W = PAGE_W_MM - MARGIN_X * 2;
 
 // Default brand colors as RGB tuples
-const DEFAULT_BRAND: [number, number, number] = [26, 54, 93];   // #1a365d navy
-const DEFAULT_ACCENT: [number, number, number] = [49, 130, 206]; // #3182ce blue
+const DEFAULT_BRAND: [number, number, number] = [18, 26, 38];   // #121a26 structure
+const DEFAULT_ACCENT: [number, number, number] = [5, 102, 141]; // #05668d primary
 const WHITE: [number, number, number] = [255, 255, 255];
 const TEXT_DARK: [number, number, number] = [30, 36, 50];
 const TEXT_MID: [number, number, number] = [90, 100, 120];

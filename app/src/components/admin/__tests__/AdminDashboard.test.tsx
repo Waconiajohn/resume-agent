@@ -113,7 +113,7 @@ describe('AdminDashboard', () => {
     expect(await screen.findByText('Profile Setup Recovery')).toBeInTheDocument();
     expect(screen.getByText('Attention Right Now')).toBeInTheDocument();
     expect(screen.getAllByText('Profile Setup Retry Success').length).toBeGreaterThan(0);
-    expect(screen.getByText('Monitor whether reveal-screen retry is being used and whether it actually recovers Career Evidence creation.')).toBeInTheDocument();
+    expect(screen.getByText('Monitor whether reveal-screen retry is being used and whether it actually recovers Career Proof creation.')).toBeInTheDocument();
     expect(screen.getByText('Retry request failures: 1')).toBeInTheDocument();
     expect(screen.getByText('Needed again after retry: 1')).toBeInTheDocument();
     expect(screen.getByText('Total failed retry attempts: 2')).toBeInTheDocument();
