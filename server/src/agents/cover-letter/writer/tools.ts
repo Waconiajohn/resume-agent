@@ -26,6 +26,7 @@ import {
   EVIDENCE_LADDER_RULES,
   HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
 } from '../../shared-knowledge.js';
+import { COVER_LETTER_RULES } from '../knowledge/rules.js';
 
 type CoverLetterTool = AgentTool<CoverLetterState, CoverLetterSSEEvent>;
 
@@ -124,6 +125,8 @@ EVIDENCE-BOUND RULE: Every factual claim in the cover letter must trace directly
 ${EVIDENCE_LADDER_RULES}
 
 ${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}
+
+${COVER_LETTER_RULES}
 
 Writing philosophy:
 - Executives are better suited for far more roles than they initially believe — your job is to surface that real fit.
@@ -229,6 +232,8 @@ ${letter}
 ${jd ? `TARGET ROLE: ${jd.role_title} at ${jd.company_name}\nRequirements: ${jd.requirements.join('; ')}` : ''}
 ${resume ? `CANDIDATE: ${resume.name}, ${resume.current_title}` : ''}
 Word count: ${wordCount}
+
+${COVER_LETTER_RULES}
 
 EVALUATION CRITERIA (score each 0-20):
 1. voice_authenticity — Does it sound like a real person, not a template? Penalise generic phrases, clichés, or robotic phrasing.

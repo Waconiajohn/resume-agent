@@ -56,6 +56,18 @@ export interface SectionQualityScores {
   proof_specificity?: number;
   /** LinkedIn recruiter-search keyword/search-result strength (0-100) */
   searchability?: number;
+  /** Legacy optimizer score: headline specificity, value proposition, and search strength (0-100) */
+  headline_strength?: number;
+  /** Legacy optimizer score: visible About hook and business-problem framing (0-100) */
+  about_hook_strength?: number;
+  /** Legacy optimizer score: source-grounded metrics, scale, tools, and outcomes (0-100) */
+  proof_strength?: number;
+  /** Legacy optimizer score: candidate-specific memorability and differentiation (0-100) */
+  differentiation_strength?: number;
+  /** Legacy optimizer score: seniority, authority, and credibility of voice (0-100) */
+  executive_presence?: number;
+  /** Legacy optimizer score: natural placement of high-value LinkedIn search terms (0-100) */
+  keyword_effectiveness?: number;
 }
 
 // ─── Pipeline State ────────────────────────────────────────────────────

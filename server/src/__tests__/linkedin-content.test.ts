@@ -636,6 +636,49 @@ describe('suggest_interview_authority_topics tool', () => {
 
 // ─── Writer tool: self_review_post ─────────────────────────────────────────────
 
+describe('write_post prompt quality rules', () => {
+  it('injects the full LinkedIn content rule stack into the write_post LLM call', async () => {
+    const { writerTools } = await import('../agents/linkedin-content/writer/tools.js');
+    const tool = writerTools.find((t) => t.name === 'write_post');
+    expect(tool).toBeDefined();
+    if (!tool) throw new Error('write_post tool not found');
+
+    const state = makeState({
+      selected_topic: 'What operators learn from messy integrations',
+    });
+    const ctx = makeCtx(state);
+
+    const { llm } = await import('../lib/llm.js');
+    const chatMock = llm.chat as ReturnType<typeof vi.fn>;
+    chatMock.mockResolvedValueOnce({
+      text: JSON.stringify({
+        post: 'The hardest integration I ever owned was not a systems problem. It was an operating-rhythm problem.\n\nWe had the right tools, but the handoffs were unclear.',
+        hashtags: ['#Operations', '#Leadership'],
+        hook_explanation: 'Starts with a specific operator insight.',
+      }),
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    await tool.execute(
+      { topic: 'What operators learn from messy integrations', style: 'story' },
+      ctx as unknown as Parameters<typeof tool.execute>[1],
+    );
+
+    const callArgs = chatMock.mock.calls[chatMock.mock.calls.length - 1]?.[0] as {
+      system?: string;
+      messages?: Array<{ content?: string }>;
+    };
+
+    expect(callArgs.system).toContain('CRITICAL CONTENT QUALITY RULES');
+    expect(callArgs.system).toContain('CONTENT PHILOSOPHY');
+    expect(callArgs.system).toContain('HOOK ENGINEERING');
+    expect(callArgs.system).toContain('360BREW ALGORITHM OPTIMIZATION');
+    expect(callArgs.messages?.[0]?.content).toContain('Post Requirements');
+    expect(callArgs.messages?.[0]?.content).toContain('target about 250 words');
+  });
+});
+
 describe('self_review_post tool', () => {
   it('returns quality scores from scratchpad draft', async () => {
     const { writerTools } = await import('../agents/linkedin-content/writer/tools.js');
@@ -674,6 +717,12 @@ describe('self_review_post tool', () => {
     expect(res.quality_scores.authenticity).toBe(88);
     expect(res.quality_scores.engagement_potential).toBe(82);
     expect(ctx.scratchpad.quality_scores).toBeDefined();
+
+    const callArgs = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[
+      (llm.chat as ReturnType<typeof vi.fn>).mock.calls.length - 1
+    ]?.[0] as { messages?: Array<{ content?: string }> };
+    expect(callArgs.messages?.[0]?.content).toContain('CONTENT PHILOSOPHY');
+    expect(callArgs.messages?.[0]?.content).toContain('360BREW ALGORITHM OPTIMIZATION');
   });
 
   it('caps quality when the post has AI filler or misses the word-count contract', async () => {

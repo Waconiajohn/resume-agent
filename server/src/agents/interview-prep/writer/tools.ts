@@ -26,6 +26,8 @@ import type {
 } from '../types.js';
 import { getUserContext, insertUserContext } from '../../../lib/platform-context.js';
 import { INTERVIEW_PREP_RULES } from '../knowledge/rules.js';
+import { THANK_YOU_NOTE_RULES } from '../../thank-you-note/knowledge/rules.js';
+import { FOLLOW_UP_EMAIL_RULES } from '../../follow-up-email/knowledge/rules.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import {
@@ -958,6 +960,10 @@ Quality standards:
 - 150-250 words, 3-5 short paragraphs
 - Subject line: compelling and specific, not "Thank you for your time"
 
+Use the standalone thank-you-note product's quality rules so embedded interview-prep notes do not regress from the dedicated communication flow:
+
+${THANK_YOU_NOTE_RULES}
+
 Return ONLY valid JSON.`,
       messages: [{
         role: 'user',
@@ -1082,6 +1088,10 @@ const generateFollowUpEmailTool: InterviewPrepTool = {
       system: `You are an executive communication strategist. You write precise, confident follow-up emails for senior executives in job search situations.
 
 These emails are for executives (45+) who are peer-level to the people they are writing to. The tone is always professional, confident, and forward-looking — never desperate, apologetic, or sycophantic.
+
+Use the standalone follow-up-email product's sequence, tone, subject-line, and anti-desperation rules so embedded interview-prep follow-ups do not regress from the dedicated communication flow:
+
+${FOLLOW_UP_EMAIL_RULES}
 
 Return ONLY valid JSON.`,
       messages: [{

@@ -26,6 +26,7 @@ import {
 } from '../types.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
+import { NETWORKING_MESSAGE_RULES } from '../knowledge/rules.js';
 
 type WriterTool = AgentTool<NetworkingMessageState, NetworkingMessageSSEEvent>;
 
@@ -78,7 +79,11 @@ const assessContextTool: WriterTool = {
     const response = await llm.chat({
       model: MODEL_MID,
       max_tokens: 1024,
-      system: `You are a senior networking coach distilling an application context into a compact briefing for a message writer. Return ONLY valid JSON.`,
+      system: `You are a senior networking coach distilling an application context into a compact briefing for a message writer.
+
+${NETWORKING_MESSAGE_RULES}
+
+Return ONLY valid JSON.`,
       messages: [{
         role: 'user',
         content: `Summarize this target application in 3 short fields.
@@ -204,6 +209,8 @@ const writeMessageTool: WriterTool = {
     parts.push(
       '',
       `Character cap: ${charCap}. Stay under it. If the message naturally wants to run longer, tighten language; do not truncate mid-thought.`,
+      'Relationship integrity: do not imply a prior relationship, former colleague status, mutual friend, shared employer, shared school, or previous conversation unless the user-supplied context or selected recipient archetype explicitly supports it.',
+      'If recipient metadata and context conflict, trust the concrete user-supplied context and keep the copy neutral rather than inventing familiarity.',
       'No emoji, no exclamation marks, no "I hope this finds you well". No resume attachment or inline bullet list.',
       'Return ONLY valid JSON.',
     );
@@ -211,7 +218,11 @@ const writeMessageTool: WriterTool = {
     const response = await llm.chat({
       model: MODEL_PRIMARY,
       max_tokens: 2000,
-      system: `You are a senior executive networking coach drafting a single focused message. The voice is peer-to-peer, confident, specific. Return ONLY valid JSON.`,
+      system: `You are a senior executive networking coach drafting a single focused message. The voice is peer-to-peer, confident, specific.
+
+${NETWORKING_MESSAGE_RULES}
+
+Return ONLY valid JSON.`,
       messages: [{
         role: 'user',
         content: `${parts.join('\n')}

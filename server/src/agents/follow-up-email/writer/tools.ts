@@ -24,6 +24,7 @@ import type {
 import { llm, MODEL_PRIMARY } from '../../../lib/llm.js';
 import { repairJSON } from '../../../lib/json-repair.js';
 import { renderBenchmarkProfileDirectionSection } from '../../../contracts/shared-context-prompt.js';
+import { FOLLOW_UP_EMAIL_RULES } from '../knowledge/rules.js';
 
 type FollowUpTool = AgentTool<FollowUpEmailState, FollowUpEmailSSEEvent>;
 
@@ -144,7 +145,11 @@ export const draftFollowUpEmailTool: FollowUpTool = {
     const response = await llm.chat({
       model: MODEL_PRIMARY,
       max_tokens: 2000,
-      system: `You are an executive communication strategist drafting follow-up emails for senior executives in job search. The voice is peer-to-peer, confident, and specific. Return ONLY valid JSON matching the shape below.`,
+      system: `You are an executive communication strategist drafting follow-up emails for senior executives in job search. The voice is peer-to-peer, confident, and specific.
+
+${FOLLOW_UP_EMAIL_RULES}
+
+Return ONLY valid JSON matching the shape below.`,
       messages: [
         {
           role: 'user',

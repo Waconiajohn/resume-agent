@@ -29,6 +29,7 @@ import {
   renderPositioningStrategySection,
 } from '../../contracts/shared-context-prompt.js';
 import { hasMeaningfulSharedValue } from '../../contracts/shared-context.js';
+import { LINKEDIN_PROFILE_KICKOFF_QUALITY_BAR } from '../linkedin-shared/editorial-brain.js';
 
 function pendingReviewSection(state: LinkedInEditorState): ProfileSection | null {
   return PROFILE_SECTION_ORDER.find((section) =>
@@ -144,7 +145,7 @@ export function createLinkedInEditorProductConfig(): ProductConfig<LinkedInEdito
           'Optimize this professional\'s LinkedIn profile, one section at a time.',
           '',
           '## Quality Bar',
-          'The finished profile must pass a human five-second scan and a LinkedIn recruiter-search scan. The headline should make the target reader understand role, value, proof, and keywords immediately. The first 300 characters of About must work before "see more" and clearly answer why this person is a benchmark candidate. Every strong claim must be source-grounded.',
+          LINKEDIN_PROFILE_KICKOFF_QUALITY_BAR,
           '',
         ];
 

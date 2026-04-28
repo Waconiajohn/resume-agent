@@ -26,17 +26,12 @@ import {
   EVIDENCE_LADDER_RULES,
   HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
 } from '../../shared-knowledge.js';
+import {
+  LINKEDIN_PROFILE_AUDIT_RUBRIC,
+  LINKEDIN_PROFILE_EDITORIAL_BRAIN,
+} from '../../linkedin-shared/editorial-brain.js';
 
 // ─── Section writing prompts ───────────────────────────────────────────
-
-const FIRST_IMPRESSION_PROFILE_STANDARD = `## Five-Second / Benchmark Candidate Standard
-
-This profile must pass the human scan before it passes the keyword scan:
-- Headline: in a recruiter search result, the reader must know what this person does, why they are credible, and what keywords they own in under five seconds.
-- Top of About: the first 300 characters must work before "see more" is clicked. It should answer "why this person?" immediately, not warm up with biography.
-- Benchmark candidate test: every section should make the user feel like the obvious strong comparison point for the target roles, while staying fully evidence-grounded.
-- Search + persuasion: include the right LinkedIn keywords, but never at the expense of a memorable human positioning statement.
-- No filler: avoid "results-driven," "passionate," "dynamic," "seasoned," "proven track record," and generic transformation language unless it is tied to specific proof.`;
 
 function scoreFrom(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value)
@@ -85,7 +80,7 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
     '',
     HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
     '',
-    FIRST_IMPRESSION_PROFILE_STANDARD,
+    LINKEDIN_PROFILE_EDITORIAL_BRAIN,
     '',
     '## Age Awareness',
     AGE_AWARENESS_RULES,
@@ -153,22 +148,26 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
     parts.push(
       '## Headline Requirements',
       '- Max 220 characters (LinkedIn limit)',
+      '- Use the available space intelligently; short headlines waste LinkedIn search visibility',
+      '- Lead with the value proposition, NOT the job title. The first phrase should make the target reader want to click.',
       '- Must pass the five-second recruiter search result test: role identity, business value, credibility signal, and 2-4 high-value keywords are obvious immediately',
-      '- Write a positioning statement, not just a job title. The first phrase should make the target reader want to click.',
-      '- Must include: current/target role identity | key differentiator or proof | industry/function keywords',
-      '- Avoid: "Seeking opportunities", generic titles, buzzwords like "passionate"',
+      '- Add a proof point, scale signal, or metric when source evidence supports it',
+      '- Must include: outcome/value proposition | proof/scale/differentiator | current or target role / industry / function keywords',
+      '- Avoid: #OpenToWork, "Seeking opportunities", "in transition", generic titles, buzzwords like "passionate"',
       '- Do not cut off mid-phrase or end with a dangling separator',
-      '- Format: [Role] | [Value Proposition] | [Industry/Function Keywords]',
+      '- Format: [Outcome or value proposition] | [Proof or differentiator] | [Role / industry / function keywords]',
     );
   } else if (section === 'about') {
     parts.push(
       '## About Section Requirements',
-      '- Target 1,500-2,300 characters, usually 250-375 words. Do not pad.',
+      '- Treat this as a 2,600-character pitch, not a summary. Target 2,000-2,400 characters when evidence supports it; minimum 1,500 unless the source material is sparse.',
       '- The first 300 characters must stand alone before LinkedIn "see more" and answer: why this person, why now, why credible',
       '- Open with the benchmark-candidate thesis — not "I am a..." and not a chronology',
       '- Include: what you do, who you do it for, what makes you different, social proof',
       '- Use the Why Me/career narrative as the spine: communicate who they are, not just what jobs they held',
+      '- Structure: hook -> career pattern with 2-3 proof points -> what they are drawn to professionally / who should contact them',
       '- Put proof near the top. Do not bury the strongest metric or signature strength.',
+      '- Weave 8-12 high-value LinkedIn search keywords naturally. Never append a keyword block.',
       '- End with a clear CTA (connect, message, visit website)',
       '- Use first person throughout',
     );
@@ -176,15 +175,18 @@ function buildSectionPrompt(section: ProfileSection, state: LinkedInEditorState)
     parts.push(
       '## Experience Section Requirements',
       '- 2-3 most recent roles, 3-5 bullets each',
+      '- Complement the resume rather than duplicating it word for word',
       '- Format: Achievement-Impact-Metric (not responsibility lists)',
       '- Include specific metrics where evidence provides them',
+      '- Add recruiter-useful context when supported: team size, budget, geography, reporting line, customer scope, platform scale, regulated environment, or operating model',
       '- Keywords front-loaded in each bullet',
       '- Prioritize proof that reinforces the benchmark-candidate profile and target positioning',
     );
   } else if (section === 'skills') {
     parts.push(
       '## Skills Section Requirements',
-      '- 10-15 skills, ordered by strategic importance',
+      '- Use 25-50 skills when evidence supports enough real terms; otherwise use the strongest evidence-backed set',
+      '- Order the top skills by target-role relevance, not endorsement count',
       '- Mix of: technical skills, soft skills, industry keywords, functional expertise',
       '- List as comma-separated values',
     );
@@ -347,7 +349,9 @@ ${sectionContent}
 
 ${positioningSection}
 
-${FIRST_IMPRESSION_PROFILE_STANDARD}
+${LINKEDIN_PROFILE_EDITORIAL_BRAIN}
+
+${LINKEDIN_PROFILE_AUDIT_RUBRIC}
 
 Return scores (0-100) as:
 {
@@ -359,6 +363,12 @@ Return scores (0-100) as:
   "benchmark_strength": 75,
   "proof_specificity": 75,
   "searchability": 75,
+  "headline_strength": 75,
+  "about_hook_strength": 75,
+  "proof_strength": 75,
+  "differentiation_strength": 75,
+  "executive_presence": 75,
+  "keyword_effectiveness": 75,
   "keyword_notes": "specific feedback",
   "readability_notes": "specific feedback",
   "alignment_notes": "specific feedback",
@@ -372,6 +382,7 @@ Scoring focus:
 - About: weigh hook_strength and five_second_test heavily. The first 300 characters must carry the Why Me story before "see more".
 - Experience: weigh proof_specificity heavily. Responsibilities without outcomes should score below 70.
 - Skills/Education: judge strategic ordering, age-awareness, and whether the section supports target positioning.
+- If the section uses #OpenToWork, "seeking opportunities", "in transition", a keyword block, or generic filler, reduce the relevant score below 70.
 Return ONLY valid JSON.`,
         },
       ],
@@ -395,6 +406,12 @@ Return ONLY valid JSON.`,
       benchmark_strength: scoreFrom(scores.benchmark_strength, 70),
       proof_specificity: scoreFrom(scores.proof_specificity, 70),
       searchability: scoreFrom(scores.searchability, 70),
+      headline_strength: scoreFrom(scores.headline_strength, 70),
+      about_hook_strength: scoreFrom(scores.about_hook_strength, 70),
+      proof_strength: scoreFrom(scores.proof_strength, 70),
+      differentiation_strength: scoreFrom(scores.differentiation_strength, 70),
+      executive_presence: scoreFrom(scores.executive_presence, 70),
+      keyword_effectiveness: scoreFrom(scores.keyword_effectiveness, 70),
     };
 
     ctx.scratchpad[`scores_${section}`] = qualityScores;
@@ -462,7 +479,7 @@ ${currentDraft}
 ## User Feedback
 ${feedback}
 
-${FIRST_IMPRESSION_PROFILE_STANDARD}
+${LINKEDIN_PROFILE_EDITORIAL_BRAIN}
 
 ${(
   hasMeaningfulSharedValue(state.shared_context?.evidenceInventory.evidenceItems) ||

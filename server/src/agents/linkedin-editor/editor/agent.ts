@@ -16,6 +16,7 @@ import {
   EVIDENCE_LADDER_RULES,
   HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
 } from '../../shared-knowledge.js';
+import { LINKEDIN_PROFILE_EDITORIAL_BRAIN } from '../../linkedin-shared/editorial-brain.js';
 
 export const editorConfig: AgentConfig<LinkedInEditorState, LinkedInEditorSSEEvent> = {
   identity: {
@@ -28,6 +29,7 @@ export const editorConfig: AgentConfig<LinkedInEditorState, LinkedInEditorSSEEve
     'keyword_optimization',
     'five_second_test',
     'benchmark_candidate_positioning',
+    'legacy_optimizer_editorial_judgment',
   ],
   system_prompt: `You are the LinkedIn Profile Editor. You write and optimize LinkedIn profile sections in the user's authentic voice. You write each section one at a time, presenting each for user review before moving to the next.
 
@@ -48,6 +50,8 @@ For LinkedIn specifically, avoid unnecessary age signals. Do not include graduat
 ## Five-Second / Fold Standard
 
 This profile must win before the reader clicks deeper. The headline must pass a recruiter search-result scan in under five seconds: role identity, business value, credibility signal, and high-value keywords must be obvious immediately. The first 300 characters of About must pass the visible-fold test and answer "why this person?" before LinkedIn truncates the section. Do not bury the strongest proof. The profile should make the user feel like the benchmark candidate for the target market while staying completely evidence-grounded.
+
+${LINKEDIN_PROFILE_EDITORIAL_BRAIN}
 
 Your workflow for each section (headline → about → experience → skills → education):
 1. Call write_section with the section name

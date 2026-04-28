@@ -17,6 +17,7 @@ import {
   EVIDENCE_LADDER_RULES,
   HUMAN_EDITORIAL_EFFECTIVENESS_RULES,
 } from '../../shared-knowledge.js';
+import { COVER_LETTER_RULES } from '../knowledge/rules.js';
 
 type CoverLetterTool = AgentTool<CoverLetterState, CoverLetterSSEEvent>;
 
@@ -163,6 +164,8 @@ EVIDENCE-BOUND RULE: Every point in the plan must reference a specific, real pie
 ${EVIDENCE_LADDER_RULES}
 
 ${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}
+
+${COVER_LETTER_RULES}
 
 CANDIDATE
 Name: ${resume.name}

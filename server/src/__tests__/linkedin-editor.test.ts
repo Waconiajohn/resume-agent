@@ -199,6 +199,8 @@ describe('createLinkedInEditorProductConfig', () => {
     expect(editorConfig.system_prompt).toContain('Do not include graduation years');
     expect(editorConfig.system_prompt).toContain('Five-Second');
     expect(editorConfig.system_prompt).toContain('first 300 characters of About');
+    expect(editorConfig.system_prompt).toContain('Lead with the value proposition');
+    expect(editorConfig.system_prompt).toContain('Never use #OpenToWork');
   });
 });
 
@@ -312,6 +314,8 @@ describe('createLinkedInEditorProductConfig().buildAgentMessage', () => {
     expect(msg).toContain('five-second scan');
     expect(msg).toContain('first 300 characters of About');
     expect(msg).toContain('benchmark candidate');
+    expect(msg).toContain('lead with value proposition');
+    expect(msg).toContain('avoid keyword blocks');
   });
 
   it('returns empty string for unknown agent', () => {
@@ -478,6 +482,38 @@ describe('write_section tool', () => {
     expect(userContent).toContain('omit graduation years by default');
     expect(userContent).not.toContain('Degree, institution, year');
   });
+
+  it('headline prompt uses the legacy optimizer positioning rules', async () => {
+    const { editorTools } = await import('../agents/linkedin-editor/editor/tools.js');
+    const tool = editorTools.find((t) => t.name === 'write_section');
+    if (!tool) throw new Error('write_section tool not found');
+
+    const state = makeState();
+    const ctx = makeCtx(state);
+
+    const { llm } = await import('../lib/llm.js');
+    const llmMock = llm.chat as ReturnType<typeof vi.fn>;
+    llmMock.mockResolvedValue({
+      text: JSON.stringify({
+        headline_content: 'I scale AI infrastructure teams | VP Engineering | Cloud Platforms',
+        keywords_used: ['AI infrastructure', 'VP Engineering', 'Cloud Platforms'],
+      }),
+      tool_calls: [],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+
+    await tool.execute(
+      { section: 'headline' },
+      ctx as unknown as Parameters<typeof tool.execute>[1],
+    );
+
+    const callArgs = llmMock.mock.calls.at(-1)?.[0];
+    const userContent = callArgs?.messages?.[0]?.content as string;
+    expect(userContent).toContain('LinkedIn Editorial Brain');
+    expect(userContent).toContain('Lead with the value proposition, NOT the job title');
+    expect(userContent).toContain('Never use #OpenToWork');
+    expect(userContent).toContain('Do not add a keyword block');
+  });
 });
 
 // ─── Editor tool: self_review_section ─────────────────────────────────────────
@@ -537,6 +573,12 @@ describe('self_review_section tool', () => {
         benchmark_strength: 90,
         proof_specificity: 86,
         searchability: 82,
+        headline_strength: 92,
+        about_hook_strength: 95,
+        proof_strength: 87,
+        differentiation_strength: 89,
+        executive_presence: 91,
+        keyword_effectiveness: 83,
       }),
       tool_calls: [],
       usage: { input_tokens: 100, output_tokens: 50 },
@@ -551,6 +593,9 @@ describe('self_review_section tool', () => {
     expect(res.quality_scores.five_second_test).toBe(93);
     expect(res.quality_scores.hook_strength).toBe(94);
     expect(res.quality_scores.benchmark_strength).toBe(90);
+    expect(res.quality_scores.about_hook_strength).toBe(95);
+    expect(res.quality_scores.executive_presence).toBe(91);
+    expect(res.quality_scores.keyword_effectiveness).toBe(83);
   });
 
   it('returns failure when no section draft exists', async () => {

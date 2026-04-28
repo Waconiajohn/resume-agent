@@ -24,6 +24,7 @@ import {
 } from '../../../contracts/shared-context-prompt.js';
 import { buildCarouselSlides } from '../../../lib/carousel-builder.js';
 import logger from '../../../lib/logger.js';
+import { LINKEDIN_CONTENT_RULES } from '../knowledge/rules.js';
 
 // ─── Helper: build series context block ──────────────────────────────────
 
@@ -325,6 +326,9 @@ const writePostTool: LinkedInContentTool = {
         'voice -- specific, direct, and rooted in real experience. You never use buzzwords, vague ' +
         'platitudes, or generic advice. Every post earns its read. ' +
         'In series mode, each post must stand alone while threading into the series narrative. ' +
+        '\n\nCRITICAL CONTENT QUALITY RULES:\n' +
+        LINKEDIN_CONTENT_RULES +
+        '\n\n' +
         'Return ONLY valid JSON, no markdown fencing.',
       messages: [
         {
@@ -457,6 +461,8 @@ ${hookText}
 Word count: ${wc}
 Target: ${BLOG_WORD_MIN}-275 words, ideal about ${BLOG_WORD_TARGET}, never over ${BLOG_WORD_MAX}.
 AI-style filler detected: ${fillerHits.length > 0 ? fillerHits.join(', ') : 'none'}
+
+${LINKEDIN_CONTENT_RULES}
 
 Evaluate and return:
 {
@@ -636,6 +642,9 @@ const revisePostTool: LinkedInContentTool = {
       system:
         'You revise LinkedIn posts for executives based on their feedback. Keep the authentic voice ' +
         'and any series continuity elements (Part X reference, callbacks, teasers). ' +
+        '\n\nCRITICAL CONTENT QUALITY RULES:\n' +
+        LINKEDIN_CONTENT_RULES +
+        '\n\n' +
         'Return ONLY valid JSON, no markdown fencing.',
       messages: [
         {

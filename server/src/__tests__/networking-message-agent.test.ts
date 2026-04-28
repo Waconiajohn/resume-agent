@@ -456,6 +456,43 @@ describe('write_message char-cap enforcement', () => {
     mockLlmChat.mockReset();
   });
 
+  it('injects the networking rule stack and relationship-integrity guardrails into write_message', async () => {
+    mockLlmChat.mockResolvedValueOnce({
+      text: JSON.stringify({
+        message: 'Hi Alice, I saw your work on the Medtronic supply chain team and would value your perspective on the VP Supply Chain role.',
+        rationale: 'Specific, peer-level outreach.',
+      }),
+    });
+
+    const state = cfg.createInitialState('sess-1', 'user-1', {
+      job_application_id: 'app-1',
+      recipient_name: 'Alice',
+      recipient_type: 'second_degree',
+      messaging_method: 'connection_request',
+      goal: 'Ask for perspective on the VP Supply Chain role',
+      target_application: {
+        company_name: 'Medtronic',
+        role_title: 'VP Supply Chain',
+        jd_excerpt: 'Lead global supply chain transformation.',
+        stage: 'researching',
+      },
+    }) as NetworkingMessageState;
+
+    const ctx = makeCtx(state);
+    const tool = writerTool('write_message');
+    await tool.execute({}, ctx as never);
+
+    const callArgs = mockLlmChat.mock.calls[mockLlmChat.mock.calls.length - 1]?.[0] as {
+      system?: string;
+      messages?: Array<{ content?: string }>;
+    };
+
+    expect(callArgs.system).toContain('Peer, not supplicant');
+    expect(callArgs.system).toContain('No fabricated shared context');
+    expect(callArgs.messages?.[0]?.content).toContain('Relationship integrity');
+    expect(callArgs.messages?.[0]?.content).toContain('metadata and context conflict');
+  });
+
   it('clips an over-cap draft at a sentence boundary for connection_request', async () => {
     // Build a long message: 3 sentences well over 300 chars.
     const longBody =

@@ -146,6 +146,13 @@ describe('Follow-Up Email Tools', () => {
     expect(draft.subject).toBe('First 90 days');
     expect(draft.body).toBe('Ellen, I appreciated the conversation about stabilizing the divisions.');
     expect(draft.body).not.toContain('"subject"');
+
+    const callArgs = vi.mocked(llm.chat).mock.calls[
+      vi.mocked(llm.chat).mock.calls.length - 1
+    ]?.[0] as { system?: string };
+    expect(callArgs.system).toContain('Never desperate');
+    expect(callArgs.system).toContain('Sequence awareness');
+    expect(callArgs.system).toContain('Subject-line discipline');
   });
 });
 

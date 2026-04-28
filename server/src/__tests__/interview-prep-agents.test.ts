@@ -737,3 +737,103 @@ Speak like the owner of operating results.`;
     expect(state.quality_score).toBe(92);
   });
 });
+
+describe('Interview Prep embedded communication tools', () => {
+  function makeCommunicationState() {
+    const config = createInterviewPrepProductConfig();
+    const state = config.createInitialState('s', 'u', {});
+    state.resume_data = {
+      name: 'David Harrington',
+      current_title: 'VP Operations',
+      career_summary: 'Industrial operations executive.',
+      key_skills: ['Lean transformation', 'ERP integration', 'Board reporting'],
+      key_achievements: ['$25M savings program', 'Led four-division integration'],
+      work_history: [],
+    };
+    state.jd_analysis = {
+      company_name: 'Coventry Industrial Holdings',
+      role_title: 'Chief Operating Officer',
+      requirements: [],
+      culture_cues: [],
+      seniority_level: 'c_suite',
+    };
+    return state;
+  }
+
+  it('uses the standalone thank-you-note rules inside interview-prep thank-you generation', async () => {
+    const state = makeCommunicationState();
+    (llm.chat as ReturnType<typeof vi.fn>).mockReset();
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      text: JSON.stringify({
+        notes: [
+          {
+            interviewer: 'Patricia Monroe',
+            interviewer_title: 'CEO',
+            note_text: 'Patricia, I appreciated your candor about margin recovery and the operating cadence Coventry needs next.',
+            subject_line: 'Coventry operating cadence conversation',
+            key_callbacks: ['margin recovery'],
+            timing_guidance: 'Send within 2-4 hours.',
+          },
+        ],
+      }),
+    });
+
+    const tool = writerTools.find((t) => t.name === 'generate_thank_you_notes');
+    await tool?.execute({
+      interviewers: [
+        {
+          name: 'Patricia Monroe',
+          title: 'CEO',
+          topics_discussed: ['margin recovery', 'operating cadence'],
+        },
+      ],
+      interview_date: '2026-04-27',
+    }, {
+      getState: () => state,
+      scratchpad: {},
+      emit: vi.fn(),
+    } as never);
+
+    const callArgs = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[
+      (llm.chat as ReturnType<typeof vi.fn>).mock.calls.length - 1
+    ]?.[0] as { system?: string };
+
+    expect(callArgs.system).toContain('THANK YOU NOTE PHILOSOPHY');
+    expect(callArgs.system).toContain('PERSONALIZATION');
+    expect(callArgs.system).toContain('RECIPIENT-ROLE TONE');
+  });
+
+  it('uses the standalone follow-up-email rules inside interview-prep follow-up generation', async () => {
+    const state = makeCommunicationState();
+    (llm.chat as ReturnType<typeof vi.fn>).mockReset();
+    (llm.chat as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      text: JSON.stringify({
+        situation: 'post_interview',
+        subject: 'Coventry COO conversation',
+        body: 'Patricia, I appreciated the discussion about rebuilding operating confidence across the divisions.',
+        tone_notes: 'Warm and specific.',
+        timing_guidance: 'Send on day five if no update has arrived.',
+      }),
+    });
+
+    const tool = writerTools.find((t) => t.name === 'generate_follow_up_email');
+    await tool?.execute({
+      situation: 'post_interview',
+      recipient_name: 'Patricia Monroe',
+      recipient_title: 'CEO',
+      specific_context: 'Discussed margin recovery and board reporting.',
+    }, {
+      getState: () => state,
+      scratchpad: {},
+      emit: vi.fn(),
+    } as never);
+
+    const callArgs = (llm.chat as ReturnType<typeof vi.fn>).mock.calls[
+      (llm.chat as ReturnType<typeof vi.fn>).mock.calls.length - 1
+    ]?.[0] as { system?: string };
+
+    expect(callArgs.system).toContain('Never desperate');
+    expect(callArgs.system).toContain('Sequence awareness');
+    expect(callArgs.system).toContain('Subject-line discipline');
+  });
+});

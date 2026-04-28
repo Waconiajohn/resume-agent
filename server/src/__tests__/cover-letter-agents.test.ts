@@ -548,6 +548,20 @@ describe('plan_letter tool execution', () => {
     expect(plan).toHaveProperty('closing_strategy');
   });
 
+  it('injects the cover-letter quality rules into the planning prompt', async () => {
+    const ctx = makeCtxWithMatches();
+
+    await tool.execute({}, ctx);
+
+    const callArgs = mockLlmChat.mock.calls[mockLlmChat.mock.calls.length - 1]?.[0] as {
+      messages?: Array<{ content?: string }>;
+    };
+
+    expect(callArgs.messages?.[0]?.content).toContain('COVER LETTER PHILOSOPHY');
+    expect(callArgs.messages?.[0]?.content).toContain('OPENING HOOK');
+    expect(callArgs.messages?.[0]?.content).toContain('SELF-REVIEW CHECKLIST');
+  });
+
   it('sets state.letter_plan from the generated plan', async () => {
     const ctx = makeCtxWithMatches();
 
@@ -662,6 +676,24 @@ describe('write_letter tool execution', () => {
     expect(result.status).toBe('drafted');
     expect(typeof result.word_count).toBe('number');
     expect(result.tone).toBe('professional');
+  });
+
+  it('injects the cover-letter quality rules into the writing system prompt', async () => {
+    const state = makeStateWithPlan();
+    const ctx = makeMockGenericContext<CoverLetterState, CoverLetterSSEEvent>(state);
+
+    await tool.execute({}, ctx);
+
+    const callArgs = mockLlmChat.mock.calls[mockLlmChat.mock.calls.length - 1]?.[0] as {
+      system?: string;
+      messages?: Array<{ content?: string }>;
+    };
+
+    expect(callArgs.system).toContain('COVER LETTER PHILOSOPHY');
+    expect(callArgs.system).toContain('OPENING HOOK');
+    expect(callArgs.system).toContain('SELF-REVIEW CHECKLIST');
+    expect(callArgs.system).toContain('strategic positioning letter');
+    expect(callArgs.messages?.[0]?.content).toContain('interpret why that proof matters');
   });
 
   it('sets state.letter_draft', async () => {
@@ -838,6 +870,21 @@ describe('review_letter tool execution', () => {
     expect(typeof result.passed).toBe('boolean');
     expect(Array.isArray(result.issues)).toBe(true);
     expect(typeof result.word_count).toBe('number');
+  });
+
+  it('injects the cover-letter quality rules into the review prompt', async () => {
+    const state = makeStateWithDraft();
+    const ctx = makeMockGenericContext<CoverLetterState, CoverLetterSSEEvent>(state);
+
+    await tool.execute({}, ctx);
+
+    const callArgs = mockLlmStream.mock.calls[mockLlmStream.mock.calls.length - 1]?.[0] as {
+      messages?: Array<{ content?: string }>;
+    };
+
+    expect(callArgs.messages?.[0]?.content).toContain('COVER LETTER PHILOSOPHY');
+    expect(callArgs.messages?.[0]?.content).toContain('OPENING HOOK');
+    expect(callArgs.messages?.[0]?.content).toContain('SELF-REVIEW CHECKLIST');
   });
 
   it('sets state.quality_score', async () => {
