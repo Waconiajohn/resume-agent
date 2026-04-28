@@ -9,7 +9,7 @@ interface ConversationTurn {
 interface InterviewViewProps {
   intake: IntakeAnalysis;
   currentQuestionIndex: number;
-  onAnswer: (answer: string) => Promise<void>;
+  onAnswer: (answer: string) => Promise<boolean>;
   onComplete: () => void;
   answering: boolean;
 }
@@ -61,11 +61,11 @@ export function InterviewView({
     const trimmed = inputValue.trim();
     if (!trimmed || answering || isComplete) return;
 
-    const userTurn: ConversationTurn = { role: 'user', text: trimmed };
-    setConversation((prev) => [...prev, userTurn]);
-    setInputValue('');
+    const accepted = await onAnswer(trimmed);
+    if (!accepted) return;
 
-    await onAnswer(trimmed);
+    setConversation((prev) => [...prev, { role: 'user', text: trimmed }]);
+    setInputValue('');
 
     const nextIndex = currentQuestionIndex + 1;
     const isDone = nextIndex >= TOTAL_QUESTIONS;

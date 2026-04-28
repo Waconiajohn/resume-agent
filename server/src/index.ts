@@ -63,7 +63,8 @@ import { getPipelineMetrics } from './lib/pipeline-metrics.js';
 import logger from './lib/logger.js';
 import { initSentry, captureErrorWithContext, flushSentry } from './lib/sentry.js';
 import { validateRegisteredAgents } from './agents/runtime/agent-registry.js';
-import { FF_V3_PRIMARY } from './lib/feature-flags.js';
+import { FF_JOB_SEARCH, FF_NETWORK_INTELLIGENCE, FF_V3_PRIMARY } from './lib/feature-flags.js';
+import { ACTIVE_PROVIDER } from './lib/model-constants.js';
 import { createRedisBusIfConfigured, type RedisBus } from './agents/runtime/redis-bus.js';
 import { setAgentBus } from './agents/runtime/bus-factory.js';
 import { startHotReload, stopHotReload } from './agents/runtime/hot-reload.js';
@@ -183,23 +184,86 @@ app.use('*', cors({
 let cachedHealthCheck: {
   checkedAt: number;
   dbOk: boolean;
-  llmKeyPresent: boolean;
 } | null = null;
 
+function hasActiveLlmProviderKey(): boolean {
+  if (!process.env.LLM_PROVIDER) {
+    return Boolean(
+      process.env.OPENAI_API_KEY
+      || process.env.GROQ_API_KEY
+      || process.env.ZAI_API_KEY
+      || process.env.ANTHROPIC_API_KEY
+      || process.env.DEEPINFRA_API_KEY
+      || process.env.DEEPSEEK_API_KEY
+    );
+  }
+
+  const provider = (process.env.LLM_PROVIDER.toLowerCase() || ACTIVE_PROVIDER).trim();
+  switch (provider) {
+    case 'openai':
+      return Boolean(process.env.OPENAI_API_KEY);
+    case 'anthropic':
+      return Boolean(process.env.ANTHROPIC_API_KEY);
+    case 'deepinfra':
+      return Boolean(process.env.DEEPINFRA_API_KEY);
+    case 'deepseek':
+      return Boolean(process.env.DEEPSEEK_API_KEY);
+    case 'vertex':
+      return Boolean(process.env.VERTEX_PROJECT || process.env.GCP_PROJECT);
+    case 'groq':
+      return Boolean(process.env.GROQ_API_KEY);
+    case 'zai':
+      return Boolean(process.env.ZAI_API_KEY);
+    default:
+      return Boolean(
+        process.env.OPENAI_API_KEY
+        || process.env.GROQ_API_KEY
+        || process.env.ZAI_API_KEY
+        || process.env.ANTHROPIC_API_KEY
+        || process.env.DEEPINFRA_API_KEY
+        || process.env.DEEPSEEK_API_KEY
+      );
+  }
+}
+
+function getFeatureDependencySnapshot() {
+  const jobSearchKeyPresent = Boolean(process.env.SERPER_API_KEY || process.env.FIRECRAWL_API_KEY);
+  const networkIntelligenceSearchKeyPresent = Boolean(process.env.SERPER_API_KEY);
+  const billingRequired = process.env.BILLING_REQUIRED === 'true';
+  const billingConfigured = Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
+
+  const dependencies = {
+    job_search: {
+      enabled: FF_JOB_SEARCH,
+      ok: !FF_JOB_SEARCH || jobSearchKeyPresent,
+      requires: ['SERPER_API_KEY or FIRECRAWL_API_KEY'],
+    },
+    network_intelligence: {
+      enabled: FF_NETWORK_INTELLIGENCE,
+      ok: !FF_NETWORK_INTELLIGENCE || networkIntelligenceSearchKeyPresent,
+      requires: ['SERPER_API_KEY'],
+    },
+    billing: {
+      enabled: billingRequired,
+      ok: !billingRequired || billingConfigured,
+      requires: ['STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET'],
+    },
+  };
+
+  return {
+    dependencies,
+    ok: Object.values(dependencies).every((dependency) => dependency.ok),
+  };
+}
+
 async function getHealthSnapshot(now = Date.now()) {
-  const configuredProvider = process.env.LLM_PROVIDER?.toLowerCase();
-  const llmKeyPresentNow = Boolean(
-    process.env.GROQ_API_KEY
-    || process.env.ZAI_API_KEY
-    || process.env.ANTHROPIC_API_KEY
-    || process.env.DEEPSEEK_API_KEY
-  );
+  const llmKeyPresentNow = hasActiveLlmProviderKey();
+  const featureDependencies = getFeatureDependencySnapshot();
 
   const cache = cachedHealthCheck;
   const canUseCache =
     cache
-    && now - cache.checkedAt < healthCheckCacheTtlMs
-    && cache.llmKeyPresent === llmKeyPresentNow;
+    && now - cache.checkedAt < healthCheckCacheTtlMs;
   let dbOk = false;
   if (canUseCache && cache) {
     dbOk = cache.dbOk;
@@ -214,13 +278,14 @@ async function getHealthSnapshot(now = Date.now()) {
     cachedHealthCheck = {
       checkedAt: now,
       dbOk,
-      llmKeyPresent: llmKeyPresentNow,
     };
   }
 
   return {
     dbOk,
     llmKeyPresent: llmKeyPresentNow,
+    featureDependenciesOk: featureDependencies.ok,
+    featureDependencies: featureDependencies.dependencies,
     heapUsedMb: getHeapUsedMb(),
     heapOverloaded: isHeapOverloaded(),
     canUseCache: Boolean(canUseCache),
@@ -233,10 +298,11 @@ app.get('/health', async (c) => {
   const health = await getHealthSnapshot();
   const status = shuttingDown
     ? 'draining'
-    : (health.dbOk && health.llmKeyPresent && !health.heapOverloaded ? 'ok' : 'degraded');
+    : (health.dbOk && health.llmKeyPresent && health.featureDependenciesOk && !health.heapOverloaded ? 'ok' : 'degraded');
   return c.json({
     status,
     shutting_down: shuttingDown,
+    feature_dependencies_ok: health.featureDependenciesOk,
     heap_overloaded: health.heapOverloaded,
     heap_used_mb: health.heapUsedMb,
     cached: health.canUseCache,
@@ -248,12 +314,18 @@ app.get('/health', async (c) => {
 app.get('/ready', async (c) => {
   c.header('Cache-Control', 'no-store');
   const health = await getHealthSnapshot();
-  const ready = !shuttingDown && health.dbOk && health.llmKeyPresent && !health.heapOverloaded;
+  const ready = !shuttingDown
+    && health.dbOk
+    && health.llmKeyPresent
+    && health.featureDependenciesOk
+    && !health.heapOverloaded;
   return c.json({
     ready,
     shutting_down: shuttingDown,
     db_ok: health.dbOk,
     llm_key_ok: health.llmKeyPresent,
+    feature_dependencies_ok: health.featureDependenciesOk,
+    feature_dependencies: health.featureDependencies,
     heap_overloaded: health.heapOverloaded,
     heap_used_mb: health.heapUsedMb,
     checked_at: health.checkedAt ? new Date(health.checkedAt).toISOString() : null,

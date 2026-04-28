@@ -17,9 +17,13 @@ import {
   isWorkflowNodeKey,
   workflowNodeFromStage,
 } from '../lib/workflow-nodes.js';
-// Resume pipeline v2 — pipeline router will be re-wired in Sprint V2-2
+import logger from '../lib/logger.js';
+import { resetWorkflowNodesForNewRunBestEffort } from '../lib/workflow-persistence.js';
+import { startUsageTracking, stopUsageTracking, setUsageTrackingContext } from '../lib/llm-provider.js';
+import { runV3Pipeline } from '../v3/pipeline/run.js';
+import type { V3PipelineSSEEvent } from '../v3/pipeline/types.js';
+
 const STALE_PIPELINE_MS = 15 * 60 * 1000; // 15 minutes
-const pipelineRouter = new Hono(); // stub — v2 pipeline not yet wired
 import {
   asRecord,
   questionnaireAnalytics,
@@ -111,6 +115,110 @@ async function getLatestPipelineStartRequestArtifact(sessionId: string) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data ?? null;
+}
+
+function firstString(...values: unknown[]): string {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+function startRestartedV3PipelineRun(input: {
+  sessionId: string;
+  userId: string;
+  resumeText: string;
+  jobDescription: string;
+  companyName: string;
+  jobTitle: string | null;
+}): void {
+  void (async () => {
+    let completePayload:
+      | Extract<V3PipelineSSEEvent, { type: 'pipeline_complete' }>
+      | null = null;
+    let finalStatus: 'complete' | 'error' = 'complete';
+    let finalCostUsd: number | null = null;
+    let finalErrorMessage: string | null = null;
+
+    startUsageTracking(input.sessionId, input.userId);
+    setUsageTrackingContext(input.sessionId);
+
+    try {
+      const result = await runV3Pipeline({
+        sessionId: input.sessionId,
+        userId: input.userId,
+        resumeText: input.resumeText,
+        jobDescription: {
+          text: input.jobDescription,
+          title: input.jobTitle ?? undefined,
+          company: input.companyName,
+        },
+        emit: (event) => {
+          if (event.type === 'pipeline_complete') completePayload = event;
+        },
+      });
+
+      if (!result.success) {
+        finalStatus = 'error';
+        finalErrorMessage = result.errorMessage ?? 'Unknown v3 pipeline error';
+      }
+      finalCostUsd = result.costs.total;
+    } catch (err) {
+      finalStatus = 'error';
+      finalErrorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(
+        { sessionId: input.sessionId, err: finalErrorMessage },
+        'workflow restart: v3 pipeline failed',
+      );
+    } finally {
+      stopUsageTracking(input.sessionId);
+
+      try {
+        const update: Record<string, unknown> = {
+          pipeline_status: finalStatus,
+          pipeline_stage: finalStatus === 'complete' ? 'complete' : 'error',
+          error_message: finalErrorMessage,
+          estimated_cost_usd: finalCostUsd,
+        };
+
+        if (finalStatus === 'complete' && completePayload) {
+          const payload = completePayload as Extract<V3PipelineSSEEvent, { type: 'pipeline_complete' }>;
+          update.v3_pipeline_output = {
+            structured: payload.structured,
+            benchmark: payload.benchmark,
+            strategy: payload.strategy,
+            written: payload.written,
+            verify: payload.verify,
+            discoveryAnswers: payload.discoveryAnswers ?? [],
+            timings: payload.timings,
+            costs: payload.costs,
+          };
+          update.v3_jd_text = input.jobDescription;
+          update.v3_jd_title = input.jobTitle;
+          update.v3_jd_company = input.companyName;
+          update.v3_resume_source = 'restart';
+        }
+
+        const { error } = await supabaseAdmin
+          .from('coach_sessions')
+          .update(update)
+          .eq('id', input.sessionId)
+          .eq('user_id', input.userId);
+
+        if (error) {
+          logger.warn(
+            { sessionId: input.sessionId, error: error.message },
+            'workflow restart: failed to persist final v3 session state',
+          );
+        }
+      } catch (err) {
+        logger.warn(
+          { sessionId: input.sessionId, err: err instanceof Error ? err.message : String(err) },
+          'workflow restart: unexpected persistence failure',
+        );
+      }
+    }
+  })();
 }
 
 workflow.get('/:sessionId', rateLimitMiddleware(120, 60_000), async (c) => {
@@ -415,11 +523,13 @@ workflow.get('/:sessionId/restart-inputs', rateLimitMiddleware(60, 60_000), asyn
     return c.json({ error: 'No restart inputs are available for this session yet.' }, 404);
   }
 
-  const rawResumeText = typeof payload.raw_resume_text === 'string' ? payload.raw_resume_text : '';
-  const jobDescription = typeof payload.job_description_resolved === 'string'
-    ? payload.job_description_resolved
-    : (typeof payload.job_description_input === 'string' ? payload.job_description_input : '');
-  const companyName = typeof payload.company_name === 'string' ? payload.company_name : '';
+  const rawResumeText = firstString(payload.raw_resume_text, payload.resume_text);
+  const jobDescription = firstString(
+    payload.job_description_resolved,
+    payload.job_description_input,
+    payload.job_description,
+  );
+  const companyName = firstString(payload.company_name, payload.jd_company, payload.company);
   if (!rawResumeText || !jobDescription || !companyName) {
     return c.json({ error: 'Stored restart inputs are incomplete for this session.' }, 409);
   }
@@ -463,66 +573,65 @@ workflow.post('/:sessionId/restart', rateLimitMiddleware(20, 60_000), async (c) 
     return c.json({ error: 'No restart inputs are available for this session yet.' }, 404);
   }
 
-  const rawResumeText = typeof payload.raw_resume_text === 'string' ? payload.raw_resume_text : '';
-  const jobDescription = typeof payload.job_description_resolved === 'string'
-    ? payload.job_description_resolved
-    : (typeof payload.job_description_input === 'string' ? payload.job_description_input : '');
-  const companyName = typeof payload.company_name === 'string' ? payload.company_name : '';
+  const rawResumeText = firstString(payload.raw_resume_text, payload.resume_text);
+  const jobDescription = firstString(
+    payload.job_description_resolved,
+    payload.job_description_input,
+    payload.job_description,
+  );
+  const companyName = firstString(payload.company_name, payload.jd_company, payload.company);
+  const jobTitle = firstString(payload.job_title, payload.jd_title, payload.role_title) || null;
   if (!rawResumeText || !jobDescription || !companyName) {
     return c.json({ error: 'Stored restart inputs are incomplete for this session.' }, 409);
   }
 
-  const startBody = {
-    session_id: sessionId,
-    raw_resume_text: rawResumeText,
-    job_description: jobDescription,
-    company_name: companyName,
-    workflow_mode: payload.workflow_mode === 'fast_draft' || payload.workflow_mode === 'deep_dive'
-      ? payload.workflow_mode
-      : 'balanced',
-    minimum_evidence_target: typeof payload.minimum_evidence_target === 'number'
-      ? payload.minimum_evidence_target
-      : undefined,
-    resume_priority: typeof payload.resume_priority === 'string' ? payload.resume_priority : undefined,
-    seniority_delta: typeof payload.seniority_delta === 'string' ? payload.seniority_delta : undefined,
-  };
+  const { error: updateError } = await supabaseAdmin
+    .from('coach_sessions')
+    .update({
+      pipeline_status: 'running',
+      pipeline_stage: 'extract',
+      error_message: null,
+      estimated_cost_usd: null,
+    })
+    .eq('id', sessionId)
+    .eq('user_id', user.id);
 
-  const authHeader = c.req.header('Authorization');
-  const proxyRequest = new Request('http://internal/pipeline/start', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(authHeader ? { Authorization: authHeader } : {}),
-    },
-    body: JSON.stringify(startBody),
+  if (updateError) {
+    logger.error(
+      { userId: user.id, sessionId, error: updateError.message },
+      'workflow restart: failed to mark session running',
+    );
+    return c.json({ error: 'Failed to restart pipeline' }, 500);
+  }
+
+  resetWorkflowNodesForNewRunBestEffort(sessionId);
+  void insertArtifact(sessionId, 'overview', 'workflow_replan_status', {
+    type: 'workflow_replan_started',
+    reason: 'manual_restart',
+    current_stage: 'extract',
+    rebuild_from_stage: 'extract',
+    requires_restart: false,
+    started_at: new Date().toISOString(),
+  }, 'pipeline', 'in_progress').catch((err: unknown) => {
+    logger.warn(
+      { sessionId, err: err instanceof Error ? err.message : String(err) },
+      'workflow restart: failed to persist restart status artifact',
+    );
   });
 
-  let proxyResponse: Response;
-  const proxyController = new AbortController();
-  const proxyTimeout = setTimeout(() => proxyController.abort(), 30_000);
-  try {
-    proxyResponse = await pipelineRouter.fetch(new Request(proxyRequest, { signal: proxyController.signal }));
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to restart pipeline';
-    return c.json({ error: message }, 500);
-  } finally {
-    clearTimeout(proxyTimeout);
-  }
-
-  const proxyData = await proxyResponse.json().catch(() => ({} as { error?: string; status?: string }));
-  if (!proxyResponse.ok) {
-    const body = {
-      ...(proxyData && typeof proxyData === 'object' ? proxyData : {}),
-      restart_source: 'server_artifact',
-    };
-    return new Response(JSON.stringify(body), {
-      status: proxyResponse.status,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  startRestartedV3PipelineRun({
+    sessionId,
+    userId: user.id,
+    resumeText: rawResumeText,
+    jobDescription,
+    companyName,
+    jobTitle,
+  });
 
   return c.json({
-    ...(proxyData && typeof proxyData === 'object' ? proxyData : {}),
+    status: 'running',
+    message: 'Restarted the resume pipeline from saved session inputs.',
+    session_id: sessionId,
     restart_source: 'server_artifact',
     restarted_from_artifact_version: artifact?.version ?? null,
     restart_inputs_created_at: artifact?.created_at ?? null,

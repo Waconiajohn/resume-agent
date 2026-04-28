@@ -50,10 +50,21 @@ vi.mock('../IntakeForm', () => ({
 }));
 
 vi.mock('../InterviewView', () => ({
-  InterviewView: ({ onComplete }: { onComplete: () => void }) => (
-    <button type="button" onClick={onComplete}>
-      Finish interview
-    </button>
+  InterviewView: ({
+    onAnswer,
+    onComplete,
+  }: {
+    onAnswer: (answer: string) => Promise<boolean>;
+    onComplete: () => void;
+  }) => (
+    <div>
+      <button type="button" onClick={() => { void onAnswer('Saved proof answer'); }}>
+        Save answer
+      </button>
+      <button type="button" onClick={onComplete}>
+        Finish interview
+      </button>
+    </div>
   ),
 }));
 
@@ -208,5 +219,25 @@ describe('ProfileSetupPage', () => {
       session_id: 'profile-setup-session',
       master_resume_id: 'resume-123',
     });
+  });
+
+  it('does not advance profile setup locally when an interview answer fails to save', async () => {
+    mockAnalyze.mockResolvedValue({
+      session_id: 'profile-setup-session',
+      intake: makeIntake(),
+    });
+    mockAnswer.mockResolvedValue(null);
+
+    render(<ProfileSetupPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /start setup/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /save answer/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/could not save that answer/i);
+    });
+
+    expect(mockAnswer).toHaveBeenCalledWith('profile-setup-session', 'Saved proof answer');
+    expect(screen.getByRole('button', { name: /save answer/i })).toBeInTheDocument();
   });
 });

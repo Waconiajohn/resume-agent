@@ -250,19 +250,42 @@ export default function ProfileSetupPage() {
 
   const handleAnswer = useCallback(
     async (answerText: string) => {
-      if (!state.sessionId || !state.intake) return;
+      if (!state.sessionId || !state.intake) {
+        dispatch({
+          type: 'SET_ERROR',
+          error: 'We could not save that answer because the setup session is not ready. Please refresh and try again.',
+        });
+        return false;
+      }
 
       const currentQuestion =
         state.intake.interview_questions[state.currentQuestionIndex]?.question ?? '';
 
-      await answer(state.sessionId, answerText);
+      const result = await answer(state.sessionId, answerText);
+      if (!result) {
+        dispatch({
+          type: 'SET_ERROR',
+          error: hookErrorRef.current ?? 'We could not save that answer. Please try again before moving on.',
+        });
+        return false;
+      }
+
+      const questionCount = state.intake.interview_questions.length;
+      const serverNextIndex = Number.isFinite(result.question_index)
+        ? result.question_index
+        : state.currentQuestionIndex + 1;
+      const nextIndex = Math.min(
+        Math.max(serverNextIndex, state.currentQuestionIndex + 1),
+        questionCount,
+      );
 
       dispatch({
         type: 'RECORD_ANSWER',
         question: currentQuestion,
         answer: answerText,
-        nextIndex: state.currentQuestionIndex + 1,
+        nextIndex,
       });
+      return true;
     },
     [state.sessionId, state.intake, state.currentQuestionIndex, answer],
   );

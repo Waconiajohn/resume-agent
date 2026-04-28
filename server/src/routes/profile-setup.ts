@@ -36,6 +36,79 @@ const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 const sessions = new Map<string, ProfileSetupSessionState>();
 
+async function persistSessionState(sessionState: ProfileSetupSessionState): Promise<void> {
+  const lastActiveAt = new Date(sessionState.last_active_at);
+  const { error } = await supabaseAdmin
+    .from('profile_setup_sessions')
+    .upsert({
+      session_id: sessionState.session_id,
+      user_id: sessionState.user_id,
+      state: sessionState,
+      last_active_at: lastActiveAt.toISOString(),
+      expires_at: new Date(sessionState.last_active_at + SESSION_TTL_MS).toISOString(),
+    }, { onConflict: 'session_id' });
+
+  if (error) {
+    logger.warn(
+      { userId: sessionState.user_id, sessionId: sessionState.session_id, error: error.message },
+      'Profile setup: failed to persist setup session',
+    );
+  }
+}
+
+async function deleteSessionState(sessionId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('profile_setup_sessions')
+    .delete()
+    .eq('session_id', sessionId);
+  if (error) {
+    logger.warn({ sessionId, error: error.message }, 'Profile setup: failed to delete setup session');
+  }
+}
+
+function isProfileSetupSessionState(value: unknown): value is ProfileSetupSessionState {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Partial<ProfileSetupSessionState>;
+  return (
+    typeof record.user_id === 'string'
+    && typeof record.session_id === 'string'
+    && typeof record.created_at === 'number'
+    && typeof record.last_active_at === 'number'
+    && !!record.input
+    && !!record.intake
+    && Array.isArray(record.answers)
+  );
+}
+
+async function loadSessionState(sessionId: string, userId: string): Promise<ProfileSetupSessionState | null> {
+  const inMemoryState = sessions.get(sessionId);
+  if (inMemoryState?.user_id === userId) return inMemoryState;
+
+  const { data, error } = await supabaseAdmin
+    .from('profile_setup_sessions')
+    .select('state, expires_at')
+    .eq('session_id', sessionId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    logger.warn({ userId, sessionId, error: error.message }, 'Profile setup: failed to load setup session');
+    return null;
+  }
+
+  const row = data as { state?: unknown; expires_at?: string | null } | null;
+  if (!row?.state || !isProfileSetupSessionState(row.state)) return null;
+
+  const expiresAtMs = typeof row.expires_at === 'string' ? Date.parse(row.expires_at) : NaN;
+  if (Number.isFinite(expiresAtMs) && expiresAtMs < Date.now()) {
+    await deleteSessionState(sessionId);
+    return null;
+  }
+
+  sessions.set(sessionId, row.state);
+  return row.state;
+}
+
 function pruneExpiredSessions(): void {
   const now = Date.now();
   for (const [id, state] of sessions) {
@@ -93,6 +166,7 @@ async function ensureProfileSetupProvenanceSession(
     last_active_at: Date.now(),
   };
   sessions.set(sessionState.session_id, updatedState);
+  await persistSessionState(updatedState);
   return data.id;
 }
 
@@ -167,6 +241,7 @@ profileSetupRoutes.post('/analyze', authMiddleware, rateLimitMiddleware(5, 60_00
     };
 
     sessions.set(session_id, sessionState);
+    await persistSessionState(sessionState);
 
     logger.info({ userId: user.id, sessionId: session_id }, 'Profile setup analyze: complete');
 
@@ -203,12 +278,9 @@ profileSetupRoutes.post('/answer', authMiddleware, rateLimitMiddleware(20, 60_00
     return c.json({ error: 'answer must be 2,000 characters or fewer' }, 400);
   }
 
-  const sessionState = sessions.get(session_id);
+  const sessionState = await loadSessionState(session_id, user.id);
   if (!sessionState) {
     return c.json({ error: 'Session not found or expired. Please run /analyze again.' }, 404);
-  }
-  if (sessionState.user_id !== user.id) {
-    return c.json({ error: 'Session not found or expired.' }, 404);
   }
 
   // Enforce max questions server-side
@@ -254,11 +326,14 @@ profileSetupRoutes.post('/answer', authMiddleware, rateLimitMiddleware(20, 60_00
       },
     ];
 
-    sessions.set(session_id, {
+    const updatedSessionState = {
       ...sessionState,
       answers: updatedAnswers,
       last_active_at: Date.now(),
-    });
+    };
+
+    sessions.set(session_id, updatedSessionState);
+    await persistSessionState(updatedSessionState);
 
     logger.info(
       { userId: user.id, sessionId: session_id, questionIndex: currentIndex, complete: result.complete },
@@ -291,12 +366,9 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
     return c.json({ error: 'session_id is required' }, 400);
   }
 
-  const sessionState = sessions.get(session_id);
+  const sessionState = await loadSessionState(session_id, user.id);
   if (!sessionState) {
     return c.json({ error: 'Session not found or expired. Please run /analyze again.' }, 404);
-  }
-  if (sessionState.user_id !== user.id) {
-    return c.json({ error: 'Session not found or expired.' }, 404);
   }
 
   if (inFlightComplete.has(session_id)) {
@@ -336,6 +408,7 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
         last_active_at: Date.now(),
       };
       sessions.set(session_id, currentSessionState);
+      await persistSessionState(currentSessionState);
     }
 
     const provenanceSessionId = await ensureProfileSetupProvenanceSession(user.id, currentSessionState);
@@ -435,6 +508,7 @@ profileSetupRoutes.post('/complete', authMiddleware, rateLimitMiddleware(5, 60_0
         'Profile setup complete: initial master resume created',
       );
       sessions.delete(session_id);
+      await deleteSessionState(session_id);
     } else {
       logger.warn(
         { userId: user.id, sessionId: session_id },

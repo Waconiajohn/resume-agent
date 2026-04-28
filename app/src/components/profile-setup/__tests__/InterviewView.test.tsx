@@ -41,7 +41,7 @@ describe('Profile Setup InterviewView', () => {
   });
 
   it('lets users choose multiple suggested starters before sending an answer', async () => {
-    const onAnswer = vi.fn().mockResolvedValue(undefined);
+    const onAnswer = vi.fn().mockResolvedValue(true);
 
     render(
       <InterviewView
@@ -69,5 +69,30 @@ describe('Profile Setup InterviewView', () => {
         'Membership forecasting models —\nExecutive reporting dashboards —',
       );
     });
+  });
+
+  it('does not advance or clear the answer when saving fails', async () => {
+    const onAnswer = vi.fn().mockResolvedValue(false);
+
+    render(
+      <InterviewView
+        intake={makeIntake()}
+        currentQuestionIndex={0}
+        onAnswer={onAnswer}
+        onComplete={vi.fn()}
+        answering={false}
+      />,
+    );
+
+    const textarea = screen.getByLabelText(/your answer/i);
+    fireEvent.change(textarea, { target: { value: 'Owned executive dashboards for 40 regions' } });
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(onAnswer).toHaveBeenCalledWith('Owned executive dashboards for 40 regions');
+    });
+
+    expect(textarea).toHaveValue('Owned executive dashboards for 40 regions');
+    expect(screen.queryByText('What was the measurable result?')).not.toBeInTheDocument();
   });
 });
