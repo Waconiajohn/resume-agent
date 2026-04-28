@@ -46,6 +46,7 @@ export interface NetworkingOutreachInput {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 40;
+const STREAM_IDLE_TIMEOUT_MS = 75_000;
 
 export function useNetworkingOutreach() {
   const [state, setState] = useState<NetworkingOutreachState>({
@@ -65,19 +66,46 @@ export function useNetworkingOutreach() {
   statusRef.current = state.status;
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
+
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, []);
+
+  const markStreamStalled = useCallback(() => {
+    if (!mountedRef.current) return;
+    abortRef.current?.abort();
+    setState((prev) => {
+      if (prev.status !== 'connecting' && prev.status !== 'running') return prev;
+      return {
+        ...prev,
+        status: 'error',
+        error: 'The outreach draft stalled while waiting for the writer. No work was lost — please try again.',
+      };
+    });
+  }, []);
+
+  const armIdleTimer = useCallback(() => {
+    clearIdleTimer();
+    idleTimerRef.current = setTimeout(markStreamStalled, STREAM_IDLE_TIMEOUT_MS);
+  }, [clearIdleTimer, markStreamStalled]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      clearIdleTimer();
       abortRef.current?.abort();
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
       }
     };
-  }, []);
+  }, [clearIdleTimer]);
 
   const addActivity = useCallback((text: string, stage: string) => {
     if (!mountedRef.current) return;
@@ -151,12 +179,14 @@ export function useNetworkingOutreach() {
         case 'pipeline_gate': {
           const gateName = typeof data.gate === 'string' ? data.gate : undefined;
           if (gateName === 'sequence_review') {
+            clearIdleTimer();
             setState((prev) => ({ ...prev, status: 'sequence_review' }));
           }
           break;
         }
 
         case 'sequence_complete':
+          clearIdleTimer();
           setState((prev) => ({
             ...prev,
             status: 'complete',
@@ -168,6 +198,7 @@ export function useNetworkingOutreach() {
           break;
 
         case 'pipeline_error':
+          clearIdleTimer();
           setState((prev) => ({
             ...prev,
             status: 'error',
@@ -177,6 +208,7 @@ export function useNetworkingOutreach() {
           break;
 
         case 'pipeline_complete':
+          clearIdleTimer();
           setState((prev) => ({
             ...prev,
             status: prev.report ? 'complete' : prev.status,
@@ -191,7 +223,7 @@ export function useNetworkingOutreach() {
           break;
       }
     },
-    [addActivity],
+    [addActivity, clearIdleTimer],
   );
 
   const connectSSE = useCallback(
@@ -224,11 +256,13 @@ export function useNetworkingOutreach() {
           if (mountedRef.current) {
             setState((prev) => ({ ...prev, status: 'running' }));
             reconnectAttemptsRef.current = 0;
+            armIdleTimer();
           }
 
           try {
             for await (const msg of parseSSEStream(response.body)) {
               if (controller.signal.aborted) break;
+              armIdleTimer();
               handleSSEEvent(msg.event, msg.data);
             }
           } catch (err) {
@@ -237,6 +271,7 @@ export function useNetworkingOutreach() {
           }
 
           if (!controller.signal.aborted && mountedRef.current) {
+            clearIdleTimer();
             setState((prev) => {
               if (prev.status === 'complete' || prev.status === 'error') return prev;
               if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
@@ -265,7 +300,7 @@ export function useNetworkingOutreach() {
           }
         });
     },
-    [handleSSEEvent],
+    [armIdleTimer, clearIdleTimer, handleSSEEvent],
   );
 
   const startPipeline = useCallback(
@@ -365,6 +400,7 @@ export function useNetworkingOutreach() {
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
+    clearIdleTimer();
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
@@ -382,7 +418,7 @@ export function useNetworkingOutreach() {
       currentStage: null,
       sequenceReviewData: null,
     });
-  }, []);
+  }, [clearIdleTimer]);
 
   return {
     ...state,

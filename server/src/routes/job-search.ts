@@ -38,7 +38,7 @@ jobSearchRoutes.use('*', async (c, next) => {
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const searchFiltersSchema = z.object({
-  datePosted: z.enum(['24h', '3d', '7d', '14d', '30d']).optional().default('7d'),
+  datePosted: z.enum(['24h', '3d', '7d', '14d', '30d', 'any']).optional().default('7d'),
   remoteType: z.enum(['remote', 'hybrid', 'onsite', 'any']).optional(),
   employmentType: z.enum(['full-time', 'contract', 'freelance', 'any']).optional(),
   salaryMin: z.number().int().min(0).optional(),
@@ -76,9 +76,12 @@ jobSearchRoutes.post(
     const { result } = outcome;
     if (result.jobs.length === 0) {
       return c.json({
+        scan_id: result.scan_id,
         jobs: [],
         executionTimeMs: result.executionTimeMs,
         sources_queried: result.sources_queried,
+        empty_reason: result.empty_reason,
+        filter_stats: result.filter_stats,
       });
     }
 
@@ -87,6 +90,7 @@ jobSearchRoutes.post(
       jobs: result.jobs,
       executionTimeMs: result.executionTimeMs,
       sources_queried: result.sources_queried,
+      filter_stats: result.filter_stats,
     });
   },
 );

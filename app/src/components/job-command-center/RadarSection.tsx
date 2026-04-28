@@ -12,6 +12,7 @@ import {
   Users,
   ExternalLink,
   FileText,
+  AlertCircle,
 } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
@@ -37,6 +38,12 @@ interface RadarSectionProps {
   location: string;
   datePosted: RadarSearchFilters['datePosted'];
   remoteType: RadarSearchFilters['remoteType'];
+  hasSearched?: boolean;
+  lastQuery?: string | null;
+  lastLocation?: string | null;
+  sourcesQueried?: string[];
+  executionTimeMs?: number | null;
+  emptyReason?: string | null;
 }
 
 function formatSalary(min: number | null, max: number | null): string | null {
@@ -95,6 +102,12 @@ export function RadarSection({
   location,
   datePosted,
   remoteType,
+  hasSearched = false,
+  lastQuery,
+  lastLocation,
+  sourcesQueried = [],
+  executionTimeMs,
+  emptyReason,
 }: RadarSectionProps) {
   const [query, setQuery] = useState('');
 
@@ -170,13 +183,35 @@ export function RadarSection({
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && !error && jobs.length === 0 && (
+      {/* Initial empty state */}
+      {!loading && !error && jobs.length === 0 && !hasSearched && (
         <div className="py-8 text-center">
           <Search size={24} className="mx-auto mb-3 text-[var(--text-soft)]" />
           <p className="text-[12px] text-[var(--text-soft)]">
             Search public jobs here. Posted-within filters only show roles with a readable posting date from the source.
           </p>
+        </div>
+      )}
+
+      {/* Completed no-results state */}
+      {!loading && !error && jobs.length === 0 && hasSearched && (
+        <div className="rounded-xl border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-bg)]/40 px-4 py-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={18} className="mt-0.5 flex-shrink-0 text-[var(--badge-amber-text)]" />
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-[var(--text-strong)]">
+                No verified jobs found{lastQuery ? ` for "${lastQuery}"` : ''}
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-soft)]">
+                {emptyReason ?? 'No jobs matched the current filters. Try a broader title, a wider location, or Last 30 days.'}
+              </p>
+              <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
+                Current search: {lastLocation?.trim() || 'no location'} · {datePosted ?? '7d'} · {remoteType ?? 'any'}
+                {sourcesQueried.length > 0 ? ` · sources: ${sourcesQueried.join(', ')}` : ''}
+                {typeof executionTimeMs === 'number' ? ` · ${Math.round(executionTimeMs / 100) / 10}s` : ''}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 

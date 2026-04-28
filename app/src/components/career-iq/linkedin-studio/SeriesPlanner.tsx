@@ -32,12 +32,18 @@ const CONTENT_TYPE_COLORS: Record<string, string> = {
   career_lesson: 'text-[var(--link)] bg-[var(--link)]/10',
 };
 
+function formatHashtag(tag: string): string {
+  const trimmed = tag.trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+}
+
 function SeriesPost({ post, index }: { post: StructuredPost; index: number }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    const text = [post.hook, '', post.body, '', post.cta, '', post.hashtags.map((h) => `#${h}`).join(' ')].join('\n');
+    const text = [post.hook, '', post.body, '', post.cta, '', post.hashtags.map(formatHashtag).join(' ')].join('\n');
     navigator.clipboard.writeText(text).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -91,7 +97,7 @@ function SeriesPost({ post, index }: { post: StructuredPost; index: number }) {
             </pre>
             {post.hashtags.length > 0 && (
               <p className="mt-2 text-[13px] text-[var(--link)]/50">
-                {post.hashtags.map((h) => `#${h}`).join(' ')}
+                {post.hashtags.map(formatHashtag).join(' ')}
               </p>
             )}
           </div>

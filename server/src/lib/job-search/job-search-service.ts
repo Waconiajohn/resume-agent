@@ -14,7 +14,7 @@ import { FirecrawlAdapter } from './adapters/firecrawl.js';
 import { matchJobsToProfile } from './ai-matcher.js';
 import { crossReferenceWithNetwork } from './ni-crossref.js';
 import { enrichWithReferralBonuses } from './referral-enrichment.js';
-import type { JobResult, SearchFilters } from './types.js';
+import type { JobResult, SearchFilterStats, SearchFilters } from './types.js';
 
 export type { SearchFilters };
 
@@ -23,6 +23,8 @@ export interface SearchPipelineResult {
   jobs: JobResult[];
   executionTimeMs: number;
   sources_queried: string[];
+  empty_reason?: string;
+  filter_stats?: SearchFilterStats;
 }
 
 export interface ScorePipelineResult {
@@ -118,6 +120,8 @@ export async function runSearchPipeline(
         jobs: [],
         executionTimeMs: searchResult.executionTimeMs,
         sources_queried: searchResult.sources_queried,
+        empty_reason: searchResult.empty_reason,
+        filter_stats: searchResult.filter_stats,
       },
     };
   }
@@ -204,6 +208,7 @@ export async function runSearchPipeline(
       jobs: searchResult.jobs,
       executionTimeMs: searchResult.executionTimeMs,
       sources_queried: searchResult.sources_queried,
+      filter_stats: searchResult.filter_stats,
     },
   };
 }

@@ -89,12 +89,28 @@ export function CoverLetterIntakeForm({
 
   // Sync pre-filled text when it arrives asynchronously (e.g. after API fetch completes)
   useEffect(() => {
-    if (defaultResumeText && resumeText === '') {
+    if (defaultResumeText && resumeText.trim() === '') {
       setResumeText(defaultResumeText);
     }
   // resumeText intentionally excluded: only apply the default when the field is still empty
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultResumeText]);
+
+  useEffect(() => {
+    if (initialJobDescription && jobDescription.trim() === '') {
+      setJobDescription(initialJobDescription);
+    }
+  // jobDescription intentionally excluded: never overwrite a user's edits after prefill
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialJobDescription]);
+
+  useEffect(() => {
+    if (initialCompanyName && companyName.trim() === '') {
+      setCompanyName(initialCompanyName);
+    }
+  // companyName intentionally excluded: never overwrite a user's edits after prefill
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCompanyName]);
 
   const isValid =
     resumeText.trim().length >= 50 &&
@@ -126,7 +142,7 @@ export function CoverLetterIntakeForm({
 
         <h1 className="mb-2 text-2xl font-semibold text-[var(--text-strong)]">Cover Letter</h1>
         <p className="mb-8 text-sm text-[var(--text-soft)]">
-          Paste your resume, the job description, and the company name. We'll generate a targeted cover letter that tells the WHY ME story — not a resume rehash.
+          Use your master resume and the target job description. We'll generate a targeted WHY ME letter, not a resume rehash.
         </p>
 
         {error && (
@@ -141,7 +157,7 @@ export function CoverLetterIntakeForm({
             <div>
               <div className="mb-1.5 flex items-center gap-2">
                 <label htmlFor="cl-resume" className="block text-xs font-medium text-[var(--text-muted)]">
-                  Resume Text
+                  Master Resume Text
                 </label>
                 {resumeLoading && (
                   <span
@@ -159,7 +175,7 @@ export function CoverLetterIntakeForm({
                 id="cl-resume"
                 value={resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
-                placeholder="Paste your resume text here (minimum 50 characters)..."
+                placeholder="Paste your master resume text here (minimum 50 characters)..."
                 rows={8}
                 disabled={loading}
               />
@@ -173,7 +189,7 @@ export function CoverLetterIntakeForm({
             {/* Job Description */}
             <div>
               <label htmlFor="cl-jd" className="mb-1.5 block text-xs font-medium text-[var(--text-muted)]">
-                Job Description
+                Target Job Description
               </label>
               <GlassTextarea
                 id="cl-jd"

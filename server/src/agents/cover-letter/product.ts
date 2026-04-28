@@ -22,6 +22,42 @@ import {
   renderPositioningStrategySection,
 } from '../../contracts/shared-context-prompt.js';
 
+function inferRoleTitleFromJobDescription(jobDescription: string): string {
+  const roleLine = jobDescription
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .find((line) =>
+      line.length >= 4
+      && line.length <= 120
+      && !/^(about|job description|responsibilities|requirements|qualifications|benefits|who we are|overview)\b/i.test(line),
+    );
+  return roleLine ?? 'the role';
+}
+
+function buildInitialJdAnalysis(input: Record<string, unknown>): CoverLetterState['jd_analysis'] {
+  const jobDescription = String(input.job_description ?? '').trim();
+  const companyName = String(input.company_name ?? '').trim() || 'the company';
+  const roleTitle = String(input.role_title ?? '').trim() || inferRoleTitleFromJobDescription(jobDescription);
+  const requirements = jobDescription
+    .split(/(?:\n|[.;])+/)
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter((line) => line.length >= 12)
+    .slice(0, 24);
+
+  return {
+    company_name: companyName,
+    role_title: roleTitle,
+    requirements: requirements.length > 0 ? requirements : [jobDescription.slice(0, 3000)],
+    culture_cues: [],
+  };
+}
+
+function hasInitialJdInput(input: Record<string, unknown>): boolean {
+  return String(input.job_description ?? '').trim().length > 0
+    || String(input.company_name ?? '').trim().length > 0
+    || String(input.role_title ?? '').trim().length > 0;
+}
+
 export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState, CoverLetterSSEEvent> {
   return {
     domain: 'cover-letter',
@@ -119,7 +155,7 @@ export function createCoverLetterProductConfig(): ProductConfig<CoverLetterState
       tone: (input.tone as CoverLetterState['tone']) ?? 'formal',
       // Input data will be parsed by the analyst agent's tools
       resume_data: undefined,
-      jd_analysis: undefined,
+      jd_analysis: hasInitialJdInput(input) ? buildInitialJdAnalysis(input) : undefined,
     }),
 
     buildAgentMessage: (agentName, state, input) => {

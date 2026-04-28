@@ -27,6 +27,7 @@ interface InterviewPrepState {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 30;
+const STREAM_IDLE_TIMEOUT_MS = 90_000;
 const STAR_STORIES_GATE = 'star_stories_review' as const;
 
 const RAW_AGENT_ROUND_RE = /^(?:writer|researcher|analyst|runner)\s*:?\s*round\s+\d+\/\d+/i;
@@ -91,19 +92,46 @@ export function useInterviewPrep() {
   statusRef.current = state.status;
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
+
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, []);
+
+  const markStreamStalled = useCallback(() => {
+    if (!mountedRef.current) return;
+    abortRef.current?.abort();
+    setState((prev) => {
+      if (prev.status !== 'connecting' && prev.status !== 'running') return prev;
+      return {
+        ...prev,
+        status: 'error',
+        error: 'Interview prep stalled while waiting for the writer. No work was lost — please try again.',
+      };
+    });
+  }, []);
+
+  const armIdleTimer = useCallback(() => {
+    clearIdleTimer();
+    idleTimerRef.current = setTimeout(markStreamStalled, STREAM_IDLE_TIMEOUT_MS);
+  }, [clearIdleTimer, markStreamStalled]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      clearIdleTimer();
       abortRef.current?.abort();
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
       }
     };
-  }, []);
+  }, [clearIdleTimer]);
 
   const addActivity = useCallback((text: string, stage: string) => {
     if (!mountedRef.current) return;
@@ -169,12 +197,14 @@ export function useInterviewPrep() {
         case 'pipeline_gate': {
           const gateName = asInterviewPrepGate(data.gate);
           if (gateName) {
+            clearIdleTimer();
             setState((prev) => ({ ...prev, status: 'star_stories_review', pendingGate: gateName }));
           }
           break;
         }
 
         case 'report_complete':
+          clearIdleTimer();
           setState((prev) => {
             const report = safeString(data.report);
             return {
@@ -189,6 +219,7 @@ export function useInterviewPrep() {
           break;
 
         case 'pipeline_error':
+          clearIdleTimer();
           setState((prev) => ({
             ...prev,
             status: 'error',
@@ -198,6 +229,7 @@ export function useInterviewPrep() {
           break;
 
         case 'pipeline_complete':
+          clearIdleTimer();
           setState((prev) => ({
             ...prev,
             status: prev.report ? 'complete' : prev.status,
@@ -212,7 +244,7 @@ export function useInterviewPrep() {
           break;
       }
     },
-    [addActivity],
+    [addActivity, clearIdleTimer],
   );
 
   const connectSSE = useCallback(
@@ -245,11 +277,13 @@ export function useInterviewPrep() {
           if (mountedRef.current) {
             setState((prev) => ({ ...prev, status: 'running' }));
             reconnectAttemptsRef.current = 0;
+            armIdleTimer();
           }
 
           try {
             for await (const msg of parseSSEStream(response.body)) {
               if (controller.signal.aborted) break;
+              armIdleTimer();
               handleSSEEvent(msg.event, msg.data);
             }
           } catch (err) {
@@ -258,6 +292,7 @@ export function useInterviewPrep() {
           }
 
           if (!controller.signal.aborted && mountedRef.current) {
+            clearIdleTimer();
             setState((prev) => {
               if (prev.status === 'complete' || prev.status === 'error') return prev;
               if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
@@ -286,7 +321,7 @@ export function useInterviewPrep() {
           }
         });
     },
-    [handleSSEEvent],
+    [armIdleTimer, clearIdleTimer, handleSSEEvent],
   );
 
   const startPipeline = useCallback(
@@ -388,6 +423,7 @@ export function useInterviewPrep() {
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
+    clearIdleTimer();
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
@@ -405,7 +441,7 @@ export function useInterviewPrep() {
       starStoriesReviewData: null,
       pendingGate: null,
     });
-  }, []);
+  }, [clearIdleTimer]);
 
   return {
     ...state,

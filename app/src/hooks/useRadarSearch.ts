@@ -51,9 +51,23 @@ interface RadarSearchState {
   jobs: RadarJob[];
   loading: boolean;
   error: string | null;
+  hasSearched: boolean;
+  lastQuery: string | null;
+  lastLocation: string | null;
+  lastFilters: RadarSearchFilters | null;
+  scanId: string | null;
+  sourcesQueried: string[];
+  executionTimeMs: number | null;
+  emptyReason: string | null;
 }
 
-interface SearchResponse { jobs: RadarJob[]; scan_id?: string | null; }
+interface SearchResponse {
+  jobs: RadarJob[];
+  scan_id?: string | null;
+  executionTimeMs?: number | null;
+  sources_queried?: unknown;
+  empty_reason?: unknown;
+}
 
 interface EnrichedResult {
   job_listings: {
@@ -243,6 +257,14 @@ export function useRadarSearch() {
     jobs: [],
     loading: false,
     error: null,
+    hasSearched: false,
+    lastQuery: null,
+    lastLocation: null,
+    lastFilters: null,
+    scanId: null,
+    sourcesQueried: [],
+    executionTimeMs: null,
+    emptyReason: null,
   });
 
   const mountedRef = useRef(true);
@@ -257,17 +279,33 @@ export function useRadarSearch() {
   const search = useCallback(
     async (query: string, location: string, filters?: RadarSearchFilters): Promise<void> => {
       if (!mountedRef.current) return;
-      setState((prev) => ({ ...prev, loading: true, error: null }));
+      const trimmedQuery = query.trim();
+      const trimmedLocation = location.trim();
+      setState((prev) => ({
+        ...prev,
+        jobs: [],
+        loading: true,
+        error: null,
+        hasSearched: true,
+        lastQuery: trimmedQuery,
+        lastLocation: trimmedLocation,
+        lastFilters: filters ?? null,
+        scanId: null,
+        sourcesQueried: [],
+        executionTimeMs: null,
+        emptyReason: null,
+      }));
 
       try {
         const authHeader = await getAuthHeader();
         if (!authHeader) {
           if (mountedRef.current) {
-            setState({
+            setState((prev) => ({
+              ...prev,
               jobs: [],
               loading: false,
               error: 'Not authenticated',
-            });
+            }));
           }
           return;
         }
@@ -280,11 +318,20 @@ export function useRadarSearch() {
 
         if (!res.ok) {
           const body = await res.text();
+          let message = `Search failed (${res.status})`;
+          try {
+            const parsed = JSON.parse(body) as { error?: unknown };
+            if (typeof parsed.error === 'string' && parsed.error.trim()) {
+              message = parsed.error;
+            }
+          } catch {
+            if (body.trim()) message = `${message}: ${body.trim().slice(0, 240)}`;
+          }
           if (mountedRef.current) {
             setState((prev) => ({
               ...prev,
               loading: false,
-              error: `Search failed (${res.status}): ${body}`,
+              error: message,
             }));
           }
           return;
@@ -293,6 +340,9 @@ export function useRadarSearch() {
         const data = (await res.json()) as SearchResponse;
         const rawJobs = sanitizeRadarJobs(data.jobs);
         const scanId = safeString(data.scan_id).trim() || null;
+        const sourcesQueried = safeStringArray(data.sources_queried);
+        const executionTimeMs = safeNullableNumber(data.executionTimeMs);
+        const emptyReason = safeNullableString(data.empty_reason);
 
         // Enrich with NI contacts (best-effort, non-blocking)
         const enrichedJobs =
@@ -305,6 +355,10 @@ export function useRadarSearch() {
             ...prev,
             jobs: enrichedJobs,
             loading: false,
+            scanId,
+            sourcesQueried,
+            executionTimeMs,
+            emptyReason: enrichedJobs.length === 0 ? emptyReason : null,
           }));
         }
       } catch (err) {
@@ -331,6 +385,14 @@ export function useRadarSearch() {
       jobs: [],
       loading: false,
       error: null,
+      hasSearched: false,
+      lastQuery: null,
+      lastLocation: null,
+      lastFilters: null,
+      scanId: null,
+      sourcesQueried: [],
+      executionTimeMs: null,
+      emptyReason: null,
     });
   }, []);
 

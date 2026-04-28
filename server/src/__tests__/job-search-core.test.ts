@@ -141,6 +141,7 @@ describe('searchAllSources', () => {
 
     expect(result.jobs).toHaveLength(0);
     expect(result.sources_queried).toHaveLength(0);
+    expect(result.empty_reason).toMatch(/no job-search provider/i);
   });
 
   it('includes executionTimeMs in the response', async () => {
@@ -205,6 +206,20 @@ describe('searchAllSources', () => {
     const result = await searchAllSources('VP Operations', 'Dallas, TX', { datePosted: '7d' }, [adapter]);
 
     expect(result.jobs).toEqual([recentJob]);
+    expect(result.filter_stats?.filtered_by_freshness).toBe(2);
+  });
+
+  it('explains when all provider results are removed by freshness filtering', async () => {
+    const oldJob = makeJob({
+      external_id: 'old_1',
+      posted_date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    const adapter = makeAdapter('a', [oldJob]);
+
+    const result = await searchAllSources('VP Operations', 'Dallas, TX', { datePosted: '7d' }, [adapter]);
+
+    expect(result.jobs).toEqual([]);
+    expect(result.empty_reason).toMatch(/readable posting date inside 7d/i);
   });
 
   it('keeps unknown-date jobs only when datePosted is any', async () => {

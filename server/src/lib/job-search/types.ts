@@ -35,8 +35,18 @@ export interface SearchAdapter {
   search(query: string, location: string, filters: SearchFilters): Promise<JobResult[]>;
 }
 
+export interface SearchFilterStats {
+  raw_returned: number;
+  filtered_by_work_mode: number;
+  filtered_by_freshness: number;
+  deduped: number;
+  adapter_failures: number;
+}
+
 export interface SearchResponse {
   jobs: JobResult[];
   executionTimeMs: number;
   sources_queried: string[];
+  empty_reason?: string;
+  filter_stats?: SearchFilterStats;
 }

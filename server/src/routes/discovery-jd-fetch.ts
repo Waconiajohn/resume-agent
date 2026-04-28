@@ -71,6 +71,103 @@ function cleanTitleSegment(value: string): string {
     .trim();
 }
 
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+}
+
+const JOB_TEXT_START_PATTERNS = [
+  /^about the job$/i,
+  /^job description$/i,
+  /^description$/i,
+  /^position summary$/i,
+  /^the role$/i,
+  /^responsibilities$/i,
+  /^what you'?ll do$/i,
+];
+
+const JOB_TEXT_STOP_PATTERNS = [
+  /^similar jobs$/i,
+  /^people also viewed$/i,
+  /^recommended jobs$/i,
+  /^more jobs from/i,
+  /^job alerts?$/i,
+  /^privacy policy$/i,
+  /^user agreement$/i,
+  /^cookie policy$/i,
+  /^linkedin/i,
+  /^show more jobs/i,
+  /^see who .* has hired/i,
+];
+
+const JOB_TEXT_NOISE_PATTERNS = [
+  /^sign in$/i,
+  /^join now$/i,
+  /^save job$/i,
+  /^apply now$/i,
+  /^easy apply$/i,
+  /^show more$/i,
+  /^show less$/i,
+  /^show all$/i,
+  /^you may also apply directly/i,
+  /^your job alert/i,
+  /^create job alert/i,
+  /^get notified/i,
+  /^back to jobs/i,
+  /^share this job/i,
+  /^report this job/i,
+  /^promoted$/i,
+  /^be among the first/i,
+  /^no longer accepting applications/i,
+  /^this button displays/i,
+  /^we're unlocking community knowledge/i,
+  /^expertise from forbes councils/i,
+  /^by creating this job alert/i,
+  /^agree & join linkedin/i,
+  /^new to linkedin/i,
+  /^already on linkedin/i,
+  /^forgot password/i,
+  /^continue with google/i,
+];
+
+function cleanExtractedJobText(html: string): string {
+  const withBreaks = html
+    .replace(/<(br|p|div|li|h[1-6]|section|article|tr|td|th)\b[^>]*>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6]|section|article|tr|td|th)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ');
+
+  const lines = decodeHtmlEntities(withBreaks)
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  const startIndex = lines.findIndex((line) => JOB_TEXT_START_PATTERNS.some((pattern) => pattern.test(line)));
+  const scopedLines = startIndex >= 0 ? lines.slice(startIndex + 1) : lines;
+  const stopIndex = scopedLines.findIndex((line) => JOB_TEXT_STOP_PATTERNS.some((pattern) => pattern.test(line)));
+  const candidateLines = stopIndex >= 0 ? scopedLines.slice(0, stopIndex) : scopedLines;
+
+  const cleanedLines: string[] = [];
+  const seen = new Set<string>();
+  for (const line of candidateLines) {
+    if (JOB_TEXT_NOISE_PATTERNS.some((pattern) => pattern.test(line))) continue;
+    if (/^(like|comment|repost|send)$/i.test(line)) continue;
+    if (/^\d+\s+(applicants?|followers?|connections?)$/i.test(line)) continue;
+    const key = line.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleanedLines.push(line);
+  }
+
+  return cleanedLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 export function extractJobMetadataFromTitle(title: string, rawUrl: string): { title: string; company: string } {
   const cleaned = cleanTitleSegment(title);
   let roleTitle = cleaned;
@@ -202,7 +299,7 @@ discoveryJdFetchRoutes.post(
     html = html.replace(/<style[\s\S]*?<\/style>/gi, ' ');
     html = html.replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ');
 
-    const strippedText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const strippedText = cleanExtractedJobText(html);
 
     if (strippedText.length <= 200) {
       return c.json({ error: 'Could not extract job description from URL' }, 400);

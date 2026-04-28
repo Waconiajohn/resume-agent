@@ -641,6 +641,12 @@ export function JobCommandCenterRoom({
             location={getBroadSearchLocation(jobFilters)}
             datePosted={jobFilters.postedWithin}
             remoteType={deriveRemoteType(jobFilters.workModes)}
+            hasSearched={radar.hasSearched}
+            lastQuery={radar.lastQuery}
+            lastLocation={radar.lastLocation}
+            sourcesQueried={radar.sourcesQueried}
+            executionTimeMs={radar.executionTimeMs}
+            emptyReason={radar.emptyReason}
           />
 
           {(showAiSuggestions || jobFinder.status !== 'idle' || jobFinder.matches.length > 0 || jobFinder.error) && (

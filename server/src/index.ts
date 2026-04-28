@@ -187,9 +187,10 @@ let cachedHealthCheck: {
 } | null = null;
 
 function hasActiveLlmProviderKey(): boolean {
+  const openAiKeyPresent = Boolean(process.env.OPENAI_API_KEY || process.env.OpenAI_API_KEY);
   if (!process.env.LLM_PROVIDER) {
     return Boolean(
-      process.env.OPENAI_API_KEY
+      openAiKeyPresent
       || process.env.GROQ_API_KEY
       || process.env.ZAI_API_KEY
       || process.env.ANTHROPIC_API_KEY
@@ -201,7 +202,7 @@ function hasActiveLlmProviderKey(): boolean {
   const provider = (process.env.LLM_PROVIDER.toLowerCase() || ACTIVE_PROVIDER).trim();
   switch (provider) {
     case 'openai':
-      return Boolean(process.env.OPENAI_API_KEY);
+      return openAiKeyPresent;
     case 'anthropic':
       return Boolean(process.env.ANTHROPIC_API_KEY);
     case 'deepinfra':
@@ -216,7 +217,7 @@ function hasActiveLlmProviderKey(): boolean {
       return Boolean(process.env.ZAI_API_KEY);
     default:
       return Boolean(
-        process.env.OPENAI_API_KEY
+        openAiKeyPresent
         || process.env.GROQ_API_KEY
         || process.env.ZAI_API_KEY
         || process.env.ANTHROPIC_API_KEY

@@ -124,10 +124,11 @@ export function V3IntakeForm({
       const data = (await res.json()) as { text: string; title?: string; company?: string };
       setJobDescription(data.text);
       setJdUrlLoadedFrom(trimmed);
-      if (data.title && !jdTitle.trim()) {
+      const existingTitleLooksUnparsed = /\bhiring\b/i.test(jdTitle) || /\|\s*(linkedin|indeed|glassdoor|careers)\b/i.test(jdTitle);
+      if (data.title && (!jdTitle.trim() || existingTitleLooksUnparsed)) {
         setJdTitle(data.title);
       }
-      if (data.company && !jdCompany.trim()) {
+      if (data.company && (!jdCompany.trim() || existingTitleLooksUnparsed)) {
         setJdCompany(data.company);
       }
     } catch (err) {

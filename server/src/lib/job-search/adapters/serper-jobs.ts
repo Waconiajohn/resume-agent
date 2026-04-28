@@ -13,7 +13,6 @@ import logger from '../../logger.js';
 import {
   freshnessDaysForDatePosted,
   googleTbsForFreshnessDays,
-  isWithinFreshnessWindow,
   normalizeJobPostedDate,
 } from '../../job-date.js';
 import { classifyWorkMode } from '../work-mode-classifier.js';
@@ -189,9 +188,6 @@ export class SerperJobsAdapter implements SearchAdapter {
           const extensions = job.extensions ?? [];
           const { salary_min, salary_max } = extractSalary(extensions);
           const postedDate = normalizeJobPostedDate(job.date);
-          if (maxDaysOld && !isWithinFreshnessWindow(postedDate, maxDaysOld)) {
-            return null;
-          }
           const workMode = classifyWorkMode(
             title,
             job.snippet ?? '',

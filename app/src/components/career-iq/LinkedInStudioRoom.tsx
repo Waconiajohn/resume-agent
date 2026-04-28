@@ -58,7 +58,11 @@ const PROFILE_SECTION_LABELS: Record<ProfileSection, string> = {
 
 const PROFILE_SECTION_ORDER: ProfileSection[] = ['headline', 'about', 'experience', 'skills', 'education'];
 
-
+function formatHashtag(tag: string): string {
+  const trimmed = tag.trim();
+  if (!trimmed) return '';
+  return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────
 
@@ -216,7 +220,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
 
   const handleCopy = useCallback(() => {
     if (!content.postDraft) return;
-    const text = [content.postDraft, '', ...content.postHashtags.map((h) => `#${h}`)].join('\n');
+    const text = [content.postDraft, '', ...content.postHashtags.map(formatHashtag)].join('\n');
     navigator.clipboard.writeText(text).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -430,7 +434,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
             </div>
             {content.postHashtags.length > 0 && (
               <p className="mt-3 text-[12px] text-[var(--link)]/60">
-                {content.postHashtags.map((h) => `#${h}`).join(' ')}
+                {content.postHashtags.map(formatHashtag).join(' ')}
               </p>
             )}
           </div>
@@ -571,7 +575,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
             </div>
             {content.postHashtags.length > 0 && (
               <p className="mt-3 text-[12px] text-[var(--link)]/60">
-                {content.postHashtags.map((h) => `#${h}`).join(' ')}
+                {content.postHashtags.map(formatHashtag).join(' ')}
               </p>
             )}
           </div>
@@ -1463,7 +1467,7 @@ function PostLibrary() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopy = useCallback((post: { id: string; content: string; hashtags: string[] | null }) => {
-    const text = [post.content, '', ...(post.hashtags ?? []).map((h) => `#${h}`)].join('\n');
+    const text = [post.content, '', ...(post.hashtags ?? []).map(formatHashtag)].join('\n');
     navigator.clipboard.writeText(text).catch(() => {});
     setCopiedId(post.id);
     setTimeout(() => setCopiedId(null), 2000);

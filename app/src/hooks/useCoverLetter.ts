@@ -26,6 +26,7 @@ interface CoverLetterState {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 20;
+const STREAM_IDLE_TIMEOUT_MS = 75_000;
 
 function normalizeLetterReviewData(value: Record<string, unknown>): LetterReviewData {
   return {
@@ -52,18 +53,45 @@ export function useCoverLetter(accessToken: string | null) {
   statusRef.current = state.status;
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, []);
+
+  const markStreamStalled = useCallback(() => {
+    if (!mountedRef.current) return;
+    abortRef.current?.abort();
+    setState((prev) => {
+      if (prev.status !== 'connecting' && prev.status !== 'running') return prev;
+      return {
+        ...prev,
+        status: 'error',
+        error: 'The cover letter draft stalled while waiting for the writer. No work was lost — please try again.',
+      };
+    });
+  }, []);
+
+  const armIdleTimer = useCallback(() => {
+    clearIdleTimer();
+    idleTimerRef.current = setTimeout(markStreamStalled, STREAM_IDLE_TIMEOUT_MS);
+  }, [clearIdleTimer, markStreamStalled]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      clearIdleTimer();
       abortRef.current?.abort();
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
       }
     };
-  }, []);
+  }, [clearIdleTimer]);
 
   const addActivity = useCallback((text: string, stage: string) => {
     if (!mountedRef.current) return;
@@ -120,12 +148,14 @@ export function useCoverLetter(accessToken: string | null) {
         case 'pipeline_gate': {
           const gateName = data.gate === 'letter_review' ? 'letter_review' : undefined;
           if (gateName === 'letter_review') {
+            clearIdleTimer();
             setState((prev) => ({ ...prev, status: 'letter_review', pendingGate: gateName }));
           }
           break;
         }
 
         case 'letter_complete':
+          clearIdleTimer();
           setState((prev) => ({
             ...prev,
             status: 'complete',
@@ -137,6 +167,7 @@ export function useCoverLetter(accessToken: string | null) {
           break;
 
         case 'pipeline_error':
+          clearIdleTimer();
           setState((prev) => ({
             ...prev,
             status: 'error',
@@ -146,6 +177,7 @@ export function useCoverLetter(accessToken: string | null) {
           break;
 
         case 'pipeline_complete':
+          clearIdleTimer();
           // Fallback terminal event
           setState((prev) => ({
             ...prev,
@@ -162,7 +194,7 @@ export function useCoverLetter(accessToken: string | null) {
           break;
       }
     },
-    [addActivity],
+    [addActivity, clearIdleTimer],
   );
 
   const connectSSE = useCallback(
@@ -194,11 +226,13 @@ export function useCoverLetter(accessToken: string | null) {
           if (mountedRef.current) {
             setState((prev) => ({ ...prev, status: 'running' }));
             reconnectAttemptsRef.current = 0;
+            armIdleTimer();
           }
 
           try {
             for await (const msg of parseSSEStream(response.body)) {
               if (controller.signal.aborted) break;
+              armIdleTimer();
               handleSSEEvent(msg.event, msg.data);
             }
           } catch (err) {
@@ -208,6 +242,7 @@ export function useCoverLetter(accessToken: string | null) {
 
           // Stream ended — attempt reconnect if not intentionally aborted and not complete
           if (!controller.signal.aborted && mountedRef.current) {
+            clearIdleTimer();
             setState((prev) => {
               if (prev.status === 'complete' || prev.status === 'error') return prev;
               // Reconnect with backoff
@@ -237,7 +272,7 @@ export function useCoverLetter(accessToken: string | null) {
           }
         });
     },
-    [accessToken, handleSSEEvent],
+    [accessToken, armIdleTimer, clearIdleTimer, handleSSEEvent],
   );
 
   const startPipeline = useCallback(
@@ -247,6 +282,7 @@ export function useCoverLetter(accessToken: string | null) {
       jobDescription: string,
       companyName: string,
       tone: 'formal' | 'conversational' | 'bold' = 'formal',
+      roleTitle?: string,
       /**
        * Approach C Phase 1.3 — when present, links the generated cover letter
        * to the job_applications row with this ID so assets can be reopened
@@ -284,6 +320,7 @@ export function useCoverLetter(accessToken: string | null) {
             resume_text: resumeText,
             job_description: jobDescription,
             company_name: companyName,
+            ...(roleTitle ? { role_title: roleTitle } : {}),
             tone,
             ...(applicationId ? { job_application_id: applicationId } : {}),
           }),
@@ -348,6 +385,7 @@ export function useCoverLetter(accessToken: string | null) {
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
+    clearIdleTimer();
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
@@ -364,7 +402,7 @@ export function useCoverLetter(accessToken: string | null) {
       letterReviewData: null,
       pendingGate: null,
     });
-  }, []);
+  }, [clearIdleTimer]);
 
   return {
     ...state,

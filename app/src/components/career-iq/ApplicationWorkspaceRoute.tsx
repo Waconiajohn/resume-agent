@@ -542,6 +542,7 @@ export function ApplicationWorkspaceRoute({
         embedded
         applicationId={applicationId}
         initialCompanyName={application.company_name}
+        initialRoleTitle={application.role_title}
         initialJobDescription={application.jd_text}
         backTarget={buildApplicationWorkspaceRoute(applicationId, 'resume')}
         backLabel="Back to resume"

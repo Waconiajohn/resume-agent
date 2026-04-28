@@ -44,6 +44,14 @@ function removeDefensiveCoverLetterCaveats(letter: string): string {
     .trim();
 }
 
+function coverLetterSalutation(companyName: string): string {
+  const normalized = companyName.replace(/\s+/g, ' ').trim();
+  if (!normalized || /^(the company|unknown|n\/a|null)$/i.test(normalized)) {
+    return 'Dear Hiring Team,';
+  }
+  return `Dear ${normalized} Hiring Team,`;
+}
+
 // ─── Tool: write_letter ───────────────────────────────────────────────
 
 const writeLetterTool: CoverLetterTool = {
@@ -154,6 +162,7 @@ Writing philosophy:
 - If Board/PE/P&L appears in the target role, include positive language like "board-ready operating rhythm", "sponsor-ready operating evidence", or "operating-budget discipline" only when supported by the evidence. This must read as confident positioning, not a caveat.
 - Length target: 250-350 words. No fluff.`;
 
+    const salutation = coverLetterSalutation(jd.company_name);
     const userMessage = `Write a complete, polished cover letter using ONLY the information provided below. Output the letter text only — no JSON, no commentary, no markdown fencing.
 
 Every factual claim must trace to the candidate data below. Do not add accomplishments, metrics, or experiences that do not appear in this data. Use reasonable inference and adjacent proof only when the source facts make the bridge honest and clear.
@@ -180,7 +189,7 @@ Closing strategy: ${plan.closing_strategy}
 
 TONE: ${tone}
 
-Write the full letter now. Start with "Dear ${jd.company_name} Hiring Team," and end with a professional sign-off using the candidate's name.
+Write the full letter now. Start with "${salutation}" and end with a professional sign-off using the candidate's name.
 
 Structure it as 4-5 concise paragraphs, 280-340 words:
 1. Company/role mandate + strongest proof.

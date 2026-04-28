@@ -25,6 +25,7 @@ const startSchema = z.object({
   resume_text: z.string().min(50).max(100_000),
   job_description: z.string().min(1).max(50_000),
   company_name: z.string().min(1).max(200),
+  role_title: z.string().max(200).optional(),
   tone: z.enum(['formal', 'conversational', 'bold']).optional().default('formal'),
   // Approach C Phase 1.1 — optional link to the job application this cover
   // letter belongs to. When provided, persisted on coach_sessions so the

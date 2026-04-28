@@ -23,6 +23,7 @@ vi.mock('lucide-react', () => ({
   Users: () => <span data-testid="icon-users" />,
   ExternalLink: () => <span data-testid="icon-external-link" />,
   FileText: () => <span data-testid="icon-filetext" />,
+  AlertCircle: () => <span data-testid="icon-alert-circle" />,
 }));
 
 vi.mock('@/components/GlassCard', () => ({
@@ -183,6 +184,21 @@ describe('RadarSection — empty state', () => {
     expect(
       screen.getByText(/search public jobs here/i),
     ).toBeInTheDocument();
+  });
+
+  it('shows a completed no-results message after a search returns no jobs', () => {
+    render(<RadarSection {...defaultProps({
+      hasSearched: true,
+      lastQuery: 'VP Operations',
+      lastLocation: 'Dallas, TX',
+      emptyReason: 'No jobs came back from the provider for this title and location.',
+      sourcesQueried: ['serper'],
+      executionTimeMs: 1400,
+    })} />);
+
+    expect(screen.getByText(/no verified jobs found for "VP Operations"/i)).toBeInTheDocument();
+    expect(screen.getByText(/no jobs came back/i)).toBeInTheDocument();
+    expect(screen.getByText(/sources: serper/i)).toBeInTheDocument();
   });
 });
 

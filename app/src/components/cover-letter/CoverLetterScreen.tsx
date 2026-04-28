@@ -50,6 +50,7 @@ interface CoverLetterScreenProps {
    * the intake form prefills instead of asking the user to retype.
    */
   initialCompanyName?: string;
+  initialRoleTitle?: string;
   initialJobDescription?: string;
 }
 
@@ -295,6 +296,7 @@ export function CoverLetterScreen({
   backLabel,
   applicationId,
   initialCompanyName,
+  initialRoleTitle,
   initialJobDescription,
 }: CoverLetterScreenProps) {
   const [phase, setPhase] = useState<Phase>('intake');
@@ -394,6 +396,7 @@ export function CoverLetterScreen({
           data.jobDescription,
           data.companyName,
           data.tone,
+          initialRoleTitle,
           applicationId,
         );
         if (ok) {
@@ -405,7 +408,7 @@ export function CoverLetterScreen({
         setIntakeLoading(false);
       }
     },
-    [accessToken, startPipeline],
+    [accessToken, applicationId, initialRoleTitle, startPipeline],
   );
 
   const handleWriteAnother = useCallback(() => {
