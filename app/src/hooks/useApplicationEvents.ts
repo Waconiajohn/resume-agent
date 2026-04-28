@@ -120,7 +120,13 @@ function mergeEvents(remote: ApplicationEvent[], local: ApplicationEvent[]): App
       seen.add(event.id);
       return true;
     })
-    .sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at));
+      .sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at));
+}
+
+function withJsonHeader(headers: HeadersInit): Headers {
+  const next = new Headers(headers);
+  next.set('Content-Type', 'application/json');
+  return next;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────
@@ -203,12 +209,12 @@ export function useApplicationEvents(options: UseApplicationEventsOptions = {}) 
       const headers = await authHeader();
       if (!headers) return null;
       try {
-        const res = await fetch(
-          `${API_BASE}/job-applications/${encodeURIComponent(input.applicationId)}/events`,
-          {
-            method: 'POST',
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          const res = await fetch(
+            `${API_BASE}/job-applications/${encodeURIComponent(input.applicationId)}/events`,
+            {
+              method: 'POST',
+              headers: withJsonHeader(headers),
+              body: JSON.stringify({
               type: input.metadata.type,
               occurred_at: input.occurredAt,
               metadata: input.metadata,
@@ -266,12 +272,12 @@ export function useApplicationEvents(options: UseApplicationEventsOptions = {}) 
       const now = new Date();
       const appliedDate = now.toISOString().slice(0, 10);
       try {
-        const res = await fetch(
-          `${API_BASE}/job-applications/${encodeURIComponent(input.applicationId)}`,
-          {
-            method: 'PATCH',
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ stage: 'applied', applied_date: appliedDate }),
+          const res = await fetch(
+            `${API_BASE}/job-applications/${encodeURIComponent(input.applicationId)}`,
+            {
+              method: 'PATCH',
+              headers: withJsonHeader(headers),
+              body: JSON.stringify({ stage: 'applied', applied_date: appliedDate }),
           },
         );
         if (!res.ok) {

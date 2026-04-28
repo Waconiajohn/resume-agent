@@ -62,8 +62,8 @@ export function HadThisInterviewButton({
     applicationId,
   });
 
-  const today = useMemo(todayIsoDate, []);
-  const minDate = useMemo(backfillFloorIsoDate, []);
+  const today = useMemo(() => todayIsoDate(), []);
+  const minDate = useMemo(() => backfillFloorIsoDate(), []);
 
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);

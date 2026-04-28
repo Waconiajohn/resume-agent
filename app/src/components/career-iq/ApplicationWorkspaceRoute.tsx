@@ -279,13 +279,8 @@ export function ApplicationWorkspaceRoute({
   // priority Next rule). When :tool is present we trust it and dispatch.
   const { applicationId = '', tool: rawTool } = useParams();
   const isSmartDefault = rawTool === undefined;
-  const tool: ApplicationWorkspaceTool = isSmartDefault ? 'overview' : (rawTool as ApplicationWorkspaceTool);
-
-  // Validate the tool before rendering anything — a bad URL segment should
-  // fall back to overview rather than crash a product screen.
-  if (!isSmartDefault && !isValidTool(rawTool)) {
-    return <Navigate to={`/workspace/application/${encodeURIComponent(applicationId)}/overview`} replace />;
-  }
+  const invalidTool = !isSmartDefault && !isValidTool(rawTool);
+  const tool: ApplicationWorkspaceTool = isSmartDefault || invalidTool ? 'overview' : rawTool;
 
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<ApplicationRecord | null>(null);
@@ -374,6 +369,12 @@ export function ApplicationWorkspaceRoute({
       cancelled = true;
     };
   }, [applicationId, accessToken]);
+
+  // Validate the tool after hooks have run so bad URLs redirect without
+  // violating React's Rules of Hooks.
+  if (invalidTool) {
+    return <Navigate to={`/workspace/application/${encodeURIComponent(applicationId)}/overview`} replace />;
+  }
 
   if (loading) {
     return (

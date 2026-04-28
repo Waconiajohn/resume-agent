@@ -65,9 +65,11 @@ export function SessionsCard() {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) throw new Error('Not authenticated');
+    const headers = new Headers(init?.headers);
+    headers.set('Authorization', `Bearer ${token}`);
     const res = await fetch(`${API_BASE}${path}`, {
       ...init,
-      headers: { ...(init?.headers ?? {}), Authorization: `Bearer ${token}` },
+      headers,
     });
     return res;
   };

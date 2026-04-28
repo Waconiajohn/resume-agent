@@ -16,7 +16,7 @@ import { trackProductEvent } from '@/lib/product-telemetry';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobFilters } from '@/hooks/useJobFilters';
 import { useTailorPicker } from '@/components/applications/TailorPickerProvider';
-import type { CsvUploadSummary } from '@/types/ni';
+import type { CsvUploadSummary, JobMatch } from '@/types/ni';
 import { Upload, Users, Target, ScanLine, UserCircle, Handshake, Briefcase, Coins } from 'lucide-react';
 
 type SmartReferralsTab = 'import' | 'connections' | 'targets' | 'job-matches' | 'job-scan' | 'bonus-search' | 'referrals' | 'contacts';
@@ -164,7 +164,7 @@ function NetworkSetupPanel({
   );
 }
 
-export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartReferralsRoomProps) {
+export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomProps) {
   const { openPicker } = useTailorPicker();
   const { user, session, loading: authLoading } = useAuth();
   const { filters: niFilters, setLocation: setNiLocation, setRadiusMiles: setNiRadiusMiles, setWorkModes: setNiWorkModes, setPostedWithin: setNiPostedWithin } = useJobFilters('ni-job-filters');
@@ -282,9 +282,21 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
     setNetworkSupportView(null);
   }, []);
 
-  const handleApplyWithResume = useCallback((jobUrl: string) => {
-    onNavigate?.(`/resume-builder/session?jobUrl=${encodeURIComponent(jobUrl)}`);
-  }, [onNavigate]);
+  const handleApplyWithResume = useCallback((match: JobMatch) => {
+    if (!match.url) return;
+    trackProductEvent('job_resume_build_requested', {
+      source: 'job_board',
+      company_name: match.companyName,
+      role_title: match.title,
+      has_job_url: true,
+    });
+    openPicker({
+      source: match.searchContext === 'bonus_search' ? 'smart_referrals_bonus_matches' : 'smart_referrals_network_matches',
+      jobUrl: match.url,
+      companyName: match.companyName ?? undefined,
+      roleTitle: match.title,
+    });
+  }, [openPicker]);
 
   const handleGenerateOutreach = useCallback((prefill: OutreachPrefill) => {
     trackProductEvent('smart_referrals_outreach_opened', {
@@ -357,13 +369,13 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
             <TargetTitlesManager accessToken={accessToken} />
             <JobFilterPanel
               location={niFilters.location}
-              onLocationChange={(v) => void setNiLocation(v)}
+              onLocationChange={setNiLocation}
               radiusMiles={niFilters.radiusMiles}
-              onRadiusMilesChange={(v) => void setNiRadiusMiles(v)}
+              onRadiusMilesChange={setNiRadiusMiles}
               workModes={niFilters.workModes}
-              onWorkModesChange={(v) => void setNiWorkModes(v)}
+              onWorkModesChange={setNiWorkModes}
               postedWithin={niFilters.postedWithin}
-              onPostedWithinChange={(v) => void setNiPostedWithin(v)}
+              onPostedWithinChange={setNiPostedWithin}
             />
           </>
         );
@@ -378,7 +390,7 @@ export function SmartReferralsRoom({ initialFocus = null, onNavigate }: SmartRef
                 ? 'Review the roles coming from the bonus-company path. Use this lane when the payout is worth chasing even without a first-degree connection.'
                 : 'Review the roles found at companies where you already know someone, then move straight into outreach or your main job pipeline.'
             }
-            onApplyWithResume={onNavigate ? handleApplyWithResume : undefined}
+              onApplyWithResume={handleApplyWithResume}
             refreshKey={matchRefreshKey}
             workModes={niFilters.workModes}
           />

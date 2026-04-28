@@ -25,7 +25,7 @@ export interface JobMatchesListProps {
   initialFilter?: MatchFilter;
   title?: string;
   description?: string;
-  onApplyWithResume?: (jobUrl: string) => void;
+  onApplyWithResume?: (match: JobMatch) => void;
   /** Increment this key to trigger a re-fetch of matches (e.g. after a scan completes) */
   refreshKey?: number;
   /** When provided, applies client-side work mode filtering to results */
@@ -383,7 +383,7 @@ export function JobMatchesList({
                 <GlassButton
                   variant="ghost"
                   className="!px-3 !py-1.5 text-[11px]"
-                  onClick={() => onApplyWithResume(match.url!)}
+                    onClick={() => onApplyWithResume(match)}
                 >
                   Tailor Resume
                 </GlassButton>
