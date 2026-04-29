@@ -32,6 +32,17 @@ function buildEmptyReason(filters: SearchFilters, stats: SearchFilterStats, adap
     return 'No job-search provider is configured for this environment.';
   }
 
+  const providerErrors = stats.provider_diagnostics?.filter((diagnostic) => diagnostic.status !== 'ok') ?? [];
+  if (providerErrors.length > 0 && stats.raw_returned === 0) {
+    return providerErrors.map((diagnostic) => diagnostic.message).join(' ');
+  }
+
+  const rawProviderReturned = stats.provider_diagnostics
+    ?.reduce((total, diagnostic) => total + (diagnostic.jobs_returned ?? 0), 0) ?? 0;
+  if (stats.raw_returned === 0 && rawProviderReturned > 0 && filters.datePosted !== 'any') {
+    return `The provider returned raw jobs, but none had a readable posting date inside ${filters.datePosted}. Try a wider posted-within filter or a broader title.`;
+  }
+
   if (stats.raw_returned === 0) {
     return stats.adapter_failures > 0
       ? 'The job-search provider did not return usable results. Try again in a moment or broaden the search.'
@@ -39,7 +50,16 @@ function buildEmptyReason(filters: SearchFilters, stats: SearchFilterStats, adap
   }
 
   if (stats.filtered_by_freshness >= stats.raw_returned && filters.datePosted !== 'any') {
-    return `We found jobs, but none had a readable posting date inside ${filters.datePosted}. Try Last 30 days or a broader title.`;
+    const nextWindow = filters.datePosted === '24h'
+      ? 'Last 3 days'
+      : filters.datePosted === '3d'
+        ? 'Last 7 days'
+        : filters.datePosted === '7d'
+          ? 'Last 14 days'
+          : filters.datePosted === '14d'
+            ? 'Last 30 days'
+            : 'Any date';
+    return `We found jobs, but none had a readable posting date inside ${filters.datePosted}. Try ${nextWindow} or a broader title.`;
   }
 
   if (stats.filtered_by_work_mode >= stats.raw_returned && filters.remoteType && filters.remoteType !== 'any') {
@@ -93,6 +113,7 @@ export async function searchAllSources(
     filtered_by_freshness: 0,
     deduped: 0,
     adapter_failures: 0,
+    provider_diagnostics: [],
   };
 
   for (let i = 0; i < adapters.length; i++) {
@@ -101,8 +122,18 @@ export async function searchAllSources(
 
     sources_queried.push(adapter.name);
 
+    if (adapter.getDiagnostics) {
+      filter_stats.provider_diagnostics?.push(...adapter.getDiagnostics());
+    }
+
     if (result.status === 'rejected') {
       filter_stats.adapter_failures += 1;
+      filter_stats.provider_diagnostics?.push({
+        provider: adapter.name,
+        status: 'error',
+        message: `${adapter.name} failed before returning results.`,
+        jobs_returned: 0,
+      });
       logger.warn(
         { adapter: adapter.name, reason: result.reason instanceof Error ? result.reason.message : String(result.reason) },
         'Job search adapter failed',

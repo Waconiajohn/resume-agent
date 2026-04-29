@@ -11,10 +11,12 @@ export interface NiScrapeStatus {
   status: 'pending' | 'running' | 'completed' | 'failed';
   output_summary: {
     companies_scanned?: number;
+    raw_jobs_found?: number;
     jobs_found?: number;
     matching_jobs?: number;
     referral_available?: number;
     error_count?: number;
+    serper_configured?: boolean;
   };
   error_message: string | null;
   started_at?: string;
@@ -23,10 +25,12 @@ export interface NiScrapeStatus {
 
 export interface NiScrapeResult {
   companiesScanned: number;
+  rawJobsFound: number;
   jobsFound: number;
   matchingJobs: number;
   referralAvailable: number;
   errorCount: number;
+  serperConfigured: boolean | null;
 }
 
 interface StartNiScrapeOptions {
@@ -44,10 +48,14 @@ interface StartNiScrapeOptions {
 function buildResult(log: NiScrapeStatus): NiScrapeResult {
   return {
     companiesScanned: log.output_summary.companies_scanned ?? 0,
+    rawJobsFound: log.output_summary.raw_jobs_found ?? log.output_summary.jobs_found ?? 0,
     jobsFound: log.output_summary.jobs_found ?? 0,
     matchingJobs: log.output_summary.matching_jobs ?? 0,
     referralAvailable: log.output_summary.referral_available ?? 0,
     errorCount: log.output_summary.error_count ?? 0,
+    serperConfigured: typeof log.output_summary.serper_configured === 'boolean'
+      ? log.output_summary.serper_configured
+      : null,
   };
 }
 

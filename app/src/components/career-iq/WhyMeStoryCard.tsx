@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   BookOpen,
   Pencil,
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useWhyMeStory } from './useWhyMeStory';
 import type { SignalLevel } from './useWhyMeStory';
 import { useNarrativeSnapshot } from './useNarrativeSnapshot';
+import type { BenchmarkProfileV1 } from '@/types/career-profile';
 
 // ---------------------------------------------------------------------------
 // Signal dot — rendered in the header row
@@ -128,12 +129,45 @@ function EditableBlock({ label, value, placeholder, onSave }: EditableBlockProps
 // ---------------------------------------------------------------------------
 // Main component — fully self-contained, owns its own data hooks
 // ---------------------------------------------------------------------------
-export function WhyMeStoryCard() {
+export function WhyMeStoryCard({ benchmarkProfile = null }: { benchmarkProfile?: BenchmarkProfileV1 | null } = {}) {
   const { story, signals, updateField, hasStarted } = useWhyMeStory();
   const { snapshot, status: snapshotStatus } = useNarrativeSnapshot();
+  const benchmarkCore = useMemo(() => ({
+    colleagues: benchmarkProfile?.proof.proof_themes[0]?.statement ?? '',
+    knownFor: benchmarkProfile?.identity.operating_identity.statement
+      ?? benchmarkProfile?.identity.benchmark_headline.statement
+      ?? '',
+    whyNotMe: benchmarkProfile?.identity.why_not_me.statement ?? '',
+  }), [benchmarkProfile]);
+  const benchmarkSnapshot = useMemo(() => {
+    if (!benchmarkProfile) return null;
+    const title = benchmarkProfile.identity.benchmark_headline.statement.trim();
+    const whyMe = benchmarkProfile.identity.why_me_story.statement.trim();
+    const bestLine =
+      benchmarkProfile.approved_language.positioning_statement.trim()
+      || benchmarkProfile.linkedin_brand.about_opening.statement.trim()
+      || whyMe;
+    const differentiators = [
+      benchmarkProfile.identity.operating_identity.label,
+      ...benchmarkProfile.proof.proof_themes.map((item) => item.label),
+      ...benchmarkProfile.proof.signature_accomplishments.map((item) => item.label),
+    ].filter(Boolean).slice(0, 6);
+
+    if (!title && !whyMe && !bestLine) return null;
+    return {
+      branded_title: title,
+      why_me_concise: benchmarkProfile.approved_language.positioning_statement.trim() || whyMe,
+      why_me_best_line: bestLine,
+      why_me_story: whyMe,
+      unique_differentiators: differentiators,
+      source: 'benchmark_profile' as const,
+    };
+  }, [benchmarkProfile]);
+  const displaySnapshot = snapshot ?? benchmarkSnapshot;
+  const displaySnapshotSource = snapshot ? 'resume_session' : benchmarkSnapshot ? 'benchmark_profile' : null;
 
   // Only show once the user has started at least one answer
-  if (!hasStarted) return null;
+  if (!hasStarted && !benchmarkSnapshot) return null;
 
   return (
     <GlassCard className="p-6">
@@ -171,19 +205,19 @@ export function WhyMeStoryCard() {
         <div className="space-y-3">
           <EditableBlock
             label="What colleagues came to you for"
-            value={story.colleaguesCameForWhat}
+            value={story.colleaguesCameForWhat || benchmarkCore.colleagues}
             placeholder="The thing people specifically sought you out to help with — not because you were assigned, but because they chose you."
             onSave={(v) => updateField('colleaguesCameForWhat', v)}
           />
           <EditableBlock
             label="What you want to be known for"
-            value={story.knownForWhat}
+            value={story.knownForWhat || benchmarkCore.knownFor}
             placeholder="Not a job title — a capability, a contribution, a result. The thing that creates the most value when someone describes you to a hiring manager."
             onSave={(v) => updateField('knownForWhat', v)}
           />
           <EditableBlock
             label="Where you are not the right fit"
-            value={story.whyNotMe}
+            value={story.whyNotMe || benchmarkCore.whyNotMe}
             placeholder="The roles, industries, or functions that are a bad fit. Naming the Why-Not-Me sharpens your targeting by contrast and builds trust with hiring managers."
             onSave={(v) => updateField('whyNotMe', v)}
           />
@@ -196,40 +230,40 @@ export function WhyMeStoryCard() {
           Your Positioning Narrative
         </div>
 
-        {snapshotStatus === 'loading' ? (
+        {snapshotStatus === 'loading' && !benchmarkSnapshot ? (
           <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
             <div className="text-sm text-[var(--text-soft)]">
               Loading narrative from your most recent resume session...
             </div>
           </div>
-        ) : snapshot ? (
+        ) : displaySnapshot ? (
           <div className="space-y-3">
             {/* Branded title */}
-            {snapshot.branded_title && (
+            {displaySnapshot.branded_title && (
               <div className="rounded-xl border border-[var(--link)]/18 bg-[var(--link)]/[0.05] p-4">
                 <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
                   Branded Title
                 </div>
                 <div className="mt-2 text-base font-semibold text-[var(--text-strong)]">
-                  {snapshot.branded_title}
+                  {displaySnapshot.branded_title}
                 </div>
               </div>
             )}
 
             {/* Positioning angle / concise pitch */}
-            {snapshot.why_me_concise && (
+            {displaySnapshot.why_me_concise && (
               <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
                 <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
                   Positioning Angle
                 </div>
                 <p className="mt-2 text-sm italic leading-relaxed text-[var(--text-strong)]">
-                  {snapshot.why_me_concise}
+                  {displaySnapshot.why_me_concise}
                 </p>
               </div>
             )}
 
             {/* Best line — pull-quote treatment */}
-            {snapshot.why_me_best_line && (
+            {displaySnapshot.why_me_best_line && (
               <div className="relative overflow-hidden rounded-xl border border-[var(--badge-green-text)]/15 bg-[var(--badge-green-text)]/[0.04] p-4">
                 <div
                   className="absolute left-3 top-2 select-none font-serif text-4xl leading-none text-[var(--badge-green-text)]/10"
@@ -242,20 +276,20 @@ export function WhyMeStoryCard() {
                     Best Line to Reuse
                   </div>
                   <p className="mt-2 pl-2 text-sm italic text-[var(--text-strong)]">
-                    {snapshot.why_me_best_line}
+                    {displaySnapshot.why_me_best_line}
                   </p>
                 </div>
               </div>
             )}
 
             {/* Unique differentiators */}
-            {snapshot.unique_differentiators.length > 0 && (
+            {displaySnapshot.unique_differentiators.length > 0 && (
               <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
                 <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
                   Points to Emphasize
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {snapshot.unique_differentiators.map((diff) => (
+                  {displaySnapshot.unique_differentiators.map((diff) => (
                     <span
                       key={diff}
                       className="flex items-center gap-1.5 rounded-md border border-[var(--link)]/20 bg-[var(--link)]/10 px-3 py-1.5 text-xs uppercase tracking-[0.08em] text-[var(--link)]/80"
@@ -269,20 +303,22 @@ export function WhyMeStoryCard() {
             )}
 
             {/* Full narrative story — collapsed by default */}
-            {snapshot.why_me_story && (
+            {displaySnapshot.why_me_story && (
               <details className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4">
                 <summary className="cursor-pointer text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)] hover:text-[var(--text-soft)]">
                   Full narrative story
                 </summary>
                 <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-                  {snapshot.why_me_story}
+                  {displaySnapshot.why_me_story}
                 </p>
               </details>
             )}
 
             <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
               <p className="text-xs leading-relaxed text-[var(--text-soft)]">
-                This narrative was saved from a Tailor Resume session. To refresh it, run a new resume session and it will reflect your positioning for that specific role.
+                {displaySnapshotSource === 'benchmark_profile'
+                  ? 'This narrative comes from your Benchmark Profile draft. Approve or edit the draft language above to make every downstream tool more consistent.'
+                  : 'This narrative was saved from a Tailor Resume session. To refresh it, run a new resume session and it will reflect your positioning for that specific role.'}
               </p>
             </div>
           </div>

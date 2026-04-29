@@ -152,6 +152,7 @@ async function hasReferralProgram(companyId: string): Promise<boolean> {
 // ─── Per-company scanner ─────────────────────────────────────────────────────
 
 interface CompanyScanResult {
+  rawJobsFound: number;
   jobsFound: number;
   matchingJobs: number;
   referralAvailable: number;
@@ -330,10 +331,11 @@ async function scanCompany(
   }
 
   // Apply location / remote / date filters after all tiers have run
+  const rawJobsFound = allJobs.length;
   allJobs = applyFilters(allJobs, filters);
 
   if (allJobs.length === 0) {
-    return { jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source };
+    return { rawJobsFound, jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source };
   }
 
   // Passive referral bonus detection — scan job descriptions for bonus mentions
@@ -392,6 +394,7 @@ async function scanCompany(
   }
 
   return {
+    rawJobsFound,
     jobsFound: allJobs.length,
     matchingJobs: storedCount,
     referralAvailable: referral && storedCount > 0 ? storedCount : 0,
@@ -418,7 +421,7 @@ export async function searchJobsByCompany(
 
   if (jobs.length === 0) {
     return {
-      companiesScanned: 1, jobsFound: 0, matchingJobs: 0, referralAvailable: 0,
+      companiesScanned: 1, rawJobsFound: 0, jobsFound: 0, matchingJobs: 0, referralAvailable: 0,
       errors: [], sourceBreakdown: initBreakdown,
     };
   }
@@ -427,7 +430,7 @@ export async function searchJobsByCompany(
   initBreakdown.serper = matching.length;
 
   return {
-    companiesScanned: 1, jobsFound: jobs.length, matchingJobs: matching.length,
+    companiesScanned: 1, rawJobsFound: jobs.length, jobsFound: jobs.length, matchingJobs: matching.length,
     referralAvailable: 0, errors: [], sourceBreakdown: initBreakdown,
   };
 }
@@ -444,6 +447,7 @@ export async function searchJobsByCompany(
  */
 export type ScrapeProgressCallback = (progress: {
   companies_scanned: number;
+  raw_jobs_found?: number;
   jobs_found: number;
   matching_jobs: number;
   referral_available: number;
@@ -462,6 +466,7 @@ export async function scrapeCareerPages(
   const errors: { company: string; error: string }[] = [];
 
   let companiesScanned = 0;
+  let rawJobsFound = 0;
   let jobsFound = 0;
   let matchingJobs = 0;
   let referralAvailable = 0;
@@ -484,6 +489,7 @@ export async function scrapeCareerPages(
     try {
       const result = await scanCompany(company, targetTitles, userId, searchContext, resolvedFilters);
       companiesScanned++;
+      rawJobsFound += result.rawJobsFound;
       jobsFound += result.jobsFound;
       matchingJobs += result.matchingJobs;
       referralAvailable += result.referralAvailable;
@@ -493,7 +499,7 @@ export async function scrapeCareerPages(
       if (result.error) {
         errors.push({ company: company.name, error: result.error });
       }
-      await onProgress?.({ companies_scanned: companiesScanned, jobs_found: jobsFound, matching_jobs: matchingJobs, referral_available: referralAvailable });
+      await onProgress?.({ companies_scanned: companiesScanned, raw_jobs_found: rawJobsFound, jobs_found: jobsFound, matching_jobs: matchingJobs, referral_available: referralAvailable });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       logger.error({ error: msg, companyId: company.id, userId }, 'job-scanner: company scan threw');
@@ -501,5 +507,5 @@ export async function scrapeCareerPages(
     }
   }
 
-  return { companiesScanned, jobsFound, matchingJobs, referralAvailable, errors, sourceBreakdown };
+  return { companiesScanned, rawJobsFound, jobsFound, matchingJobs, referralAvailable, errors, sourceBreakdown };
 }

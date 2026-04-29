@@ -165,11 +165,14 @@ export async function runCareerScrape(
 
     await completeScrapeLogEntry(scrapeLogId, 'completed', {
       companies_scanned: result.companiesScanned,
+      raw_jobs_found: result.rawJobsFound ?? result.jobsFound,
       jobs_found: result.jobsFound,
       matching_jobs: result.matchingJobs,
       referral_available: result.referralAvailable,
       error_count: result.errors.length,
       source_breakdown: result.sourceBreakdown,
+      serper_configured: Boolean(process.env.SERPER_API_KEY),
+      filters: filters ?? null,
     });
 
     logger.info({ userId, scrapeLogId, ...result }, 'career-scraper: scrape completed');

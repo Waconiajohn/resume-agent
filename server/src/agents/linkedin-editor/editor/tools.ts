@@ -568,6 +568,17 @@ const presentSectionTool: LinkedInEditorTool = {
       quality_scores: qualityScores,
     });
 
+    ctx.updateState({
+      section_drafts: {
+        ...state.section_drafts,
+        [section]: content,
+      },
+      quality_scores: {
+        ...state.quality_scores,
+        [section]: qualityScores,
+      },
+    });
+
     return { presented: true, section };
   },
 };

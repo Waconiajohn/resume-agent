@@ -13,10 +13,11 @@ import logger from '../../logger.js';
 import {
   freshnessDaysForDatePosted,
   googleTbsForFreshnessDays,
+  isWithinFreshnessWindow,
   normalizeJobPostedDate,
 } from '../../job-date.js';
 import { classifyWorkMode } from '../work-mode-classifier.js';
-import type { SearchAdapter, SearchFilters, JobResult } from '../types.js';
+import type { SearchAdapter, SearchFilters, JobResult, SearchProviderDiagnostic } from '../types.js';
 
 const SERPER_JOBS_URL = 'https://google.serper.dev/jobs';
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -119,18 +120,33 @@ function queryForWorkMode(query: string, remoteType: SearchFilters['remoteType']
 
 export class SerperJobsAdapter implements SearchAdapter {
   readonly name = 'serper';
+  private diagnostics: SearchProviderDiagnostic[] = [];
+
+  getDiagnostics(): SearchProviderDiagnostic[] {
+    return this.diagnostics;
+  }
+
+  private setDiagnostic(diagnostic: Omit<SearchProviderDiagnostic, 'provider'>): void {
+    this.diagnostics = [{ provider: this.name, ...diagnostic }];
+  }
 
   async search(
     query: string,
     location: string,
     filters: SearchFilters,
   ): Promise<JobResult[]> {
+    this.diagnostics = [];
     const apiKey = process.env.SERPER_API_KEY;
     if (!apiKey) {
       logger.warn(
         { adapter: this.name },
         'SERPER_API_KEY not set — skipping Serper Jobs adapter',
       );
+      this.setDiagnostic({
+        status: 'missing_key',
+        message: 'Serper is not configured, so public job search cannot query Google Jobs.',
+        jobs_returned: 0,
+      });
       return [];
     }
 
@@ -167,11 +183,28 @@ export class SerperJobsAdapter implements SearchAdapter {
           { adapter: this.name, status: response.status, query: searchQuery },
           'Serper Jobs API returned non-OK status',
         );
+        this.setDiagnostic({
+          status: 'http_error',
+          message: response.status === 401 || response.status === 403
+            ? 'Serper rejected the configured API key.'
+            : response.status === 402 || response.status === 429
+              ? 'Serper did not return jobs because the API quota or rate limit was hit.'
+              : 'Serper returned an upstream error before jobs could be read.',
+          http_status: response.status,
+          jobs_returned: 0,
+        });
         return [];
       }
 
       const data = (await response.json()) as SerperJobsResponse;
       const jobs = data.jobs ?? [];
+      this.setDiagnostic({
+        status: 'ok',
+        message: jobs.length > 0
+          ? `Serper returned ${jobs.length} raw job result${jobs.length === 1 ? '' : 's'}.`
+          : 'Serper responded successfully but returned no raw job results.',
+        jobs_returned: jobs.length,
+      });
 
       logger.info(
         { adapter: this.name, query: searchQuery, location, jobCount: jobs.length },
@@ -211,13 +244,19 @@ export class SerperJobsAdapter implements SearchAdapter {
             required_skills: null,
           };
         })
-        .filter((job): job is JobResult => job !== null);
+        .filter((job): job is JobResult => job !== null)
+        .filter((job) => !maxDaysOld || isWithinFreshnessWindow(job.posted_date, maxDaysOld));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.warn(
         { adapter: this.name, error: message, query: searchQuery },
         'Serper Jobs adapter error',
       );
+      this.setDiagnostic({
+        status: message.toLowerCase().includes('timeout') ? 'network_error' : 'error',
+        message: `Serper search failed: ${message}`,
+        jobs_returned: 0,
+      });
       return [];
     }
   }

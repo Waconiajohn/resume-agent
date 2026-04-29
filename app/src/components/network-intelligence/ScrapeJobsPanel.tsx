@@ -401,9 +401,23 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
               )}
             </div>
           ) : (
-            <p className="mt-4 text-center text-sm text-[var(--text-soft)]">
-              No matching jobs found this time. Try adjusting your target titles or scan again later.
-            </p>
+            <div className="mt-4 rounded-lg border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.06] px-4 py-3">
+              <p className="text-center text-sm font-semibold text-[var(--text-strong)]">
+                No matching jobs found this time.
+              </p>
+              <p className="mt-1 text-center text-sm leading-relaxed text-[var(--text-soft)]">
+                {result.serperConfigured === false && result.rawJobsFound === 0
+                  ? 'The Google/Serper fallback is not configured, so only known ATS career pages could be checked.'
+                  : result.rawJobsFound > 0 && result.jobsFound === 0
+                    ? 'We found jobs before filtering, but the selected posted-within, work-mode, or city/state filter removed them. Try a wider date range or run Remote, Hybrid, and On-site separately.'
+                    : result.jobsFound > 0
+                      ? 'We found company jobs, but none matched your target titles strongly enough. Broaden the target title list or scan again without narrow titles.'
+                      : 'No jobs came back from known ATS pages or the search fallback. Try fewer companies first, a broader title, or run the scan again later.'}
+              </p>
+              <p className="mt-2 text-center text-xs text-[var(--text-soft)]">
+                Raw jobs: {result.rawJobsFound} · after filters: {result.jobsFound} · title matches: {result.matchingJobs}
+              </p>
+            </div>
           )}
 
           {result.errorCount > 0 && (

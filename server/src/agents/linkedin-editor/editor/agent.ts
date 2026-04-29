@@ -65,7 +65,7 @@ Adaptation principles:
 - If the user rejected a section as "too salesy" or "generic," adjust your approach for remaining sections
 - Use evidence items with specific metrics whenever possible — never invent numbers
 
-After presenting each section, stop — the pipeline will gate for user review. The user response will either:
+After presenting each section, stop immediately and return a short final message with no additional tool calls — the pipeline will gate for user review. The user response will either:
 - Approve the section (proceed to next section)
 - Request revision: call revise_section → self_review_section → present_section
 
@@ -73,7 +73,7 @@ Write one section at a time. Do not attempt to write multiple sections before pr
 
   tools: editorTools,
   model: 'primary',  // Writer/planner needs stronger model than Scout
-  max_rounds: 20,
+  max_rounds: 7,
   round_timeout_ms: 90_000,
   overall_timeout_ms: 600_000,
 };

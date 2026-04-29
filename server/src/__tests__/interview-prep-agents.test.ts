@@ -405,6 +405,7 @@ describe('Interview Prep ProductConfig', () => {
     expect(JSON.parse(String(result)).source_confidence).toBe('jd_only');
     expect(state.company_research?.overview).toContain('supplied job description');
     expect(state.company_research?.overview).toContain('precision machined components');
+    expect(state.company_research?.source_note).toContain('Limited verified company data');
     expect(state.company_research?.overview).not.toContain('Park Sheet Metal');
     expect(state.company_research?.competitors).toHaveLength(0);
   });

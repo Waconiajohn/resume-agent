@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import { safeString, safeStringArray } from '@/lib/safe-cast';
+import { safeNumber, safeString, safeStringArray } from '@/lib/safe-cast';
 
 export interface NetworkContact {
   id: string;
@@ -47,6 +47,23 @@ export interface RadarSearchFilters {
   salaryMax?: number;
 }
 
+export interface RadarProviderDiagnostic {
+  provider: string;
+  status: 'ok' | 'missing_key' | 'http_error' | 'network_error' | 'error';
+  message: string;
+  jobs_returned?: number;
+  http_status?: number;
+}
+
+export interface RadarSearchFilterStats {
+  raw_returned: number;
+  filtered_by_work_mode: number;
+  filtered_by_freshness: number;
+  deduped: number;
+  adapter_failures: number;
+  provider_diagnostics: RadarProviderDiagnostic[];
+}
+
 interface RadarSearchState {
   jobs: RadarJob[];
   loading: boolean;
@@ -59,6 +76,7 @@ interface RadarSearchState {
   sourcesQueried: string[];
   executionTimeMs: number | null;
   emptyReason: string | null;
+  filterStats: RadarSearchFilterStats | null;
 }
 
 interface SearchResponse {
@@ -67,6 +85,7 @@ interface SearchResponse {
   executionTimeMs?: number | null;
   sources_queried?: unknown;
   empty_reason?: unknown;
+  filter_stats?: unknown;
 }
 
 interface EnrichedResult {
@@ -193,6 +212,43 @@ function sanitizeRadarJobs(value: unknown): RadarJob[] {
     .filter((job): job is RadarJob => job !== null);
 }
 
+function sanitizeProviderDiagnostic(value: unknown): RadarProviderDiagnostic | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const provider = safeString(candidate.provider).trim();
+  const status = safeString(candidate.status).trim() as RadarProviderDiagnostic['status'];
+  const message = safeString(candidate.message).trim();
+  if (!provider || !message) return null;
+  if (!['ok', 'missing_key', 'http_error', 'network_error', 'error'].includes(status)) return null;
+  const jobsReturned = safeNullableNumber(candidate.jobs_returned);
+  const httpStatus = safeNullableNumber(candidate.http_status);
+  return {
+    provider,
+    status,
+    message,
+    ...(jobsReturned !== null ? { jobs_returned: jobsReturned } : {}),
+    ...(httpStatus !== null ? { http_status: httpStatus } : {}),
+  };
+}
+
+function sanitizeFilterStats(value: unknown): RadarSearchFilterStats | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const providerDiagnostics = Array.isArray(candidate.provider_diagnostics)
+    ? candidate.provider_diagnostics
+        .map((diagnostic) => sanitizeProviderDiagnostic(diagnostic))
+        .filter((diagnostic): diagnostic is RadarProviderDiagnostic => diagnostic !== null)
+    : [];
+  return {
+    raw_returned: safeNumber(candidate.raw_returned),
+    filtered_by_work_mode: safeNumber(candidate.filtered_by_work_mode),
+    filtered_by_freshness: safeNumber(candidate.filtered_by_freshness),
+    deduped: safeNumber(candidate.deduped),
+    adapter_failures: safeNumber(candidate.adapter_failures),
+    provider_diagnostics: providerDiagnostics,
+  };
+}
+
 /**
  * Best-effort NI enrichment — fetches network contacts for a scan and merges them
  * into the job list. Returns the original jobs unchanged on any error.
@@ -265,6 +321,7 @@ export function useRadarSearch() {
     sourcesQueried: [],
     executionTimeMs: null,
     emptyReason: null,
+    filterStats: null,
   });
 
   const mountedRef = useRef(true);
@@ -294,6 +351,7 @@ export function useRadarSearch() {
         sourcesQueried: [],
         executionTimeMs: null,
         emptyReason: null,
+        filterStats: null,
       }));
 
       try {
@@ -343,6 +401,7 @@ export function useRadarSearch() {
         const sourcesQueried = safeStringArray(data.sources_queried);
         const executionTimeMs = safeNullableNumber(data.executionTimeMs);
         const emptyReason = safeNullableString(data.empty_reason);
+        const filterStats = sanitizeFilterStats(data.filter_stats);
 
         // Enrich with NI contacts (best-effort, non-blocking)
         const enrichedJobs =
@@ -359,6 +418,7 @@ export function useRadarSearch() {
             sourcesQueried,
             executionTimeMs,
             emptyReason: enrichedJobs.length === 0 ? emptyReason : null,
+            filterStats,
           }));
         }
       } catch (err) {
@@ -393,6 +453,7 @@ export function useRadarSearch() {
       sourcesQueried: [],
       executionTimeMs: null,
       emptyReason: null,
+      filterStats: null,
     });
   }, []);
 

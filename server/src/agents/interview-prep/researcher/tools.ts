@@ -131,15 +131,22 @@ function buildJdAnchoredCompanyResearch(
           ],
     role_impact: roleImpact,
     source_note:
-      'Public company research was not reliable enough to use directly; this company brief is anchored to the supplied job description.',
+      'Limited verified company data. This company brief is anchored to the supplied job description instead of importing facts from similarly named companies.',
     source_confidence: 'jd_only' as const,
     raw_research: jdText,
   };
 }
 
+function isLikelySyntheticOrQaCompany(companyName: string): boolean {
+  const normalized = normalizeForMatch(companyName);
+  if (!normalized) return true;
+  return /\b(qa|test|demo|sample|sandbox|synthetic|placeholder|acme|northwind|globex|initech|umbrella)\b/i.test(normalized);
+}
+
 function shouldUseJdAnchoredResearch(rawResearch: string, companyName: string): boolean {
   const normalizedCompany = normalizeForMatch(companyName);
   const normalizedResearch = normalizeForMatch(rawResearch);
+  if (isLikelySyntheticOrQaCompany(companyName)) return true;
   if (!normalizedCompany || normalizedCompany === 'unknown company') return true;
   if (/\bclosest matches?\b|\bcould not find\b|\bcould not verify\b|\bnot find a verified\b|\bno verified public\b/i.test(rawResearch)) {
     return true;
@@ -372,6 +379,30 @@ const researchCompanyTool: InterviewPrepTool = {
       stage: 'research',
       message: `Researching ${companyName}...`,
     });
+
+    if (isLikelySyntheticOrQaCompany(companyName)) {
+      const companyResearch = buildJdAnchoredCompanyResearch(companyName, industryHint, state);
+      state.company_research = companyResearch;
+      log.info(
+        {
+          company: companyName,
+          source_confidence: companyResearch.source_confidence,
+          reason: 'synthetic_or_qa_company_name',
+        },
+        'research_company: using JD-anchored company brief before public research',
+      );
+      return JSON.stringify({
+        success: true,
+        company: companyName,
+        source_confidence: companyResearch.source_confidence,
+        growth_areas_count: companyResearch.growth_areas?.length ?? 0,
+        risks_count: companyResearch.risks?.length ?? 0,
+        competitors_count: 0,
+        strategic_priorities_count: companyResearch.strategic_priorities?.length ?? 0,
+        culture_signals_count: companyResearch.culture_signals?.length ?? 0,
+        has_role_impact: !!companyResearch.role_impact,
+      });
+    }
 
     // ── Query 1: Company overview, revenue, growth, risks, competitors ──────
 

@@ -32,6 +32,46 @@ const NON_TERMINAL_STAGES: ReadonlySet<JobApplicationStage> = new Set([
   'interviewing',
 ]);
 
+function cleanFetchedMetadata(value: string): string {
+  return value
+    .replace(/\s*\|\s*(LinkedIn|Indeed|Glassdoor|Greenhouse|Lever|Workday|Careers).*$/i, '')
+    .replace(/\s+-\s*(LinkedIn|Indeed|Glassdoor|Greenhouse|Lever|Workday|Careers).*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function splitFetchedJobMetadata(rawTitle?: string, rawCompany?: string): { title: string; company: string } {
+  const title = cleanFetchedMetadata(rawTitle ?? '');
+  const company = cleanFetchedMetadata(rawCompany ?? '');
+  if (company) return { title, company };
+
+  const linkedinHiring = title.match(/^(.+?)\s+hiring\s+(.+?)(?:\s+in\s+.+)?$/i);
+  if (linkedinHiring) {
+    return {
+      company: cleanFetchedMetadata(linkedinHiring[1] ?? ''),
+      title: cleanFetchedMetadata(linkedinHiring[2] ?? ''),
+    };
+  }
+
+  const jobApplication = title.match(/^Job Application for\s+(.+?)\s+at\s+(.+)$/i);
+  if (jobApplication) {
+    return {
+      title: cleanFetchedMetadata(jobApplication[1] ?? ''),
+      company: cleanFetchedMetadata(jobApplication[2] ?? ''),
+    };
+  }
+
+  const roleAtCompany = title.match(/^(.+?)\s+at\s+(.+)$/i);
+  if (roleAtCompany) {
+    return {
+      title: cleanFetchedMetadata(roleAtCompany[1] ?? ''),
+      company: cleanFetchedMetadata(roleAtCompany[2] ?? ''),
+    };
+  }
+
+  return { title, company };
+}
+
 interface TailorForApplicationPickerProps {
   context: TailorPickerContext;
   accessToken: string | null;
@@ -110,10 +150,11 @@ export function TailorForApplicationPicker({
         throw new Error(body?.error ?? `Fetch failed (${res.status})`);
       }
       const data = (await res.json()) as { text: string; title?: string; company?: string };
+      const metadata = splitFetchedJobMetadata(data.title, data.company);
       setFetchedJdText(data.text);
       setJdUrlFetched(true);
-      if (data.title) setRoleTitle(data.title);
-      if (data.company) setCompanyName(data.company);
+      if (metadata.title) setRoleTitle(metadata.title);
+      if (metadata.company) setCompanyName(metadata.company);
     } catch (err) {
       setJdUrlError(err instanceof Error ? err.message : String(err));
       setJdUrlFetched(false);

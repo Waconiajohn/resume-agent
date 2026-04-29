@@ -19,7 +19,7 @@ import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
 import { trackProductEvent } from '@/lib/product-telemetry';
 import { ReferralBadge, getBestBonusDisplay } from '@/components/job-command-center/ReferralBadge';
-import type { RadarJob, RadarSearchFilters } from '@/hooks/useRadarSearch';
+import type { RadarJob, RadarSearchFilters, RadarSearchFilterStats } from '@/hooks/useRadarSearch';
 import { formatJobAgeLabel } from './job-age';
 
 interface RadarSectionProps {
@@ -44,6 +44,7 @@ interface RadarSectionProps {
   sourcesQueried?: string[];
   executionTimeMs?: number | null;
   emptyReason?: string | null;
+  filterStats?: RadarSearchFilterStats | null;
 }
 
 function formatSalary(min: number | null, max: number | null): string | null {
@@ -108,6 +109,7 @@ export function RadarSection({
   sourcesQueried = [],
   executionTimeMs,
   emptyReason,
+  filterStats,
 }: RadarSectionProps) {
   const [query, setQuery] = useState('');
 
@@ -210,6 +212,31 @@ export function RadarSection({
                 {sourcesQueried.length > 0 ? ` · sources: ${sourcesQueried.join(', ')}` : ''}
                 {typeof executionTimeMs === 'number' ? ` · ${Math.round(executionTimeMs / 100) / 10}s` : ''}
               </p>
+              {filterStats && (
+                <div className="mt-3 rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2">
+                  <p className="text-[12px] leading-relaxed text-[var(--text-soft)]">
+                    Search audit: {filterStats.raw_returned} raw result{filterStats.raw_returned === 1 ? '' : 's'}
+                    {filterStats.filtered_by_freshness > 0 ? ` · ${filterStats.filtered_by_freshness} removed by posted-date filter` : ''}
+                    {filterStats.filtered_by_work_mode > 0 ? ` · ${filterStats.filtered_by_work_mode} removed by work-mode filter` : ''}
+                    {filterStats.deduped > 0 ? ` · ${filterStats.deduped} duplicate${filterStats.deduped === 1 ? '' : 's'} removed` : ''}
+                  </p>
+                  {filterStats.provider_diagnostics.length > 0 && (
+                    <div className="mt-1 space-y-1">
+                      {filterStats.provider_diagnostics.map((diagnostic) => (
+                        <p
+                          key={`${diagnostic.provider}-${diagnostic.status}-${diagnostic.message}`}
+                          className="text-[12px] leading-relaxed text-[var(--text-soft)]"
+                        >
+                          {diagnostic.provider}: {diagnostic.message}
+                          {typeof diagnostic.http_status === 'number'
+                            ? ` (HTTP ${diagnostic.http_status})`
+                            : ''}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

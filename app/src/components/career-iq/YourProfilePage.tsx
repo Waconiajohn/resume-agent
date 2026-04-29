@@ -425,9 +425,10 @@ function BenchmarkProfileDraftPanel({
 interface ResumeSectionProps {
   onGetDefaultResume?: () => Promise<MasterResume | null>;
   onNavigateResume?: () => void;
+  benchmarkProfile?: BenchmarkProfileV1 | null;
 }
 
-function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionProps) {
+function ResumeSection({ onGetDefaultResume, onNavigateResume, benchmarkProfile = null }: ResumeSectionProps) {
   const navigate = useNavigate();
   const [resume, setResume] = useState<MasterResume | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
@@ -479,6 +480,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
   }
 
   if (!resume) {
+    const proofDrafts = benchmarkProfile?.proof.signature_accomplishments ?? [];
     return (
       <GlassCard className="p-6">
         <SectionHeader icon={FileText} label="Resume" title="Your Career Proof" />
@@ -493,6 +495,26 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume }: ResumeSectionPr
               <button onClick={() => navigate('/workspace?room=resume')} className="mt-2 text-[var(--link)] hover:underline text-sm">
                 Go to Tailor Resume →
               </button>
+            </div>
+          ) : proofDrafts.length > 0 ? (
+            <div className="text-left">
+              <p className="text-sm font-semibold text-[var(--text-strong)]">
+                Benchmark proof draft is ready for review.
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-[var(--text-soft)]">
+                The profile setup created proof points from your source material. Confirming a comprehensive resume will make this stronger, but downstream tools already have draft evidence to work from.
+              </p>
+              <div className="mt-4 grid gap-2">
+                {proofDrafts.slice(0, 3).map((item) => (
+                  <div key={item.id} className="rounded-lg border border-[var(--line-soft)] bg-[var(--surface-1)] px-3 py-2">
+                    <p className="text-[12px] font-semibold text-[var(--text-strong)]">{item.label}</p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-soft)]">{item.statement}</p>
+                  </div>
+                ))}
+              </div>
+              <GlassButton onClick={() => navigate('/workspace?room=resume')} className="mt-4">
+                Add or confirm Career Proof
+              </GlassButton>
             </div>
           ) : (
             <>
@@ -1080,7 +1102,7 @@ export function YourProfilePage({
           defaultExpanded={false}
         />
 
-        {hasStarted ? (
+        {hasStarted || careerProfile?.benchmark_profile ? (
           // WhyMeStoryCard renders its own GlassCard
           <div>
             <div className="mb-3 flex items-center justify-between gap-2 px-1">
@@ -1102,7 +1124,7 @@ export function YourProfilePage({
                 </div>
               )}
             </div>
-            <WhyMeStoryCard />
+            <WhyMeStoryCard benchmarkProfile={careerProfile?.benchmark_profile ?? null} />
           </div>
         ) : (
           <GlassCard className="p-6">
@@ -1139,6 +1161,7 @@ export function YourProfilePage({
         <ResumeSection
           onGetDefaultResume={onGetDefaultResume}
           onNavigateResume={onNavigateResume}
+          benchmarkProfile={careerProfile?.benchmark_profile ?? null}
         />
 
         <StoryBankSection />

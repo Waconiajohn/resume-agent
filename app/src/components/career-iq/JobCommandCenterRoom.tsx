@@ -647,6 +647,7 @@ export function JobCommandCenterRoom({
             sourcesQueried={radar.sourcesQueried}
             executionTimeMs={radar.executionTimeMs}
             emptyReason={radar.emptyReason}
+            filterStats={radar.filterStats}
           />
 
           {(showAiSuggestions || jobFinder.status !== 'idle' || jobFinder.matches.length > 0 || jobFinder.error) && (

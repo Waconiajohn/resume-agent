@@ -33,6 +33,15 @@ export interface JobResult {
 export interface SearchAdapter {
   name: string;
   search(query: string, location: string, filters: SearchFilters): Promise<JobResult[]>;
+  getDiagnostics?(): SearchProviderDiagnostic[];
+}
+
+export interface SearchProviderDiagnostic {
+  provider: string;
+  status: 'ok' | 'missing_key' | 'http_error' | 'network_error' | 'error';
+  message: string;
+  jobs_returned?: number;
+  http_status?: number;
 }
 
 export interface SearchFilterStats {
@@ -41,6 +50,7 @@ export interface SearchFilterStats {
   filtered_by_freshness: number;
   deduped: number;
   adapter_failures: number;
+  provider_diagnostics?: SearchProviderDiagnostic[];
 }
 
 export interface SearchResponse {

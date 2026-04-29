@@ -37,6 +37,7 @@ interface LinkedInEditorState {
 const MAX_RECONNECT_ATTEMPTS = 3;
 const MAX_ACTIVITY_MESSAGES = 50;
 const PROFILE_SECTION_SET = new Set<ProfileSection>(['headline', 'about', 'experience', 'skills', 'education']);
+const INTERNAL_ROUND_MESSAGE = /^editor:\s*round\s+\d+\/\d+$/i;
 
 function asProfileSection(value: unknown): ProfileSection | null {
   return typeof value === 'string' && PROFILE_SECTION_SET.has(value as ProfileSection)
@@ -97,6 +98,7 @@ export function useLinkedInEditor() {
 
   const addActivity = useCallback((text: string, stage: string) => {
     if (!mountedRef.current) return;
+    if (!text.trim() || INTERNAL_ROUND_MESSAGE.test(text.trim())) return;
     setState((prev) => ({
       ...prev,
       activityMessages: [

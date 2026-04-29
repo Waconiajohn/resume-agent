@@ -265,6 +265,7 @@ export interface ATSJob {
 
 export interface ScrapeResult {
   companiesScanned: number;
+  rawJobsFound?: number;
   jobsFound: number;
   matchingJobs: number;
   referralAvailable: number;
