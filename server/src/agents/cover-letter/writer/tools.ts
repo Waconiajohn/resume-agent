@@ -33,7 +33,6 @@ type CoverLetterTool = AgentTool<CoverLetterState, CoverLetterSSEEvent>;
 const COVER_LETTER_DEFAULT_MIN_WORDS = 225;
 const COVER_LETTER_DEFAULT_MAX_WORDS = 300;
 const COVER_LETTER_EXECUTIVE_MAX_WORDS = 375;
-const COVER_LETTER_HARD_MAX_WORDS = 425;
 
 function countWords(text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean);
@@ -117,9 +116,9 @@ async function enforceCoverLetterLength(
   resume: NonNullable<CoverLetterState['resume_data']>,
   ctx: AgentContext<CoverLetterState, CoverLetterSSEEvent>,
 ): Promise<{ letter: string; trimmed: boolean }> {
-  const hardMax = COVER_LETTER_HARD_MAX_WORDS;
   const targetMax = targetMaxWordsForRole(jd);
-  if (countWords(letter) <= hardMax) return { letter, trimmed: false };
+  const wordCount = countWords(letter);
+  if (wordCount <= targetMax) return { letter, trimmed: false };
 
   const trimPrompt = `Shorten the cover letter below without adding any new facts.
 
@@ -127,7 +126,8 @@ Rules:
 - Preserve the salutation and sign-off.
 - Keep the strongest WHY ME positioning and the two strongest proof points.
 - Remove repetition, resume recap, and secondary examples.
-- Target ${COVER_LETTER_DEFAULT_MIN_WORDS}-${targetMax} words; never exceed ${hardMax} words.
+- Target ${COVER_LETTER_DEFAULT_MIN_WORDS}-${targetMax} words; do not exceed ${targetMax} words.
+- If the source letter is already close, tighten it surgically instead of rewriting from scratch.
 - Keep 3-4 short paragraphs.
 - Use only evidence already present in the letter.
 - Output the revised letter text only.
@@ -148,7 +148,7 @@ ${letter}`;
       session_id: ctx.sessionId,
     });
     const trimmed = removeDefensiveCoverLetterCaveats(response.text.trim());
-    if (countWords(trimmed) > 0 && countWords(trimmed) <= hardMax) {
+    if (countWords(trimmed) > 0 && countWords(trimmed) <= targetMax) {
       return { letter: trimmed, trimmed: true };
     }
   } catch (err) {
@@ -156,7 +156,7 @@ ${letter}`;
   }
 
   return {
-    letter: deterministicCondenseLetter(letter, hardMax),
+    letter: deterministicCondenseLetter(letter, targetMax),
     trimmed: true,
   };
 }
@@ -395,9 +395,10 @@ const reviewLetterTool: CoverLetterTool = {
       return { error: 'No letter draft to review. Call write_letter first.' };
     }
 
-    const wordCount = letter.split(/\s+/).length;
+    const wordCount = countWords(letter);
     const jd = state.jd_analysis;
     const resume = state.resume_data;
+    const targetMax = jd ? targetMaxWordsForRole(jd) : COVER_LETTER_DEFAULT_MAX_WORDS;
 
     const reviewPrompt = `You are a rigorous executive cover letter reviewer. Evaluate the cover letter below against five criteria and return ONLY valid JSON in the schema provided — no commentary, no markdown fencing.
 
@@ -407,6 +408,7 @@ ${letter}
 ${jd ? `TARGET ROLE: ${jd.role_title} at ${jd.company_name}\nRequirements: ${jd.requirements.join('; ')}` : ''}
 ${resume ? `CANDIDATE: ${resume.name}, ${resume.current_title}` : ''}
 Word count: ${wordCount}
+Target length: ${COVER_LETTER_DEFAULT_MIN_WORDS}-${targetMax} words
 
 ${COVER_LETTER_RULES}
 
@@ -415,7 +417,7 @@ EVALUATION CRITERIA (score each 0-20):
 2. jd_alignment — Does it directly address the stated requirements and culture cues?
 3. evidence_specificity — Are claims backed by concrete achievements, metrics, or named projects from the candidate's background?
 4. executive_tone — Is the tone confident and peer-level, not overly eager or subservient?
-5. length_appropriateness — Is it 225-300 words for most roles, or 300-375 words for executive/complex roles? Penalise <180 or >425.
+5. length_appropriateness — Is it 225-300 words for most roles, or 300-375 words for executive/complex roles? Penalise <180 or above the stated target range.
 
 Return JSON matching this exact schema:
 {
@@ -485,7 +487,7 @@ Be strict. Only list issues that, if fixed, would materially improve the letter.
           { session_id: ctx.sessionId, err: err.message },
           'review_letter primitive failed on both attempts — falling back to word-count check',
         );
-        const fallbackScore = wordCount >= 180 && wordCount <= COVER_LETTER_HARD_MAX_WORDS ? 70 : 55;
+        const fallbackScore = wordCount >= 180 && wordCount <= targetMax ? 70 : 55;
         state.quality_score = fallbackScore;
         state.review_feedback = 'Review parse failed — manual check recommended';
         ctx.scratchpad['quality_score'] = fallbackScore;

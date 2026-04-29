@@ -288,6 +288,7 @@ export function ApplicationWorkspaceRoute({
   const [error, setError] = useState<string | null>(null);
   const [toggleInFlight, setToggleInFlight] = useState(false);
   const [toolMenuOpen, setToolMenuOpen] = useState(false);
+  const toolMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Declared before the early returns below so hook order stays stable across
   // the loading / error / loaded render branches (Rules of Hooks).
@@ -338,6 +339,34 @@ export function ApplicationWorkspaceRoute({
   // The overview body needs Done/Next/Their-turn; the smart-default resolver
   // needs hasAnyDone + the highest-priority Next rule's target.
   const timeline = useApplicationTimeline({ applicationId });
+
+  useEffect(() => {
+    if (!toolMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!(event.target instanceof Node)) return;
+      if (!toolMenuRef.current?.contains(event.target)) {
+        setToolMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setToolMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [toolMenuOpen]);
+
+  useEffect(() => {
+    setToolMenuOpen(false);
+  }, [applicationId, tool]);
 
   useEffect(() => {
     if (!applicationId) {
@@ -545,7 +574,7 @@ export function ApplicationWorkspaceRoute({
           );
         })}
         {hiddenSecondaryTools.length > 0 && (
-          <div className="relative shrink-0">
+          <div className="relative shrink-0" ref={toolMenuRef}>
             <button
               type="button"
               onClick={() => setToolMenuOpen((open) => !open)}

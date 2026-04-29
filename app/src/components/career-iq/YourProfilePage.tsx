@@ -1034,6 +1034,10 @@ const KNOWN_SECTION_IDS = new Set([
   'benchmark-linkedin-brand',
 ]);
 
+function isSourceMaterialSection(sectionId: string | null | undefined): boolean {
+  return sectionId === 'career-evidence' || sectionId === 'benchmark-linkedin-brand';
+}
+
 export function YourProfilePage({
   onGetDefaultResume,
   onNavigateResume,
@@ -1046,7 +1050,7 @@ export function YourProfilePage({
   const _navigate = useNavigate();
   const [whyMeSaved, setWhyMeSaved] = useState(false);
   const [sourceToolsOpen, setSourceToolsOpen] = useState(
-    () => focusSection === 'career-evidence' || focusSection === 'benchmark-linkedin-brand',
+    () => isSourceMaterialSection(focusSection),
   );
   const prevLastSavedAtRef = useRef<Date | null>(null);
 
@@ -1067,14 +1071,25 @@ export function YourProfilePage({
   useEffect(() => {
     if (!focusSection || !KNOWN_SECTION_IDS.has(focusSection)) return;
     if (typeof window === 'undefined') return;
-    const frame = window.requestAnimationFrame(() => {
-      const el = document.getElementById(focusSection);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    if (isSourceMaterialSection(focusSection)) {
+      setSourceToolsOpen(true);
+    }
+
+    let scrollFrame = 0;
+    const settleFrame = window.requestAnimationFrame(() => {
+      scrollFrame = window.requestAnimationFrame(() => {
+        const el = document.getElementById(focusSection);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     });
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(settleFrame);
+      window.cancelAnimationFrame(scrollFrame);
+    };
   }, [focusSection]);
 
-  const hasBenchmarkDraft = Boolean(careerProfile?.benchmark_profile);
+  const benchmarkProfile = careerProfile?.benchmark_profile ?? null;
 
   return (
     <div className="mx-auto flex max-w-[900px] flex-col gap-6 px-6 py-8">
@@ -1095,69 +1110,70 @@ export function YourProfilePage({
         </button>
       </div>
 
-      {careerProfile?.benchmark_profile && (
-        <BenchmarkProfileDraftPanel
-          benchmarkProfile={careerProfile.benchmark_profile}
-          onUpdateItem={onUpdateBenchmarkItem}
-          onAnswerQuestion={onAnswerDiscoveryQuestion}
-        />
-      )}
+      {benchmarkProfile ? (
+        <section id="positioning" className="scroll-mt-6">
+          <BenchmarkProfileDraftPanel
+            benchmarkProfile={benchmarkProfile}
+            onUpdateItem={onUpdateBenchmarkItem}
+            onAnswerQuestion={onAnswerDiscoveryQuestion}
+          />
+        </section>
+      ) : (
+        <section
+          id="positioning"
+          className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
+        >
+          <h2 className="text-lg font-semibold text-[var(--text-strong)]">Core Positioning</h2>
 
-      {/* ─── Section 1 — Positioning ────────────────────────────────────── */}
-      <section
-        id="positioning"
-        className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
-      >
-        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Core Positioning</h2>
-
-        {(hasStarted || hasBenchmarkDraft) ? (
-          // WhyMeStoryCard renders its own GlassCard
-          <div>
-            <div className="mb-3 flex items-center justify-between gap-2 px-1">
-              <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-[var(--link)]/12 p-2">
-                  <BookOpen size={16} className="text-[var(--link)]" />
+          {hasStarted ? (
+            // WhyMeStoryCard renders its own GlassCard
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-2 px-1">
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-[var(--link)]/12 p-2">
+                    <BookOpen size={16} className="text-[var(--link)]" />
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Positioning</div>
+                    <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
+                      Why They Should Choose You
+                    </h2>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Positioning</div>
-                  <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
-                    Why They Should Choose You
-                  </h2>
-                </div>
+                {whyMeSaved && (
+                  <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)]">
+                    <CheckCircle2 size={13} />
+                    Saved
+                  </div>
+                )}
               </div>
-              {whyMeSaved && (
-                <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)]">
-                  <CheckCircle2 size={13} />
-                  Saved
-                </div>
-              )}
+              <WhyMeStoryCard />
             </div>
-            <WhyMeStoryCard benchmarkProfile={careerProfile?.benchmark_profile ?? null} />
-          </div>
-        ) : (
-          <GlassCard className="p-6">
-            <div className="flex items-center justify-between gap-4">
-              <SectionHeader icon={BookOpen} label="Positioning" title="Your Why-Me Story" />
-              {whyMeSaved && (
-                <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)] shrink-0">
-                  <CheckCircle2 size={13} />
-                  Saved
-                </div>
-              )}
-            </div>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-              Three answers that define how LinkedIn Growth, Find Jobs, Tailor Resume, Interview & Offer, and every other
-              tool frames your positioning. This is the most important section on this page.
-            </p>
-            <div className="mt-5">
-              <WhyMeEngine story={story} signals={signals} onUpdate={updateField} />
-            </div>
-          </GlassCard>
-        )}
+          ) : (
+            <GlassCard className="p-6">
+              <div className="flex items-center justify-between gap-4">
+                <SectionHeader icon={BookOpen} label="Positioning" title="Your Why-Me Story" />
+                {whyMeSaved && (
+                  <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)] shrink-0">
+                    <CheckCircle2 size={13} />
+                    Saved
+                  </div>
+                )}
+              </div>
+              <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
+                Three answers that define how LinkedIn Growth, Find Jobs, Tailor Resume, Interview & Offer, and every other
+                tool frames your positioning. This is the most important section on this page.
+              </p>
+              <div className="mt-5">
+                <WhyMeEngine story={story} signals={signals} onUpdate={updateField} />
+              </div>
+            </GlassCard>
+          )}
 
-        {/* TODO: Surface Why-Not-Me here when built. See product model — Benchmark Profile / Positioning section. */}
-        {/* TODO: Surface Target Industries / Ideal Companies / Target Roles here when built. See product model — Benchmark Profile / Positioning section. */}
-      </section>
+          {/* TODO: Surface Why-Not-Me here when built. See product model — Benchmark Profile / Positioning section. */}
+          {/* TODO: Surface Target Industries / Ideal Companies / Target Roles here when built. See product model — Benchmark Profile / Positioning section. */}
+        </section>
+      )}
 
       <details
         className="group rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)]"
@@ -1184,7 +1200,7 @@ export function YourProfilePage({
             <ResumeSection
               onGetDefaultResume={onGetDefaultResume}
               onNavigateResume={onNavigateResume}
-              benchmarkProfile={careerProfile?.benchmark_profile ?? null}
+              benchmarkProfile={benchmarkProfile}
             />
 
             <StoryBankSection />

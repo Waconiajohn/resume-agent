@@ -261,6 +261,34 @@ describe('ApplicationWorkspaceRoute — Offer / Negotiation toggle', () => {
     expect(screen.getByRole('button', { name: /More tools/i })).toBeInTheDocument();
   });
 
+  it('closes the More tools menu when Escape is pressed', async () => {
+    renderAt('/workspace/application/app-1/resume');
+
+    await screen.findByTestId('v3-pipeline-screen');
+    fireEvent.click(screen.getByRole('button', { name: /More tools/i }));
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+  });
+
+  it('closes the More tools menu when the user clicks elsewhere', async () => {
+    renderAt('/workspace/application/app-1/resume');
+
+    await screen.findByTestId('v3-pipeline-screen');
+    fireEvent.click(screen.getByRole('button', { name: /More tools/i }));
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+  });
+
   it('renders the activation screen when the user lands on /offer-negotiation and the tool is inactive', async () => {
     currentApp = { ...baseApp, stage: 'applied', offer_enabled: null };
     renderAt('/workspace/application/app-1/offer-negotiation');

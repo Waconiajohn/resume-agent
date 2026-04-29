@@ -834,7 +834,7 @@ describe('write_letter tool execution', () => {
     expect(Number.isInteger(result.word_count)).toBe(true);
   });
 
-  it('trims generated letters that exceed the hard word cap', async () => {
+  it('trims generated letters that exceed the role-specific target range', async () => {
     const state = makeStateWithPlan();
     const ctx = makeMockGenericContext<CoverLetterState, CoverLetterSSEEvent>(state);
     const longProof = Array.from({ length: 95 }, () =>
@@ -865,7 +865,7 @@ describe('write_letter tool execution', () => {
     const result = await tool.execute({}, ctx) as Record<string, unknown>;
 
     expect(result.trimmed).toBe(true);
-    expect(result.word_count as number).toBeLessThanOrEqual(425);
+    expect(result.word_count as number).toBeLessThanOrEqual(375);
     expect(ctx.scratchpad['letter_trimmed_for_length']).toBe(true);
     expect(ctx.getState().letter_draft).toBe(trimmedDraft);
     expect(mockLlmChat).toHaveBeenCalledTimes(2);
@@ -875,6 +875,48 @@ describe('write_letter tool execution', () => {
         system: expect.stringContaining('senior editor'),
       }),
     );
+  });
+
+  it('trims non-executive letters that are under the hard cap but over the 300-word target', async () => {
+    const state = makeStateWithPlan({
+      jd_analysis: {
+        company_name: 'Acme Corp',
+        role_title: 'Operations Manager',
+        requirements: ['service operations', 'customer escalation process', 'team coaching'],
+        culture_cues: ['clear communication', 'steady execution'],
+      },
+    });
+    const ctx = makeMockGenericContext<CoverLetterState, CoverLetterSSEEvent>(state);
+    const longBody = Array.from({ length: 28 }, () =>
+      'I led service operations transformation with reliable metrics, stronger managers, and measurable customer outcomes.',
+    ).join(' ');
+    const overTargetDraft = [
+      'Dear Acme Corp Hiring Team,',
+      longBody,
+      'Sincerely,',
+      'Jane Doe',
+    ].join('\n\n');
+    const trimmedDraft = [
+      'Dear Acme Corp Hiring Team,',
+      'Acme Corp needs an operations manager who can turn service pressure into clearer execution. I have led service operations work with reliable metrics, stronger managers, and measurable customer outcomes.',
+      'My best fit is the combination of escalation discipline and team coaching. I build operating routines that help managers see problems earlier, act faster, and keep customer issues from becoming repeat failures.',
+      'I would welcome a conversation about how that background can support Acme Corp.',
+      'Sincerely,',
+      'Jane Doe',
+    ].join('\n\n');
+
+    mockLlmChat.mockReset();
+    mockLlmChat
+      .mockResolvedValueOnce({ text: overTargetDraft })
+      .mockResolvedValueOnce({ text: trimmedDraft });
+
+    const result = await tool.execute({}, ctx) as Record<string, unknown>;
+
+    expect(result.trimmed).toBe(true);
+    expect(result.word_count as number).toBeLessThanOrEqual(300);
+    expect(ctx.scratchpad['letter_trimmed_for_length']).toBe(true);
+    expect(ctx.getState().letter_draft).toBe(trimmedDraft);
+    expect(mockLlmChat).toHaveBeenCalledTimes(2);
   });
 });
 
