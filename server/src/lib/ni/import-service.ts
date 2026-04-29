@@ -3,7 +3,7 @@
  *
  * Provides two pipeline functions:
  *  - runCsvImportPipeline: parses CSV, persists connections, fires background normalization
- *  - runCareerScrape: fetches company records and scrapes career pages in background
+ *  - runCareerScrape: fetches company records and checks public job pages in background
  */
 
 import { parseCsv } from './csv-parser.js';
@@ -25,7 +25,7 @@ import type { CsvParseResult, CsvUploadResponse, NiSearchContext, NiScrapeFilter
 
 /**
  * Parse a LinkedIn CSV export, replace the user's existing connections,
- * complete the scrape log entry, and fire background company normalization.
+ * complete the import log entry, and fire background company normalization.
  *
  * Returns a CsvUploadResponse describing the outcome. On parse failure
  * (zero valid rows) the response has success=false and no DB writes are made.
@@ -114,16 +114,16 @@ export async function runCsvImportPipeline(
   }
 }
 
-// ─── Career Scrape Pipeline ───────────────────────────────────────────────────
+// ─── Public Company Job Discovery Pipeline ────────────────────────────────────
 
 /**
- * Fetch company records from the database then scrape their career pages.
- * Scans company career pages using three-tier strategy: ATS API -> Serper fallback.
- * Results are stored in job_matches and reflected in the scrape log.
+ * Fetch company records from the database then check their public job pages.
+ * Uses a public-source strategy: supported ATS endpoints -> Serper fallback.
+ * Results are stored in job_matches and reflected in the discovery log.
  *
  * This is designed to be called as a background task. The caller (route handler)
  * should fire-and-forget: `void runCareerScrape(userId, logId, companyIds, targetTitles)`.
- * Errors are caught internally and reflected in the scrape log rather than thrown.
+ * Errors are caught internally and reflected in the discovery log rather than thrown.
  */
 export async function runCareerScrape(
   userId: string,
@@ -175,10 +175,10 @@ export async function runCareerScrape(
       filters: filters ?? null,
     });
 
-    logger.info({ userId, scrapeLogId, ...result }, 'career-scraper: scrape completed');
+    logger.info({ userId, scrapeLogId, ...result }, 'company-job-discovery: completed');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    logger.error({ error: msg, userId, scrapeLogId }, 'career-scraper: scrape failed');
+    logger.error({ error: msg, userId, scrapeLogId }, 'company-job-discovery: failed');
     await completeScrapeLogEntry(scrapeLogId, 'failed', {}, msg);
   }
 }

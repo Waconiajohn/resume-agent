@@ -70,6 +70,7 @@ interface V3PipelineScreenProps {
   initialJobDescription?: string;
   initialJdTitle?: string;
   initialJdCompany?: string;
+  initialJobUrl?: string | null;
   /** Explicit saved session route: /resume-builder/session?sessionId=... */
   initialSessionId?: string | null;
 }
@@ -183,6 +184,7 @@ export function V3PipelineScreen({
   initialJobDescription,
   initialJdTitle,
   initialJdCompany,
+  initialJobUrl: initialJobUrlProp,
   initialSessionId,
 }: V3PipelineScreenProps) {
   const pipeline = useV3Pipeline(accessToken);
@@ -259,8 +261,8 @@ export function V3PipelineScreen({
   // prefills the JD URL field so V3IntakeForm auto-fetches on mount.
   const initialJobUrl = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    return params.get('jdUrl')?.trim() ?? undefined;
-  }, [location.search]);
+    return params.get('jdUrl')?.trim() || initialJobUrlProp?.trim() || undefined;
+  }, [initialJobUrlProp, location.search]);
 
   // Phase 2 (pursuit timeline) — stale-FK marker. App.tsx redirects an
   // in-flight session to the standalone path with `?staleApplicationId=...`

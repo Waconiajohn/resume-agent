@@ -116,7 +116,7 @@ export function LetterReviewPanel({ data, onPipelineRespond }: LetterReviewPanel
                 aria-label="Approve cover letter"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Approve Letter
+                Approve & Save Letter
                 <ArrowRight className="h-4 w-4 ml-auto" />
               </GlassButton>
 

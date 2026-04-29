@@ -23,15 +23,15 @@ export function googleTbsForFreshnessDays(days: number | null | undefined): stri
   switch (days) {
     case 1:
       return 'qdr:d';
-    case 3:
-      return 'qdr:d3';
     case 7:
       return 'qdr:w';
-    case 14:
-      return 'qdr:w2';
     case 30:
       return 'qdr:m';
     default:
+      // Google/Serper's broadly supported recency hints are day/week/month.
+      // Custom app windows such as 3d and 14d are enforced after results come
+      // back using readable source dates, so we do not depend on unsupported
+      // provider-side tbs variants.
       return null;
   }
 }

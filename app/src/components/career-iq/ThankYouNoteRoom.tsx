@@ -1054,7 +1054,7 @@ export function ThankYouNoteRoom({
               className="gap-2"
             >
               <CheckCircle2 size={14} />
-              Approve all notes
+              Approve & Save all notes
             </GlassButton>
             {reviewFeedback.trim() && (
               <GlassButton

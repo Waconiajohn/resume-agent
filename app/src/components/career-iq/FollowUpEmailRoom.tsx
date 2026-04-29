@@ -392,7 +392,7 @@ export function FollowUpEmailRoom({
                   onClick={() => void handleApprove()}
                   className="text-[13px]"
                 >
-                  Approve
+                  Approve & Save
                 </GlassButton>
                 <GlassButton
                   variant="ghost"

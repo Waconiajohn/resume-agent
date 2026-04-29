@@ -143,10 +143,15 @@ function isLikelySyntheticOrQaCompany(companyName: string): boolean {
   return /\b(qa|test|demo|sample|sandbox|synthetic|placeholder|acme|northwind|globex|initech|umbrella)\b/i.test(normalized);
 }
 
+function isFallbackTrainingDataResearch(rawResearch: string): boolean {
+  return /AI training data|not live web sources|may be outdated|from training data|live web sources unavailable/i.test(rawResearch);
+}
+
 function shouldUseJdAnchoredResearch(rawResearch: string, companyName: string): boolean {
   const normalizedCompany = normalizeForMatch(companyName);
   const normalizedResearch = normalizeForMatch(rawResearch);
   if (isLikelySyntheticOrQaCompany(companyName)) return true;
+  if (isFallbackTrainingDataResearch(rawResearch)) return true;
   if (!normalizedCompany || normalizedCompany === 'unknown company') return true;
   if (/\bclosest matches?\b|\bcould not find\b|\bcould not verify\b|\bnot find a verified\b|\bno verified public\b/i.test(rawResearch)) {
     return true;
@@ -183,14 +188,21 @@ function normalizeCompanyResearch(
   industryHint: string,
   rawResearch: string,
 ): CompanyResearchData {
+  const fallbackResearch = isFallbackTrainingDataResearch(rawResearch);
   return {
     company_name: String(raw.company_name ?? companyName).trim() || companyName,
-    overview: String(raw.overview ?? rawResearch).trim() || rawResearch,
-    revenue_streams: asStringArray(raw.revenue_streams),
+    overview: fallbackResearch
+      ? `Limited verified company data. Public research for ${companyName} could not be verified cleanly, so use the supplied job description as the primary source.`
+      : String(raw.overview ?? rawResearch).trim() || rawResearch,
+    revenue_streams: fallbackResearch ? [] : asStringArray(raw.revenue_streams),
     industry: String(raw.industry ?? industryHint ?? 'Unknown').trim() || industryHint || 'Unknown',
-    growth_areas: asStringArray(raw.growth_areas),
-    risks: asStringArray(raw.risks),
-    competitors: normalizeCompetitors(raw.competitors),
+    growth_areas: fallbackResearch ? [] : asStringArray(raw.growth_areas),
+    risks: fallbackResearch ? [] : asStringArray(raw.risks),
+    competitors: fallbackResearch ? [] : normalizeCompetitors(raw.competitors),
+    source_note: fallbackResearch
+      ? 'Limited verified company data. Live/web-verified research was unavailable, so do not present company facts, competitors, revenue lines, or current initiatives as verified.'
+      : 'Company research appears to include verified public-source context.',
+    source_confidence: fallbackResearch ? 'mixed_unverified' : 'verified_web',
     raw_research: rawResearch,
   };
 }
@@ -558,19 +570,21 @@ ${rawResearch}`,
     } catch {
       companyResearch = {
         company_name: companyName,
-        overview: rawResearch,
+        overview: 'Limited verified company data. The research response could not be parsed cleanly, so use the supplied job description as the primary source.',
         revenue_streams: [],
         industry: industryHint || 'Unknown',
         growth_areas: [],
         risks: [],
         competitors: [],
+        source_note: 'Limited verified company data. The research response could not be parsed cleanly.',
+        source_confidence: 'mixed_unverified',
         raw_research: rawResearch,
       };
     }
 
     // ── Parse Query 2 into structured fields ─────────────────────────────────
 
-    if (rawRoleResearch.trim()) {
+    if (rawRoleResearch.trim() && companyResearch.source_confidence === 'verified_web') {
       const roleParseResponse = await llm.chat({
         model: MODEL_LIGHT,
         max_tokens: 2048,
@@ -606,6 +620,11 @@ ${rawRoleResearch}`,
       }
 
       companyResearch.raw_role_research = rawRoleResearch;
+    } else if (rawRoleResearch.trim()) {
+      companyResearch.raw_role_research = rawRoleResearch;
+      companyResearch.source_note =
+        companyResearch.source_note ??
+        'Limited verified company data. Role-intelligence research was preserved for transparency but not used as verified company fact.';
     }
 
     state.company_research = companyResearch;
@@ -623,6 +642,7 @@ ${rawRoleResearch}`,
     return JSON.stringify({
       success: true,
       company: companyName,
+      source_confidence: companyResearch.source_confidence ?? 'verified_web',
       growth_areas_count: companyResearch.growth_areas?.length ?? 0,
       risks_count: companyResearch.risks?.length ?? 0,
       competitors_count: companyResearch.competitors?.length ?? 0,

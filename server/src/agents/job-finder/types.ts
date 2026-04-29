@@ -2,7 +2,7 @@
  * Job Finder Agent — Shared types for the job-finder product.
  *
  * Agent #21 in the 33-agent platform. Discovers relevant job opportunities
- * by scraping company career pages, generating boolean search strings, and
+ * from public company job pages, generating boolean search strings, and
  * surfacing network-adjacent openings. A Ranker agent scores and narrates
  * each match against the user's positioning strategy.
  *

@@ -24,7 +24,7 @@ import { exportCarouselPdf } from '@/lib/export-carousel-pdf';
 import type { CarouselSlide } from '@/lib/export-carousel-pdf';
 import { cn } from '@/lib/utils';
 import { extractResumeTextFromUpload } from '@/lib/resume-upload';
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { Upload } from 'lucide-react';
 import { useLinkedInOptimizer } from '@/hooks/useLinkedInOptimizer';
 import { useLinkedInContent } from '@/hooks/useLinkedInContent';
@@ -41,9 +41,11 @@ import { LinkedInAuditReportRenderer } from './linkedin-studio/LinkedInAuditRepo
 import type { WhyMeSignals } from './useWhyMeStory';
 import type { TopicSuggestion } from '@/hooks/useLinkedInContent';
 import type { ProfileSection } from '@/hooks/useLinkedInEditor';
+import type { CareerProfileV2 } from '@/types/career-profile';
 
 interface LinkedInStudioRoomProps {
   signals: WhyMeSignals;
+  careerProfile?: CareerProfileV2 | null;
 }
 
 type StudioTab = 'profile' | 'content';
@@ -466,7 +468,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
               <div className="flex gap-2">
                 <GlassButton onClick={handleApprove} className="flex items-center gap-2 flex-1 justify-center">
                   <Check size={14} />
-                  Approve Post
+                  Approve & Save Post
                 </GlassButton>
                 <GlassButton
                   onClick={() => setShowRevisionInput((v) => !v)}
@@ -635,7 +637,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
 
 // ─── Profile Tab ──────────────────────────────────────────────────────────
 
-function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
+function ProfileEditor({ signals, currentProfileText }: { signals: WhyMeSignals; currentProfileText?: string }) {
   const editor = useLinkedInEditor();
   const [revisionFeedback, setRevisionFeedback] = useState('');
   const [showRevisionInput, setShowRevisionInput] = useState(false);
@@ -662,11 +664,11 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
       return;
     }
 
-    const ok = await editor.startEditor();
+    const ok = await editor.startEditor(currentProfileText);
     if (!ok && !editor.error) {
       setInputError('Unable to start profile editing. Please try again.');
     }
-  }, [editor]);
+  }, [currentProfileText, editor]);
 
   const handleApprove = useCallback(async () => {
     await editor.approveSection();
@@ -834,7 +836,7 @@ function ProfileEditor({ signals }: { signals: WhyMeSignals }) {
             <div className="flex gap-2">
               <GlassButton onClick={handleApprove} className="flex items-center gap-2 flex-1 justify-center">
                 <Check size={14} />
-                Approve
+                Approve & Save
               </GlassButton>
               <GlassButton
                 onClick={() => setShowRevisionInput((v) => !v)}
@@ -1666,13 +1668,43 @@ function parseReportSections(report: string): {
   }
 }
 
+function buildLinkedInSeedFromCareerProfile(profile: CareerProfileV2 | null | undefined) {
+  const benchmark = profile?.benchmark_profile;
+  const headline =
+    benchmark?.linkedin_brand.headline_direction.statement
+    || benchmark?.identity.benchmark_headline.statement
+    || profile?.positioning.positioning_statement
+    || '';
+  const about =
+    benchmark?.approved_language.linkedin_opening
+    || benchmark?.linkedin_brand.about_opening.statement
+    || benchmark?.identity.why_me_story.statement
+    || profile?.positioning.narrative_summary
+    || profile?.profile_summary
+    || '';
+
+  return {
+    headline: headline.trim(),
+    about: about.trim(),
+    targetRole: profile?.targeting.target_roles[0] ?? '',
+    targetIndustry: profile?.targeting.target_industries[0] ?? '',
+  };
+}
+
 // ─── Main component ───────────────────────────────────────────────────────
 
-export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
+export function LinkedInStudioRoom({ signals, careerProfile }: LinkedInStudioRoomProps) {
   const optimizer = useLinkedInOptimizer();
   const linkedInProfile = useLinkedInProfile();
   const [activeTab, setActiveTab] = useState<StudioTab>('profile');
   const [inputError, setInputError] = useState<string | null>(null);
+  const careerProfileSeed = useMemo(() => buildLinkedInSeedFromCareerProfile(careerProfile), [careerProfile]);
+  const currentLinkedInProfileText = useMemo(() => [
+    linkedInProfile.profile.headline.trim() ? `Headline: ${linkedInProfile.profile.headline.trim()}` : '',
+    linkedInProfile.profile.about.trim() ? `About:\n${linkedInProfile.profile.about.trim()}` : '',
+    linkedInProfile.profile.experience.trim() ? `Experience:\n${linkedInProfile.profile.experience.trim()}` : '',
+  ].filter(Boolean).join('\n\n'), [linkedInProfile.profile]);
+  const seededFromCareerProfileRef = useRef(false);
 
   // Sprint D6 — parity with /profile-setup. Users on the LinkedIn room can
   // upload a LinkedIn PDF export instead of retyping their headline / about /
@@ -1699,6 +1731,20 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
     setActiveTab('content');
   }, []);
 
+  useEffect(() => {
+    if (linkedInProfile.loading || seededFromCareerProfileRef.current) return;
+    const nextHeadline = linkedInProfile.profile.headline.trim() || careerProfileSeed.headline;
+    const nextAbout = linkedInProfile.profile.about.trim() || careerProfileSeed.about;
+    if (!nextHeadline && !nextAbout) return;
+    if (!linkedInProfile.profile.headline.trim() && nextHeadline) {
+      linkedInProfile.updateField('headline', nextHeadline);
+    }
+    if (!linkedInProfile.profile.about.trim() && nextAbout) {
+      linkedInProfile.updateField('about', nextAbout);
+    }
+    seededFromCareerProfileRef.current = true;
+  }, [careerProfileSeed, linkedInProfile]);
+
   const handleOptimize = useCallback(async () => {
     setInputError(null);
 
@@ -1723,8 +1769,13 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
 
     await optimizer.startPipeline({
       resumeText: resumeData.raw_text,
+      linkedinHeadline: linkedInProfile.profile.headline.trim() || careerProfileSeed.headline || undefined,
+      linkedinAbout: linkedInProfile.profile.about.trim() || careerProfileSeed.about || undefined,
+      linkedinExperience: linkedInProfile.profile.experience.trim() || undefined,
+      targetRole: careerProfileSeed.targetRole || undefined,
+      targetIndustry: careerProfileSeed.targetIndustry || undefined,
     });
-  }, [optimizer]);
+  }, [careerProfileSeed, linkedInProfile.profile, optimizer]);
 
   const isOptimizerRunning = optimizer.status === 'connecting' || optimizer.status === 'running';
 
@@ -1811,7 +1862,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             <GlassCard className="p-6">
               <h3 className="text-base font-semibold text-[var(--text-strong)] mb-1">Your Current LinkedIn Profile</h3>
               <p className="text-sm text-[var(--text-soft)] mb-4">
-                Paste your current LinkedIn content so we can compare it against your resume and positioning strategy.
+                Paste your current LinkedIn content, or start from the Benchmark Profile direction already saved for this account.
               </p>
 
               <div className="space-y-4">
@@ -1892,7 +1943,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
             </GlassCard>
 
             {/* Profile editor workflow */}
-            <ProfileEditor signals={signals} />
+            <ProfileEditor signals={signals} currentProfileText={currentLinkedInProfileText || undefined} />
 
             {/* Results / analytics — only show when there's actual data */}
             {optimizer.qualityScore !== null && (

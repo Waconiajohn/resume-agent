@@ -24,13 +24,13 @@ const AUDIT_PAGES = [
     slug: 'linkedin-studio',
     path: '/workspace?room=linkedin',
     readyRole: 'heading',
-    readyText: 'Build a stronger profile and publish with intent',
+    readyText: 'Become discoverable on LinkedIn',
   },
   {
     slug: 'job-command-center',
     path: '/workspace?room=jobs',
     readyRole: 'heading',
-    readyText: 'Find your next role two ways.',
+    readyText: 'Find the right jobs before you tailor.',
   },
   {
     slug: 'applications-list',

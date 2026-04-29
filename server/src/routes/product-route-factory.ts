@@ -199,6 +199,17 @@ const runningProductPipelines = new Map<string, number>();
 // during the window between POST /start and GET /:sessionId/stream.
 const eventBuffers = new Map<string, Array<{ type: string }>>();
 const MAX_BUFFERED_EVENTS = 100;
+const REVIEW_EVENT_TYPES = new Set([
+  'letter_review_ready',
+  'star_stories_review_ready',
+  'message_review_ready',
+  'message_draft_ready',
+  'note_review_ready',
+  'email_review_ready',
+  'post_review_ready',
+  'section_review_ready',
+  'draft_review_ready',
+]);
 
 function pruneStaleProductPipelines(now = Date.now()): void {
   for (const [sessionId, startedAt] of runningProductPipelines.entries()) {
@@ -206,6 +217,105 @@ function pruneStaleProductPipelines(now = Date.now()): void {
       runningProductPipelines.delete(sessionId);
       logger.warn({ session_id: sessionId }, 'Evicted stale product pipeline guard');
     }
+  }
+}
+
+function truncateReviewValue(value: unknown, maxStringLength = 60_000, depth = 0): unknown {
+  if (typeof value === 'string') {
+    return value.length > maxStringLength ? `${value.slice(0, maxStringLength)}\n\n[Truncated for session snapshot]` : value;
+  }
+  if (value === null || value === undefined) return value;
+  if (typeof value !== 'object') return value;
+  if (depth > 4) return '[Nested value omitted]';
+  if (Array.isArray(value)) {
+    return value.slice(0, 50).map((item) => truncateReviewValue(item, maxStringLength, depth + 1));
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+      key,
+      truncateReviewValue(item, maxStringLength, depth + 1),
+    ]),
+  );
+}
+
+function isReviewReadyEvent(event: Record<string, unknown>): boolean {
+  const eventType = typeof event.type === 'string' ? event.type : '';
+  if (REVIEW_EVENT_TYPES.has(eventType)) return true;
+  return eventType.endsWith('_review_ready') || eventType.endsWith('_draft_ready');
+}
+
+function extractReviewSnapshotFields(event: Record<string, unknown>): Record<string, unknown> {
+  switch (event.type) {
+    case 'letter_review_ready':
+      return {
+        letter: event.letter_draft,
+        cover_letter: event.letter_draft,
+        quality_score: event.quality_score,
+      };
+    case 'star_stories_review_ready':
+      return {
+        interview_prep_report: event.report,
+        report: event.report,
+        quality_score: event.quality_score,
+      };
+    case 'message_draft_ready': {
+      const draft = event.draft && typeof event.draft === 'object' ? event.draft as Record<string, unknown> : null;
+      return {
+        networking_message: draft?.message_markdown ?? draft?.content ?? draft,
+        draft,
+      };
+    }
+    case 'email_draft_ready':
+      return {
+        follow_up_email: event.draft,
+        draft: event.draft,
+      };
+    case 'note_review_ready':
+      return {
+        thank_you_notes: event.notes,
+        notes: event.notes,
+        quality_score: event.quality_score,
+      };
+    case 'post_draft_ready':
+      return {
+        linkedin_post: event.post,
+        post: event.post,
+        hashtags: event.hashtags,
+        quality_scores: event.quality_scores,
+      };
+    case 'section_draft_ready':
+      return {
+        linkedin_section: event.section,
+        section: event.section,
+        content: event.content,
+        quality_scores: event.quality_scores,
+      };
+    default:
+      return {};
+  }
+}
+
+async function persistReviewSnapshot(sessionId: string, productType: string, event: Record<string, unknown>) {
+  if (!isReviewReadyEvent(event)) return;
+  const snapshot = {
+    product_type: productType,
+    draft_status: 'awaiting_review',
+    event_type: event.type,
+    captured_at: new Date().toISOString(),
+    ...extractReviewSnapshotFields(event),
+    event: truncateReviewValue(event),
+  };
+  const { error } = await supabaseAdmin
+    .from('coach_sessions')
+    .update({
+      pipeline_stage: 'review',
+      last_panel_data: truncateReviewValue(snapshot),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
+    .eq('pipeline_status', 'running');
+  if (error) {
+    logger.warn({ session_id: sessionId, product_type: productType, error: error.message }, 'Failed to persist product review snapshot');
   }
 }
 
@@ -468,10 +578,21 @@ export function createProductRoutes<
       return c.json({ error: 'Pipeline already running for this session' }, 409);
     }
 
+    // Determine product type from the route prefix (e.g. '/api/linkedin-editor' → 'linkedin-editor')
+    const productType = c.req.path.split('/api/')[1]?.split('/')[0] ?? 'unknown';
+
     // Mark as running in DB
     const { error: updateError } = await supabaseAdmin
       .from('coach_sessions')
-      .update({ pipeline_status: 'running', pending_gate: null, pending_gate_data: null })
+      .update({
+        pipeline_status: 'running',
+        pipeline_stage: 'starting',
+        pending_gate: null,
+        pending_gate_data: null,
+        error_message: null,
+        last_panel_data: null,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', sessionId);
 
     if (updateError) {
@@ -504,6 +625,9 @@ export function createProductRoutes<
         preRegisterGate(sessionId, eventObj.gate as string).catch(() => {
           // Fallback: waitForGateResponse will set the gate if pre-registration failed
         });
+      }
+      if (isReviewReadyEvent(eventObj)) {
+        void persistReviewSnapshot(sessionId, productType, eventObj);
       }
 
       const emitters = sseConnections.get(sessionId);
@@ -563,10 +687,18 @@ export function createProductRoutes<
     // the pipeline never starts. See resume-v2-pipeline.ts line 172 for the same pattern.
     void (async () => {
       try {
-        await runProductPipeline(productConfig, runtimeParams);
+        const result = await runProductPipeline(productConfig, runtimeParams);
         await supabaseAdmin
           .from('coach_sessions')
-          .update({ pipeline_status: 'complete', pending_gate: null, pending_gate_data: null })
+          .update({
+            pipeline_status: 'complete',
+            pipeline_stage: 'complete',
+            pending_gate: null,
+            pending_gate_data: null,
+            error_message: null,
+            estimated_cost_usd: result.usage.estimated_cost_usd,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', sessionId);
         // Hook: onComplete — domain-specific success cleanup
         if (config.onComplete) {
@@ -589,13 +721,21 @@ export function createProductRoutes<
           }
         }
       } catch (pipelineError) {
+        const errorMessage = pipelineError instanceof Error ? pipelineError.message : String(pipelineError);
         logger.error(
-          { session_id: sessionId, error: pipelineError instanceof Error ? pipelineError.message : String(pipelineError) },
+          { session_id: sessionId, error: errorMessage },
           'Product pipeline failed',
         );
         await supabaseAdmin
           .from('coach_sessions')
-          .update({ pipeline_status: 'error', pending_gate: null, pending_gate_data: null })
+          .update({
+            pipeline_status: 'error',
+            pipeline_stage: 'error',
+            pending_gate: null,
+            pending_gate_data: null,
+            error_message: errorMessage,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', sessionId);
         // Hook: onError — domain-specific failure cleanup
         if (config.onError) {

@@ -18,7 +18,7 @@ test.describe('workspace core actions — home, profile, linkedin', () => {
     await page.goto('/workspace', { waitUntil: 'domcontentloaded' });
     await page.locator('section', { hasText: 'Your Pipeline' }).getByRole('button', { name: /^Find Jobs$/i }).click();
     await expect(page).toHaveURL(/room=jobs/);
-    await expect(page.getByRole('heading', { name: /Find your next role two ways/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Find the right jobs before you tailor/i })).toBeVisible();
   });
 
   test('Career Profile keeps the Why Me prompts visible and editable', async ({ page }) => {
@@ -36,14 +36,12 @@ test.describe('workspace core actions — home, profile, linkedin', () => {
     ).toBeVisible();
   });
 
-  test('LinkedIn quick optimize completes and support workspaces stay reachable', async ({ page }) => {
+  test('LinkedIn profile audit and content workspaces stay reachable', async ({ page }) => {
     await page.goto('/workspace?room=linkedin', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /Build a stronger profile and publish with intent/i })).toBeVisible();
-    await page.getByRole('button', { name: /Quick Optimize/i }).click();
-
-    await expect(page.getByText(/Current Profile Score/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Re-optimize/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Become discoverable on LinkedIn/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Optimize Profile/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Edit Profile/i })).toBeVisible();
 
     await page.getByRole('button', { name: 'Content', exact: true }).click();
     await page.locator('summary').filter({ hasText: 'Content Plan' }).click();
@@ -53,7 +51,7 @@ test.describe('workspace core actions — home, profile, linkedin', () => {
   test('LinkedIn Write drafts and approves a post', async ({ page }) => {
     await page.goto('/workspace?room=linkedin', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /Build a stronger profile and publish with intent/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Become discoverable on LinkedIn/i })).toBeVisible();
     await page.getByRole('button', { name: 'Content', exact: true }).click();
     await page.getByRole('button', { name: /Write a Post/i }).click();
 
@@ -72,7 +70,7 @@ test.describe('workspace core actions — home, profile, linkedin', () => {
   test('LinkedIn Profile rewrites sections and completes', async ({ page }) => {
     await page.goto('/workspace?room=linkedin', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /Build a stronger profile and publish with intent/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Become discoverable on LinkedIn/i })).toBeVisible();
     await page.getByRole('button', { name: /Edit Profile/i }).click();
 
     await expect(page.getByRole('heading', { name: 'Headline', exact: true })).toBeVisible({ timeout: 10_000 });

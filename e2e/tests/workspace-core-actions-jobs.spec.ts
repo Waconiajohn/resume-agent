@@ -9,10 +9,16 @@ test.describe('workspace core actions — jobs', () => {
   const visibleJobCard = (page: Page, company: string) =>
     page.locator('div.rounded-xl.border:visible').filter({ hasText: company }).filter({ hasText: 'Open Job' });
 
+  const chooseBroadSearchWorkMode = async (page: Page, label: string) => {
+    const refineSearch = page.locator('details').filter({ hasText: 'Refine search' }).first();
+    await refineSearch.getByText('Refine search').click();
+    await refineSearch.getByRole('button', { name: new RegExp(`^${label}$`, 'i') }).click();
+  };
+
   test('Job Search generates Boolean strings and searches the public board', async ({ page }) => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: /Find your next role two ways/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Find the right jobs before you tailor/i })).toBeVisible();
     await page.getByText(/Generate search strings for external job boards/i).click();
     await expect(page.getByRole('heading', { name: 'Search Strings', exact: true })).toBeVisible();
 
@@ -24,7 +30,7 @@ test.describe('workspace core actions — jobs', () => {
     );
 
     await page.getByPlaceholder('Job title, keywords...').fill('VP Operations');
-    await page.getByRole('button', { name: /^Remote$/i }).click();
+    await chooseBroadSearchWorkMode(page, 'Remote');
     await page.getByRole('button', { name: /^Search$/i }).click();
 
     await expect(visibleJobCard(page, 'Northstar SaaS').first()).toBeVisible();
@@ -35,7 +41,7 @@ test.describe('workspace core actions — jobs', () => {
     await page.goto('/workspace?room=jobs', { waitUntil: 'domcontentloaded' });
 
     await page.getByPlaceholder('Job title, keywords...').fill('VP Operations');
-    await page.getByRole('button', { name: /^Remote$/i }).click();
+    await chooseBroadSearchWorkMode(page, 'Remote');
     await page.getByRole('button', { name: /^Search$/i }).click();
 
     await expect(visibleJobCard(page, 'Northstar SaaS').first()).toBeVisible();

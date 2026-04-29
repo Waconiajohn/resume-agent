@@ -61,9 +61,9 @@ function formatSourceLabel(source: string | null | undefined): string | null {
   if (!source) return null;
   const normalized = source.toLowerCase();
   if (normalized.includes('google search') || normalized.includes('serper')) {
-    return 'ATS job page';
+    return 'Google/ATS result';
   }
-  if (normalized.includes('firecrawl')) return 'Career page';
+  if (normalized.includes('firecrawl')) return 'Supplemental career result';
   return source;
 }
 
@@ -368,6 +368,7 @@ export function RadarSection({
                       <button
                         type="button"
                         onClick={() => onBuildResume(job)}
+                        aria-label={`Tailor resume for ${job.title} at ${job.company}`}
                         className="flex items-center gap-1 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-2.5 py-1.5 text-[13px] text-[var(--text-soft)] hover:text-[var(--text-soft)] hover:bg-[var(--surface-1)] transition-colors"
                       >
                         <FileText size={11} />

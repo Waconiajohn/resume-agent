@@ -199,7 +199,7 @@ describe('network intelligence panels', () => {
     expect(screen.getAllByText('Director of Engineering').length).toBeGreaterThan(0);
   });
 
-  it('shows the no-eligible-companies guidance in scrape jobs when nothing can be scanned', async () => {
+  it('shows the no-eligible-companies guidance in company job search when nothing can be checked', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ companies: [] }), { status: 200 }),
@@ -210,14 +210,14 @@ describe('network intelligence panels', () => {
 
     render(<ScrapeJobsPanel accessToken="test-token" />);
 
-    expect(await screen.findByText('Scan for Job Openings')).toBeInTheDocument();
+    expect(await screen.findByText('Find Job Openings')).toBeInTheDocument();
     expect(
       screen.getByText(/Import LinkedIn connections first/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Scan for Jobs/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Find Jobs/i })).toBeDisabled();
   });
 
-  it('makes selected scan companies obvious and enables the scan action', async () => {
+  it('makes selected companies obvious and enables the company job search action', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(
         new Response(
@@ -243,14 +243,14 @@ describe('network intelligence panels', () => {
 
     render(<ScrapeJobsPanel accessToken="test-token" />);
 
-    const scanButton = await screen.findByRole('button', { name: /Scan for Jobs/i });
-    expect(scanButton).toBeDisabled();
+    const searchButton = await screen.findByRole('button', { name: /Find Jobs/i });
+    expect(searchButton).toBeDisabled();
 
     fireEvent.click(await screen.findByRole('button', { name: /Select Acme Corp/i }));
 
     expect(screen.getByText('Selected')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Deselect Acme Corp/i })).toHaveAttribute('aria-pressed', 'true');
-    expect(scanButton).toBeEnabled();
+    expect(searchButton).toBeEnabled();
   });
 
   it('explains verified freshness and offers all supported freshness windows', () => {
@@ -268,12 +268,13 @@ describe('network intelligence panels', () => {
       />,
     );
 
-    expect(screen.getByText(/only includes jobs with a readable posted date/i)).toBeInTheDocument();
+    expect(screen.getByText(/Remote is nationwide/i)).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 24 hours' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 3 days' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 7 days' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 14 days' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 30 days' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Any date' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Remote Nationwide/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -295,7 +296,7 @@ describe('network intelligence panels', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Any' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText(/verifies the posted date before showing a result/i)).toBeInTheDocument();
+    expect(screen.getByText(/checks Google web results for public ATS and career pages/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remote' }));
     expect(onWorkModesChange).toHaveBeenLastCalledWith({ remote: true, hybrid: false, onsite: false });
@@ -304,7 +305,7 @@ describe('network intelligence panels', () => {
     expect(onWorkModesChange).toHaveBeenLastCalledWith({ remote: false, hybrid: false, onsite: false });
   });
 
-  it('starts a remote-only scan without tying it to city/radius', async () => {
+  it('starts a remote-only company job search without tying it to city/radius', async () => {
     localStorage.setItem(
       'ni-job-filters',
       JSON.stringify({
@@ -355,7 +356,7 @@ describe('network intelligence panels', () => {
     render(<ScrapeJobsPanel accessToken="test-token" />);
 
     fireEvent.click(await screen.findByRole('button', { name: /Select Acme Corp/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Scan for Jobs/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Find Jobs/i }));
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
@@ -379,7 +380,7 @@ describe('network intelligence panels', () => {
     expect(body).not.toHaveProperty('radius_miles');
   });
 
-  it('starts a hybrid scan with city/radius and hybrid work mode', async () => {
+  it('starts a hybrid company job search with city/radius and hybrid work mode', async () => {
     localStorage.setItem(
       'ni-job-filters',
       JSON.stringify({
@@ -430,7 +431,7 @@ describe('network intelligence panels', () => {
     render(<ScrapeJobsPanel accessToken="test-token" />);
 
     fireEvent.click(await screen.findByRole('button', { name: /Select Acme Corp/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Scan for Jobs/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Find Jobs/i }));
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
@@ -453,7 +454,7 @@ describe('network intelligence panels', () => {
     );
   });
 
-  it('explains normalization is still running when connections exist but no companies are scan-ready yet', async () => {
+  it('explains normalization is still running when connections exist but no companies are ready yet', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(
         new Response(
@@ -479,17 +480,17 @@ describe('network intelligence panels', () => {
 
     render(<ScrapeJobsPanel accessToken="test-token" />);
 
-    expect(await screen.findByText('Scan for Job Openings')).toBeInTheDocument();
+    expect(await screen.findByText('Find Job Openings')).toBeInTheDocument();
     expect(
       screen.getByText(/Connections imported/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/still normalizing before we can scan career pages/i),
+      screen.getByText(/still normalizing before we can check public job pages/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Scan for Jobs/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Find Jobs/i })).toBeDisabled();
   });
 
-  it('auto-refreshes the scan panel when company normalization finishes', async () => {
+  it('auto-refreshes the company job panel when company normalization finishes', async () => {
     const setIntervalSpy = vi
       .spyOn(globalThis, 'setInterval')
       .mockImplementation(((handler: TimerHandler, _timeout?: number, ...args: unknown[]) => {
@@ -548,13 +549,13 @@ describe('network intelligence panels', () => {
 
     render(<ScrapeJobsPanel accessToken="test-token" />);
 
-    expect(await screen.findByText('Scan for Job Openings')).toBeInTheDocument();
+    expect(await screen.findByText('Find Job Openings')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledTimes(4);
-      expect(screen.queryByText(/still normalizing before we can scan career pages/i)).not.toBeInTheDocument();
-      // The Scan button is present — user must select companies to enable it
-      expect(screen.getByRole('button', { name: /Scan for Jobs/i })).toBeInTheDocument();
+      expect(screen.queryByText(/still normalizing before we can check public job pages/i)).not.toBeInTheDocument();
+      // The Find Jobs button is present — user must select companies to enable it
+      expect(screen.getByRole('button', { name: /Find Jobs/i })).toBeInTheDocument();
     });
 
     setIntervalSpy.mockRestore();

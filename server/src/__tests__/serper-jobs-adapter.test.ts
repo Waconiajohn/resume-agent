@@ -54,6 +54,26 @@ describe('SerperJobsAdapter', () => {
     expect(body.tbs).toBe('qdr:m');
   });
 
+  it('does not send city/state location bias for remote-only searches', async () => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ jobs: [] }) });
+    });
+
+    await new SerperJobsAdapter().search(
+      'Cloud Operations Manager',
+      'New York, NY',
+      { datePosted: '30d', remoteType: 'remote' },
+    );
+
+    expect(capturedBody).toBeDefined();
+    const body = JSON.parse(capturedBody!);
+    expect(body.q).toContain('Cloud Operations Manager remote jobs');
+    expect(body.q).not.toContain('near "New York, NY"');
+    expect(body).not.toHaveProperty('location');
+  });
+
   it('parses ATS job pages from Serper organic search results', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -130,11 +150,9 @@ describe('SerperJobsAdapter', () => {
 
   it.each([
     ['24h', 'qdr:d'],
-    ['3d', 'qdr:d3'],
     ['7d', 'qdr:w'],
-    ['14d', 'qdr:w2'],
     ['30d', 'qdr:m'],
-  ] as const)('uses the expected Google freshness parameter for %s', async (datePosted, expectedTbs) => {
+  ] as const)('uses supported Google freshness parameter for %s', async (datePosted, expectedTbs) => {
     let capturedBody: string | undefined;
     globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
       capturedBody = init.body as string;
@@ -151,7 +169,24 @@ describe('SerperJobsAdapter', () => {
     expect(JSON.parse(capturedBody!).tbs).toBe(expectedTbs);
   });
 
-  it('excludes jobs without a readable posted date when a freshness filter is active', async () => {
+  it.each(['3d', '14d'] as const)('does not send unsupported Google freshness parameter for %s', async (datePosted) => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ jobs: [] }) });
+    });
+
+    await new SerperJobsAdapter().search(
+      'VP Operations',
+      '',
+      { datePosted, remoteType: 'any' },
+    );
+
+    expect(capturedBody).toBeDefined();
+    expect(JSON.parse(capturedBody!)).not.toHaveProperty('tbs');
+  });
+
+  it('returns provider jobs before freshness filtering so the aggregator can explain removals', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
@@ -186,8 +221,77 @@ describe('SerperJobsAdapter', () => {
       { datePosted: '7d', remoteType: 'any' },
     );
 
-    expect(jobs.map((job) => job.apply_url)).toEqual(['https://example.com/current']);
+    expect(jobs.map((job) => job.apply_url)).toEqual([
+      'https://example.com/current',
+      'https://example.com/old',
+      'https://example.com/unknown',
+    ]);
     expect(jobs[0].posted_date).toEqual(expect.any(String));
+  });
+
+  it('rejects generic ATS landing pages that are not concrete job postings', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        organic: [
+          {
+            title: 'Search for Jobs',
+            link: 'https://deckers.wd1.myworkdayjobs.com/Deckers_Careers/jobs?locationCountry=bc33aa3152ec42d4995f4791a106ed09&refreshFacet=true',
+            snippet: 'Search all jobs at Deckers.',
+            date: '1 day ago',
+          },
+          {
+            title: 'Job Application for Director of Product at Acme Software',
+            link: 'https://boards.greenhouse.io/acmesoftware/jobs/123',
+            snippet: 'Posted 2 days ago. Lead product strategy.',
+            date: '2 days ago',
+          },
+        ],
+      }),
+    });
+
+    const jobs = await new SerperJobsAdapter().search(
+      'Director of Product',
+      '',
+      { datePosted: '7d', remoteType: 'any' },
+    );
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].company).toBe('Acme Software');
+  });
+
+  it('filters obvious role-irrelevant results before they reach the board', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        jobs: [
+          {
+            title: 'Business Development Representative',
+            companyName: 'Noise Corp',
+            location: 'Remote',
+            link: 'https://example.com/bdr',
+            snippet: 'Outbound sales role.',
+            date: '1 day ago',
+          },
+          {
+            title: 'Principal Product Manager',
+            companyName: 'Acme',
+            location: 'Remote',
+            link: 'https://example.com/product',
+            snippet: 'Own product strategy and Salesforce workflow enhancements.',
+            date: '1 day ago',
+          },
+        ],
+      }),
+    });
+
+    const jobs = await new SerperJobsAdapter().search(
+      'Director of Product Salesforce',
+      '',
+      { datePosted: '7d', remoteType: 'remote' },
+    );
+
+    expect(jobs.map((job) => job.title)).toEqual(['Principal Product Manager']);
   });
 
   it('classifies work mode labels returned by Serper', async () => {

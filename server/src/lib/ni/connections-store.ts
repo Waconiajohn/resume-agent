@@ -1,7 +1,7 @@
 /**
  * Connections Store — Supabase CRUD for client_connections table.
  *
- * All functions use supabaseAdmin (service key, bypasses RLS).
+ * All functions use the server-only Supabase admin client.
  * Follows platform-context.ts patterns.
  */
 
@@ -316,10 +316,10 @@ export async function getCompanySummary(userId: string): Promise<CompanySummaryR
   }
 }
 
-// ─── Scrape Log ───────────────────────────────────────────────────────────────
+// ─── Background Operation Log ─────────────────────────────────────────────────
 
 /**
- * Create a scrape log entry for tracking import operations.
+ * Create a background operation log entry for import and job-discovery work.
  */
 export async function createScrapeLogEntry(
   userId: string,
@@ -354,7 +354,7 @@ export async function createScrapeLogEntry(
 }
 
 /**
- * Update scrape log progress mid-scan (non-blocking).
+ * Update background operation progress (non-blocking).
  */
 export async function updateScrapeLogProgress(
   logId: string,
@@ -370,12 +370,12 @@ export async function updateScrapeLogProgress(
       logger.debug({ error: error.message, logId }, 'updateScrapeLogProgress: failed');
     }
   } catch {
-    // Non-blocking — progress update failures should not interrupt scanning
+    // Non-blocking — progress update failures should not interrupt discovery.
   }
 }
 
 /**
- * Update a scrape log entry on completion or failure.
+ * Update a background operation log entry on completion or failure.
  */
 export async function completeScrapeLogEntry(
   logId: string,

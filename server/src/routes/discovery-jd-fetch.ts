@@ -9,6 +9,7 @@
  */
 
 import { Hono } from 'hono';
+import FirecrawlApp from '@mendable/firecrawl-js';
 import { authMiddleware } from '../middleware/auth.js';
 import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { parseJsonBodyWithLimit } from '../lib/http-body-guard.js';
@@ -212,6 +213,59 @@ export function extractJobMetadataFromTitle(title: string, rawUrl: string): { ti
   };
 }
 
+async function fetchJobDescriptionViaFirecrawl(
+  rawUrl: string,
+  userId: string,
+  reason: string,
+): Promise<{ text: string; title?: string; company?: string } | null> {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const fc = new FirecrawlApp({ apiKey });
+    const result = await fc.scrape(rawUrl, {
+      formats: ['markdown'],
+      onlyMainContent: true,
+      timeout: 15_000,
+    }) as {
+      success?: boolean;
+      markdown?: string;
+      html?: string;
+      metadata?: { title?: string; ogTitle?: string; sourceURL?: string };
+      error?: string;
+    };
+
+    if (result.success === false) {
+      logger.warn({ userId, url: rawUrl, reason, error: result.error }, 'discovery-jd-fetch: Firecrawl fallback returned error');
+      return null;
+    }
+
+    const rawText = result.markdown || result.html || '';
+    const text = cleanExtractedJobText(rawText);
+    if (text.length <= 200) {
+      logger.warn({ userId, url: rawUrl, reason, textLength: text.length }, 'discovery-jd-fetch: Firecrawl fallback text too short');
+      return null;
+    }
+
+    const pageTitle = result.metadata?.title || result.metadata?.ogTitle || '';
+    const metadata = extractJobMetadataFromTitle(pageTitle, rawUrl);
+    logger.info(
+      { userId, url: rawUrl, reason, textLength: text.length, title: metadata.title, company: metadata.company },
+      'discovery-jd-fetch: Firecrawl fallback success',
+    );
+
+    return {
+      text: text.slice(0, 15000),
+      title: metadata.title || pageTitle || undefined,
+      company: metadata.company || undefined,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.warn({ userId, url: rawUrl, reason, error: message }, 'discovery-jd-fetch: Firecrawl fallback failed');
+    return null;
+  }
+}
+
 // ─── POST /fetch-jd ───────────────────────────────────────────────────────────
 
 discoveryJdFetchRoutes.post(
@@ -263,6 +317,8 @@ discoveryJdFetchRoutes.post(
 
       if (!res.ok) {
         logger.warn({ userId: user.id, url: rawUrl, status: res.status }, 'discovery-jd-fetch: upstream returned non-2xx');
+        const firecrawl = await fetchJobDescriptionViaFirecrawl(rawUrl, user.id, `direct_http_${res.status}`);
+        if (firecrawl) return c.json(firecrawl);
         return c.json({ error: 'Could not fetch the job posting. The page may require a login or is unavailable.' }, 400);
       }
 
@@ -287,10 +343,14 @@ discoveryJdFetchRoutes.post(
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.warn({ userId: user.id, url: rawUrl, error: message }, 'discovery-jd-fetch: fetch failed');
+      const firecrawl = await fetchJobDescriptionViaFirecrawl(rawUrl, user.id, 'direct_fetch_failed');
+      if (firecrawl) return c.json(firecrawl);
       return c.json({ error: 'Could not reach the job posting URL. Check the URL and try again.' }, 400);
     }
 
     if (!html || html.length < 200) {
+      const firecrawl = await fetchJobDescriptionViaFirecrawl(rawUrl, user.id, 'direct_html_too_short');
+      if (firecrawl) return c.json(firecrawl);
       return c.json({ error: 'Could not extract job description from URL' }, 400);
     }
 
@@ -302,6 +362,8 @@ discoveryJdFetchRoutes.post(
     const strippedText = cleanExtractedJobText(html);
 
     if (strippedText.length <= 200) {
+      const firecrawl = await fetchJobDescriptionViaFirecrawl(rawUrl, user.id, 'direct_text_too_short');
+      if (firecrawl) return c.json(firecrawl);
       return c.json({ error: 'Could not extract job description from URL' }, 400);
     }
 

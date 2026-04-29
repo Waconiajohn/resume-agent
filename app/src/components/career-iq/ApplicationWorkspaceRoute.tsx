@@ -636,6 +636,7 @@ export function ApplicationWorkspaceRoute({
       <V3PipelineScreen
         accessToken={accessToken}
         applicationId={applicationId}
+        initialJobUrl={application.url}
         initialJobDescription={application.jd_text}
         initialJdTitle={application.role_title}
         initialJdCompany={application.company_name}

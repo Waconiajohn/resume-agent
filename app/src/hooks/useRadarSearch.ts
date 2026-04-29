@@ -2,6 +2,12 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { safeNumber, safeString, safeStringArray } from '@/lib/safe-cast';
+import {
+  buildAuthScopedSessionStorageKey,
+  decodeUserIdFromAccessToken,
+  readJsonFromSessionStorage,
+  writeJsonToSessionStorage,
+} from '@/lib/auth-scoped-storage';
 
 export interface NetworkContact {
   id: string;
@@ -86,6 +92,17 @@ interface SearchResponse {
   sources_queried?: unknown;
   empty_reason?: unknown;
   filter_stats?: unknown;
+}
+
+type CachedRadarState = Omit<RadarSearchState, 'loading' | 'error'>;
+
+const RADAR_SEARCH_CACHE_NAMESPACE = 'career-iq:radar-search:last';
+
+function cacheKeyForToken(accessToken: string | null | undefined): string {
+  return buildAuthScopedSessionStorageKey(
+    RADAR_SEARCH_CACHE_NAMESPACE,
+    decodeUserIdFromAccessToken(accessToken),
+  );
 }
 
 interface EnrichedResult {
@@ -333,6 +350,39 @@ export function useRadarSearch() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled || !mountedRef.current) return;
+      const cached = readJsonFromSessionStorage<Partial<CachedRadarState>>(
+        cacheKeyForToken(session?.access_token),
+      );
+      if (!cached?.hasSearched) return;
+      setState((prev) => {
+        if (prev.hasSearched || prev.loading) return prev;
+        return {
+          jobs: sanitizeRadarJobs(cached.jobs),
+          loading: false,
+          error: null,
+          hasSearched: true,
+          lastQuery: safeNullableString(cached.lastQuery),
+          lastLocation: safeNullableString(cached.lastLocation),
+          lastFilters: cached.lastFilters ?? null,
+          scanId: safeNullableString(cached.scanId),
+          sourcesQueried: safeStringArray(cached.sourcesQueried),
+          executionTimeMs: safeNullableNumber(cached.executionTimeMs),
+          emptyReason: safeNullableString(cached.emptyReason),
+          filterStats: sanitizeFilterStats(cached.filterStats),
+        };
+      });
+    }).catch(() => {
+      // Cache restore is best-effort only.
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const search = useCallback(
     async (query: string, location: string, filters?: RadarSearchFilters): Promise<void> => {
       if (!mountedRef.current) return;
@@ -367,6 +417,7 @@ export function useRadarSearch() {
           }
           return;
         }
+        const accessToken = authHeader.Authorization.replace(/^Bearer\s+/i, '');
 
         const res = await fetch(`${API_BASE}/job-search`, {
           method: 'POST',
@@ -420,6 +471,18 @@ export function useRadarSearch() {
             emptyReason: enrichedJobs.length === 0 ? emptyReason : null,
             filterStats,
           }));
+          writeJsonToSessionStorage(cacheKeyForToken(accessToken), {
+            jobs: enrichedJobs,
+            hasSearched: true,
+            lastQuery: trimmedQuery,
+            lastLocation: trimmedLocation,
+            lastFilters: filters ?? null,
+            scanId,
+            sourcesQueried,
+            executionTimeMs,
+            emptyReason: enrichedJobs.length === 0 ? emptyReason : null,
+            filterStats,
+          } satisfies CachedRadarState);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

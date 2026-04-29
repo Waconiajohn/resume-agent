@@ -213,7 +213,7 @@ applicationTimelineRoutes.get(
         .select('id, job_application_id, updated_at')
         .eq('user_id', user.id)
         .eq('product_type', 'cover_letter')
-        .eq('pipeline_status', 'completed')
+        .eq('pipeline_status', 'complete')
         .in('job_application_id', appIds),
       supabaseAdmin
         .from('interview_prep_reports')
@@ -527,7 +527,7 @@ applicationTimelineRoutes.get(
         .select('id, updated_at')
         .eq('user_id', user.id)
         .eq('product_type', 'cover_letter')
-        .eq('pipeline_status', 'completed')
+        .eq('pipeline_status', 'complete')
         .eq('job_application_id', applicationId)
         .order('updated_at', { ascending: false })
         .limit(1)

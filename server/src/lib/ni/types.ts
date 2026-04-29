@@ -165,7 +165,7 @@ export interface JobMatchRow {
 
 export type NiSearchContext = 'network_connections' | 'bonus_search';
 
-// ─── Scrape Filters ───────────────────────────────────────────────────────────
+// ─── Company Job Discovery Filters ────────────────────────────────────────────
 
 export type NiWorkMode = 'remote' | 'hybrid' | 'onsite';
 
@@ -241,7 +241,7 @@ export interface BonusCompanySearchResult {
   program_url: string | null;
 }
 
-// ─── Career Page Scraper ──────────────────────────────────────────────────────
+// ─── Public Company Job Discovery ─────────────────────────────────────────────
 
 export interface CompanyInfo {
   id: string;
@@ -275,19 +275,19 @@ export interface ScrapeResult {
 }
 
 /**
- * Career Page Scraper Interface — pluggable scraper for raw URL -> jobs extraction.
+ * Public company job page adapter interface — pluggable public URL -> jobs extraction.
  *
- * Tier 3 of the scanning strategy. Not implemented yet — this interface
- * defines the contract so a Firecrawl (or Playwright, or Puppeteer) adapter
- * can be plugged in later without changing the career scraper orchestration.
+ * Tier 3 of the discovery strategy. Not implemented yet — this interface
+ * defines the contract so a public-page adapter can be plugged in later without
+ * changing orchestration.
  */
 export interface CareerPageScraper {
   /** Unique identifier for this scraper implementation */
   readonly name: string;
 
   /**
-   * Scrape a company's career page URL and extract job listings.
-   * @param careerPageUrl - The URL to scrape (e.g., "https://acme.com/careers")
+   * Read a publicly reachable company job page URL and extract job listings.
+   * @param careerPageUrl - The public URL to check (e.g., "https://acme.com/careers")
    * @param targetTitles - Optional title filters to apply during extraction
    * @returns Normalized job listings found on the page
    */

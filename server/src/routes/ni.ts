@@ -310,7 +310,7 @@ ni.get('/boolean-search/:id', rateLimitMiddleware(60, 60_000), async (c) => {
   return c.json({ id, ...result });
 });
 
-// ─── Career Page Scraper ──────────────────────────────────────────────────────
+// ─── Company Job Discovery ────────────────────────────────────────────────────
 
 ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
   const bodyResult = await parseJsonBodyWithLimit(c, 10_000);
@@ -350,10 +350,10 @@ ni.post('/scrape/start', rateLimitMiddleware(3, 60_000), async (c) => {
   });
 
   if (!logId) {
-    return c.json({ error: 'Failed to start scrape' }, 500);
+    return c.json({ error: 'Failed to start company job search' }, 500);
   }
 
-  // Fire-and-forget — scrape runs in background via import-service
+  // Fire-and-forget — public company job discovery runs in background.
   void runCareerScrape(userId, logId, company_ids, target_titles, search_context as NiSearchContext, scrapeFilters);
 
   return c.json({ scrape_log_id: logId, search_context, filters: scrapeFilters }, 202);
@@ -406,7 +406,7 @@ ni.get('/scrape/status/:id', rateLimitMiddleware(30, 60_000), async (c) => {
     .single();
 
   if (error || !data) {
-    return c.json({ error: 'Scrape log not found' }, 404);
+    return c.json({ error: 'Company job search not found' }, 404);
   }
 
   // Auto-recover stale scans (e.g., server restarted mid-scan)

@@ -65,29 +65,61 @@ const MOCK_INTERVIEW_RESPONSE = {
 };
 
 const MOCK_PROFILE: Record<string, unknown> = {
-  career_thread: 'From systems engineering to cloud-scale leadership',
-  top_capabilities: [
-    { capability: 'Cloud Migration', evidence: '60+ apps migrated', source: 'resume' },
-    { capability: 'Team Scaling', evidence: '14-person team', source: 'interview' },
-  ],
-  signature_story: {
-    situation: 'Company needed cloud migration',
-    task: 'Lead the transition of 60+ apps',
-    action: 'Built Kubernetes platform and trained teams',
-    result: '35% cost reduction, 50M daily API requests',
-    reflection: 'Proved large-scale migrations can be smooth',
+  version: 'career_profile_v2',
+  source: 'profile-setup',
+  generated_at: new Date().toISOString(),
+  targeting: {
+    target_roles: ['VP of Infrastructure', 'Head of Cloud Engineering'],
+    target_industries: ['Technology', 'Cloud infrastructure'],
+    seniority: 'Executive',
+    transition_type: 'Cloud leadership',
+    preferred_company_environments: ['Growth-stage SaaS', 'Enterprise platforms'],
   },
-  honest_answer: {
-    concern: 'No enterprise-scale experience',
-    response: 'Mid-market complexity often exceeds enterprise, and Sarah has managed it.',
+  positioning: {
+    core_strengths: ['Cloud Migration', 'Team Scaling'],
+    proof_themes: ['60+ apps migrated', '14-person team built'],
+    differentiators: ['Turns infrastructure chaos into reliable platforms'],
+    adjacent_positioning: ['Enterprise infrastructure modernization'],
+    positioning_statement: 'From systems engineering to cloud-scale leadership.',
+    narrative_summary: 'Sarah scales cloud platforms while making teams faster and calmer.',
+    leadership_scope: 'Led 14-person infrastructure and DevOps team.',
+    scope_of_responsibility: '$4.2M annual cloud budget and 60+ migrated applications.',
   },
-  righteous_close: 'Hire Sarah because she ships infrastructure that scales.',
-  why_me_final: {
-    headline: 'Sarah turns infrastructure chaos into reliable platforms that teams love.',
-    body: 'She migrated 60+ apps with zero downtime and grew her team from 5 to 14 in two years.',
+  narrative: {
+    colleagues_came_for_what: 'Reliable leadership when cloud programs became messy.',
+    known_for_what: 'Sarah turns infrastructure chaos into reliable platforms that teams love.',
+    why_not_me: 'No GCP depth, but strong AWS and Kubernetes proof.',
+    story_snippet: 'She migrated 60+ apps with zero downtime and grew her team from 5 to 14 in two years.',
   },
-  target_roles: ['VP of Infrastructure', 'Head of Cloud Engineering'],
-  created_at: new Date().toISOString(),
+  preferences: {
+    must_haves: ['Cloud leadership', 'Team scale'],
+    constraints: ['Remote or hybrid preferred'],
+    compensation_direction: 'Executive market range',
+  },
+  coaching: {
+    financial_segment: 'executive',
+    emotional_state: 'focused',
+    coaching_tone: 'direct',
+    urgency_score: 7,
+    recommended_starting_point: 'Tailor resume to cloud leadership roles',
+  },
+  evidence_positioning_statements: ['Migrated 60+ apps to AWS, cutting hosting costs 35%.'],
+  profile_signals: {
+    clarity: 'green',
+    alignment: 'green',
+    differentiation: 'green',
+  },
+  completeness: {
+    overall_score: 86,
+    dashboard_state: 'strong',
+    sections: [
+      { id: 'direction', label: 'Direction', status: 'ready', score: 90, summary: 'Clear executive target.' },
+      { id: 'positioning', label: 'Positioning', status: 'ready', score: 88, summary: 'Strong proof themes.' },
+      { id: 'narrative', label: 'Narrative', status: 'ready', score: 84, summary: 'Memorable leadership story.' },
+      { id: 'constraints', label: 'Constraints', status: 'partial', score: 72, summary: 'Location preferences known.' },
+    ],
+  },
+  profile_summary: 'Sarah is a cloud infrastructure leader who scales teams and reduces cost through automation.',
 };
 
 // ─── Mock helpers ───────────────────────────────────────────────────────────────
@@ -205,7 +237,7 @@ async function mockProfileSetupApis(page: Page) {
 async function navigateToProfileSetup(page: Page) {
   await page.goto('/profile-setup');
   await expect(
-    page.getByRole('heading', { name: /build your CareerIQ profile/i }),
+    page.getByRole('heading', { name: /Build the profile every future application uses/i }),
   ).toBeVisible({ timeout: 10_000 });
 }
 
@@ -222,16 +254,16 @@ test.describe('Profile Setup', () => {
     await navigateToProfileSetup(page);
 
     await expect(page.getByLabel(/Resume text/i)).toBeVisible();
-    await expect(page.getByLabel(/LinkedIn profile text/i)).toBeVisible();
+    await expect(page.getByLabel(/Optional LinkedIn context/i)).toBeVisible();
     await expect(page.getByLabel(/Target roles/i)).toBeVisible();
     await expect(page.getByLabel(/Your situation/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Build my CareerIQ profile/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Build my Benchmark Profile/i })).toBeVisible();
   });
 
   test('submit button stays disabled until resume detail and target roles meet validation minimums', async ({ page }) => {
     await navigateToProfileSetup(page);
 
-    const submit = page.getByRole('button', { name: /Build my CareerIQ profile/i });
+    const submit = page.getByRole('button', { name: /Build my Benchmark Profile/i });
     await expect(submit).toBeDisabled();
 
     // Short resume text is still disabled because it does not meet the client/server minimum.
@@ -247,18 +279,14 @@ test.describe('Profile Setup', () => {
     await expect(submit).toBeEnabled();
   });
 
-  test('shows LinkedIn skip confirmation when submitting without LinkedIn', async ({ page }) => {
+  test('submits successfully without optional LinkedIn context', async ({ page }) => {
     await navigateToProfileSetup(page);
 
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my CareerIQ profile/i }).click();
+    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
 
-    // Should show skip confirmation
-    await expect(page.getByText(/Are you sure you want to skip it/i)).toBeVisible();
-
-    // "Continue without it" proceeds to processing → interview
-    await page.getByRole('button', { name: /Continue without it/i }).click();
+    await expect(page.getByText(/Are you sure you want to skip it/i)).not.toBeVisible();
 
     // With instant mocks, processing flashes by; verify we reach interview
     await expect(page.getByText(/Here is what we found/i)).toBeVisible({ timeout: 10_000 });
@@ -268,9 +296,9 @@ test.describe('Profile Setup', () => {
     await navigateToProfileSetup(page);
 
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
-    await page.getByLabel(/LinkedIn profile text/i).fill('I am a cloud infrastructure leader.');
+    await page.getByLabel(/Optional LinkedIn context/i).fill('I am a cloud infrastructure leader.');
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my CareerIQ profile/i }).click();
+    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
 
     // Should go straight to processing or interview — no skip confirmation
     await expect(page.getByText(/Are you sure you want to skip it/i)).not.toBeVisible();
@@ -284,9 +312,9 @@ test.describe('Profile Setup', () => {
     await navigateToProfileSetup(page);
 
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
-    await page.getByLabel(/LinkedIn profile text/i).fill('Cloud infrastructure leader.');
+    await page.getByLabel(/Optional LinkedIn context/i).fill('Cloud infrastructure leader.');
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my CareerIQ profile/i }).click();
+    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
 
     // With instant mocks, processing screen may flash by — check interview directly
     await expect(page.getByText(/Here is what we found/i)).toBeVisible({ timeout: 10_000 });
@@ -306,9 +334,9 @@ test.describe('Profile Setup', () => {
 
     // Fill intake and submit
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
-    await page.getByLabel(/LinkedIn profile text/i).fill('Cloud leader.');
+    await page.getByLabel(/Optional LinkedIn context/i).fill('Cloud leader.');
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my CareerIQ profile/i }).click();
+    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
 
     // Wait for interview screen
     await expect(page.getByText(/Here is what we found/i)).toBeVisible({ timeout: 10_000 });
@@ -331,9 +359,9 @@ test.describe('Profile Setup', () => {
 
     // ── Intake ──
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
-    await page.getByLabel(/LinkedIn profile text/i).fill('Cloud infrastructure leader.');
+    await page.getByLabel(/Optional LinkedIn context/i).fill('Cloud infrastructure leader.');
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my CareerIQ profile/i }).click();
+    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
 
     // ── Processing → Interview ──
     await expect(page.getByText(/Here is what we found/i)).toBeVisible({ timeout: 10_000 });
@@ -352,7 +380,7 @@ test.describe('Profile Setup', () => {
     }
 
     // ── Building flashes by with instant mocks → Profile Reveal ──
-    await expect(page.getByRole('heading', { name: /Your CareerIQ Profile/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /Your Benchmark Profile/i })).toBeVisible({ timeout: 15_000 });
 
     // Verify profile sections are displayed
     await expect(page.getByText(/Career Thread/i)).toBeVisible();
@@ -363,9 +391,9 @@ test.describe('Profile Setup', () => {
     await expect(page.getByText(/Sarah turns infrastructure chaos/i)).toBeVisible({ timeout: 3_000 });
 
     // Navigation buttons present — primary CTA first, two secondary below
-    await expect(page.getByRole('button', { name: /Go to Your Profile/i })).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByRole('button', { name: /Go to Workspace/i })).toBeVisible({ timeout: 3_000 });
     await expect(page.getByRole('button', { name: /Find jobs that fit this profile/i })).toBeVisible({ timeout: 3_000 });
-    await expect(page.getByRole('button', { name: /Analyze a specific job/i })).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByRole('button', { name: /Tailor a resume for a job/i })).toBeVisible({ timeout: 3_000 });
   });
 
   // ── Error handling ──
@@ -401,9 +429,9 @@ test.describe('Profile Setup', () => {
     await navigateToProfileSetup(page);
 
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
-    await page.getByLabel(/LinkedIn profile text/i).fill('Cloud leader.');
+    await page.getByLabel(/Optional LinkedIn context/i).fill('Cloud leader.');
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my CareerIQ profile/i }).click();
+    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
 
     // Should show error and return to intake
     await expect(page.locator('[role="alert"]')).toBeVisible({ timeout: 10_000 });

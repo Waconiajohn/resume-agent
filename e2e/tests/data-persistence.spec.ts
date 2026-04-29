@@ -333,7 +333,8 @@ test.describe('Tailor Resume persistence', () => {
     await page.getByRole('button', { name: /^Browse Saved Resumes$/i }).click();
     await waitForListSettled(page);
 
-    await page.getByRole('button', { name: /Delete Acme Corp Senior Engineer session/i }).click();
+    await page.getByRole('button', { name: /Delete Acme Corp session/i }).click();
+    await page.getByRole('button', { name: /^Confirm$/i }).click();
     await page.waitForTimeout(300);
 
     expect(deletes).toContain('session-complete-1');
@@ -357,7 +358,7 @@ test.describe('Tailor Resume persistence', () => {
     await page.getByRole('button', { name: /^Open Source Material$/i }).click();
     await waitForListSettled(page);
 
-    await expect(page.getByText(/No master resume found\./i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/Complete a session and save your resume to get started\./i)).toBeVisible();
+    await expect(page.getByText(/No Career Proof found\./i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Complete an application and save your resume to get started\./i)).toBeVisible();
   });
 });

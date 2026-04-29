@@ -126,9 +126,9 @@ describe('SmartReferralsRoom', () => {
     expect(screen.getByRole('button', { name: 'Connections' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Matches' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Outreach' })).toBeEnabled();
-    // Network path tab bar includes Target Titles and Job Scan as visible tabs
+    // Network path tab bar includes Target Titles and Company Jobs as visible tabs
     expect(screen.getByRole('button', { name: /Target Titles/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Job Scan' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Company Jobs' })).toBeInTheDocument();
     // Bonus Search is only in the bonus path, not the network path
     expect(screen.queryByRole('button', { name: 'Bonus Search' })).not.toBeInTheDocument();
   });
@@ -168,7 +168,7 @@ describe('SmartReferralsRoom', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Target titles' }));
     expect(screen.getByTestId('target-titles-manager')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Scan company pages' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Check company jobs' })).toBeInTheDocument();
   });
 
   it('routes referral-generated outreach into the merged contacts workspace with prefill context', async () => {

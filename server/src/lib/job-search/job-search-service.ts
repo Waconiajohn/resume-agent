@@ -71,8 +71,10 @@ export async function runSearchPipeline(
   location: string,
   filters: SearchFilters,
 ): Promise<{ ok: true; result: SearchPipelineResult } | { ok: false; error: string; status: number }> {
-  // Serper Search is primary — ATS-hosted job pages and career boards.
-  // Firecrawl is fallback — web scraping when Serper is unavailable or unkeyed.
+  // Serper Search is primary — Google web/SERP discovery narrowed to public ATS
+  // and career pages. Firecrawl is supplemental when configured; it is useful
+  // for career-page discovery and as a scraping fallback elsewhere, but it does
+  // not replace Serper's real-time Google query.
   const adapters = [
     new SerperJobsAdapter(),
     ...(process.env.FIRECRAWL_API_KEY ? [new FirecrawlAdapter()] : []),

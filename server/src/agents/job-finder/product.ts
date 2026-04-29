@@ -125,7 +125,7 @@ export function createJobFinderProductConfig(): ProductConfig<JobFinderState, Jo
         parts.push(
           '## Strategy',
           'Check whether network connections (NI) and company watchlist data are available.',
-          'Prioritize network-adjacent opportunities, then career page scraping, then boolean search.',
+          'Prioritize network-adjacent opportunities, then public company-job discovery, then boolean search.',
           '',
         );
 

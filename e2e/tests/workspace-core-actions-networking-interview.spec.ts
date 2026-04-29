@@ -9,9 +9,9 @@ test.describe('workspace core actions — networking and interview', () => {
   test('Smart Referrals keeps network matches and bonus search in one room', async ({ page }) => {
     await page.goto('/workspace?room=networking', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: 'Smart Referrals', exact: true })).toBeVisible();
-    await expect(page.getByText('Use your existing connections first').first()).toBeVisible();
-    await expect(page.getByText('Chase strong referral bonuses separately').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Insider Jobs', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Network path', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Bonus path', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Connections', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Matches', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Outreach', exact: true })).toBeVisible();
@@ -26,7 +26,7 @@ test.describe('workspace core actions — networking and interview', () => {
     await expect(page.getByRole('button', { name: /Bonus Search \(1\)/i })).toBeVisible();
     await expect(page.getByText('VP Operations', { exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: /Second visible path/i }).click();
+    await page.getByRole('button', { name: 'Bonus path', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Bonus Search', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Referral Bonus', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Bonus Search', exact: true }).click();
@@ -43,11 +43,12 @@ test.describe('workspace core actions — networking and interview', () => {
     await expect(page.getByRole('button', { name: /Start Mock Interview/i })).toBeVisible();
 
     await page.getByRole('button', { name: /Step 3 Leave-behinds/i }).click();
-    await expect(page.getByRole('button', { name: /Open 30-60-90 Day Plan/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /30-60-90 Plan/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Draft Plan|Start New Draft/i }).first()).toBeVisible();
 
     await page.getByRole('button', { name: /Step 4 Follow-up/i }).click();
-    await expect(page.getByRole('button', { name: /Open Thank You Note/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Negotiation Prep/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Thank You Note$/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Negotiation Prep$/i }).first()).toBeVisible();
   });
 
   test('Interview Prep follow-up section adds interview history and saves a debrief', async ({ page }) => {

@@ -166,7 +166,7 @@ export function NoteReviewPanel({ data, onPipelineRespond }: NoteReviewPanelProp
                 aria-label="Approve thank-you notes"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Approve Notes
+                Approve & Save Notes
                 <ArrowRight className="h-4 w-4 ml-auto" />
               </GlassButton>
               <GlassButton

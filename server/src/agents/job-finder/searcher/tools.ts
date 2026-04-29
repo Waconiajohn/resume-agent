@@ -2,7 +2,7 @@
  * Job Finder Searcher — Tool definitions.
  *
  * 5 tools:
- * - search_career_pages: Scrape company career pages for job openings
+ * - search_career_pages: Discover job openings from supported public company pages
  * - generate_search_queries: Generate boolean search strings for job boards
  * - search_network_connections: Find network-adjacent opportunities
  * - deduplicate_results: Merge and deduplicate across all sources
@@ -30,7 +30,8 @@ const ATS_SOURCE_LABELS = new Set(['lever', 'greenhouse', 'workday', 'ashby', 'i
 const searchCareerPagesTool: JobFinderTool = {
   name: 'search_career_pages',
   description:
-    'Scrape career pages for companies in the user\'s Network Intelligence watchlist. ' +
+    'Discover openings from supported public career pages for companies in the user\'s Network Intelligence watchlist. ' +
+    'Use only publicly reachable job pages and supported ATS endpoints; treat restricted, payment, challenge, or authentication flows as unavailable. ' +
     'Fetches target titles from ni_client_target_titles and companies from company_directory. ' +
     'Rate-limited to 50 companies per run. Results are stored in scratchpad as career_page_results.',
   model_tier: 'light',
@@ -40,7 +41,7 @@ const searchCareerPagesTool: JobFinderTool = {
       company_ids: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Optional list of specific company IDs to scrape. If omitted, uses all companies from user NI connections.',
+        description: 'Optional list of specific company IDs to check. If omitted, uses all companies from user NI connections.',
       },
     },
     required: [],
@@ -71,7 +72,7 @@ const searchCareerPagesTool: JobFinderTool = {
       // No target titles — scraper will use default keyword matching
     }
 
-    // ─── Load companies to scrape ─────────────────────────────────
+    // ─── Load companies to check ──────────────────────────────────
     let companiesToScrape: Array<{ id: string; name: string; domain: string | null; ats_platform?: ATSPlatform | null; ats_slug?: string | null }> = [];
     const requestedIds = Array.isArray(input.company_ids)
       ? (input.company_ids as string[])
@@ -121,13 +122,13 @@ const searchCareerPagesTool: JobFinderTool = {
         companies_scanned: 0,
       });
       ctx.scratchpad.career_page_results = [];
-      return JSON.stringify({ success: true, jobs_found: 0, message: 'No companies available to scrape' });
+      return JSON.stringify({ success: true, jobs_found: 0, message: 'No companies available to check' });
     }
 
     ctx.emit({
       type: 'transparency',
       stage: 'searching',
-      message: `Scraping career pages for ${companiesToScrape.length} companies (this may take a moment)...`,
+      message: `Checking public company job pages for ${companiesToScrape.length} companies (this may take a moment)...`,
     });
 
     const scrapeResult = await scrapeCareerPages(companiesToScrape, targetTitles, state.user_id);
@@ -166,7 +167,7 @@ const searchCareerPagesTool: JobFinderTool = {
     ctx.emit({
       type: 'transparency',
       stage: 'searching',
-      message: `Career page scrape complete — ${scrapeResult.companiesScanned} companies, ${careerPageJobs.length} matching jobs found`,
+      message: `Public company-job check complete — ${scrapeResult.companiesScanned} companies, ${careerPageJobs.length} matching jobs found`,
     });
 
     return JSON.stringify({
@@ -184,7 +185,8 @@ const searchCareerPagesTool: JobFinderTool = {
 const generateSearchQueriesTool: JobFinderTool = {
   name: 'generate_search_queries',
   description:
-    'Search the web for job openings matching the candidate\'s target titles and location via Serper. ' +
+    'Search public job-posting pages matching the candidate\'s target titles and location via Serper. ' +
+    'Only use public search results and publicly reachable posting pages. ' +
     'Stores discovered jobs in scratchpad as web_search_results.',
   model_tier: 'light',
   input_schema: {
@@ -211,7 +213,7 @@ const generateSearchQueriesTool: JobFinderTool = {
     ctx.emit({
       type: 'transparency',
       stage: 'searching',
-      message: 'Searching the web for matching job openings via Serper...',
+      message: 'Searching public job-posting pages for matching openings...',
     });
 
     const state = ctx.getState();

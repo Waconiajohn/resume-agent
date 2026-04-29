@@ -168,14 +168,16 @@ jobSearchRoutes.get(
     const scanFilters = (scan as Record<string, unknown>).filters as { datePosted?: string } | null;
     const datePosted = scanFilters?.datePosted ?? '7d';
     const freshnessMap: Record<string, number> = { '24h': 1, '3d': 3, '7d': 7, '14d': 14, '30d': 30 };
-    const freshnessDays = freshnessMap[datePosted] ?? 7;
-    const freshnessThreshold = new Date(Date.now() - freshnessDays * 24 * 60 * 60 * 1000).toISOString();
+    const freshnessDays = datePosted === 'any' ? null : freshnessMap[datePosted] ?? 7;
+    const freshnessThreshold = freshnessDays
+      ? new Date(Date.now() - freshnessDays * 24 * 60 * 60 * 1000).toISOString()
+      : null;
 
     // Fetch results for this scan, joined with listing data.
     // Exclude explicitly-expired rows and rows older than 30 days that haven't
     // been saved/promoted — these are stale and not worth surfacing.
     // Sort: unseen (first_seen_at IS NULL) first, then by posted_date desc.
-    const { data: resultRows, error: resultsError } = await supabaseAdmin
+    let resultsQuery = supabaseAdmin
       .from('job_search_results')
       .select(`
         id,
@@ -210,10 +212,16 @@ jobSearchRoutes.get(
       .neq('status', 'expired')
       // Staleness guard: drop rows older than 30 days unless saved/promoted
       .or(`created_at.gt.${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()},status.in.(saved,promoted)`)
-      // Freshness filter on job listing's posted_date
-      .gt('job_listings.posted_date', freshnessThreshold)
       .order('first_seen_at', { ascending: true, nullsFirst: true })
       .order('match_score', { ascending: false, nullsFirst: false });
+
+    if (freshnessThreshold) {
+      // Freshness-filtered results must have a known posting date. "Any date"
+      // intentionally skips this filter so undated public job pages can be recovered.
+      resultsQuery = resultsQuery.gt('job_listings.posted_date', freshnessThreshold);
+    }
+
+    const { data: resultRows, error: resultsError } = await resultsQuery;
 
     if (resultsError) {
       logger.error(

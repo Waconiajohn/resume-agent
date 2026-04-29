@@ -35,6 +35,21 @@ const TABLE_STYLES = {
   td: 'padding:8px 12px;border:1px solid var(--line-soft);color:var(--text-muted);',
 };
 
+function normalizeMarkdownBlocks(md: string): string {
+  return md
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    // Some model/provider fallbacks occasionally collapse markdown into one
+    // long line. Restore block breaks before headings and major labels so
+    // reports do not render as a wall of text.
+    .replace(/([^\n])\s+(#{1,3}\s+)/g, '$1\n\n$2')
+    .replace(/([^\n])\s+(\*\*[A-Z][A-Za-z0-9 /&-]{1,44}:\*\*)/g, '$1\n$2')
+    .replace(/([^\n])\s+(\d+\.\s+[A-Z])/g, '$1\n$2')
+    .replace(/([:\n])\s+([-*]\s+[A-Z0-9])/g, '$1\n$2')
+    .replace(/([^\n])\s+(---{3,})/g, '$1\n$2')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
 function renderTable(rows: string[]): string {
   // Locate the separator row to split header from body
   const sepIndex = rows.findIndex(isTableSeparator);
@@ -69,7 +84,7 @@ function renderTable(rows: string[]): string {
 }
 
 export function markdownToHtml(md: string): string {
-  const escaped = md
+  const escaped = normalizeMarkdownBlocks(md)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');

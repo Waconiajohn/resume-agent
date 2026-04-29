@@ -165,13 +165,13 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
             loading={running}
             className="shrink-0"
           >
-            {running ? 'Scanning...' : 'Scan Bonus Companies'}
+            {running ? 'Checking...' : 'Check Bonus Companies'}
           </GlassButton>
         </div>
 
         {running && scrapeLogId && (
           <div className="mt-4 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-soft)]">
-            Scanning {currentScanned} of {companies.length} bonus companies...
+            Checking {currentScanned} of {companies.length} bonus companies...
           </div>
         )}
 
@@ -203,7 +203,7 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
               ))}
             </div>
             <p className="mt-3 text-sm text-[var(--text-soft)]">
-              Scan complete. Review the results in <span className="text-[var(--text-muted)]">Job Matches</span>.
+              Search complete. Review the results in <span className="text-[var(--text-muted)]">Job Matches</span>.
             </p>
           </div>
         )}
@@ -213,7 +213,7 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h4 className="text-sm font-semibold text-[var(--text-muted)]">
-              {companies.length} bonus compan{companies.length === 1 ? 'y' : 'ies'} ready to scan
+              {companies.length} bonus compan{companies.length === 1 ? 'y' : 'ies'} ready to check
             </h4>
             <p className="mt-1 text-xs text-[var(--text-soft)]">
               We sort these by the strongest known referral bonus signal first.

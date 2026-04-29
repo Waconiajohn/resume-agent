@@ -68,7 +68,10 @@ async function injectPipelineSSE(page: Page, events: unknown[]): Promise<void> {
             ? input.url
             : String(input);
 
-      if (url.includes('/api/pipeline/') && url.includes('/stream')) {
+      if (
+        (url.includes('/api/pipeline/') && url.includes('/stream'))
+        || url.includes('/api/v3-pipeline/run')
+      ) {
         const encoder = new TextEncoder();
         let index = 0;
         const stream = new ReadableStream<Uint8Array>({
@@ -78,8 +81,9 @@ async function injectPipelineSSE(page: Page, events: unknown[]): Promise<void> {
                 controller.close();
                 return;
               }
+              const event = mockEvents[index++] as { type?: string };
               controller.enqueue(
-                encoder.encode(`event: pipeline\ndata: ${JSON.stringify(mockEvents[index++])}\n\n`),
+                encoder.encode(`event: ${event.type ?? 'pipeline'}\ndata: ${JSON.stringify(event)}\n\n`),
               );
               window.setTimeout(pushNext, 60);
             }
@@ -189,7 +193,44 @@ async function mockResumeBuilderStart(page: Page, options?: {
     const path = new URL(route.request().url()).pathname;
     const method = route.request().method();
 
-    if (path === '/api/pipeline/start' && method === 'POST') {
+    if ((path === '/api/pipeline/start' || path === '/api/v3-pipeline/run') && method === 'POST') {
+      if (path === '/api/v3-pipeline/run' && streamStatus) {
+        await route.fulfill({
+          status: streamStatus,
+          contentType: 'text/plain',
+          body: 'stream unavailable',
+        });
+        return;
+      }
+
+      if (path === '/api/v3-pipeline/run' && startStatus >= 400) {
+        await route.fulfill({
+          status: startStatus,
+          contentType: 'application/json',
+          body: JSON.stringify(startBody),
+        });
+        return;
+      }
+
+      if (path === '/api/v3-pipeline/run') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/event-stream',
+          body: [
+            `event: pipeline_error`,
+            `data: ${JSON.stringify({
+              type: 'pipeline_error',
+              stage: 'extract',
+              message: 'Mock v3 pipeline did not receive events.',
+              timestamp: new Date().toISOString(),
+            })}`,
+            '',
+            '',
+          ].join('\n'),
+        });
+        return;
+      }
+
       await route.fulfill({
         status: startStatus,
         contentType: 'application/json',
@@ -228,19 +269,21 @@ async function mockResumeBuilderStart(page: Page, options?: {
 
 async function openResumeBuilderSession(page: Page): Promise<void> {
   await page.goto('/resume-builder/session');
-  await expect(page.getByRole('heading', { name: /Position Your Resume/i })).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator('#v2-resume')).toBeVisible();
-  await expect(page.locator('#v2-jd')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Tailor your resume/i })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: /Or paste text/i }).first().click();
+  await page.getByRole('button', { name: /Or paste text/i }).first().click();
+  await expect(page.getByLabel(/resume text/i)).toBeVisible();
+  await expect(page.getByLabel(/job description text/i)).toBeVisible();
 }
 
 async function submitResumeBuilderSession(page: Page): Promise<void> {
-  await page.locator('#v2-resume').fill(REAL_RESUME_TEXT);
-  await page.locator('#v2-jd').fill(REAL_JD_TEXT);
-  await page.getByRole('button', { name: /Analyze and craft my resume/i }).click();
+  await page.getByLabel(/resume text/i).fill(REAL_RESUME_TEXT);
+  await page.getByLabel(/job description text/i).fill(REAL_JD_TEXT);
+  await page.getByRole('button', { name: /Generate tailored resume/i }).click();
 }
 
 test.describe('Current error recovery', () => {
-  test('pipeline start 429 shows an error and keeps the intake visible', async ({ page }) => {
+  test('pipeline start 429 shows a recoverable V3 error state', async ({ page }) => {
     await stubSupabaseAuth(page);
     await mockResumeBuilderStart(page, {
       startStatus: 429,
@@ -249,9 +292,11 @@ test.describe('Current error recovery', () => {
     await openResumeBuilderSession(page);
     await submitResumeBuilderSession(page);
 
-    await expect(page.locator('[role="alert"]')).toContainText(/Too many requests\. Please try again later\./i);
-    await expect(page.locator('#v2-resume')).toBeVisible();
-    await expect(page.getByRole('button', { name: /Analyze and craft my resume/i })).toBeEnabled();
+    await expect(page.getByText(/Pipeline failed/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Too many requests\. Please try again later\./i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Start over$/i })).toBeEnabled();
+    await page.getByRole('button', { name: /^Start over$/i }).click();
+    await expect(page.getByRole('button', { name: /Generate tailored resume/i })).toBeVisible();
   });
 
   test('stream connection failures surface a recoverable error banner', async ({ page }) => {
@@ -260,21 +305,23 @@ test.describe('Current error recovery', () => {
     await openResumeBuilderSession(page);
     await submitResumeBuilderSession(page);
 
-    await expect(page.locator('[role="alert"]')).toContainText(/Stream connection failed: 500/i, { timeout: 10_000 });
-    await expect(page.getByRole('button', { name: /^Back$/i })).toBeVisible();
+    await expect(page.getByText(/Pipeline failed/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Pipeline request failed \(500\)|stream unavailable/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Start over$/i })).toBeEnabled();
   });
 
   test('pipeline_error SSE events surface the current in-flow error state', async ({ page }) => {
     await stubSupabaseAuth(page);
     await injectPipelineSSE(page, [
-      { type: 'stage_start', stage: 'analysis', message: 'Analyzing job description...' },
-      { type: 'pipeline_error', error: 'Something went wrong processing your resume.' },
+      { type: 'stage_start', stage: 'extract', message: 'Analyzing job description...', timestamp: new Date().toISOString() },
+      { type: 'pipeline_error', stage: 'extract', message: 'Something went wrong processing your resume.', timestamp: new Date().toISOString() },
     ]);
     await mockResumeBuilderStart(page);
     await openResumeBuilderSession(page);
     await submitResumeBuilderSession(page);
 
-    await expect(page.locator('[role="alert"]')).toContainText(/Something went wrong processing your resume\./i, { timeout: 10_000 });
+    await expect(page.getByText(/Pipeline failed/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Something went wrong processing your resume\./i)).toBeVisible();
     await expect(page.locator('body')).toBeVisible();
   });
 
@@ -300,7 +347,7 @@ test.describe('Current error recovery', () => {
     ).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole('button', { name: /^Open Source Material$/i }).click();
-    await expect(page.getByText(/No master resume found\./i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/No Career Proof found\./i)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Something went wrong')).not.toBeVisible();
   });
 });

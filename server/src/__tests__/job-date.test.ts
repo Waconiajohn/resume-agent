@@ -12,9 +12,9 @@ const NOW = new Date('2026-04-28T12:00:00.000Z');
 describe('job posting date helpers', () => {
   it('maps supported freshness windows to Google time filters', () => {
     expect(googleTbsForFreshnessDays(1)).toBe('qdr:d');
-    expect(googleTbsForFreshnessDays(3)).toBe('qdr:d3');
+    expect(googleTbsForFreshnessDays(3)).toBeNull();
     expect(googleTbsForFreshnessDays(7)).toBe('qdr:w');
-    expect(googleTbsForFreshnessDays(14)).toBe('qdr:w2');
+    expect(googleTbsForFreshnessDays(14)).toBeNull();
     expect(googleTbsForFreshnessDays(30)).toBe('qdr:m');
     expect(googleTbsForFreshnessDays(null)).toBeNull();
   });

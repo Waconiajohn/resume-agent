@@ -47,7 +47,7 @@ function ProgressBar({ scanned, total }: ProgressBarProps) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs text-[var(--text-soft)]">
-        <span>Scanning companies</span>
+        <span>Checking companies</span>
         <span className="tabular-nums">
           {scanned} / {total}
         </span>
@@ -69,9 +69,16 @@ export interface ScrapeJobsPanelProps {
   onViewMatches?: () => void;
   /** Called once when a scan result first appears (i.e. the scan just completed) */
   onScanComplete?: () => void;
+  /** User-scoped localStorage key for filters. Defaults to legacy key for isolated tests. */
+  filterStorageKey?: string;
 }
 
-export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: ScrapeJobsPanelProps) {
+export function ScrapeJobsPanel({
+  accessToken,
+  onViewMatches,
+  onScanComplete,
+  filterStorageKey = 'ni-job-filters',
+}: ScrapeJobsPanelProps) {
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [titles, setTitles] = useState<TargetTitle[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -88,7 +95,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
   } = useNiScrapeRunner(accessToken);
 
   const selection = useCompanySelection(companies);
-  const { filters, setLocation, setRadiusMiles, setWorkModes, setPostedWithin } = useJobFilters('ni-job-filters');
+  const { filters, setLocation, setRadiusMiles, setWorkModes, setPostedWithin } = useJobFilters(filterStorageKey);
 
   useEffect(() => {
     const enabledModes = (Object.entries(filters.workModes) as Array<[WorkModeKey, boolean]>)
@@ -195,7 +202,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
     prevResultRef.current = result;
   }, [result, onScanComplete]);
 
-  // ─── Start scrape ──────────────────────────────────────────────────────────
+  // ─── Start company job search ──────────────────────────────────────────────
 
   const handleScan = useCallback(async () => {
     const companyIds = selection.getSelectedCompanyIds();
@@ -210,7 +217,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
       companyIds,
       targetTitles: titles.map((t) => t.title),
       searchContext: 'network_connections',
-      emptyMessage: 'Select at least one company to scan.',
+      emptyMessage: 'Select at least one company to check.',
       location: useLocation ? location : undefined,
       radiusMiles: useLocation ? filters.radiusMiles : undefined,
       remoteOnly,
@@ -241,9 +248,9 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
       <GlassCard className="rounded-xl p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h3 className="text-base font-semibold text-[var(--text-strong)]">Scan for Job Openings</h3>
+            <h3 className="text-base font-semibold text-[var(--text-strong)]">Find Job Openings</h3>
             <p className="text-sm text-[var(--text-soft)]">
-              Search career pages at{' '}
+              Check publicly reachable job pages at{' '}
               <span className="text-[var(--text-muted)]">{selection.selectedCount} selected</span>{' '}
               of {eligibleCompanyCount} eligible companies
               {titles.length > 0 && (
@@ -259,8 +266,8 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
             {eligibleCompanyCount === 0 && !running && (
               <p className="mt-2 text-xs text-[var(--badge-amber-text)]/70">
                 {normalizationPending
-                  ? 'Connections imported — company matching is still normalizing before we can scan career pages. This updates automatically.'
-                  : 'Import LinkedIn connections first — companies need to be normalized before scanning.'}
+                  ? 'Connections imported — company matching is still normalizing before we can check public job pages. This updates automatically.'
+                  : 'Import LinkedIn connections first — companies need to be normalized before checking job pages.'}
               </p>
             )}
           </div>
@@ -271,7 +278,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
             loading={running}
             className="shrink-0"
           >
-            {running ? 'Scanning...' : 'Scan for Jobs'}
+            {running ? 'Checking...' : 'Find Jobs'}
           </GlassButton>
         </div>
 
@@ -282,7 +289,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
 
             {scrapeStatus && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <StatCard label="Scanned" value={scrapeStatus.output_summary.companies_scanned ?? 0} />
+                <StatCard label="Checked" value={scrapeStatus.output_summary.companies_scanned ?? 0} />
                 <StatCard label="Jobs Found" value={scrapeStatus.output_summary.jobs_found ?? 0} />
                 <StatCard
                   label="Matching"
@@ -298,7 +305,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
             )}
 
             {!scrapeStatus && (
-              <p className="text-center text-xs text-[var(--text-soft)]">Starting scan...</p>
+              <p className="text-center text-xs text-[var(--text-soft)]">Starting company job search...</p>
             )}
 
             <div className="flex justify-center">
@@ -352,7 +359,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
       {/* Result summary card */}
       {result && !running && (
       <GlassCard className="rounded-xl p-6">
-          <h4 className="mb-4 text-sm font-semibold text-[var(--text-muted)]">Scan Complete</h4>
+          <h4 className="mb-4 text-sm font-semibold text-[var(--text-muted)]">Search Complete</h4>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard label="Companies" value={result.companiesScanned} />
@@ -411,8 +418,8 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
                   : result.rawJobsFound > 0 && result.jobsFound === 0
                     ? 'We found jobs before filtering, but the selected posted-within, work-mode, or city/state filter removed them. Try a wider date range or run Remote, Hybrid, and On-site separately.'
                     : result.jobsFound > 0
-                      ? 'We found company jobs, but none matched your target titles strongly enough. Broaden the target title list or scan again without narrow titles.'
-                      : 'No jobs came back from known ATS pages or the search fallback. Try fewer companies first, a broader title, or run the scan again later.'}
+                      ? 'We found company jobs, but none matched your target titles strongly enough. Broaden the target title list or search again without narrow titles.'
+                      : 'No jobs came back from known public ATS pages or the search fallback. Try fewer companies first, a broader title, or run the search again later.'}
               </p>
               <p className="mt-2 text-center text-xs text-[var(--text-soft)]">
                 Raw jobs: {result.rawJobsFound} · after filters: {result.jobsFound} · title matches: {result.matchingJobs}
@@ -433,7 +440,7 @@ export function ScrapeJobsPanel({ accessToken, onViewMatches, onScanComplete }: 
               onClick={() => void handleScan()}
               disabled={running}
             >
-              Scan Again
+              Search Again
             </GlassButton>
           </div>
         </GlassCard>

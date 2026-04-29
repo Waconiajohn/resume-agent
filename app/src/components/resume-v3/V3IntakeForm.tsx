@@ -138,9 +138,13 @@ export function V3IntakeForm({
     }
   }, [accessToken, jdCompany, jdTitle]);
 
-  // Auto-fetch when the form mounts with an initial JD URL (NI hand-off).
+  // Auto-fetch when the form mounts with an initial JD URL and only a snippet
+  // or empty JD text. Saved application URLs should stay visible even when we
+  // already have a complete JD, but we should not re-fetch every full JD on
+  // every page load.
   useEffect(() => {
-    if (initialJobUrl && initialJobUrl.trim() && accessToken) {
+    const needsFullJd = !initialJobDescription || initialJobDescription.trim().length < 800;
+    if (needsFullJd && initialJobUrl && initialJobUrl.trim() && accessToken) {
       void fetchJdFromUrl(initialJobUrl);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

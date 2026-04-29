@@ -1,7 +1,7 @@
 /**
  * Job Matches Store — Supabase CRUD for job_matches table.
  *
- * All functions use supabaseAdmin (service key, bypasses RLS).
+ * All functions use the server-only Supabase admin client.
  * Follows connections-store.ts patterns.
  */
 

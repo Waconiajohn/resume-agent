@@ -57,6 +57,6 @@ describe('BonusSearchPanel', () => {
 
     expect(await screen.findByText('Acme Corp')).toBeInTheDocument();
     expect(screen.getByText('$5,000-$15,000')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Scan Bonus Companies/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Check Bonus Companies/i })).toBeEnabled();
   });
 });

@@ -35,7 +35,7 @@ const TABS: TabDef[] = [
   { id: 'connections', label: 'Connections', icon: Users, description: 'Browse by company' },
   { id: 'targets', label: 'Target Titles', icon: Target, description: 'Manage target job titles' },
   { id: 'job-matches', label: 'Matches', icon: Briefcase, description: 'Jobs at companies where you have first-level connections' },
-  { id: 'job-scan', label: 'Job Scan', icon: ScanLine, description: 'Scan career pages' },
+  { id: 'job-scan', label: 'Company Jobs', icon: ScanLine, description: 'Check public job pages' },
   { id: 'bonus-search', label: 'Bonus Search', icon: Coins, description: 'Search high-referral-bonus companies even without a connection' },
   { id: 'referrals', label: 'Referral Bonus', icon: Handshake, description: 'Bonus-tagged opportunities where a referral program exists' },
   { id: 'contacts', label: 'Outreach', icon: UserCircle, description: 'CRM, Rule of Four, and outreach drafts' },
@@ -103,14 +103,16 @@ function NetworkSetupPanel({
   onToggleSupportView,
   onViewMatches,
   onScanComplete,
+  filterStorageKey,
 }: {
   accessToken: string;
   supportView: NetworkSupportView;
   onToggleSupportView: (view: Exclude<NetworkSupportView, null>) => void;
   onViewMatches?: () => void;
   onScanComplete?: () => void;
+  filterStorageKey: string;
 }) {
-  const { filters, setLocation, setRadiusMiles, setWorkModes, setPostedWithin } = useJobFilters('ni-job-filters');
+  const { filters, setLocation, setRadiusMiles, setWorkModes, setPostedWithin } = useJobFilters(filterStorageKey);
 
   return (
     <div className="space-y-4">
@@ -133,7 +135,7 @@ function NetworkSetupPanel({
             size="sm"
             onClick={() => onToggleSupportView('job-scan')}
           >
-            Scan company pages
+            Check company jobs
           </GlassButton>
         </div>
       </GlassCard>
@@ -158,6 +160,7 @@ function NetworkSetupPanel({
           accessToken={accessToken}
           onViewMatches={onViewMatches}
           onScanComplete={onScanComplete}
+          filterStorageKey={filterStorageKey}
         />
       )}
     </div>
@@ -167,7 +170,8 @@ function NetworkSetupPanel({
 export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomProps) {
   const { openPicker } = useTailorPicker();
   const { user, session, loading: authLoading } = useAuth();
-  const { filters: niFilters, setLocation: setNiLocation, setRadiusMiles: setNiRadiusMiles, setWorkModes: setNiWorkModes, setPostedWithin: setNiPostedWithin } = useJobFilters('ni-job-filters');
+  const niFilterStorageKey = user?.id ? `ni-job-filters:${user.id}` : 'ni-job-filters:anonymous';
+  const { filters: niFilters, setLocation: setNiLocation, setRadiusMiles: setNiRadiusMiles, setWorkModes: setNiWorkModes, setPostedWithin: setNiPostedWithin } = useJobFilters(niFilterStorageKey);
   const [activeTab, setActiveTab] = useState<SmartReferralsTab>('import');
   const [selectedPath, setSelectedPath] = useState<ReferralPath>(() => getPathForTab(resolveFocusTab(initialFocus)));
   const [networkSupportView, setNetworkSupportView] = useState<NetworkSupportView>(null);
@@ -362,6 +366,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
             }}
             onViewMatches={() => setActiveTab('job-matches')}
             onScanComplete={handleScanComplete}
+            filterStorageKey={niFilterStorageKey}
           />
         );
       case 'targets':

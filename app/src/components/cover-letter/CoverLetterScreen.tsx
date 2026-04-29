@@ -593,7 +593,7 @@ export function CoverLetterScreen({
                   }}
                 >
                   <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                  Approve
+                  Approve & Save
                 </GlassButton>
                 <GlassButton
                   variant="ghost"

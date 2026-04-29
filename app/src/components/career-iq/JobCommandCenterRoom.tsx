@@ -433,14 +433,14 @@ const JCC_MODES: Array<{
   {
     id: 'insider-jobs',
     label: 'Insider Jobs',
-    description: 'Scan companies where you already have a first-degree connection.',
+    description: 'Check companies where you already have a first-degree connection.',
     badge: 'Warm path',
     icon: Users,
   },
   {
     id: 'broad-search',
     label: 'Broad Search',
-    description: 'Search ATS and public career pages, then send any role to Tailor Resume.',
+    description: 'Search public ATS and career pages, then send any role to Tailor Resume.',
     icon: Search,
   },
 ];
@@ -467,7 +467,7 @@ export function JobCommandCenterRoom({
     setRadiusMiles: setJobFilterRadius,
     setWorkModes: setJobFilterWorkModes,
     setPostedWithin: setJobFilterPostedWithin,
-  } = useJobFilters('main-job-filters');
+  } = useJobFilters(session?.user?.id ? `main-job-filters:${session.user.id}` : 'main-job-filters:anonymous');
 
   const [activeMode, setActiveMode] = useState<JCCMode>('broad-search');
   const [showWatchlistManager, setShowWatchlistManager] = useState(false);
@@ -584,7 +584,7 @@ export function JobCommandCenterRoom({
           <div className="eyebrow-label">Job Search</div>
           <h1 className="room-title">Find the right jobs before you tailor.</h1>
           <p className="room-subtitle">
-            Start with warm-network opportunities when you can. Use Broad Search when you need a wider market scan.
+            Start with warm-network opportunities when you can. Use Broad Search when you need a wider market search.
           </p>
         </div>
       </div>
@@ -634,7 +634,7 @@ export function JobCommandCenterRoom({
       <div style={{ display: activeMode === 'insider-jobs' ? undefined : 'none' }}>
         <div className="flex flex-col gap-4">
           <div className="rounded-[10px] border border-[var(--link)]/20 bg-[var(--link)]/[0.06] px-4 py-3 text-sm text-[var(--text-soft)]">
-            <strong className="text-[var(--text-strong)]">Insider Jobs:</strong> choose companies from your network, run one work-mode/location scan at a time, then tailor the resume from the matching role.
+            <strong className="text-[var(--text-strong)]">Insider Jobs:</strong> choose companies from your network, run one work-mode/location search at a time, then tailor the resume from the matching role. CareerIQ only checks publicly reachable job pages and supported public ATS endpoints.
           </div>
           <SmartReferralsRoom onNavigate={onNavigate} />
         </div>

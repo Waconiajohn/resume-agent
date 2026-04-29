@@ -15,7 +15,6 @@ import {
   findPostedDateText,
   freshnessDaysForDatePosted,
   googleTbsForFreshnessDays,
-  isWithinFreshnessWindow,
   normalizeJobPostedDate,
 } from '../../job-date.js';
 import { isKnownATSUrl, PUBLIC_ATS_SITE_QUERY } from '../../ats-search-targets.js';
@@ -24,6 +23,41 @@ import type { SearchAdapter, SearchFilters, JobResult, SearchProviderDiagnostic 
 
 const SERPER_SEARCH_URL = 'https://google.serper.dev/search';
 const REQUEST_TIMEOUT_MS = 15_000;
+const GENERIC_ATS_TITLE_PATTERN =
+  /^(search\s+(for\s+)?jobs?|job\s+search|jobs?|careers?|career\s+opportunities|current\s+openings?|open\s+roles?)$/i;
+const QUERY_STOP_WORDS = new Set([
+  'and',
+  'are',
+  'for',
+  'from',
+  'job',
+  'jobs',
+  'near',
+  'of',
+  'on',
+  'remote',
+  'hybrid',
+  'onsite',
+  'site',
+  'the',
+  'with',
+  'within',
+]);
+const SENIORITY_ONLY_TOKENS = new Set([
+  'chief',
+  'coo',
+  'cto',
+  'cfo',
+  'director',
+  'executive',
+  'head',
+  'lead',
+  'manager',
+  'principal',
+  'senior',
+  'sr',
+  'vp',
+]);
 
 // ─── Serper response shape ────────────────────────────────────────────────────
 
@@ -203,6 +237,98 @@ function splitOrganicTitle(rawTitle: string, url: string | undefined): { title: 
   };
 }
 
+function normalizeSearchToken(token: string): string {
+  const normalized = token.toLowerCase().replace(/[^a-z0-9+#.]/g, '').trim();
+  if (normalized === 'ops') return 'operation';
+  if (normalized === 'operational') return 'operation';
+  if (normalized === 'operations') return 'operation';
+  if (normalized === 'systems') return 'system';
+  if (normalized === 'products') return 'product';
+  if (normalized === 'managers') return 'manager';
+  if (normalized === 'directors') return 'director';
+  if (normalized.length > 4 && normalized.endsWith('s') && !normalized.endsWith('ss')) {
+    return normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
+function tokenizeSearchText(value: string): string[] {
+  return value
+    .split(/[\s,/|()[\]{}"':;–—-]+/)
+    .map(normalizeSearchToken)
+    .filter((token) => token.length >= 2 && !QUERY_STOP_WORDS.has(token));
+}
+
+function tokenSet(value: string): Set<string> {
+  return new Set(tokenizeSearchText(value));
+}
+
+function hasToken(tokens: Set<string>, token: string): boolean {
+  return tokens.has(token) || (token === 'operation' && tokens.has('ops'));
+}
+
+function passesQueryRelevance(job: SerperJob, query: string): boolean {
+  const queryTokens = Array.from(new Set(tokenizeSearchText(query)));
+  if (queryTokens.length <= 1) return true;
+
+  const titleTokens = tokenSet(job.title ?? '');
+  const fullTokens = tokenSet(`${job.title ?? ''} ${job.snippet ?? ''}`);
+  const titleMatches = queryTokens.filter((token) => hasToken(titleTokens, token));
+  if (titleMatches.length === 0) return false;
+
+  if (titleMatches.some((token) => !SENIORITY_ONLY_TOKENS.has(token))) return true;
+
+  const fullMatches = queryTokens.filter((token) => hasToken(fullTokens, token));
+  return fullMatches.some((token) => !SENIORITY_ONLY_TOKENS.has(token)) || fullMatches.length >= 2;
+}
+
+function isLikelyConcreteAtsJob(title: string, rawUrl: string | undefined): boolean {
+  if (!rawUrl) return false;
+  const cleanedTitle = cleanOrganicTitle(title);
+  if (!cleanedTitle || GENERIC_ATS_TITLE_PATTERN.test(cleanedTitle)) return false;
+
+  try {
+    const url = new URL(rawUrl);
+    const host = url.hostname.toLowerCase();
+    const path = url.pathname.toLowerCase().replace(/\/+$/, '');
+    const search = url.search.toLowerCase();
+
+    if (
+      search.includes('refreshfacet')
+      || path === ''
+      || path === '/'
+      || path === '/jobs'
+      || path === '/job-search'
+      || path === '/search'
+      || path.endsWith('/jobs')
+      || path.endsWith('/careers')
+      || path.includes('/search/')
+    ) {
+      return false;
+    }
+
+    if ((host.includes('myworkdayjobs.com') || host.includes('workdayjobs.com')) && !path.includes('/job/')) {
+      return false;
+    }
+    if (host.includes('oraclecloud.com') && !path.includes('/job/')) {
+      return false;
+    }
+    if (host.includes('successfactors.com') && !path.includes('/job/')) {
+      return false;
+    }
+    if (host.includes('greenhouse.io') && !/\/jobs?\/\d+/i.test(path)) {
+      return false;
+    }
+    if (host.includes('lever.co') && path.split('/').filter(Boolean).length < 2) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+
+  return true;
+}
+
 // ─── Employment type extraction ───────────────────────────────────────────────
 
 function extractEmploymentType(extensions: string[]): string | null {
@@ -280,7 +406,7 @@ export class SerperJobsAdapter implements SearchAdapter {
       num: 20,
     };
 
-    if (location) {
+    if (location && filters.remoteType !== 'remote') {
       requestBody.location = location;
     }
 
@@ -320,24 +446,32 @@ export class SerperJobsAdapter implements SearchAdapter {
       }
 
       const data = (await response.json()) as SerperJobsResponse;
-      const jobs = data.jobs ?? [];
+      const jobs = (data.jobs ?? [])
+        .filter((job) => Boolean(job.title))
+        .filter((job) => passesQueryRelevance(job, query));
       const organicJobs = (data.organic ?? [])
         .filter((result): result is Required<Pick<SerperOrganicResult, 'title' | 'link'>> & SerperOrganicResult =>
-          Boolean(result.title && result.link && isKnownATSUrl(result.link)),
+          Boolean(
+            result.title
+              && result.link
+              && isKnownATSUrl(result.link)
+              && isLikelyConcreteAtsJob(result.title, result.link),
+          ),
         )
         .map((result): SerperJob => {
           const { title, company } = splitOrganicTitle(result.title, result.link);
           return {
             title,
             companyName: company,
-            location: location || undefined,
+            location: filters.remoteType === 'remote' ? undefined : location || undefined,
             source: 'Google Search',
             date: result.date ?? findPostedDateText(result.snippet) ?? undefined,
             snippet: result.snippet,
             link: result.link,
             extensions: [],
           };
-        });
+        })
+        .filter((job) => passesQueryRelevance(job, query));
       const allJobs = [...jobs, ...organicJobs];
       this.setDiagnostic({
         status: 'ok',
@@ -385,8 +519,7 @@ export class SerperJobsAdapter implements SearchAdapter {
             required_skills: null,
           };
         })
-        .filter((job): job is JobResult => job !== null)
-        .filter((job) => !maxDaysOld || isWithinFreshnessWindow(job.posted_date, maxDaysOld));
+        .filter((job): job is JobResult => job !== null);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.warn(

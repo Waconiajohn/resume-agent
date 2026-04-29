@@ -56,6 +56,66 @@ const discoveryAnswerSchema = z.object({
 
 export const v3Pipeline = new Hono();
 
+function buildV3SessionOutput(
+  payload: Extract<V3PipelineSSEEvent, { type: 'pipeline_complete' }>,
+  discoveryAnswers: unknown[] | undefined,
+) {
+  return {
+    structured: payload.structured,
+    benchmark: payload.benchmark,
+    strategy: payload.strategy,
+    written: payload.written,
+    verify: payload.verify,
+    discoveryAnswers: payload.discoveryAnswers ?? discoveryAnswers ?? [],
+    timings: payload.timings,
+    costs: payload.costs,
+  };
+}
+
+async function persistV3Stage(sessionId: string, stage: string) {
+  const { error } = await supabaseAdmin
+    .from('coach_sessions')
+    .update({
+      pipeline_stage: stage,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
+    .eq('pipeline_status', 'running');
+  if (error) {
+    logger.warn({ sessionId, stage, error: error.message }, 'v3 pipeline: failed to persist stage heartbeat');
+  }
+}
+
+async function persistV3CompleteSnapshot(params: {
+  sessionId: string;
+  payload: Extract<V3PipelineSSEEvent, { type: 'pipeline_complete' }>;
+  discoveryAnswers: unknown[] | undefined;
+  jobDescription: string;
+  jdTitle?: string | null;
+  jdCompany?: string | null;
+  resumeSource: 'master' | 'upload';
+}) {
+  const { sessionId, payload, discoveryAnswers, jobDescription, jdTitle, jdCompany, resumeSource } = params;
+  const { error } = await supabaseAdmin
+    .from('coach_sessions')
+    .update({
+      pipeline_status: 'complete',
+      pipeline_stage: 'complete',
+      error_message: null,
+      estimated_cost_usd: payload.costs.total,
+      v3_pipeline_output: buildV3SessionOutput(payload, discoveryAnswers),
+      v3_jd_text: jobDescription,
+      v3_jd_title: jdTitle ?? null,
+      v3_jd_company: jdCompany ?? null,
+      v3_resume_source: resumeSource,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId);
+  if (error) {
+    logger.warn({ sessionId, error: error.message }, 'v3 pipeline: failed to persist complete snapshot');
+  }
+}
+
 const runSchema = z.object({
   // Optional: when omitted, the server loads the user's default master
   // resume's raw_text. Caller sets `use_master: true` to make intent
@@ -382,8 +442,20 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
       | null = null;
 
     const emit = (event: V3PipelineSSEEvent): void => {
+      if (event.type === 'stage_start') {
+        void persistV3Stage(sessionId, event.stage);
+      }
       if (event.type === 'pipeline_complete') {
         completePayload = event;
+        void persistV3CompleteSnapshot({
+          sessionId,
+          payload: event,
+          discoveryAnswers: discovery_answers,
+          jobDescription: job_description,
+          jdTitle: jd_title ?? null,
+          jdCompany: jd_company ?? null,
+          resumeSource: use_master ? 'master' : 'upload',
+        });
       }
       void stream.writeSSE({
         event: event.type,
@@ -447,16 +519,7 @@ v3Pipeline.post('/run', authMiddleware, rateLimitMiddleware(10, 60_000), async (
         };
         if (finalStatus === 'complete' && completePayload) {
           const payload = completePayload as Extract<V3PipelineSSEEvent, { type: 'pipeline_complete' }>;
-          update.v3_pipeline_output = {
-            structured: payload.structured,
-            benchmark: payload.benchmark,
-            strategy: payload.strategy,
-            written: payload.written,
-            verify: payload.verify,
-            discoveryAnswers: payload.discoveryAnswers ?? discovery_answers ?? [],
-            timings: payload.timings,
-            costs: payload.costs,
-          };
+          update.v3_pipeline_output = buildV3SessionOutput(payload, discovery_answers);
           update.v3_jd_text = job_description;
           update.v3_jd_title = jd_title ?? null;
           update.v3_jd_company = jd_company ?? null;

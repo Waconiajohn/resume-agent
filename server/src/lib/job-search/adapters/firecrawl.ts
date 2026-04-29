@@ -9,7 +9,7 @@
 import FirecrawlApp from '@mendable/firecrawl-js';
 import { createHash } from 'node:crypto';
 import logger from '../../logger.js';
-import type { SearchAdapter, SearchFilters, JobResult } from '../types.js';
+import type { SearchAdapter, SearchFilters, JobResult, SearchProviderDiagnostic } from '../types.js';
 
 /**
  * Try to extract a company name from a search result's URL or title.
@@ -61,8 +61,11 @@ export function isLikelyJobPostingResult(title: string, rawUrl: string): boolean
     if (
       full.includes('/salaries/')
       || full.includes('/research/salary/')
+      || full.includes('refreshfacet')
       || path === '/jobs'
       || path === '/search'
+      || path.endsWith('/jobs')
+      || path.endsWith('/careers')
       || path.endsWith('/jobs.html')
       || path.includes('/q-') && path.includes('-jobs')
       || path.includes('/job/') && path.includes('/search')
@@ -106,24 +109,57 @@ function buildStableExternalId(title: string, company: string, url: string | und
 
 export class FirecrawlAdapter implements SearchAdapter {
   readonly name = 'firecrawl';
+  private diagnostics: SearchProviderDiagnostic[] = [];
 
-  async search(query: string, location: string, _filters: SearchFilters): Promise<JobResult[]> {
+  getDiagnostics(): SearchProviderDiagnostic[] {
+    return this.diagnostics;
+  }
+
+  private setDiagnostic(diagnostic: Omit<SearchProviderDiagnostic, 'provider'>): void {
+    this.diagnostics = [{ provider: this.name, ...diagnostic }];
+  }
+
+  async search(query: string, location: string, filters: SearchFilters): Promise<JobResult[]> {
+    this.diagnostics = [];
     const apiKey = process.env.FIRECRAWL_API_KEY;
     if (!apiKey) {
       logger.warn({ adapter: this.name }, 'FIRECRAWL_API_KEY not set — skipping adapter');
+      this.setDiagnostic({
+        status: 'missing_key',
+        message: 'Firecrawl is not configured, so supplemental career-page discovery is unavailable.',
+        jobs_returned: 0,
+      });
       return [];
     }
 
     try {
       const fc = new FirecrawlApp({ apiKey });
-      const searchQuery = location ? `${query} jobs in ${location}` : `${query} jobs`;
+      const workModeTerm = filters.remoteType && filters.remoteType !== 'any'
+        ? filters.remoteType === 'onsite' ? 'on-site' : filters.remoteType
+        : '';
+      const effectiveLocation = filters.remoteType === 'remote' ? '' : location.trim();
+      const searchQuery = [
+        query,
+        workModeTerm,
+        'jobs',
+        effectiveLocation ? `in ${effectiveLocation}` : '',
+      ].filter(Boolean).join(' ');
 
       const result = await fc.search(searchQuery, { limit: 20 });
       const webResults = (result.web ?? []) as Array<{ url?: string; title?: string; description?: string }>;
-
-      return webResults
+      const jobs = webResults
         .filter((r) => r.title && r.url)
-        .filter((r) => isLikelyJobPostingResult(r.title ?? '', r.url ?? ''))
+        .filter((r) => isLikelyJobPostingResult(r.title ?? '', r.url ?? ''));
+
+      this.setDiagnostic({
+        status: 'ok',
+        message: jobs.length > 0
+          ? `Firecrawl returned ${jobs.length} supplemental career-page result${jobs.length === 1 ? '' : 's'}.`
+          : 'Firecrawl responded successfully but returned no usable job-detail pages.',
+        jobs_returned: jobs.length,
+      });
+
+      return jobs
         .map(
           (r): JobResult => {
             const company = extractCompanyFromResult(r.title ?? '', r.url ?? '');
@@ -147,6 +183,11 @@ export class FirecrawlAdapter implements SearchAdapter {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.warn({ adapter: this.name, error: message }, 'Firecrawl adapter error');
+      this.setDiagnostic({
+        status: message.toLowerCase().includes('timeout') ? 'network_error' : 'error',
+        message: `Firecrawl search failed: ${message}`,
+        jobs_returned: 0,
+      });
       return [];
     }
   }

@@ -30,6 +30,11 @@ import { useLatestMasterResumeText } from './useLatestMasterResumeText';
 
 const RECIPIENT_TYPE_OPTIONS: Array<{ value: RecipientType; label: string; helper: string }> = [
   {
+    value: 'cold',
+    label: 'Cold outreach',
+    helper: 'Safest default. Open with a specific, well-researched reason to reach out.',
+  },
+  {
     value: 'former_colleague',
     label: 'Former colleague',
     helper: 'Familiar opener. Skip the pitch — they already know you.',
@@ -38,11 +43,6 @@ const RECIPIENT_TYPE_OPTIONS: Array<{ value: RecipientType; label: string; helpe
     value: 'second_degree',
     label: 'Second-degree connection',
     helper: 'Lead with the shared context or mutual contact.',
-  },
-  {
-    value: 'cold',
-    label: 'Cold outreach',
-    helper: 'Open with a specific, well-researched reason to reach out.',
   },
   {
     value: 'referrer',
@@ -108,8 +108,8 @@ export function NetworkingRoom({
 
   // Form state.
   const [recipientName, setRecipientName] = useState('');
-  const [recipientType, setRecipientType] = useState<RecipientType>('former_colleague');
-  const recipientTypeRef = useRef<RecipientType>('former_colleague');
+  const [recipientType, setRecipientType] = useState<RecipientType>('cold');
+  const recipientTypeRef = useRef<RecipientType>('cold');
   const [recipientTitle, setRecipientTitle] = useState('');
   const [recipientCompany, setRecipientCompany] = useState('');
   const [recipientLinkedin, setRecipientLinkedin] = useState('');
@@ -505,7 +505,7 @@ export function NetworkingRoom({
                   onClick={() => void handleApprove()}
                   className="text-[13px]"
                 >
-                  Approve
+                  Approve & Save
                 </GlassButton>
                 <GlassButton
                   variant="ghost"

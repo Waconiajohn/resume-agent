@@ -57,6 +57,7 @@ function makeSearchResponse(jobs: RadarJob[] = []) {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
+  sessionStorage.clear();
   mockGetSession.mockResolvedValue({
     data: { session: { access_token: 'test-token' } },
     error: null,
@@ -64,6 +65,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  sessionStorage.clear();
   cleanup();
   vi.clearAllMocks();
 });
@@ -160,7 +162,7 @@ describe('useRadarSearch — search()', () => {
   });
 
   it('sets error when not authenticated (no session)', async () => {
-    mockGetSession.mockResolvedValueOnce({ data: { session: null }, error: null });
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
 
     const { result } = renderHook(() => useRadarSearch());
 

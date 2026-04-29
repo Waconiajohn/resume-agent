@@ -1,13 +1,14 @@
 /**
- * Career Page Scanner — Network Intelligence
+ * Company Job Discovery — Network Intelligence
  *
- * Two-tier ATS-native job scanning strategy:
+ * Two-tier ATS-native public job discovery strategy:
  *   1. Direct ATS API (Lever, Greenhouse, Workday, Ashby, iCIMS) — free, structured data
  *   2. Serper Google Jobs search fallback — for companies without known ATS
  *   Plus: title matching + referral bonus detection on all results
  *
- * Replaces the original scraper which returned 0% hit rate
- * on modern client-side-rendered ATS platforms.
+ * Compliance boundary: this module only uses public ATS endpoints, public
+ * structured-data blocks, and public search results. If a source is not
+ * available through ordinary public access, it is skipped.
  */
 
 import { supabaseAdmin } from '../supabase.js';
@@ -149,7 +150,7 @@ async function hasReferralProgram(companyId: string): Promise<boolean> {
   }
 }
 
-// ─── Per-company scanner ─────────────────────────────────────────────────────
+// ─── Per-company public job check ─────────────────────────────────────────────
 
 interface CompanyScanResult {
   rawJobsFound: number;
@@ -275,11 +276,11 @@ async function scanCompany(
       if (allJobs.length > 0) {
         logger.info(
           { companyId: company.id, companyName: company.name, platform: company.ats_platform, jobCount: allJobs.length },
-          'job-scanner: ATS API returned jobs',
+          'company-job-discovery: ATS API returned jobs',
         );
       }
     } catch (err) {
-      logger.debug({ err, companyId: company.id, platform: company.ats_platform }, 'job-scanner: ATS API failed');
+      logger.debug({ err, companyId: company.id, platform: company.ats_platform }, 'company-job-discovery: ATS API failed');
     }
   }
 
@@ -297,13 +298,13 @@ async function scanCompany(
           source = 'jsonld';
           logger.info(
             { companyId: company.id, companyName: company.name, jobCount: allJobs.length, careerUrl },
-            'job-scanner: JSON-LD extraction found jobs',
+            'company-job-discovery: JSON-LD extraction found jobs',
           );
           break;
         }
       }
     } catch (err) {
-      logger.debug({ err, companyId: company.id }, 'job-scanner: JSON-LD extraction failed');
+      logger.debug({ err, companyId: company.id }, 'company-job-discovery: JSON-LD extraction failed');
     }
   }
 
@@ -322,11 +323,11 @@ async function scanCompany(
       if (allJobs.length > 0) {
         logger.info(
           { companyId: company.id, companyName: company.name, jobCount: allJobs.length },
-          'job-scanner: Serper search found jobs',
+          'company-job-discovery: Serper search found jobs',
         );
       }
     } catch (err) {
-      logger.debug({ err, companyId: company.id }, 'job-scanner: Serper search failed');
+      logger.debug({ err, companyId: company.id }, 'company-job-discovery: Serper search failed');
     }
   }
 
@@ -338,7 +339,7 @@ async function scanCompany(
     return { rawJobsFound, jobsFound: 0, matchingJobs: 0, referralAvailable: 0, source };
   }
 
-  // Passive referral bonus detection — scan job descriptions for bonus mentions
+  // Passive referral bonus detection — check job descriptions for bonus mentions
   if (!(await hasReferralProgram(company.id))) {
     for (const job of allJobs.slice(0, 10)) { // Check first 10 jobs max
       if (!job.descriptionSnippet) continue;
@@ -353,7 +354,7 @@ async function scanCompany(
         if (inserted) {
           logger.info(
             { companyId: company.id, companyName: company.name, amount: bonusResult.amount },
-            'job-scanner: discovered referral bonus from job posting',
+            'company-job-discovery: discovered referral bonus from job posting',
           );
         }
         break; // One detection per company is enough
@@ -438,7 +439,7 @@ export async function searchJobsByCompany(
 // ─── Public API: scrapeCareerPages ──────────────────────────────────────────
 
 /**
- * Scan job listings for the given companies using a two-tier strategy:
+ * Discover job listings for the given companies using a two-tier strategy:
  *   1. Direct ATS API (Lever, Greenhouse, Workday, Ashby, iCIMS) when ats_platform is known
  *   2. Serper Google Jobs search for the rest
  *
@@ -483,7 +484,7 @@ export async function scrapeCareerPages(
 
     logger.info(
       { companyId: company.id, companyName: company.name, userId, index: i, ats: company.ats_platform ?? 'none' },
-      'job-scanner: scanning company',
+      'company-job-discovery: checking company',
     );
 
     try {
@@ -502,7 +503,7 @@ export async function scrapeCareerPages(
       await onProgress?.({ companies_scanned: companiesScanned, raw_jobs_found: rawJobsFound, jobs_found: jobsFound, matching_jobs: matchingJobs, referral_available: referralAvailable });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      logger.error({ error: msg, companyId: company.id, userId }, 'job-scanner: company scan threw');
+      logger.error({ error: msg, companyId: company.id, userId }, 'company-job-discovery: company check threw');
       errors.push({ company: company.name, error: msg });
     }
   }

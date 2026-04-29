@@ -1,7 +1,7 @@
 /**
  * Target Titles Store — Supabase CRUD for client_target_titles table.
  *
- * All functions use supabaseAdmin (service key, bypasses RLS).
+ * All functions use the server-only Supabase admin client.
  * Follows connections-store.ts patterns.
  */
 

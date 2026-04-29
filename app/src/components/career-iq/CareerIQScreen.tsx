@@ -420,6 +420,7 @@ export function CareerIQScreen({
       return (
         <LinkedInStudioRoom
           signals={signals}
+          careerProfile={profile}
         />
       );
     }

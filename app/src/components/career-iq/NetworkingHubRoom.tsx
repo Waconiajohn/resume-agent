@@ -209,7 +209,7 @@ function RuleOfFourSection({ groups, loading, onAddContact, onGenerateMessage }:
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Rule of Four</h3>
       </div>
       <p className="text-[12px] text-[var(--text-soft)] mb-4">
-        For every application, reach out to 4 people at the target company. Networking bypasses the queue.
+        For every application, reach out to 4 people at the target company. Networking creates a warmer path than cold applying.
       </p>
 
       {loading && (

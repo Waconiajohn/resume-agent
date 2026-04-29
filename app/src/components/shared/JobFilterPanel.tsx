@@ -27,6 +27,7 @@ const POSTED_WITHIN_OPTIONS: { value: PostedWithin; label: string }[] = [
   { value: '7d', label: 'Last 7 days' },
   { value: '14d', label: 'Last 14 days' },
   { value: '30d', label: 'Last 30 days' },
+  { value: 'any', label: 'Any date' },
 ];
 
 const WORK_MODE_CHIPS: { key: WorkModeKey; label: string }[] = [
@@ -49,10 +50,10 @@ const SCAN_SHAPE_CHIPS: { key: WorkModeKey; label: string; hint: string }[] = [
 ];
 
 const insiderGuidance =
-  'For accurate freshness, CareerIQ only includes jobs with a readable posted date from the ATS, structured JobPosting data, or Google Jobs metadata. Run one search shape at a time: Remote by itself, or Hybrid/On-site with a city/state. The distance menu is a search hint, not a verified mileage calculation.';
+  'Run one search shape at a time: Remote is nationwide, while Hybrid and On-site use city/state as a search hint. Posted-within filters only include jobs with a readable source date; Any date also allows undated public job pages.';
 
 const broadSearchGuidance =
-  'Broad Search uses Google Jobs metadata and then verifies the posted date before showing a result. Jobs without a readable posted date are excluded from posted-within filters.';
+  'Broad Search checks Google web results for public ATS and career pages. Posted-within filters only show jobs with a readable source date; Any date also allows undated public job pages.';
 
 const selectBase =
   'rounded-lg border border-[var(--line-soft)] bg-[var(--surface-2)] px-2.5 py-1.5 text-sm text-[var(--text-strong)] outline-none transition-[border-color,background-color] duration-200 focus-visible:border-[var(--link)]/40 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] cursor-pointer';
@@ -80,6 +81,7 @@ export function JobFilterPanel({
       : 'remote';
   const resolvedGuidance = guidanceText
     ?? (workModeSelection === 'single' ? broadSearchGuidance : insiderGuidance);
+  const remoteOnly = workModes.remote && !workModes.hybrid && !workModes.onsite;
 
   function toggleWorkMode(key: WorkModeKey) {
     if (workModes[key] && activeModeCount === 1) return;
@@ -109,23 +111,25 @@ export function JobFilterPanel({
         {/* Location */}
         <div className="flex flex-col gap-1">
           <label className="text-[11px] font-semibold uppercase tracking-widest text-[var(--text-soft)]">
-            Location
+            {remoteOnly ? 'Location' : 'Location'}
           </label>
           <input
             type="text"
-            value={location}
+            value={remoteOnly ? '' : location}
             onChange={(e) => onLocationChange(e.target.value)}
-            placeholder="City, State (e.g., Portland, OR)"
-            aria-label="Filter by location"
+            placeholder={remoteOnly ? 'Remote searches run nationwide' : 'City, State (e.g., Portland, OR)'}
+            aria-label={remoteOnly ? 'Remote searches run nationwide' : 'Filter by location'}
+            disabled={remoteOnly}
             className={cn(
               'w-[200px] rounded-lg border border-[var(--line-soft)] bg-[var(--surface-2)] px-2.5 py-1.5 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-soft)] outline-none transition-[border-color,background-color] duration-200',
               'focus-visible:border-[var(--link)]/40 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--focus-ring-offset-bg)]',
+              remoteOnly && 'cursor-not-allowed bg-[var(--accent-muted)] text-[var(--text-soft)]',
             )}
           />
         </div>
 
         {/* Location reach — only visible when location has a value */}
-        {location.trim().length > 0 && (
+        {!remoteOnly && location.trim().length > 0 && (
           <div className="flex flex-col gap-1">
             <label
               htmlFor="job-filter-radius"

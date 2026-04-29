@@ -106,11 +106,11 @@ export function useNiScrapeRunner(accessToken: string | null) {
       } else if (log.status === 'failed') {
         stopPolling();
         setRunning(false);
-        setError(log.error_message ?? 'Scan failed. Please try again.');
+        setError(log.error_message ?? 'Company job search failed. Please try again.');
       } else if (log.status === 'running' && isStale(log.started_at)) {
         stopPolling();
         setRunning(false);
-        setError('Scan appears stuck. Please try again.');
+        setError('Company job search appears stuck. Please try again.');
       }
     } catch {
       // Keep polling on transient failures.
@@ -135,7 +135,7 @@ export function useNiScrapeRunner(accessToken: string | null) {
       return;
     }
 
-    setError(previousToken ? 'Sign in again to continue scanning.' : null);
+    setError(previousToken ? 'Sign in again to continue company job search.' : null);
   }, [accessToken, stopPolling]);
 
   const cancel = useCallback(() => {
@@ -160,7 +160,7 @@ export function useNiScrapeRunner(accessToken: string | null) {
     if (!accessToken) {
       stopPolling();
       setRunning(false);
-      setError('Sign in to start a company scan.');
+      setError('Sign in to start company job search.');
       return false;
     }
 
@@ -212,12 +212,12 @@ export function useNiScrapeRunner(accessToken: string | null) {
       timeoutRef.current = setTimeout(() => {
         stopPolling();
         setRunning(false);
-        setError('Scan timed out. Results may still be processing — try refreshing the page.');
+        setError('Company job search timed out. Results may still be processing — try refreshing the page.');
       }, SCAN_TIMEOUT_MS);
 
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start scan. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to start company job search. Please try again.');
       setRunning(false);
       return false;
     }

@@ -30,6 +30,31 @@ interface AuthGateProps {
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password';
 
+function getAuthErrorMessage(error: unknown, mode: AuthView): string {
+  const raw = ((error as { message?: string; code?: string })?.message ?? String(error)).trim();
+  const normalized = raw.toLowerCase();
+
+  if (normalized.includes('rate limit') || normalized.includes('too many')) {
+    if (mode === 'sign_up') {
+      return 'Supabase is temporarily limiting new-account emails for this address or browser. Wait a few minutes, then try again, or use Sign In if the account was already created.';
+    }
+    if (mode === 'forgot_password') {
+      return 'Password-reset emails are temporarily rate limited. Wait a few minutes before sending another reset link.';
+    }
+    return 'Too many sign-in attempts. Wait a few minutes, then try again.';
+  }
+
+  if (normalized.includes('email not confirmed')) {
+    return 'Your account exists, but the email still needs to be confirmed. Check your inbox and spam folder for the confirmation link.';
+  }
+
+  if (normalized.includes('invalid login credentials')) {
+    return 'That email and password did not match. Check the password, or use “Forgot password?” to reset it.';
+  }
+
+  return raw || 'Something went wrong. Please try again.';
+}
+
 export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -77,7 +102,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
       : await onSignIn(email, password);
 
     if (error) {
-      setError((error as { message?: string })?.message ?? String(error));
+      setError(getAuthErrorMessage(error, view));
     } else if (isSignUp) {
       // Supabase email-confirmation flow: signUp succeeded but the user
       // must click the link in their inbox before they're authenticated.
@@ -106,7 +131,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
     });
 
     if (error) {
-      setError((error as { message?: string })?.message ?? String(error));
+      setError(getAuthErrorMessage(error, 'forgot_password'));
     } else {
       setResetSent(true);
     }

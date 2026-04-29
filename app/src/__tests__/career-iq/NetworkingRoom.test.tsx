@@ -129,7 +129,7 @@ describe('NetworkingRoom', () => {
     expect(call.applicationId).toBe('app-1');
     expect(call.recipientName).toBe('Alice Chen');
     expect(call.goal).toBe('Ask for 20-minute call');
-    expect(call.recipientType).toBe('former_colleague');
+    expect(call.recipientType).toBe('cold');
     expect(call.messagingMethod).toBe('connection_request');
   });
 
@@ -152,7 +152,7 @@ describe('NetworkingRoom', () => {
     render(<NetworkingRoom applicationId="app-1" initialCompany="Acme" initialRole="VP Ops" />);
     // The draft body is surfaced in the draft preview card.
     expect(screen.getByText(/good to see your update on the platform team/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Approve & Save' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Edit directly/i })).toBeInTheDocument();
     expect(screen.getByText(/58 \/ 300 chars/)).toBeInTheDocument();
   });
@@ -160,7 +160,7 @@ describe('NetworkingRoom', () => {
   it('Approve in review calls respondToGate with true', () => {
     vi.mocked(useNetworking).mockReturnValue(reviewState);
     render(<NetworkingRoom applicationId="app-1" initialCompany="Acme" initialRole="VP Ops" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Approve & Save' }));
     expect(mockRespondToGate).toHaveBeenCalledWith('message_review', true);
   });
 

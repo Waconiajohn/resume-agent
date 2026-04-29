@@ -116,7 +116,7 @@ export function StarStoriesReviewPanel({ data, onPipelineRespond }: StarStoriesR
                 aria-label="Approve STAR stories"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Approve Stories
+                Approve & Save Stories
                 <ArrowRight className="h-4 w-4 ml-auto" />
               </GlassButton>
 

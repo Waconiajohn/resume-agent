@@ -301,6 +301,32 @@ describe('GET /api/job-search/scans/latest', () => {
     expect(Math.abs(threshold - (Date.now() - 14 * 24 * 60 * 60 * 1000))).toBeLessThan(10_000);
   });
 
+  it('does not apply a posted_date filter when the stored scan uses Any date', async () => {
+    mockFrom.mockReturnValueOnce(
+      buildSingleChain({
+        data: {
+          id: 'scan-latest',
+          query: 'CTO',
+          created_at: new Date().toISOString(),
+          filters: { datePosted: 'any' },
+        },
+        error: null,
+      }),
+    );
+    const resultsChain = buildListChain({ data: [makeResultRow('ext-1')], error: null });
+    mockFrom.mockReturnValueOnce(resultsChain);
+
+    const res = await app.request('/api/job-search/scans/latest', {
+      headers: { Authorization: 'Bearer tok' },
+    });
+
+    expect(res.status).toBe(200);
+    expect(resultsChain['gt']).not.toHaveBeenCalledWith(
+      'job_listings.posted_date',
+      expect.any(String),
+    );
+  });
+
   it('returns empty state when user has no scans', async () => {
     mockFrom.mockReturnValueOnce(
       buildSingleChain({ data: null, error: { message: 'no rows' } }),
