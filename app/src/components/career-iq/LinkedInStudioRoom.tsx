@@ -1733,9 +1733,9 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
       <div className="room-header lg:flex-row lg:items-start lg:justify-between">
         <div className="room-header-copy">
           <div className="eyebrow-label">LinkedIn</div>
-          <h1 className="room-title">Build a stronger profile and publish with intent</h1>
+          <h1 className="room-title">Become discoverable on LinkedIn</h1>
           <p className="room-subtitle">
-            Strengthen the profile people land on, publish in your own voice, and keep planning support tucked inside the main workflow instead of turning it into separate rooms.
+            Pass the five-second profile test, reinforce your benchmark positioning, and publish proof that helps recruiters and hiring managers find you.
           </p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end">
@@ -1761,7 +1761,7 @@ export function LinkedInStudioRoom({ signals }: LinkedInStudioRoomProps) {
               ) : (
                 <>
                   <Linkedin size={14} />
-                  {optimizer.report ? 'Re-optimize' : 'Quick Optimize'}
+                  {optimizer.report ? 'Re-optimize Profile' : 'Optimize Profile'}
                 </>
               )}
             </GlassButton>

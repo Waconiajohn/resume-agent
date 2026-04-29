@@ -6,7 +6,7 @@
  * - review_letter: Self-review for tone, specificity, and length
  */
 
-import type { AgentTool } from '../../runtime/agent-protocol.js';
+import type { AgentContext, AgentTool } from '../../runtime/agent-protocol.js';
 import { CoverLetterReviewSchema } from '../types.js';
 import type { CoverLetterReview, CoverLetterState, CoverLetterSSEEvent } from '../types.js';
 import { llm, MODEL_PRIMARY, MODEL_MID } from '../../../lib/llm.js';
@@ -29,6 +29,137 @@ import {
 import { COVER_LETTER_RULES } from '../knowledge/rules.js';
 
 type CoverLetterTool = AgentTool<CoverLetterState, CoverLetterSSEEvent>;
+
+const COVER_LETTER_DEFAULT_MIN_WORDS = 225;
+const COVER_LETTER_DEFAULT_MAX_WORDS = 300;
+const COVER_LETTER_EXECUTIVE_MAX_WORDS = 375;
+const COVER_LETTER_HARD_MAX_WORDS = 425;
+
+function countWords(text: string): number {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  return words.length;
+}
+
+function isExecutiveOrComplexRole(jd: NonNullable<CoverLetterState['jd_analysis']>): boolean {
+  const roleAndRequirements = [
+    jd.role_title,
+    ...jd.requirements,
+  ].join(' ').toLowerCase();
+  return /\b(chief|c-suite|cfo|coo|cio|cto|ceo|vp|vice president|director|head of|general manager|board|p&l|private equity|sponsor)\b/.test(roleAndRequirements);
+}
+
+function targetMaxWordsForRole(jd: NonNullable<CoverLetterState['jd_analysis']>): number {
+  return isExecutiveOrComplexRole(jd)
+    ? COVER_LETTER_EXECUTIVE_MAX_WORDS
+    : COVER_LETTER_DEFAULT_MAX_WORDS;
+}
+
+function splitSentences(paragraph: string): string[] {
+  return paragraph
+    .match(/[^.!?]+(?:[.!?]+|$)/g)
+    ?.map((sentence) => sentence.trim())
+    .filter(Boolean) ?? [paragraph.trim()].filter(Boolean);
+}
+
+function truncateWords(text: string, maxWords: number): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return text.trim();
+  return `${words.slice(0, Math.max(1, maxWords)).join(' ').replace(/[,:;—-]\s*$/, '')}.`;
+}
+
+function deterministicCondenseLetter(letter: string, maxWords: number): string {
+  const paragraphs = letter.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  if (paragraphs.length === 0 || countWords(letter) <= maxWords) return letter.trim();
+
+  const working = [...paragraphs];
+  const salutation = /^dear\b/i.test(working[0] ?? '') ? working.shift() : null;
+  const signoff = /^(sincerely|best|regards|thank you|respectfully),?/i.test(working.at(-1) ?? '')
+    ? working.pop()
+    : null;
+
+  let body = working;
+  if (body.length > 3) {
+    body = [
+      body[0]!,
+      ...body.slice(1, -1).slice(0, 1),
+      body[body.length - 1]!,
+    ].filter((paragraph): paragraph is string => Boolean(paragraph));
+  }
+
+  body = body.map((paragraph) => splitSentences(paragraph).slice(0, 2).join(' '));
+
+  const assemble = () => [salutation, ...body, signoff].filter(Boolean).join('\n\n');
+  let condensed = assemble();
+
+  while (countWords(condensed) > maxWords && body.length > 0) {
+    let longestIndex = 0;
+    for (let i = 1; i < body.length; i++) {
+      if (countWords(body[i]!) > countWords(body[longestIndex]!)) longestIndex = i;
+    }
+
+    const longestParagraph = body[longestIndex]!;
+    const sentences = splitSentences(longestParagraph);
+    if (sentences.length > 1) {
+      body[longestIndex] = sentences.slice(0, -1).join(' ');
+    } else {
+      body[longestIndex] = truncateWords(longestParagraph, Math.max(24, countWords(longestParagraph) - 20));
+    }
+
+    condensed = assemble();
+  }
+
+  return condensed;
+}
+
+async function enforceCoverLetterLength(
+  letter: string,
+  jd: NonNullable<CoverLetterState['jd_analysis']>,
+  resume: NonNullable<CoverLetterState['resume_data']>,
+  ctx: AgentContext<CoverLetterState, CoverLetterSSEEvent>,
+): Promise<{ letter: string; trimmed: boolean }> {
+  const hardMax = COVER_LETTER_HARD_MAX_WORDS;
+  const targetMax = targetMaxWordsForRole(jd);
+  if (countWords(letter) <= hardMax) return { letter, trimmed: false };
+
+  const trimPrompt = `Shorten the cover letter below without adding any new facts.
+
+Rules:
+- Preserve the salutation and sign-off.
+- Keep the strongest WHY ME positioning and the two strongest proof points.
+- Remove repetition, resume recap, and secondary examples.
+- Target ${COVER_LETTER_DEFAULT_MIN_WORDS}-${targetMax} words; never exceed ${hardMax} words.
+- Keep 3-4 short paragraphs.
+- Use only evidence already present in the letter.
+- Output the revised letter text only.
+
+Candidate: ${resume.name}
+Target role: ${jd.role_title} at ${jd.company_name}
+
+COVER LETTER TO TRIM:
+${letter}`;
+
+  try {
+    const response = await llm.chat({
+      model: MODEL_MID,
+      system: 'You are a senior editor. Tighten the cover letter without weakening evidence or adding facts.',
+      messages: [{ role: 'user', content: trimPrompt }],
+      max_tokens: 1600,
+      signal: ctx.signal,
+      session_id: ctx.sessionId,
+    });
+    const trimmed = removeDefensiveCoverLetterCaveats(response.text.trim());
+    if (countWords(trimmed) > 0 && countWords(trimmed) <= hardMax) {
+      return { letter: trimmed, trimmed: true };
+    }
+  } catch (err) {
+    logger.warn({ err, session_id: ctx.sessionId }, 'cover-letter trim pass failed; using deterministic condense fallback');
+  }
+
+  return {
+    letter: deterministicCondenseLetter(letter, hardMax),
+    trimmed: true,
+  };
+}
 
 function removeDefensiveCoverLetterCaveats(letter: string): string {
   return letter
@@ -160,7 +291,7 @@ Writing philosophy:
 - If the target role explicitly requires board/PE sponsor communication, P&L ownership, or another high-risk stretch area, do not skip it. Use one concise sentence of confident adjacent-proof framing from the positioning strategy. Never claim direct board/PE reporting or final P&L ownership unless the evidence explicitly says so.
 - Cover letters should not volunteer self-defeating disclaimers such as "I have not..." or "I do not have..." unless the user explicitly asks for that level of disclosure. Handle gaps with positive, truthful language: show the operating-budget, executive-cadence, or board-ready evidence that makes the stretch credible, and save explicit gap handling for interview prep.
 - If Board/PE/P&L appears in the target role, include positive language like "board-ready operating rhythm", "sponsor-ready operating evidence", or "operating-budget discipline" only when supported by the evidence. This must read as confident positioning, not a caveat.
-- Length target: 250-350 words. No fluff.`;
+- Length target: 225-300 words for most roles; 300-375 words only for executive or unusually complex roles. Hard cap: 425 words. No fluff.`;
 
     const salutation = coverLetterSalutation(jd.company_name);
     const userMessage = `Write a complete, polished cover letter using ONLY the information provided below. Output the letter text only — no JSON, no commentary, no markdown fencing.
@@ -191,18 +322,17 @@ TONE: ${tone}
 
 Write the full letter now. Start with "${salutation}" and end with a professional sign-off using the candidate's name.
 
-Structure it as 4-5 concise paragraphs, 280-340 words:
+Structure it as 3-4 short paragraphs, ${COVER_LETTER_DEFAULT_MIN_WORDS}-${targetMaxWordsForRole(jd)} words:
 1. Company/role mandate + strongest proof.
 2. Role-fit proof for the top operating requirement.
-3. Integration, finance, capital, supplier, or working-capital proof.
-4. If Board/PE/P&L is in the role, one positive adjacent-proof bridge to board-ready or sponsor-ready operating communication.
-5. Brief close.
+3. Second proof point or why-company connection.
+4. Brief close.
 
 Mandatory COO-scope coverage when present in the target role:
+- Do not address every executive requirement. Pick the two strongest evidence-backed angles and make them memorable.
 - Consolidated P&L ownership: bridge with operating-budget partnership, cost-per-unit accountability, margin levers, or finance partnership; do not claim final P&L ownership unless directly evidenced.
 - Board/PE sponsor quarterly reviews: bridge with board-ready operating rhythm, sponsor-ready operating evidence, executive reporting, or measurable value-creation narrative; do not claim direct PE-board reporting unless directly evidenced.
-- ERP, procurement, or cross-divisional integration: bridge with multi-site standardization, operating standards, procurement discipline, supplier performance, or system-ready operating cadence.
-- CFO / working capital: bridge with budget partnership, WIP/inventory reduction, supplier savings, capital discipline, or cost-per-unit targets.
+- ERP, procurement, cross-divisional integration, CFO partnership, or working capital: include only if it is one of the two strongest source-backed differentiators.
 
 Every paragraph must include at least one concrete source-backed detail, but the paragraph's job is to interpret why that proof matters for ${jd.company_name}'s ${jd.role_title} role.`;
 
@@ -216,11 +346,14 @@ Every paragraph must include at least one concrete source-backed detail, but the
         session_id: ctx.sessionId,
       });
 
-      const letter = removeDefensiveCoverLetterCaveats(response.text.trim());
+      const draft = removeDefensiveCoverLetterCaveats(response.text.trim());
+      const lengthChecked = await enforceCoverLetterLength(draft, jd, resume, ctx);
+      const letter = lengthChecked.letter;
 
       state.letter_draft = letter;
       ctx.scratchpad['letter_draft'] = letter;
       ctx.scratchpad['letter_tone'] = tone;
+      ctx.scratchpad['letter_trimmed_for_length'] = lengthChecked.trimmed;
 
       ctx.emit({
         type: 'letter_draft',
@@ -229,8 +362,9 @@ Every paragraph must include at least one concrete source-backed detail, but the
 
       return {
         status: 'drafted',
-        word_count: letter.split(/\s+/).length,
+        word_count: countWords(letter),
         tone,
+        trimmed: lengthChecked.trimmed,
       };
     } catch (err) {
       logger.error({ err, session_id: ctx.sessionId }, 'write_letter LLM call failed');
@@ -245,7 +379,7 @@ const reviewLetterTool: CoverLetterTool = {
   name: 'review_letter',
   description:
     'Self-review the drafted cover letter for tone consistency, specificity, ' +
-    'appropriate length (250-400 words), and alignment with the job requirements. ' +
+    'appropriate length (225-300 words by default, 300-375 for executive complexity), and alignment with the job requirements. ' +
     'Returns a quality score (0-100) and feedback.',
   model_tier: 'mid',
   input_schema: {
@@ -281,7 +415,7 @@ EVALUATION CRITERIA (score each 0-20):
 2. jd_alignment — Does it directly address the stated requirements and culture cues?
 3. evidence_specificity — Are claims backed by concrete achievements, metrics, or named projects from the candidate's background?
 4. executive_tone — Is the tone confident and peer-level, not overly eager or subservient?
-5. length_appropriateness — Is it 250-350 words (optimal)? Penalise <200 or >450.
+5. length_appropriateness — Is it 225-300 words for most roles, or 300-375 words for executive/complex roles? Penalise <180 or >425.
 
 Return JSON matching this exact schema:
 {
@@ -351,7 +485,7 @@ Be strict. Only list issues that, if fixed, would materially improve the letter.
           { session_id: ctx.sessionId, err: err.message },
           'review_letter primitive failed on both attempts — falling back to word-count check',
         );
-        const fallbackScore = wordCount >= 200 && wordCount <= 450 ? 70 : 55;
+        const fallbackScore = wordCount >= 180 && wordCount <= COVER_LETTER_HARD_MAX_WORDS ? 70 : 55;
         state.quality_score = fallbackScore;
         state.review_feedback = 'Review parse failed — manual check recommended';
         ctx.scratchpad['quality_score'] = fallbackScore;

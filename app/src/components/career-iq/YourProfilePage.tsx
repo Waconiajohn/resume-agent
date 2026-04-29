@@ -38,7 +38,6 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
-import { EducationStrip } from '@/components/shared/EducationStrip';
 import { cn } from '@/lib/utils';
 import { WhyMeStoryCard } from './WhyMeStoryCard';
 import { WhyMeEngine } from './WhyMeEngine';
@@ -357,12 +356,15 @@ function BenchmarkProfileDraftPanel({
   const primaryItems = [
     benchmarkProfile.identity.benchmark_headline,
     benchmarkProfile.identity.why_me_story,
+  ];
+  const supportingItems = [
     benchmarkProfile.identity.why_not_me,
     benchmarkProfile.linkedin_brand.five_second_verdict,
   ];
 
   const topProof = benchmarkProfile.proof.signature_accomplishments.slice(0, 3);
   const questions = benchmarkProfile.discovery_questions.slice(0, 4);
+  const hasSupportingDetails = supportingItems.length > 0 || topProof.length > 0 || questions.length > 0;
 
   return (
     <GlassCard className="p-6">
@@ -373,9 +375,7 @@ function BenchmarkProfileDraftPanel({
         </span>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-        This is the pre-populated foundation CareerIQ will use across resume tailoring, LinkedIn, cover letters,
-        networking, interview prep, thank-you notes, follow-ups, and job targeting. Confirming the draft language
-        here makes every downstream tool sharper.
+        Confirm the headline and Why-Me first. Supporting proof is still available, but it stays out of the way until you want to inspect it.
       </p>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -384,37 +384,60 @@ function BenchmarkProfileDraftPanel({
         ))}
       </div>
 
-      {topProof.length > 0 && (
-        <div className="mt-6">
-          <div className="mb-3 text-[12px] font-semibold uppercase tracking-widest text-[var(--text-soft)]">
-            Signature Proof
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {topProof.map((item) => (
-              <BenchmarkItemCard key={item.id} item={item} onUpdate={onUpdateItem} />
-            ))}
-          </div>
-        </div>
-      )}
+      {hasSupportingDetails && (
+        <details className="group mt-5 rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)]">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+            <span>
+              <span className="block text-sm font-semibold text-[var(--text-strong)]">Review supporting details</span>
+              <span className="mt-0.5 block text-xs text-[var(--text-soft)]">
+                Why-not-me, LinkedIn five-second verdict, proof points, and discovery questions.
+              </span>
+            </span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="flex flex-col gap-5 border-t border-[var(--line-soft)] p-4">
+            {supportingItems.length > 0 && (
+              <div className="grid gap-3 md:grid-cols-2">
+                {supportingItems.map((item) => (
+                  <BenchmarkItemCard key={item.id} item={item} onUpdate={onUpdateItem} />
+                ))}
+              </div>
+            )}
 
-      {questions.length > 0 && (
-        <div className="mt-6 rounded-lg border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.06] p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <AlertCircle size={14} className="text-[var(--badge-amber-text)]" />
-            <p className="text-[13px] font-semibold text-[var(--text-strong)]">
-              Pointed questions that would improve the foundation
-            </p>
+            {topProof.length > 0 && (
+              <div>
+                <div className="mb-3 text-[12px] font-semibold uppercase tracking-widest text-[var(--text-soft)]">
+                  Signature Proof
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {topProof.map((item) => (
+                    <BenchmarkItemCard key={item.id} item={item} onUpdate={onUpdateItem} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {questions.length > 0 && (
+              <div className="rounded-lg border border-[var(--badge-amber-text)]/20 bg-[var(--badge-amber-text)]/[0.06] p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <AlertCircle size={14} className="text-[var(--badge-amber-text)]" />
+                  <p className="text-[13px] font-semibold text-[var(--text-strong)]">
+                    Pointed questions that would improve the foundation
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  {questions.map((question) => (
+                    <DiscoveryQuestionCard
+                      key={question.id}
+                      question={question}
+                      onAnswer={onAnswerQuestion}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          <div className="space-y-3">
-            {questions.map((question) => (
-              <DiscoveryQuestionCard
-                key={question.id}
-                question={question}
-                onAnswer={onAnswerQuestion}
-              />
-            ))}
-          </div>
-        </div>
+        </details>
       )}
     </GlassCard>
   );
@@ -1022,6 +1045,9 @@ export function YourProfilePage({
   const { story, signals, updateField, hasStarted, lastSavedAt } = useWhyMeStory();
   const _navigate = useNavigate();
   const [whyMeSaved, setWhyMeSaved] = useState(false);
+  const [sourceToolsOpen, setSourceToolsOpen] = useState(
+    () => focusSection === 'career-evidence' || focusSection === 'benchmark-linkedin-brand',
+  );
   const prevLastSavedAtRef = useRef<Date | null>(null);
 
   // Show "Saved" indicator briefly whenever lastSavedAt changes
@@ -1048,14 +1074,16 @@ export function YourProfilePage({
     return () => window.cancelAnimationFrame(frame);
   }, [focusSection]);
 
+  const hasBenchmarkDraft = Boolean(careerProfile?.benchmark_profile);
+
   return (
     <div className="mx-auto flex max-w-[900px] flex-col gap-6 px-6 py-8">
       {/* Page title */}
-      <div className="mb-6 flex items-start justify-between">
+      <div className="mb-2 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-[var(--text-strong)]">Benchmark Profile</h1>
-          <p className="mt-1 text-sm text-[var(--text-soft)]">
-            Your positioning foundation. Everything here feeds LinkedIn growth, job search, tailored resumes, cover letters, and interview prep.
+          <p className="mt-1 max-w-2xl text-sm text-[var(--text-soft)]">
+            Your source of truth for why an employer should pick you. Keep it sharp; the rest of CareerIQ reuses it.
           </p>
         </div>
         <button
@@ -1066,16 +1094,6 @@ export function YourProfilePage({
           Re-run Career Assessment
         </button>
       </div>
-
-      <EducationStrip
-        screenId="career-vault"
-        title="Benchmark Profile"
-        whatThisIs="Your Benchmark Profile is the foundation every application draws from: positioning, career proof, and LinkedIn visibility in one place."
-        whyItMatters="Benchmark candidates build this once and refine it over time, so every tailored resume and cover letter stays consistent."
-        whatWeDo="We analyze what you upload and generate drafts across all three sections."
-        whatYouDo="You review, refine, and decide which parts are ready."
-        defaultExpanded
-      />
 
       {careerProfile?.benchmark_profile && (
         <BenchmarkProfileDraftPanel
@@ -1090,19 +1108,9 @@ export function YourProfilePage({
         id="positioning"
         className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
       >
-        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Positioning</h2>
+        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Core Positioning</h2>
 
-        <EducationStrip
-          screenId="why-me"
-          title="Why-Me"
-          whatThisIs="Your Why-Me is the 30-second answer to why someone should hire you, not another qualified candidate."
-          whyItMatters="Benchmark candidates have a crisp Why-Me — without one, you blend in with everyone else."
-          whatWeDo="We draft yours from your career evidence and LinkedIn profile."
-          whatYouDo="You refine the narrative until it sounds like you."
-          defaultExpanded={false}
-        />
-
-        {hasStarted || careerProfile?.benchmark_profile ? (
+        {(hasStarted || hasBenchmarkDraft) ? (
           // WhyMeStoryCard renders its own GlassCard
           <div>
             <div className="mb-3 flex items-center justify-between gap-2 px-1">
@@ -1113,7 +1121,7 @@ export function YourProfilePage({
                 <div>
                   <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">Positioning</div>
                   <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-strong)]">
-                    Your Why-Me Story
+                    Why They Should Choose You
                   </h2>
                 </div>
               </div>
@@ -1151,46 +1159,53 @@ export function YourProfilePage({
         {/* TODO: Surface Target Industries / Ideal Companies / Target Roles here when built. See product model — Benchmark Profile / Positioning section. */}
       </section>
 
-      {/* ─── Section 2 — Career Proof ───────────────────────────────────── */}
-      <section
-        id="career-evidence"
-        className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
+      <details
+        className="group rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)]"
+        open={sourceToolsOpen}
+        onToggle={(event) => setSourceToolsOpen(event.currentTarget.open)}
       >
-        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Career Proof</h2>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-left">
+          <span>
+            <span className="block text-sm font-semibold text-[var(--text-strong)]">Source Material</span>
+            <span className="mt-0.5 block text-xs text-[var(--text-soft)]">
+              Resume evidence, story bank, and saved LinkedIn inputs are tucked away until you need to edit them.
+            </span>
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="flex flex-col gap-6 border-t border-[var(--line-soft)] px-5 py-5">
+          {/* ─── Section 2 — Career Proof ───────────────────────────────────── */}
+          <section
+            id="career-evidence"
+            className="flex flex-col gap-4 scroll-mt-6"
+          >
+            <h2 className="text-base font-semibold text-[var(--text-strong)]">Career Proof</h2>
 
-        <ResumeSection
-          onGetDefaultResume={onGetDefaultResume}
-          onNavigateResume={onNavigateResume}
-          benchmarkProfile={careerProfile?.benchmark_profile ?? null}
-        />
+            <ResumeSection
+              onGetDefaultResume={onGetDefaultResume}
+              onNavigateResume={onNavigateResume}
+              benchmarkProfile={careerProfile?.benchmark_profile ?? null}
+            />
 
-        <StoryBankSection />
+            <StoryBankSection />
 
-        {/* TODO: Surface Signature Accomplishments as a first-class managed list here when built. See product model — Benchmark Profile / Career Proof section. */}
-      </section>
+            {/* TODO: Surface Signature Accomplishments as a first-class managed list here when built. See product model — Benchmark Profile / Career Proof section. */}
+          </section>
 
-      {/* ─── Section 3 — Benchmark LinkedIn Brand ────────────────────────── */}
-      <section
-        id="benchmark-linkedin-brand"
-        className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
-      >
-        <h2 className="text-lg font-semibold text-[var(--text-strong)]">Benchmark LinkedIn Brand</h2>
+          {/* ─── Section 3 — Benchmark LinkedIn Brand ────────────────────────── */}
+          <section
+            id="benchmark-linkedin-brand"
+            className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
+          >
+            <h2 className="text-base font-semibold text-[var(--text-strong)]">LinkedIn Inputs</h2>
 
-        <EducationStrip
-          screenId="benchmark-linkedin-brand"
-          title="Benchmark LinkedIn Brand"
-          whatThisIs="Your LinkedIn profile is often the first thing a recruiter or hiring manager sees."
-          whyItMatters="Benchmark candidates pass the five-second test — a glance at their profile makes the reader want to keep reading."
-          whatWeDo="We audit your current profile against that test and flag what to improve."
-          whatYouDo="You update your profile and build a content presence that reinforces your positioning."
-          defaultExpanded={false}
-        />
+            <LinkedInSection />
 
-        <LinkedInSection />
-
-        {/* TODO: Surface the five-second LinkedIn test audit here when built. See product model — Benchmark Profile / Benchmark LinkedIn Brand section. */}
-        {/* TODO: Surface Blogging / carousels here when built. See product model — Benchmark Profile / Benchmark LinkedIn Brand section. */}
-      </section>
+            {/* TODO: Surface the five-second LinkedIn test audit here when built. See product model — Benchmark Profile / Benchmark LinkedIn Brand section. */}
+            {/* TODO: Surface Blogging / carousels here when built. See product model — Benchmark Profile / Benchmark LinkedIn Brand section. */}
+          </section>
+        </div>
+      </details>
     </div>
   );
 }

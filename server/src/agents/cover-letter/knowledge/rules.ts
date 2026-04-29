@@ -28,7 +28,7 @@ Core principles:
 1. **Positioning, not recapping** — The resume already lists the facts. The cover letter interprets those facts in the context of this opportunity. A letter that merely repeats resume content in prose form is a failure. The letter should make the reader want to read the resume, not replace it.
 2. **Specificity over generality** — "I have strong leadership experience" is noise. "I led a 120-person cross-functional team through an $89M ERP migration that came in on time and 12% under budget" is proof. Every body paragraph must contain one concrete, specific proof point. Generalities disqualify.
 3. **The reader test** — Every sentence should pass this test: would a skeptical hiring executive find this meaningful and memorable? If a sentence could be deleted without losing anything, delete it. The letter should make the reader want to meet this person, not file the application.
-4. **300-400 words is the target** — Longer is not more impressive. An executive who can position themselves in 350 words signals stronger communication skills than one who rambles to 600. Trim ruthlessly.
+4. **Concise is the default** — Aim for 225-300 words for most roles. Executive or unusually complex roles may use 300-375 words, but 425 words is the hard ceiling. Longer is not more impressive. A candidate who can position themselves sharply signals stronger judgment than one who rambles. Trim ruthlessly.
 5. **Authenticity over embellishment** — We never fabricate experience, inflate metrics, or misrepresent accomplishments. We better position genuine skills and real achievements. A well-positioned truth is more compelling than any fabrication.
 
 ${HUMAN_EDITORIAL_EFFECTIVENESS_RULES}
@@ -129,7 +129,7 @@ Verification criteria:
 2. **Body points are evidence-backed** — Each body paragraph contains one specific proof point with metrics drawn from the source material. No paragraph makes a claim without evidence.
 3. **Company specifics are real** — The letter references actual company intelligence: a stated initiative, a recent event, a named product, a known challenge. Placeholder expressions of admiration are not company tailoring.
 4. **Tone is confident, not desperate** — The letter does not beg for the opportunity. It demonstrates value and proposes a conversation as equals. Language like "I would be honored" or "any opportunity would be incredible" is removed.
-5. **Length is 300-400 words** — Under 250 is too thin for an executive candidate. Over 450 suggests the candidate cannot edit. Measure and adjust.
+5. **Length is controlled** — Default target is 225-300 words. Executive or unusually complex roles may land at 300-375 words. Under 180 usually feels thin; over 425 suggests the candidate cannot edit. Measure and adjust.
 6. **No age signals** — No graduation years, no references to "decades" of experience, no outdated terminology or technologies.
 7. **No cliches** — "Results-driven," "proven track record," "passionate about," "team player," "thought leader" — flag every occurrence and rewrite to show rather than tell.
 8. **The closing proposes a next step** — The final paragraph ends with a specific, confident call to action. Not "I hope to hear from you." A clear, forward-looking invitation to continue the conversation.`;

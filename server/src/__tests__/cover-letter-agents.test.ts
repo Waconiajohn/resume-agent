@@ -693,7 +693,11 @@ describe('write_letter tool execution', () => {
     expect(callArgs.system).toContain('OPENING HOOK');
     expect(callArgs.system).toContain('SELF-REVIEW CHECKLIST');
     expect(callArgs.system).toContain('strategic positioning letter');
+    expect(callArgs.system).toContain('225-300 words');
+    expect(callArgs.system).toContain('Hard cap: 425 words');
     expect(callArgs.messages?.[0]?.content).toContain('interpret why that proof matters');
+    expect(callArgs.messages?.[0]?.content).toContain('3-4 short paragraphs');
+    expect(callArgs.messages?.[0]?.content).toContain('Pick the two strongest evidence-backed angles');
   });
 
   it('sets state.letter_draft', async () => {
@@ -829,6 +833,49 @@ describe('write_letter tool execution', () => {
     expect(result.word_count).toBeGreaterThan(0);
     expect(Number.isInteger(result.word_count)).toBe(true);
   });
+
+  it('trims generated letters that exceed the hard word cap', async () => {
+    const state = makeStateWithPlan();
+    const ctx = makeMockGenericContext<CoverLetterState, CoverLetterSSEEvent>(state);
+    const longProof = Array.from({ length: 95 }, () =>
+      'I led complex engineering and cloud modernization work with measurable operating discipline at Acme Corp.',
+    ).join(' ');
+    const longDraft = [
+      'Dear Acme Corp Hiring Team,',
+      longProof,
+      longProof,
+      longProof,
+      'Sincerely,',
+      'Jane Doe',
+    ].join('\n\n');
+    const trimmedDraft = [
+      'Dear Acme Corp Hiring Team,',
+      'Acme Corp needs a CTO who can turn cloud architecture and engineering leadership into disciplined operating momentum. I have led engineering teams through scalable platform work while delivering $2.4M in cost reductions.',
+      'My strongest fit is the blend of executive presence and technical depth. I have scaled teams from 10 to 45 engineers and translated cloud architecture decisions into measurable delivery outcomes.',
+      'I would welcome a conversation about how that background can support Acme Corp.',
+      'Sincerely,',
+      'Jane Doe',
+    ].join('\n\n');
+
+    mockLlmChat.mockReset();
+    mockLlmChat
+      .mockResolvedValueOnce({ text: longDraft })
+      .mockResolvedValueOnce({ text: trimmedDraft });
+
+    const result = await tool.execute({}, ctx) as Record<string, unknown>;
+
+    expect(result.trimmed).toBe(true);
+    expect(result.word_count as number).toBeLessThanOrEqual(425);
+    expect(ctx.scratchpad['letter_trimmed_for_length']).toBe(true);
+    expect(ctx.getState().letter_draft).toBe(trimmedDraft);
+    expect(mockLlmChat).toHaveBeenCalledTimes(2);
+    expect(mockLlmChat.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        model: 'mock-mid',
+        system: expect.stringContaining('senior editor'),
+      }),
+    );
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -946,7 +993,7 @@ describe('review_letter tool execution', () => {
         JSON.stringify({
           total_score: 45,
           passed: false,
-          issues: ['Letter is too short — only 13 words. Expand to 250-350 words.'],
+          issues: ['Letter is too short — only 13 words. Expand to 225-300 words.'],
           criteria: {},
         }),
       ),

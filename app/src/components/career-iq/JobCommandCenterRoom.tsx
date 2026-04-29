@@ -37,7 +37,6 @@ import { BooleanSearchPanel } from '@/components/job-command-center/BooleanSearc
 import { formatJobAgeLabel } from '@/components/job-command-center/job-age';
 import { useLatestMasterResumeText } from './useLatestMasterResumeText';
 import { SmartReferralsRoom } from './SmartReferralsRoom';
-import { EducationStrip } from '@/components/shared/EducationStrip';
 
 import type { CareerIQRoom } from './Sidebar';
 
@@ -427,10 +426,23 @@ function getBroadSearchLocation(filters: JobFilters): string {
 const JCC_MODES: Array<{
   id: JCCMode;
   label: string;
+  description: string;
+  badge?: string;
   icon: React.ComponentType<{ size: number; className?: string }>;
 }> = [
-  { id: 'broad-search', label: 'Broad Search', icon: Search },
-  { id: 'insider-jobs', label: 'Insider Jobs', icon: Users },
+  {
+    id: 'insider-jobs',
+    label: 'Insider Jobs',
+    description: 'Scan companies where you already have a first-degree connection.',
+    badge: 'Warm path',
+    icon: Users,
+  },
+  {
+    id: 'broad-search',
+    label: 'Broad Search',
+    description: 'Search ATS and public career pages, then send any role to Tailor Resume.',
+    icon: Search,
+  },
 ];
 
 // --- Main component ---
@@ -570,25 +582,49 @@ export function JobCommandCenterRoom({
       <div className="room-header">
         <div className="room-header-copy">
           <div className="eyebrow-label">Job Search</div>
-          <h1 className="room-title">Find your next role two ways.</h1>
+          <h1 className="room-title">Find the right jobs before you tailor.</h1>
           <p className="room-subtitle">
-            Broad Search scans ATS-hosted public job pages and career boards. Insider Jobs surfaces roles at companies where you already have a first-degree connection.
+            Start with warm-network opportunities when you can. Use Broad Search when you need a wider market scan.
           </p>
         </div>
       </div>
 
-      <div className="rail-tabs">
-        {JCC_MODES.map(({ id, label, icon: Icon }) => {
+      <div className="grid gap-3 md:grid-cols-2">
+        {JCC_MODES.map(({ id, label, description, badge, icon: Icon }) => {
+          const isActive = activeMode === id;
           return (
           <button
             key={id}
             type="button"
+            aria-label={label}
             onClick={() => setActiveMode(id)}
-            className="rail-tab"
-            data-active={activeMode === id}
+            className={cn(
+              'group flex min-h-[94px] items-start gap-3 rounded-[10px] border p-4 text-left transition-colors',
+              isActive
+                ? 'border-[var(--link)] bg-[var(--link)]/[0.08] shadow-[4px_4px_0_rgba(5,102,141,0.18)]'
+                : 'border-[var(--line-soft)] bg-[var(--surface-1)] hover:border-[var(--line-strong)]',
+            )}
+            data-active={isActive}
           >
-            <Icon size={14} />
-            {label}
+            <span className={cn(
+              'mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-[8px] border',
+              isActive
+                ? 'border-[var(--link)] bg-[var(--link)] text-white'
+                : 'border-[var(--line-soft)] bg-white text-[var(--text-soft)] group-hover:text-[var(--text-strong)]',
+            )}>
+              <Icon size={16} />
+            </span>
+            <span className="min-w-0">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold text-[var(--text-strong)]">{label}</span>
+                {badge && (
+                  <span className="rounded-md border border-[var(--badge-green-text)]/20 bg-[var(--badge-green-text)]/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--badge-green-text)]">
+                    {badge}
+                  </span>
+                )}
+              </span>
+              <span className="mt-1 block text-xs leading-relaxed text-[var(--text-soft)]">{description}</span>
+            </span>
           </button>
           );
         })}
@@ -597,15 +633,9 @@ export function JobCommandCenterRoom({
       {/* Insider Jobs mode — display:none preserves state */}
       <div style={{ display: activeMode === 'insider-jobs' ? undefined : 'none' }}>
         <div className="flex flex-col gap-4">
-          <EducationStrip
-            screenId="insider-jobs"
-            title="Insider Jobs"
-            whatThisIs="Insider Jobs surfaces roles at companies where you already have a first-degree connection."
-            whyItMatters="A warm introduction gets your application read; a cold application often doesn't."
-            whatWeDo="We filter open roles by the companies in your network and rank them by the strength of your connection."
-            whatYouDo="You prioritize the warmest opportunities and reach out before applying."
-            defaultExpanded
-          />
+          <div className="rounded-[10px] border border-[var(--link)]/20 bg-[var(--link)]/[0.06] px-4 py-3 text-sm text-[var(--text-soft)]">
+            <strong className="text-[var(--text-strong)]">Insider Jobs:</strong> choose companies from your network, run one work-mode/location scan at a time, then tailor the resume from the matching role.
+          </div>
           <SmartReferralsRoom onNavigate={onNavigate} />
         </div>
       </div>
@@ -620,17 +650,25 @@ export function JobCommandCenterRoom({
             description="Click a company to search ATS-hosted public jobs from the board."
           />
 
-          <JobFilterPanel
-            location={jobFilters.location}
-            onLocationChange={setJobFilterLocation}
-            radiusMiles={jobFilters.radiusMiles}
-            onRadiusMilesChange={setJobFilterRadius}
-            workModes={jobFilters.workModes}
-            onWorkModesChange={setJobFilterWorkModes}
-            postedWithin={jobFilters.postedWithin}
-            onPostedWithinChange={setJobFilterPostedWithin}
-            workModeSelection="single"
-          />
+          <details className="group rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-[var(--text-strong)]">
+              <span>Refine search</span>
+              <ChevronDown className="h-4 w-4 text-[var(--text-muted)] transition-transform group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="border-t border-[var(--line-soft)] p-4">
+              <JobFilterPanel
+                location={jobFilters.location}
+                onLocationChange={setJobFilterLocation}
+                radiusMiles={jobFilters.radiusMiles}
+                onRadiusMilesChange={setJobFilterRadius}
+                workModes={jobFilters.workModes}
+                onWorkModesChange={setJobFilterWorkModes}
+                postedWithin={jobFilters.postedWithin}
+                onPostedWithinChange={setJobFilterPostedWithin}
+                workModeSelection="single"
+              />
+            </div>
+          </details>
 
           <RadarSection
             jobs={radar.jobs}

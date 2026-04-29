@@ -152,7 +152,7 @@ describe('LinkedInStudioRoom', () => {
 describe('JobCommandCenterRoom', () => {
   const mockNavigate = vi.fn();
   const getJobTabButton = (name: RegExp) =>
-    screen.getAllByRole('button', { name }).find((element) => element.className.includes('rail-tab')) as HTMLButtonElement;
+    screen.getByRole('button', { name }) as HTMLButtonElement;
 
   beforeEach(() => {
     mockNavigate.mockClear();
@@ -166,10 +166,10 @@ describe('JobCommandCenterRoom', () => {
     render(<JobCommandCenterRoom onNavigate={mockNavigate} />);
     expect(getJobTabButton(/^Broad Search$/i)).toBeInTheDocument();
     expect(getJobTabButton(/^Insider Jobs$/i)).toBeInTheDocument();
-    // The room title names the two discovery paths.
-    expect(screen.getByText(/Find your next role two ways\./i)).toBeInTheDocument();
+    // The room title keeps the consumer focused on the job -> tailor flow.
+    expect(screen.getByText(/Find the right jobs before you tailor\./i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Broad Search scans ATS-hosted public job pages and career boards\. Insider Jobs surfaces roles/i),
+      screen.getByText(/Start with warm-network opportunities/i),
     ).toBeInTheDocument();
   });
 

@@ -19,13 +19,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronRight, Handshake, Mail, MessageSquare, Mic, Plus, Send, type LucideIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, Handshake, Mail, MessageSquare, Mic, Plus, Send, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import {
   APPLICATION_WORKSPACE_TOOLS,
-  RESUME_BUILDER_SESSION_ROUTE,
   buildApplicationWorkspaceRoute,
   type ApplicationWorkspaceTool,
 } from '@/lib/app-routing';
@@ -242,9 +241,11 @@ function isValidTool(value: string | undefined): value is ApplicationWorkspaceTo
 async function fetchApplication(
   id: string,
   accessToken: string,
+  signal?: AbortSignal,
 ): Promise<{ ok: true; data: ApplicationRecord } | { ok: false; status: number }> {
   const res = await fetch(`${API_BASE}/job-applications/${id}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    signal,
   });
   if (!res.ok) return { ok: false, status: res.status };
   const data = (await res.json()) as ApplicationRecord;
@@ -286,6 +287,7 @@ export function ApplicationWorkspaceRoute({
   const [application, setApplication] = useState<ApplicationRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toggleInFlight, setToggleInFlight] = useState(false);
+  const [toolMenuOpen, setToolMenuOpen] = useState(false);
 
   // Declared before the early returns below so hook order stays stable across
   // the loading / error / loaded render branches (Rules of Hooks).
@@ -338,16 +340,27 @@ export function ApplicationWorkspaceRoute({
   const timeline = useApplicationTimeline({ applicationId });
 
   useEffect(() => {
-    if (!applicationId || !accessToken) {
+    if (!applicationId) {
+      setApplication(null);
+      setError('Application ID is missing from this link.');
       setLoading(false);
       return;
     }
 
+    if (!accessToken) {
+      setApplication(null);
+      setError(null);
+      setLoading(true);
+      return;
+    }
+
     let cancelled = false;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
     setLoading(true);
     setError(null);
 
-    fetchApplication(applicationId, accessToken)
+    fetchApplication(applicationId, accessToken, controller.signal)
       .then((res) => {
         if (cancelled) return;
         if (res.ok) {
@@ -358,15 +371,22 @@ export function ApplicationWorkspaceRoute({
           setError(`Failed to load application (HTTP ${res.status})`);
         }
       })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load application');
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(err instanceof DOMException && err.name === 'AbortError'
+            ? 'Application load timed out. Try opening the Pipeline and selecting this application again.'
+            : err instanceof Error ? err.message : 'Failed to load application');
+        }
       })
       .finally(() => {
+        window.clearTimeout(timeout);
         if (!cancelled) setLoading(false);
       });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
+      controller.abort();
     };
   }, [applicationId, accessToken]);
 
@@ -448,6 +468,29 @@ export function ApplicationWorkspaceRoute({
   const followUpEmailActive = isFollowUpEmailActive(application);
   const thankYouNoteActive = isThankYouNoteActive(application);
   const networkingActive = isNetworkingActive(application);
+  const primaryTools: readonly ApplicationWorkspaceTool[] = [
+    'overview',
+    'resume',
+    'cover-letter',
+    'networking',
+    'interview-prep',
+  ];
+  const secondaryTools: readonly ApplicationWorkspaceTool[] = [
+    'thank-you-note',
+    'follow-up-email',
+    'offer-negotiation',
+  ];
+  const toolLabel = (value: ApplicationWorkspaceTool) => {
+    if (value === 'cover-letter') return 'Cover Letter';
+    if (value === 'interview-prep') return 'Interview Prep';
+    if (value === 'thank-you-note') return 'Thank You';
+    if (value === 'follow-up-email') return 'Follow Up';
+    if (value === 'offer-negotiation') return 'Offer';
+    return value.replace(/-/g, ' ');
+  };
+  const visibleSecondaryTools = secondaryTools.filter((value) => value === tool);
+  const hiddenSecondaryTools = secondaryTools.filter((value) => !visibleSecondaryTools.includes(value));
+  const visibleTools = [...primaryTools, ...visibleSecondaryTools];
 
   const ApplicationHeader = (
     <div className="panel-surface p-5">
@@ -466,7 +509,7 @@ export function ApplicationWorkspaceRoute({
         </div>
       </div>
       <div className="mt-4 flex gap-2 overflow-x-auto pb-1 text-xs">
-        {(APPLICATION_WORKSPACE_TOOLS as readonly ApplicationWorkspaceTool[]).map((t) => {
+        {visibleTools.map((t) => {
           const isSelected = t === tool;
           // Phase 2.3b + 2.3c — Interview Prep and Offer/Negotiation render
           // muted (dashed border, muted text) when they're not the current
@@ -497,10 +540,46 @@ export function ApplicationWorkspaceRoute({
                     : 'border border-[var(--line-soft)] text-[var(--text-soft)] hover:bg-[var(--rail-tab-hover-bg)]',
               )}
             >
-              {t.replace(/-/g, ' ')}
+              {toolLabel(t)}
             </button>
           );
         })}
+        {hiddenSecondaryTools.length > 0 && (
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setToolMenuOpen((open) => !open)}
+              aria-haspopup="menu"
+              aria-expanded={toolMenuOpen}
+              data-state="available"
+              className="rounded-[8px] border border-[var(--line-soft)] px-3 py-1.5 font-semibold text-[var(--text-soft)] transition-colors hover:bg-[var(--rail-tab-hover-bg)]"
+            >
+              More tools
+            </button>
+            {toolMenuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)] py-1 shadow-lg"
+              >
+                {hiddenSecondaryTools.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setToolMenuOpen(false);
+                      onNavigate?.(buildApplicationWorkspaceRoute(applicationId, t));
+                    }}
+                    className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-[12px] text-[var(--text-soft)] hover:bg-[var(--rail-tab-hover-bg)] hover:text-[var(--text-strong)]"
+                  >
+                    <span className="font-semibold">{toolLabel(t)}</span>
+                    <span className="text-[11px] text-[var(--text-muted)]">Turn on when this pursuit reaches that moment.</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -747,16 +826,6 @@ export function ApplicationWorkspaceRoute({
         </span>
       </nav>
       {ApplicationHeader}
-      {tool !== 'overview' && (
-        <button
-          type="button"
-          onClick={() => onNavigate?.(buildApplicationWorkspaceRoute(applicationId, 'overview'))}
-          className="-mt-2 inline-flex w-fit items-center gap-1.5 text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)]"
-        >
-          <ArrowLeft className="h-3 w-3" aria-hidden="true" />
-          Back to overview
-        </button>
-      )}
       {body}
     </div>
   );

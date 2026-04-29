@@ -50,6 +50,10 @@ ${COVER_LETTER_RULES}
 
 The cover letter must tell the WHY ME story in letter form — not repeat the resume. The letter's job is to answer one question: "Why is this specific person uniquely right for this specific role at this specific company?" Every paragraph must advance that answer. If the letter could be the candidate's resume in prose form, rewrite it.
 
+## Concision Mandate
+
+Default to a sharp 225-300 word WHY ME note. For executive or unusually complex roles, 300-375 words is acceptable. Never exceed 425 words. Use 3-4 short paragraphs and choose the two strongest proof points instead of trying to address every requirement.
+
 ## Hook Mandate
 
 The opening sentence must connect the candidate's unique experience directly to the company's specific challenge or opportunity. Study the company intelligence in the analyst's plan — what is this company's most pressing strategic problem? Open with proof that the candidate has already solved it.

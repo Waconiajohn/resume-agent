@@ -244,21 +244,21 @@ describe('ApplicationWorkspaceRoute — Offer / Negotiation toggle', () => {
     vi.clearAllMocks();
   });
 
-  it('renders a muted Offer pill when stage is applied and toggle is null', async () => {
+  it('hides the Offer pill behind More tools when stage is applied and toggle is null', async () => {
     renderAt('/workspace/application/app-1/resume');
 
-    const pill = await screen.findByRole('button', { name: /offer negotiation/i });
-    expect(pill.getAttribute('data-state')).toBe('muted');
-    expect(pill.className).toContain('border-dashed');
+    await screen.findByTestId('v3-pipeline-screen');
+    expect(screen.queryByRole('button', { name: /^Offer$/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /More tools/i })).toBeInTheDocument();
   });
 
-  it('renders an active Offer pill when offer_enabled is true regardless of stage', async () => {
+  it('keeps the Offer pill in More tools even when offer_enabled is true', async () => {
     currentApp = { ...baseApp, stage: 'applied', offer_enabled: true };
     renderAt('/workspace/application/app-1/resume');
 
-    const pill = await screen.findByRole('button', { name: /offer negotiation/i });
-    expect(pill.getAttribute('data-state')).toBe('available');
-    expect(pill.className).not.toContain('border-dashed');
+    await screen.findByTestId('v3-pipeline-screen');
+    expect(screen.queryByRole('button', { name: /^Offer$/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /More tools/i })).toBeInTheDocument();
   });
 
   it('renders the activation screen when the user lands on /offer-negotiation and the tool is inactive', async () => {
@@ -302,43 +302,47 @@ describe('ApplicationWorkspaceRoute — Thank-You Note toggle', () => {
     vi.clearAllMocks();
   });
 
-  it('renders a muted Thank-You pill when stage is applied (stage-derived off)', async () => {
+  it('hides the Thank-You pill behind More tools when stage is applied (stage-derived off)', async () => {
     renderAt('/workspace/application/app-1/resume');
 
-    const pill = await screen.findByRole('button', { name: /thank you note/i });
-    expect(pill.getAttribute('data-state')).toBe('muted');
+    await screen.findByTestId('v3-pipeline-screen');
+    expect(screen.queryByRole('button', { name: /^Thank You$/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /More tools/i })).toBeInTheDocument();
   });
 
-  it('renders an active Thank-You pill when stage is screening (stage-derived on)', async () => {
+  it('keeps the Thank-You pill in More tools when stage is screening (stage-derived on)', async () => {
     currentApp = { ...baseApp, stage: 'screening', thank_you_note_enabled: null };
     renderAt('/workspace/application/app-1/resume');
 
-    const pill = await screen.findByRole('button', { name: /thank you note/i });
-    expect(pill.getAttribute('data-state')).toBe('available');
+    await screen.findByTestId('v3-pipeline-screen');
+    expect(screen.queryByRole('button', { name: /^Thank You$/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /More tools/i })).toBeInTheDocument();
   });
 
-  it('renders an active Thank-You pill when stage is interviewing', async () => {
+  it('keeps the Thank-You pill in More tools when stage is interviewing', async () => {
     currentApp = { ...baseApp, stage: 'interviewing', thank_you_note_enabled: null };
     renderAt('/workspace/application/app-1/resume');
 
-    const pill = await screen.findByRole('button', { name: /thank you note/i });
-    expect(pill.getAttribute('data-state')).toBe('available');
+    await screen.findByTestId('v3-pipeline-screen');
+    expect(screen.queryByRole('button', { name: /^Thank You$/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /More tools/i })).toBeInTheDocument();
   });
 
-  it('renders a muted Thank-You pill when stage is offer (stage-derived inactive)', async () => {
+  it('hides the Thank-You pill when stage is offer (stage-derived inactive)', async () => {
     currentApp = { ...baseApp, stage: 'offer', thank_you_note_enabled: null };
     renderAt('/workspace/application/app-1/resume');
 
-    const pill = await screen.findByRole('button', { name: /thank you note/i });
-    expect(pill.getAttribute('data-state')).toBe('muted');
+    await screen.findByTestId('v3-pipeline-screen');
+    expect(screen.queryByRole('button', { name: /^Thank You$/i })).toBeNull();
   });
 
-  it('explicit thank_you_note_enabled=true wins over stage', async () => {
+  it('explicit thank_you_note_enabled=true still stays in More tools on the resume tab', async () => {
     currentApp = { ...baseApp, stage: 'closed_lost', thank_you_note_enabled: true };
     renderAt('/workspace/application/app-1/resume');
 
-    const pill = await screen.findByRole('button', { name: /thank you note/i });
-    expect(pill.getAttribute('data-state')).toBe('available');
+    await screen.findByTestId('v3-pipeline-screen');
+    expect(screen.queryByRole('button', { name: /^Thank You$/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /More tools/i })).toBeInTheDocument();
   });
 
   it('renders the activation screen when /thank-you-note is inactive', async () => {

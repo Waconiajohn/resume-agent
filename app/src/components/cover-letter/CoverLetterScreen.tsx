@@ -166,6 +166,25 @@ function LetterOutput({
   const sections = parseSectionsFromLetter(letterDraft);
   const wordCount = letterDraft.trim().split(/\s+/).length;
   const readTime = Math.max(1, Math.round(wordCount / 200));
+  const lengthStatus = wordCount > 425
+    ? {
+        label: 'Too long',
+        className: 'bg-[var(--badge-red-bg)] text-[var(--badge-red-text)] border-[var(--badge-red-text)]/15',
+      }
+    : wordCount > 375
+      ? {
+          label: 'Long',
+          className: 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/15',
+        }
+      : wordCount >= 225
+        ? {
+            label: 'Sharp',
+            className: 'bg-[var(--badge-green-bg)] text-[var(--badge-green-text)] border-[var(--badge-green-text)]/15',
+          }
+        : {
+            label: 'Brief',
+            className: 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)] border-[var(--badge-amber-text)]/15',
+          };
 
   const toneLabel = tone === 'bold' ? 'Bold' : tone === 'conversational' ? 'Conversational' : 'Formal';
   const toneBg = tone === 'bold'
@@ -180,7 +199,7 @@ function LetterOutput({
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-[var(--badge-green-text)]" />
-          <span className="text-sm font-medium text-[var(--text-strong)]">Cover Letter Draft</span>
+          <span className="text-sm font-medium text-[var(--text-strong)]">Concise WHY ME Letter</span>
           {companyName && (
             <span className="text-xs text-[var(--text-soft)]">for {companyName}</span>
           )}
@@ -191,8 +210,8 @@ function LetterOutput({
             {toneLabel}
           </span>
           {/* Word count */}
-          <span className="rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">
-            {wordCount} words
+          <span className={cn('rounded-md px-1.5 py-0.5 text-[12px] font-medium border', lengthStatus.className)}>
+            {wordCount} words · {lengthStatus.label}
           </span>
           {/* Read time */}
           <span className="rounded-md px-1.5 py-0.5 text-[12px] bg-[var(--accent-muted)] border border-[var(--line-soft)] text-[var(--text-soft)]">

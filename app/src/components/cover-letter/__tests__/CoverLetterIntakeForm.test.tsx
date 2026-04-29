@@ -68,6 +68,7 @@ vi.mock('@/components/GlassInput', () => ({
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const LONG_RESUME = 'A'.repeat(60); // 60 chars — passes the 50-char minimum
+const resumeTextareaMatcher = /paste your master resume text here/i;
 
 function makeProps(overrides: Record<string, unknown> = {}) {
   return {
@@ -89,19 +90,19 @@ afterEach(() => {
 describe('CoverLetterIntakeForm — pre-fill', () => {
   it('renders with an empty resume textarea when no defaultResumeText is given', () => {
     render(<CoverLetterIntakeForm {...makeProps()} />);
-    const textarea = screen.getByPlaceholderText(/paste your resume text here/i) as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText(resumeTextareaMatcher) as HTMLTextAreaElement;
     expect(textarea.value).toBe('');
   });
 
   it('pre-fills the resume textarea with defaultResumeText when provided at mount', () => {
     render(<CoverLetterIntakeForm {...makeProps({ defaultResumeText: LONG_RESUME })} />);
-    const textarea = screen.getByPlaceholderText(/paste your resume text here/i) as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText(resumeTextareaMatcher) as HTMLTextAreaElement;
     expect(textarea.value).toBe(LONG_RESUME);
   });
 
   it('updates the resume textarea when defaultResumeText arrives asynchronously (field still empty)', async () => {
     const { rerender } = render(<CoverLetterIntakeForm {...makeProps()} />);
-    const textarea = screen.getByPlaceholderText(/paste your resume text here/i) as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText(resumeTextareaMatcher) as HTMLTextAreaElement;
     expect(textarea.value).toBe('');
 
     await act(async () => {
@@ -115,7 +116,7 @@ describe('CoverLetterIntakeForm — pre-fill', () => {
 
   it('does not overwrite user-edited content when defaultResumeText later changes', async () => {
     const { rerender } = render(<CoverLetterIntakeForm {...makeProps()} />);
-    const textarea = screen.getByPlaceholderText(/paste your resume text here/i) as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText(resumeTextareaMatcher) as HTMLTextAreaElement;
 
     // User types something
     fireEvent.change(textarea, { target: { value: 'My custom resume text that is long enough for validation' } });
@@ -131,7 +132,7 @@ describe('CoverLetterIntakeForm — pre-fill', () => {
 
   it('allows user to clear and override pre-filled text', () => {
     render(<CoverLetterIntakeForm {...makeProps({ defaultResumeText: LONG_RESUME })} />);
-    const textarea = screen.getByPlaceholderText(/paste your resume text here/i) as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText(resumeTextareaMatcher) as HTMLTextAreaElement;
     expect(textarea.value).toBe(LONG_RESUME);
 
     fireEvent.change(textarea, { target: { value: '' } });
