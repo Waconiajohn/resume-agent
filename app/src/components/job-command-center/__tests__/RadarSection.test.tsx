@@ -182,7 +182,7 @@ describe('RadarSection — empty state', () => {
   it('shows the empty state message when no jobs and not loading', () => {
     render(<RadarSection {...defaultProps()} />);
     expect(
-      screen.getByText(/search public jobs here/i),
+      screen.getByText(/search public ATS job pages here/i),
     ).toBeInTheDocument();
   });
 

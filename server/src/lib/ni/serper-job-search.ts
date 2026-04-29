@@ -11,6 +11,7 @@ import {
   googleTbsForFreshnessDays,
   normalizeJobPostedDate,
 } from '../job-date.js';
+import { isKnownATSUrl, PUBLIC_ATS_SITE_QUERY } from '../ats-search-targets.js';
 import type { ATSJob, NiWorkMode } from './types.js';
 
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -103,8 +104,7 @@ function buildQuery(
       ? ` within ${radiusMiles} miles of "${location.trim()}"`
       : ` near "${location.trim()}"`
     : '';
-  const atsSites = 'site:boards.greenhouse.io OR site:jobs.lever.co OR site:myworkdayjobs.com OR site:jobs.ashbyhq.com OR site:icims.com OR site:recruitee.com OR site:apply.workable.com OR site:jobs.personio.de OR site:jobs.personio.com';
-  return `${company}${title}${workModePart}${locationPart} (${atsSites})`;
+  return `${company}${title}${workModePart}${locationPart} (${PUBLIC_ATS_SITE_QUERY})`;
 }
 
 function buildWorkModePart(workModes?: NiWorkMode[]): string {
@@ -132,32 +132,6 @@ interface SerperResponse {
   answerBox?: { title?: string; link?: string };
 }
 
-/** Known ATS domains that indicate a real job listing. */
-const ATS_DOMAINS = [
-  'boards.greenhouse.io',
-  'jobs.lever.co',
-  'myworkdayjobs.com',
-  'jobs.ashbyhq.com',
-  'icims.com',
-  'workday.com',
-  'greenhouse.io',
-  'lever.co',
-  'ashbyhq.com',
-  'recruitee.com',
-  'workable.com',
-  'personio.de',
-  'personio.com',
-];
-
-function isATSDomain(url: string): boolean {
-  try {
-    const hostname = new URL(url).hostname.toLowerCase();
-    return ATS_DOMAINS.some((d) => hostname.includes(d));
-  } catch {
-    return false;
-  }
-}
-
 function parseSerperResults(data: SerperResponse, _companyName: string): ATSJob[] {
   const results: ATSJob[] = [];
   const organicResults = data.organic ?? [];
@@ -166,7 +140,7 @@ function parseSerperResults(data: SerperResponse, _companyName: string): ATSJob[
     if (!result.link || !result.title) continue;
 
     // Prioritize results from known ATS domains
-    if (!isATSDomain(result.link)) continue;
+    if (!isKnownATSUrl(result.link)) continue;
 
     // Clean the title — remove site name suffixes
     const cleanTitle = result.title

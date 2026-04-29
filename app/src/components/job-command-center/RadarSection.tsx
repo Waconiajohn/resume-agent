@@ -57,6 +57,16 @@ function formatSalary(min: number | null, max: number | null): string | null {
   return null;
 }
 
+function formatSourceLabel(source: string | null | undefined): string | null {
+  if (!source) return null;
+  const normalized = source.toLowerCase();
+  if (normalized.includes('google search') || normalized.includes('serper')) {
+    return 'ATS job page';
+  }
+  if (normalized.includes('firecrawl')) return 'Career page';
+  return source;
+}
+
 function NetworkBadge({ count }: { count: number }) {
   if (count === 0) return null;
   return (
@@ -144,7 +154,7 @@ export function RadarSection({
       </div>
 
       <p className="mb-4 text-[13px] leading-relaxed text-[var(--text-soft)]">
-        Search public jobs with verified posted-date metadata, then save the best 5 or 6 to your shortlist before tailoring resumes.
+        Search ATS-hosted public job pages and career boards, then save the best 5 or 6 to your shortlist before tailoring resumes.
       </p>
 
       {/* Search bar — Location / Date Posted / Work Mode live in the outer
@@ -190,7 +200,7 @@ export function RadarSection({
         <div className="py-8 text-center">
           <Search size={24} className="mx-auto mb-3 text-[var(--text-soft)]" />
           <p className="text-[12px] text-[var(--text-soft)]">
-            Search public jobs here. Posted-within filters only show roles with a readable posting date from the source.
+            Search public ATS job pages here. Posted-within filters only show roles with a readable posting date from the source.
           </p>
         </div>
       )}
@@ -248,6 +258,7 @@ export function RadarSection({
           {jobs.map((job) => {
             const salary = formatSalary(job.salary_min, job.salary_max);
             const ageLabel = formatJobAgeLabel(job.posted_date);
+            const sourceLabel = formatSourceLabel(job.source);
             return (
               <div
                 key={job.external_id}
@@ -293,10 +304,10 @@ export function RadarSection({
                           {ageLabel}
                         </span>
                       )}
-                      {job.source && (
+                      {sourceLabel && (
                         <>
                           <span className="text-[var(--text-soft)]">·</span>
-                          <span className="capitalize">{job.source}</span>
+                          <span>{sourceLabel}</span>
                         </>
                       )}
                       {job.remote_type && (

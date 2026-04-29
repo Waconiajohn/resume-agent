@@ -295,6 +295,7 @@ export function SmartReferralsRoom({ initialFocus = null }: SmartReferralsRoomPr
       jobUrl: match.url,
       companyName: match.companyName ?? undefined,
       roleTitle: match.title,
+      jobDescription: match.descriptionSnippet ?? undefined,
     });
   }, [openPicker]);
 

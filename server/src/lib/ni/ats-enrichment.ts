@@ -8,6 +8,7 @@
 
 import { supabaseAdmin } from '../supabase.js';
 import logger from '../logger.js';
+import { DIRECT_ATS_SITE_QUERY } from '../ats-search-targets.js';
 import type { ATSPlatform } from './types.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -32,9 +33,6 @@ const SERPER_API_URL = 'https://google.serper.dev/search';
 const REQUEST_TIMEOUT_MS = 10_000;
 const INTER_COMPANY_DELAY_MS = 500;
 const MAX_COMPANIES_PER_BATCH = 100;
-
-const DISCOVERY_SITE_CLAUSE =
-  'site:boards.greenhouse.io OR site:jobs.lever.co OR site:jobs.ashbyhq.com OR site:myworkdayjobs.com OR site:icims.com OR site:recruitee.com OR site:apply.workable.com OR site:jobs.personio.de OR site:jobs.personio.com';
 
 // ─── URL Parsing ─────────────────────────────────────────────────────────────
 
@@ -142,7 +140,7 @@ export async function enrichCompanyATS(
     return { enriched: false, reason: 'SERPER_API_KEY not configured' };
   }
 
-  const query = `"${companyName}" careers (${DISCOVERY_SITE_CLAUSE})`;
+  const query = `"${companyName}" careers (${DIRECT_ATS_SITE_QUERY})`;
 
   try {
     const res = await fetch(SERPER_API_URL, {

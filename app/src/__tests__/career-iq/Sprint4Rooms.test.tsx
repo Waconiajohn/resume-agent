@@ -169,7 +169,7 @@ describe('JobCommandCenterRoom', () => {
     // The room title names the two discovery paths.
     expect(screen.getByText(/Find your next role two ways\./i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Broad Search scans public job boards\. Insider Jobs surfaces roles/i),
+      screen.getByText(/Broad Search scans ATS-hosted public job pages and career boards\. Insider Jobs surfaces roles/i),
     ).toBeInTheDocument();
   });
 

@@ -71,7 +71,7 @@ export async function runSearchPipeline(
   location: string,
   filters: SearchFilters,
 ): Promise<{ ok: true; result: SearchPipelineResult } | { ok: false; error: string; status: number }> {
-  // Serper Google Jobs is primary — structured data aggregated from all major boards.
+  // Serper Search is primary — ATS-hosted job pages and career boards.
   // Firecrawl is fallback — web scraping when Serper is unavailable or unkeyed.
   const adapters = [
     new SerperJobsAdapter(),

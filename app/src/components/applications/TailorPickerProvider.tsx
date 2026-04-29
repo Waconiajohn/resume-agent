@@ -35,6 +35,8 @@ export interface TailorPickerContext {
   companyName?: string;
   /** Optional role title prefill. */
   roleTitle?: string;
+  /** Optional job-board summary/snippet to use when the job URL cannot be fetched. */
+  jobDescription?: string;
 }
 
 interface TailorPickerApi {

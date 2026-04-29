@@ -115,13 +115,14 @@ export function TailorForApplicationPicker({
   // Shared form state for the new-app form.
   const [companyName, setCompanyName] = useState(context.companyName ?? '');
   const [roleTitle, setRoleTitle] = useState(context.roleTitle ?? '');
+  const fallbackJdText = context.jobDescription?.trim() ?? '';
 
   // URL-tab state.
   const [jdUrl, setJdUrl] = useState(context.jobUrl ?? '');
   const [jdUrlFetching, setJdUrlFetching] = useState(false);
-  const [jdUrlFetched, setJdUrlFetched] = useState(false);
+  const [jdUrlFetched, setJdUrlFetched] = useState(fallbackJdText.length > 0);
   const [jdUrlError, setJdUrlError] = useState<string | null>(null);
-  const [fetchedJdText, setFetchedJdText] = useState('');
+  const [fetchedJdText, setFetchedJdText] = useState(fallbackJdText);
   const autoFetchAttemptedRef = useRef(false);
 
   // Text-tab state.
@@ -157,12 +158,17 @@ export function TailorForApplicationPicker({
       if (metadata.company) setCompanyName(metadata.company);
     } catch (err) {
       setJdUrlError(err instanceof Error ? err.message : String(err));
-      setJdUrlFetched(false);
-      setFetchedJdText('');
+      if (fallbackJdText.length > 0) {
+        setJdUrlFetched(true);
+        setFetchedJdText(fallbackJdText);
+      } else {
+        setJdUrlFetched(false);
+        setFetchedJdText('');
+      }
     } finally {
       setJdUrlFetching(false);
     }
-  }, [jdUrl, accessToken, roleTitle, companyName]);
+  }, [jdUrl, accessToken, fallbackJdText]);
 
   useEffect(() => {
     if (!context.jobUrl || autoFetchAttemptedRef.current) return;
@@ -379,7 +385,14 @@ export function TailorForApplicationPicker({
                     )}
                     {jdUrlFetched && !jdUrlError && (
                       <p className="text-[12px] text-[var(--badge-green-text)]/80 mt-1">
-                        Fetched {fetchedJdText.length.toLocaleString()} characters.
+                        {fallbackJdText.length > 0 && fetchedJdText === fallbackJdText
+                          ? `Loaded ${fetchedJdText.length.toLocaleString()} characters from the selected job-board result.`
+                          : `Fetched ${fetchedJdText.length.toLocaleString()} characters.`}
+                      </p>
+                    )}
+                    {jdUrlFetched && jdUrlError && fallbackJdText.length > 0 && (
+                      <p className="text-[12px] text-[var(--badge-amber-text)] mt-1">
+                        URL fetch failed, so CareerIQ will start with the job-board summary. You can edit the JD on the next screen.
                       </p>
                     )}
                   </div>

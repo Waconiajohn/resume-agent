@@ -85,6 +85,17 @@ function buildHtmlWithJobLinks(): string {
 </body></html>`;
 }
 
+function buildHtmlWithWorkdayLink(): string {
+  return `<!DOCTYPE html><html><body>
+<main>
+  <h1>Legacy iCIMS portal</h1>
+  <p>This company moved its career board. Apply through Workday.</p>
+  <a href="https://gdit.wd5.myworkdayjobs.com/en-US/External_Career_Site/login">Current openings</a>
+  <p>${'content '.repeat(40)}</p>
+</main>
+</body></html>`;
+}
+
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('fetchICIMSJobs', () => {
@@ -185,6 +196,40 @@ describe('fetchICIMSJobs', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(jobs).toHaveLength(1);
     expect(jobs[0].title).toBe('Senior Software Engineer');
+  });
+
+  it('follows a Workday board link when a legacy iCIMS page has moved', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(buildHtmlWithWorkdayLink()),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          jobPostings: [
+            {
+              title: 'Cloud Operations Manager',
+              locationsText: 'Remote',
+              postedOn: 'Posted Yesterday',
+              externalPath: '/job/US-Remote/Cloud-Operations-Manager_RQ123',
+              bulletFields: ['Lead cloud operations.'],
+            },
+          ],
+        }),
+      });
+    globalThis.fetch = fetchMock;
+
+    const jobs = await fetchICIMSJobs('gdit');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1][0])).toContain('/wday/cxs/gdit/External_Career_Site/jobs');
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: 'Cloud Operations Manager',
+      location: 'Remote',
+      source: 'workday',
+    });
   });
 
   it('strips HTML from description snippets', async () => {

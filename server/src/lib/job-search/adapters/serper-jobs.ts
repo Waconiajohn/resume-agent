@@ -1,8 +1,9 @@
 /**
- * Serper Google Jobs Adapter — structured job data from all major boards via one API.
+ * Serper Google Jobs Adapter — job listings discovered through Google Search.
  *
- * Calls Serper's /jobs endpoint which aggregates Indeed, LinkedIn, Glassdoor,
- * ZipRecruiter, and others into a single structured response.
+ * Serper does not expose a stable /jobs endpoint on the current API. This adapter
+ * uses the supported /search endpoint and narrows results to known ATS/career
+ * domains so Broad Search can still return real job pages with freshness signals.
  *
  * Auth: X-API-KEY header with SERPER_API_KEY env var.
  * Returns empty array on missing key or any error (graceful degradation).
@@ -11,15 +12,17 @@
 import { createHash } from 'node:crypto';
 import logger from '../../logger.js';
 import {
+  findPostedDateText,
   freshnessDaysForDatePosted,
   googleTbsForFreshnessDays,
   isWithinFreshnessWindow,
   normalizeJobPostedDate,
 } from '../../job-date.js';
+import { isKnownATSUrl, PUBLIC_ATS_SITE_QUERY } from '../../ats-search-targets.js';
 import { classifyWorkMode } from '../work-mode-classifier.js';
 import type { SearchAdapter, SearchFilters, JobResult, SearchProviderDiagnostic } from '../types.js';
 
-const SERPER_JOBS_URL = 'https://google.serper.dev/jobs';
+const SERPER_SEARCH_URL = 'https://google.serper.dev/search';
 const REQUEST_TIMEOUT_MS = 15_000;
 
 // ─── Serper response shape ────────────────────────────────────────────────────
@@ -35,8 +38,16 @@ interface SerperJob {
   extensions?: string[];
 }
 
+interface SerperOrganicResult {
+  title?: string;
+  link?: string;
+  snippet?: string;
+  date?: string;
+}
+
 interface SerperJobsResponse {
   jobs?: SerperJob[];
+  organic?: SerperOrganicResult[];
 }
 
 // ─── Freshness filter mapping ─────────────────────────────────────────────────
@@ -78,6 +89,118 @@ function extractSalary(
     }
   }
   return { salary_min: null, salary_max: null };
+}
+
+function buildSearchQuery(
+  query: string,
+  remoteType: SearchFilters['remoteType'],
+  location: string,
+): string {
+  const workModeQuery = queryForWorkMode(query, remoteType);
+  const locationHint = location.trim() && remoteType !== 'remote'
+    ? ` near "${location.trim()}"`
+    : '';
+  return `${workModeQuery} jobs${locationHint} (${PUBLIC_ATS_SITE_QUERY})`;
+}
+
+function titleCaseToken(token: string): string {
+  if (/^[a-z0-9]{2,5}$/.test(token)) {
+    return token.toUpperCase();
+  }
+  return token
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim();
+}
+
+function inferCompanyFromUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    const subdomain = parsed.hostname.split('.')[0];
+
+    if (hostname.includes('greenhouse.io') || hostname.includes('lever.co')) {
+      return segments[0] ? titleCaseToken(segments[0]) : null;
+    }
+
+    if (
+      hostname.includes('ashbyhq.com')
+      || hostname.includes('smartrecruiters.com')
+      || hostname.includes('workable.com')
+    ) {
+      return segments[0] ? titleCaseToken(segments[0]) : null;
+    }
+
+    if (
+      hostname.includes('myworkdayjobs.com')
+      || hostname.includes('oraclecloud.com')
+      || hostname.includes('successfactors.com')
+      || hostname.includes('bamboohr.com')
+      || hostname.includes('jobvite.com')
+    ) {
+      return subdomain ? titleCaseToken(subdomain.replace(/careers?$/i, '')) : null;
+    }
+
+    if (hostname.includes('recruitee.com') || hostname.includes('personio.')) {
+      return subdomain ? titleCaseToken(subdomain.replace(/^jobs-?/i, '')) : null;
+    }
+
+    if (hostname.includes('icims.com')) {
+      const cleanedSubdomain = hostname
+        .replace('.icims.com', '')
+        .replace(/^(careers|jobs)-/i, '');
+      return cleanedSubdomain ? titleCaseToken(cleanedSubdomain) : null;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function cleanOrganicTitle(rawTitle: string): string {
+  return rawTitle
+    .replace(/\s*[-|·]\s*(Greenhouse|Lever|Workday|Ashby|iCIMS|SmartRecruiters|Workable|Jobvite).*$/i, '')
+    .replace(/\s*[-|·]\s*Careers?.*$/i, '')
+    .replace(/\s*[-|·]\s*Jobs?.*$/i, '')
+    .trim();
+}
+
+function splitOrganicTitle(rawTitle: string, url: string | undefined): { title: string; company: string } {
+  const cleaned = cleanOrganicTitle(rawTitle);
+  const inferredCompany = inferCompanyFromUrl(url);
+
+  const applicationMatch = cleaned.match(/^Job Application for\s+(.+?)\s+at\s+(.+)$/i);
+  if (applicationMatch) {
+    return {
+      title: applicationMatch[1]?.trim() || cleaned,
+      company: applicationMatch[2]?.trim() || inferredCompany || 'Unknown Company',
+    };
+  }
+
+  const atMatch = cleaned.match(/^(.+?)\s+at\s+(.+)$/i);
+  if (atMatch) {
+    return {
+      title: atMatch[1]?.trim() || cleaned,
+      company: atMatch[2]?.trim() || inferredCompany || 'Unknown Company',
+    };
+  }
+
+  const dashParts = cleaned.split(/\s+[-|·]\s+/).map((part) => part.trim()).filter(Boolean);
+  if (dashParts.length >= 2 && inferredCompany) {
+    const [first, second] = dashParts;
+    if (first.toLowerCase().includes(inferredCompany.toLowerCase())) {
+      return { title: second, company: first };
+    }
+    return { title: first, company: inferredCompany };
+  }
+
+  return {
+    title: cleaned,
+    company: inferredCompany || 'Unknown Company',
+  };
 }
 
 // ─── Employment type extraction ───────────────────────────────────────────────
@@ -144,13 +267,13 @@ export class SerperJobsAdapter implements SearchAdapter {
       );
       this.setDiagnostic({
         status: 'missing_key',
-        message: 'Serper is not configured, so public job search cannot query Google Jobs.',
+        message: 'Serper is not configured, so public job search cannot query ATS-hosted job pages.',
         jobs_returned: 0,
       });
       return [];
     }
 
-    const searchQuery = queryForWorkMode(query, filters.remoteType);
+    const searchQuery = buildSearchQuery(query, filters.remoteType, location);
     const requestBody: Record<string, unknown> = {
       q: searchQuery,
       gl: 'us',
@@ -168,7 +291,7 @@ export class SerperJobsAdapter implements SearchAdapter {
     }
 
     try {
-      const response = await fetch(SERPER_JOBS_URL, {
+      const response = await fetch(SERPER_SEARCH_URL, {
         method: 'POST',
         headers: {
           'X-API-KEY': apiKey,
@@ -181,7 +304,7 @@ export class SerperJobsAdapter implements SearchAdapter {
       if (!response.ok) {
         logger.warn(
           { adapter: this.name, status: response.status, query: searchQuery },
-          'Serper Jobs API returned non-OK status',
+          'Serper Search API returned non-OK status',
         );
         this.setDiagnostic({
           status: 'http_error',
@@ -198,20 +321,38 @@ export class SerperJobsAdapter implements SearchAdapter {
 
       const data = (await response.json()) as SerperJobsResponse;
       const jobs = data.jobs ?? [];
+      const organicJobs = (data.organic ?? [])
+        .filter((result): result is Required<Pick<SerperOrganicResult, 'title' | 'link'>> & SerperOrganicResult =>
+          Boolean(result.title && result.link && isKnownATSUrl(result.link)),
+        )
+        .map((result): SerperJob => {
+          const { title, company } = splitOrganicTitle(result.title, result.link);
+          return {
+            title,
+            companyName: company,
+            location: location || undefined,
+            source: 'Google Search',
+            date: result.date ?? findPostedDateText(result.snippet) ?? undefined,
+            snippet: result.snippet,
+            link: result.link,
+            extensions: [],
+          };
+        });
+      const allJobs = [...jobs, ...organicJobs];
       this.setDiagnostic({
         status: 'ok',
-        message: jobs.length > 0
-          ? `Serper returned ${jobs.length} raw job result${jobs.length === 1 ? '' : 's'}.`
+        message: allJobs.length > 0
+          ? `Serper returned ${allJobs.length} raw job result${allJobs.length === 1 ? '' : 's'}.`
           : 'Serper responded successfully but returned no raw job results.',
-        jobs_returned: jobs.length,
+        jobs_returned: allJobs.length,
       });
 
       logger.info(
-        { adapter: this.name, query: searchQuery, location, jobCount: jobs.length },
-        'Serper Jobs adapter returned results',
+        { adapter: this.name, query: searchQuery, location, jobCount: allJobs.length },
+        'Serper Search adapter returned job results',
       );
 
-      return jobs
+      return allJobs
         .filter((job): job is Required<Pick<SerperJob, 'title'>> & SerperJob =>
           Boolean(job.title),
         )

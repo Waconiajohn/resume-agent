@@ -75,7 +75,7 @@ describe('searchJobsViaSerper', () => {
     expect(parsed.q).not.toContain('  ');
   });
 
-  it('includes all five ATS site clauses', async () => {
+  it('includes the shared public ATS site clauses', async () => {
     let capturedBody: string | undefined;
     globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
       capturedBody = init.body as string;
@@ -90,6 +90,12 @@ describe('searchJobsViaSerper', () => {
     expect(parsed.q).toContain('site:myworkdayjobs.com');
     expect(parsed.q).toContain('site:jobs.ashbyhq.com');
     expect(parsed.q).toContain('site:icims.com');
+    expect(parsed.q).toContain('site:apply.workable.com');
+    expect(parsed.q).toContain('site:jobs.smartrecruiters.com');
+    expect(parsed.q).toContain('site:bamboohr.com');
+    expect(parsed.q).toContain('site:jobvite.com');
+    expect(parsed.q).toContain('site:oraclecloud.com');
+    expect(parsed.q).toContain('site:successfactors.com');
   });
 
   it('quotes company name and target title', async () => {
@@ -161,17 +167,19 @@ describe('searchJobsViaSerper', () => {
           { title: 'Director at Acme - Greenhouse', link: 'https://boards.greenhouse.io/acme/jobs/123', snippet: 'Great role' },
           { title: 'Director at Acme - Blog', link: 'https://blog.acme.com/hiring', snippet: 'We are hiring' },
           { title: 'Nurse Manager - iCIMS', link: 'https://careers-acme.icims.com/jobs/456/nurse-manager/job', snippet: 'Healthcare role' },
+          { title: 'Product Lead - SmartRecruiters', link: 'https://jobs.smartrecruiters.com/acme/123-product-lead', snippet: 'Product role' },
         ],
       }),
     });
 
     const jobs = await searchJobsViaSerper('Acme Corp', ['Director']);
 
-    // Blog link should be filtered out, Greenhouse and iCIMS links kept
-    expect(jobs).toHaveLength(2);
+    // Blog link should be filtered out; ATS-hosted links should be kept.
+    expect(jobs).toHaveLength(3);
     expect(jobs[0].source).toBe('serper');
     expect(jobs[0].url).toContain('greenhouse.io');
     expect(jobs[1].url).toContain('icims.com');
+    expect(jobs[2].url).toContain('smartrecruiters.com');
   });
 
   it('extracts a readable posted date from Serper organic metadata', async () => {

@@ -1,9 +1,9 @@
 /**
  * Job Search Routes — /api/job-search/*
  *
- * Fans out to Firecrawl adapter, deduplicates
- * results, persists a scan record plus individual job listings to the DB, and
- * returns the aggregated result set.
+ * Fans out to ATS-aware search providers, deduplicates results, persists a scan
+ * record plus individual job listings to the DB, and returns the aggregated
+ * result set.
  *
  * Feature-flagged via FF_JOB_SEARCH.
  */

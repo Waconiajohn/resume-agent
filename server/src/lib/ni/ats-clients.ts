@@ -210,6 +210,15 @@ export async function fetchICIMSJobs(slug: string): Promise<ATSJob[]> {
       // Strategy 2: Parse job links from HTML (fallback)
       const htmlJobs = extractJobLinksFromHtml(html, url);
       if (htmlJobs.length > 0) return htmlJobs;
+
+      // Strategy 3: Some legacy iCIMS URLs now render a branded career site
+      // that links to the employer's current Workday board. Follow that signal
+      // instead of treating the company as having no jobs.
+      const workdaySlug = extractWorkdaySlugFromHtml(html);
+      if (workdaySlug) {
+        const workdayJobs = await fetchWorkdayJobs(workdaySlug);
+        if (workdayJobs.length > 0) return workdayJobs;
+      }
     } catch {
       continue;
     }
@@ -317,6 +326,45 @@ function extractJobLinksFromHtml(html: string, baseUrl: string): ATSJob[] {
   }
 
   return jobs;
+}
+
+function extractWorkdaySlugFromHtml(html: string): string | null {
+  const decoded = html.replace(/&amp;/g, '&');
+  const urlPattern = /https?:\/\/[^"'\s<>]+\.myworkdayjobs\.com\/[^"'\s<>]+/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = urlPattern.exec(decoded)) !== null) {
+    const slug = parseWorkdaySlugFromUrl(match[0]);
+    if (slug) return slug;
+  }
+
+  return null;
+}
+
+function parseWorkdaySlugFromUrl(value: string): string | null {
+  try {
+    const parsed = new URL(value);
+    const hostname = parsed.hostname.toLowerCase();
+    if (!hostname.endsWith('.myworkdayjobs.com')) return null;
+
+    const tenant = hostname.split('.')[0];
+    if (!tenant) return null;
+
+    const pathSegments = parsed.pathname.split('/').filter(Boolean);
+    const cxsIndex = pathSegments.indexOf('cxs');
+    if (cxsIndex !== -1 && pathSegments.length > cxsIndex + 2) {
+      const site = pathSegments[cxsIndex + 2];
+      return site ? `${tenant}/${site}` : null;
+    }
+
+    const languageIndex = pathSegments.findIndex((segment) => /^[a-z]{2}-[A-Z]{2}$/.test(segment));
+    const site = languageIndex >= 0 ? pathSegments[languageIndex + 1] : pathSegments[0];
+    if (!site || ['login', 'job', 'jobs'].includes(site.toLowerCase())) return null;
+
+    return `${tenant}/${site}`;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Recruitee ──────────────────────────────────────────────────────────────

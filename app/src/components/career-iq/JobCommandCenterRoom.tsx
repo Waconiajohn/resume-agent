@@ -544,6 +544,7 @@ export function JobCommandCenterRoom({
       roleTitle: string | null = null,
       companyName: string | null = null,
       jobUrl: string | null = null,
+      jobDescription: string | null = null,
     ) => {
       trackProductEvent('job_resume_build_requested', {
         source,
@@ -558,6 +559,7 @@ export function JobCommandCenterRoom({
         companyName: companyName ?? undefined,
         roleTitle: roleTitle ?? undefined,
         jobUrl: jobUrl ?? undefined,
+        jobDescription: jobDescription ?? undefined,
       });
     },
     [openPicker],
@@ -570,7 +572,7 @@ export function JobCommandCenterRoom({
           <div className="eyebrow-label">Job Search</div>
           <h1 className="room-title">Find your next role two ways.</h1>
           <p className="room-subtitle">
-            Broad Search scans public job boards. Insider Jobs surfaces roles at companies where you already have a first-degree connection.
+            Broad Search scans ATS-hosted public job pages and career boards. Insider Jobs surfaces roles at companies where you already have a first-degree connection.
           </p>
         </div>
       </div>
@@ -615,7 +617,7 @@ export function JobCommandCenterRoom({
             companies={watchlist.companies}
             onSearchCompany={handleSearchCompany}
             onManage={() => setShowWatchlistManager(true)}
-            description="Click a company to search public jobs from the board."
+            description="Click a company to search ATS-hosted public jobs from the board."
           />
 
           <JobFilterPanel
@@ -637,7 +639,7 @@ export function JobCommandCenterRoom({
             onSearch={radar.search}
             onDismiss={radar.dismissJob}
             onPromote={handlePromoteRadarJob}
-            onBuildResume={(job) => handleBuildResumeRequest('job_board', job.title, job.company, job.apply_url)}
+            onBuildResume={(job) => handleBuildResumeRequest('job_board', job.title, job.company, job.apply_url, job.description)}
             location={getBroadSearchLocation(jobFilters)}
             datePosted={jobFilters.postedWithin}
             remoteType={deriveRemoteType(jobFilters.workModes)}
@@ -667,7 +669,7 @@ export function JobCommandCenterRoom({
                 error={jobFinder.error}
                 onNavigate={onNavigate}
                 onRequestSuggestions={handleRequestMoreSuggestions}
-                onBuildResume={(job) => handleBuildResumeRequest('suggestions', job.title, job.company, job.url ?? null)}
+                onBuildResume={(job) => handleBuildResumeRequest('suggestions', job.title, job.company, job.url ?? null, job.why_match ?? null)}
                 onRespondGate={jobFinder.respondToGate}
                 onReset={jobFinder.reset}
               />

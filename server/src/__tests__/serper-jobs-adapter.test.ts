@@ -45,9 +45,87 @@ describe('SerperJobsAdapter', () => {
 
     expect(capturedBody).toBeDefined();
     const body = JSON.parse(capturedBody!);
-    expect(body.q).toBe('VP Operations hybrid');
+    expect(body.q).toContain('VP Operations hybrid jobs');
+    expect(body.q).toContain('near "Dallas, TX"');
+    expect(body.q).toContain('site:boards.greenhouse.io');
+    expect(body.q).toContain('site:jobs.smartrecruiters.com');
+    expect(body.q).toContain('site:oraclecloud.com');
     expect(body.location).toBe('Dallas, TX');
     expect(body.tbs).toBe('qdr:m');
+  });
+
+  it('parses ATS job pages from Serper organic search results', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        organic: [
+          {
+            title: 'Job Application for Director of Product at Acme Software',
+            link: 'https://boards.greenhouse.io/acmesoftware/jobs/123',
+            snippet: 'Posted 2 days ago. Remote position leading Salesforce product work.',
+            date: '2 days ago',
+          },
+          {
+            title: 'Acme Software homepage',
+            link: 'https://example.com/acme',
+            snippet: 'Not a job page.',
+          },
+          {
+            title: 'Senior Product Manager - SmartRecruiters',
+            link: 'https://jobs.smartrecruiters.com/acme/456-senior-product-manager',
+            snippet: 'Posted 1 day ago. Hybrid product role.',
+            date: '1 day ago',
+          },
+        ],
+      }),
+    });
+
+    const jobs = await new SerperJobsAdapter().search(
+      'Director of Product Salesforce',
+      'New York, NY',
+      { datePosted: '7d', remoteType: 'remote' },
+    );
+
+    expect(jobs).toHaveLength(2);
+    expect(jobs[0]).toMatchObject({
+      title: 'Director of Product',
+      company: 'Acme Software',
+      apply_url: 'https://boards.greenhouse.io/acmesoftware/jobs/123',
+      source: 'serper:google search',
+    });
+    expect(jobs[0].posted_date).toEqual(expect.any(String));
+    expect(jobs[1]).toMatchObject({
+      title: 'Senior Product Manager',
+      apply_url: 'https://jobs.smartrecruiters.com/acme/456-senior-product-manager',
+    });
+  });
+
+  it('does not treat role suffixes as company names for Oracle-hosted ATS results', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        organic: [
+          {
+            title: 'Lead Software Engineer - Java/AWS/Kafka',
+            link: 'https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/cx_1001/job/210739998',
+            snippet: 'Posted 1 day ago. New York, NY.',
+            date: '1 day ago',
+          },
+        ],
+      }),
+    });
+
+    const jobs = await new SerperJobsAdapter().search(
+      'Software Engineer',
+      'New York, NY',
+      { datePosted: '7d', remoteType: 'any' },
+    );
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: 'Lead Software Engineer',
+      company: 'JPMC',
+    });
   });
 
   it.each([
