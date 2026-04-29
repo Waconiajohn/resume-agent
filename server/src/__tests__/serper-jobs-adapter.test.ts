@@ -150,7 +150,9 @@ describe('SerperJobsAdapter', () => {
 
   it.each([
     ['24h', 'qdr:d'],
+    ['3d', 'qdr:w'],
     ['7d', 'qdr:w'],
+    ['14d', 'qdr:m'],
     ['30d', 'qdr:m'],
   ] as const)('uses supported Google freshness parameter for %s', async (datePosted, expectedTbs) => {
     let capturedBody: string | undefined;
@@ -168,24 +170,6 @@ describe('SerperJobsAdapter', () => {
     expect(capturedBody).toBeDefined();
     expect(JSON.parse(capturedBody!).tbs).toBe(expectedTbs);
   });
-
-  it.each(['3d', '14d'] as const)('does not send unsupported Google freshness parameter for %s', async (datePosted) => {
-    let capturedBody: string | undefined;
-    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
-      capturedBody = init.body as string;
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ jobs: [] }) });
-    });
-
-    await new SerperJobsAdapter().search(
-      'VP Operations',
-      '',
-      { datePosted, remoteType: 'any' },
-    );
-
-    expect(capturedBody).toBeDefined();
-    expect(JSON.parse(capturedBody!)).not.toHaveProperty('tbs');
-  });
-
   it('returns provider jobs before freshness filtering so the aggregator can explain removals', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,

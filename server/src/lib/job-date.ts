@@ -20,20 +20,11 @@ export function freshnessDaysForDatePosted(
 }
 
 export function googleTbsForFreshnessDays(days: number | null | undefined): string | null {
-  switch (days) {
-    case 1:
-      return 'qdr:d';
-    case 7:
-      return 'qdr:w';
-    case 30:
-      return 'qdr:m';
-    default:
-      // Google/Serper's broadly supported recency hints are day/week/month.
-      // Custom app windows such as 3d and 14d are enforced after results come
-      // back using readable source dates, so we do not depend on unsupported
-      // provider-side tbs variants.
-      return null;
-  }
+  if (!days || days <= 0) return null;
+  if (days <= 1) return 'qdr:d';
+  if (days <= 7) return 'qdr:w';
+  if (days <= 30) return 'qdr:m';
+  return null;
 }
 
 export function normalizeJobPostedDate(value: unknown, now = new Date()): Date | null {
