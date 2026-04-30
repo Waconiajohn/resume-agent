@@ -8,9 +8,9 @@
 
 import { SerpApiGoogleJobsAdapter } from '../job-search/adapters/serpapi-google-jobs.js';
 import type { JobResult, SearchFilters } from '../job-search/types.js';
+import { isWithinFreshnessWindow } from '../job-date.js';
 import type { ATSJob, CompanyInfo, NiScrapeFilters, NiWorkMode } from './types.js';
 
-const TITLES_PER_QUERY = 4;
 const GENERIC_COMPANY_TOKENS = new Set([
   'careers',
   'co',
@@ -29,28 +29,16 @@ const GENERIC_COMPANY_TOKENS = new Set([
 
 const COMPANY_SUFFIX_PATTERN = /\s*[,.]?\s*\b(Inc|LLC|Ltd|Corp|Co|PLC|GmbH|SA|BV|Pty|Limited|Incorporated|Corporation|Company)\.?\s*$/i;
 
-function chunk<T>(items: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
-}
-
-function quote(value: string): string {
-  return `"${value.replace(/"/g, '').trim()}"`;
+function cleanQueryTerm(value: string): string {
+  return value.replace(/["“”]/g, '').replace(/\s+/g, ' ').trim();
 }
 
 function buildQueries(companyName: string, targetTitles: string[]): string[] {
   const cleanTitles = [...new Set(targetTitles.map((title) => title.trim()).filter(Boolean))];
-  if (cleanTitles.length === 0) return [`${quote(companyName)} jobs`];
+  const company = cleanQueryTerm(companyName);
+  if (cleanTitles.length === 0) return [company];
 
-  return chunk(cleanTitles, TITLES_PER_QUERY).map((titles) => {
-    const titleQuery = titles.length === 1
-      ? quote(titles[0]!)
-      : `(${titles.map(quote).join(' OR ')})`;
-    return `${quote(companyName)} ${titleQuery}`;
-  });
+  return cleanTitles.map((title) => `${company} ${cleanQueryTerm(title)}`);
 }
 
 function datePostedForDays(maxDaysOld: number | undefined): SearchFilters['datePosted'] {
@@ -130,6 +118,11 @@ function companyMatches(job: JobResult, company: CompanyInfo): boolean {
     || urlMatchesCompanyDomain(job.apply_url, company.domain);
 }
 
+function withinMaxAge(job: JobResult, maxDaysOld: number): boolean {
+  const cappedDays = Math.max(1, Math.min(maxDaysOld, 30));
+  return isWithinFreshnessWindow(job.posted_date, cappedDays);
+}
+
 function formatSalaryRange(job: JobResult): string | null {
   if (job.salary_min == null && job.salary_max == null) return null;
   const formatValue = (value: number) => (
@@ -170,6 +163,7 @@ export async function searchCompanyJobsViaSerpApi(
     const results = await adapter.search(query, location, searchFilters);
     jobs.push(
       ...results
+        .filter((job) => withinMaxAge(job, filters.max_days_old))
         .filter((job) => companyMatches(job, company))
         .map(mapToATSJob),
     );

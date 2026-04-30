@@ -18,7 +18,7 @@
 //   FF_NETWORKING_CRM         Networking CRM
 //   FF_JOB_TRACKER            Job Application Tracker
 //   FF_JOB_FINDER             Job Finder
-//   FF_JOB_SEARCH             Job Search API (Firecrawl adapter)
+//   FF_JOB_SEARCH             Job Search API (structured listings + supplemental discovery)
 //   FF_APPLICATION_PIPELINE   Application Pipeline CRUD
 //   FF_SALARY_NEGOTIATION     Salary Negotiation
 //   FF_EXECUTIVE_BIO          Executive Bio
@@ -218,6 +218,8 @@ export const FF_MOCK_INTERVIEW = envBool('FF_MOCK_INTERVIEW', true);
  *
  * Default: true (consumer-ready).
  * Set FF_JOB_FINDER=false in server/.env to deactivate.
+ * Requires: SERPER_API_KEY until this legacy agent is migrated to the
+ * structured public-listing provider.
  */
 export const FF_JOB_FINDER = envBool('FF_JOB_FINDER', true);
 
@@ -234,8 +236,8 @@ export const FF_APPLICATION_PIPELINE = envBool('FF_APPLICATION_PIPELINE', true);
  *
  * Default: true (consumer-ready).
  * Set FF_JOB_SEARCH=false in server/.env to deactivate.
- * Requires: SERPAPI_API_KEY for structured Google Jobs. SERPER_API_KEY and
- * FIRECRAWL_API_KEY are supplemental fallback providers.
+ * Requires: SERPAPI_API_KEY for structured public listings. SERPER_API_KEY and
+ * FIRECRAWL_API_KEY are supplemental public-link/career-page providers.
  */
 export const FF_JOB_SEARCH = envBool('FF_JOB_SEARCH', true);
 

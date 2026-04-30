@@ -72,7 +72,7 @@ describe('searchCompanyJobsViaSerpApi', () => {
     );
 
     expect(mockAdapterSearch).toHaveBeenCalledWith(
-      '"Acme Corp" "Cloud Operations Manager"',
+      'Acme Corp Cloud Operations Manager',
       '',
       { datePosted: '30d', remoteType: 'remote' },
     );
@@ -104,10 +104,41 @@ describe('searchCompanyJobsViaSerpApi', () => {
     expect(jobs).toHaveLength(1);
     expect(jobs[0]?.url).toBe('https://jobs.acme.com/cloud-ops');
     expect(mockAdapterSearch).toHaveBeenCalledWith(
-      '"Acme Corp" "Cloud Operations Manager"',
+      'Acme Corp Cloud Operations Manager',
       '',
       { datePosted: '7d', remoteType: 'hybrid' },
     );
+  });
+
+  it('drops company matches outside the capped freshness window', async () => {
+    mockAdapterSearch.mockResolvedValue([
+      makeJob({
+        external_id: 'fresh-job',
+        posted_date: new Date().toISOString(),
+      }),
+      makeJob({
+        external_id: 'stale-job',
+        posted_date: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+        apply_url: 'https://jobs.acme.com/stale-cloud-ops',
+      }),
+      makeJob({
+        external_id: 'unknown-date-job',
+        posted_date: null,
+        apply_url: 'https://jobs.acme.com/unknown-cloud-ops',
+      }),
+    ]);
+
+    const jobs = await searchCompanyJobsViaSerpApi(
+      company,
+      ['Cloud Operations Manager'],
+      {
+        remote_only: false,
+        max_days_old: 30,
+      },
+    );
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]?.url).toBe('https://jobs.acme.com/cloud-ops');
   });
 
   it('does nothing when the structured listing key is not configured', async () => {

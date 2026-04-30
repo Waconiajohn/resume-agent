@@ -111,32 +111,16 @@ function stripSiteOperators(query: string): string {
   return normalizeSpaces(query.replace(/\bsite:[^\s)]+/gi, ''));
 }
 
-function queryHasJobsIntent(query: string): boolean {
-  return /\b(job|jobs|hiring|opening|openings|career|careers)\b/i.test(query);
-}
-
-function withFreshnessIntent(query: string, datePosted: SearchFilters['datePosted']): string {
-  if (datePosted === '24h') return `${query} since yesterday`;
-  if (datePosted === '3d') return `${query} in the last 3 days`;
-  if (datePosted === '7d') return `${query} in the last week`;
-  if (datePosted === '14d' || datePosted === '30d') return `${query} in the last month`;
-  return query;
-}
-
 function withEmploymentIntent(query: string, employmentType: SearchFilters['employmentType']): string {
   if (!employmentType || employmentType === 'any') return query;
-  if (employmentType === 'full-time') return `${query} full time`;
-  return `${query} ${employmentType}`;
+  if (employmentType === 'freelance') return `${query} freelance`;
+  return query;
 }
 
 function buildSearchQuery(query: string, filters: SearchFilters): string {
   let out = stripSiteOperators(query);
-  if (filters.remoteType === 'remote' && !/\b(remote|work from home|work-from-home)\b/i.test(out)) {
-    out = `${out} remote`;
-  }
   out = withEmploymentIntent(out, filters.employmentType);
-  if (!queryHasJobsIntent(out)) out = `${out} jobs`;
-  return withFreshnessIntent(normalizeSpaces(out), filters.datePosted);
+  return normalizeSpaces(out);
 }
 
 function buildUrl(
@@ -153,6 +137,8 @@ function buildUrl(
   url.searchParams.set('gl', 'us');
   url.searchParams.set('hl', 'en');
   url.searchParams.set('api_key', apiKey);
+  const chips = buildChips(filters);
+  if (chips) url.searchParams.set('chips', chips);
   if (nextPageToken) {
     url.searchParams.set('next_page_token', nextPageToken);
   }
@@ -176,6 +162,19 @@ function cacheKey(query: string, location: string, filters: SearchFilters): stri
     salaryMin: filters.salaryMin ?? null,
     salaryMax: filters.salaryMax ?? null,
   });
+}
+
+function buildChips(filters: SearchFilters): string | null {
+  const chips: string[] = [];
+  if (filters.datePosted === '24h') chips.push('date_posted:today');
+  if (filters.datePosted === '3d') chips.push('date_posted:3days');
+  if (filters.datePosted === '7d') chips.push('date_posted:week');
+  if (filters.datePosted === '14d' || filters.datePosted === '30d') chips.push('date_posted:month');
+
+  if (filters.employmentType === 'full-time') chips.push('employment_type:FULLTIME');
+  if (filters.employmentType === 'contract') chips.push('employment_type:CONTRACTOR');
+
+  return chips.length > 0 ? chips.join(',') : null;
 }
 
 function cloneJobs(jobs: JobResult[]): JobResult[] {
@@ -351,10 +350,19 @@ export class SerpApiGoogleJobsAdapter implements SearchAdapter {
         });
 
         if (!response.ok) {
+          if (page > 0 && jobs.length > 0) {
+            logger.info(
+              { adapter: this.name, status: response.status, query: searchQuery, page: page + 1 },
+              'SerpApi Google Jobs pagination ended after prior results',
+            );
+            break;
+          }
+
           logger.warn(
             { adapter: this.name, status: response.status, query: searchQuery, page: page + 1 },
             'SerpApi Google Jobs returned non-OK status',
           );
+
           this.setDiagnostic({
             status: 'http_error',
             message: response.status === 401 || response.status === 403
@@ -370,7 +378,16 @@ export class SerpApiGoogleJobsAdapter implements SearchAdapter {
 
         const data = (await response.json()) as SerpApiGoogleJobsResponse;
         if (data.error) {
+          if (page > 0 && jobs.length > 0) {
+            logger.info(
+              { adapter: this.name, query: searchQuery, page: page + 1, error: data.error },
+              'SerpApi Google Jobs pagination ended after prior results',
+            );
+            break;
+          }
+
           logger.warn({ adapter: this.name, query: searchQuery, error: data.error }, 'SerpApi Google Jobs returned error payload');
+
           this.setDiagnostic({
             status: 'error',
             message: `Structured job-listing search returned an error: ${data.error}`,

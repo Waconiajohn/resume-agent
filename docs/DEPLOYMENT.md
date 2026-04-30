@@ -1,7 +1,7 @@
 # Deployment Runbook — Resume Agent Platform
 
-**Last updated:** 2026-03-08
-**Sprint:** 52 — Production Foundation
+**Last updated:** 2026-04-30
+**Sprint:** Rollout hardening
 
 ---
 
@@ -41,6 +41,8 @@ Before deploying, verify:
   - `app.careeragent.ai` (or equivalent) pointed to Vercel deployment
 - [ ] Groq API key obtained from console.groq.com (or Z.AI key as fallback)
 - [ ] Perplexity API key obtained (required for company research tool)
+- [ ] SerpApi API key obtained (required for Broad Search and Insider Jobs structured listings)
+- [ ] Serper API key obtained (required while legacy Job Finder remains enabled; supplemental for public-link discovery)
 - [ ] Stripe account configured (secret key, webhook secret, pricing plans seeded)
 - [ ] Sentry project created and DSN obtained
 
@@ -113,6 +115,14 @@ Set these in the Railway project dashboard under Variables.
 | `GROQ_API_KEY` | `gsk_...` | Required when `LLM_PROVIDER=groq`. Obtain from console.groq.com. |
 | `ZAI_API_KEY` | `...` | Required when `LLM_PROVIDER=zai`. Falls back to Z.AI if `GROQ_API_KEY` is absent. |
 | `PERPLEXITY_API_KEY` | `pplx-...` | Required for the `research_company` tool in the Strategist agent. Pipeline degrades gracefully without it but company research will be skipped. |
+
+#### Job and company discovery providers
+
+| Variable | Description |
+|----------|-------------|
+| `SERPAPI_API_KEY` | Required when `FF_JOB_SEARCH=true` or `FF_NETWORK_INTELLIGENCE=true`. Powers structured public job listings for Broad Search and Insider Jobs. `/ready` fails when this key is missing for launched job surfaces. |
+| `SERPER_API_KEY` | Required while `FF_JOB_FINDER=true`. Also used as supplemental public-link discovery for Network Intelligence and job research. |
+| `FIRECRAWL_API_KEY` | Optional supplemental career-page/JD scrape provider. Do not treat this as the primary job-board dependency. |
 
 #### Optional Groq model overrides
 
@@ -231,12 +241,12 @@ curl -H "Authorization: Bearer <METRICS_KEY>" https://api.careeragent.ai/metrics
 | Field | Meaning |
 |-------|---------|
 | `status` | `ok` or `degraded` |
-| `db_ok` | Supabase connectivity check passed |
-| `llm_key_present` | At least one LLM API key is configured |
+| `feature_dependencies_ok` | All enabled feature-specific provider dependencies are configured |
 | `heap_overloaded` | true if heap exceeds `MAX_HEAP_USED_MB` |
 | `heap_used_mb` | Current heap usage |
+| `cached` | Whether the DB portion of the health snapshot came from the short health cache |
 
-**Readiness probe:** Returns HTTP 200 when `db_ok && llm_key_present && !heap_overloaded && !shuttingDown`. Returns HTTP 503 otherwise. Railway uses this for zero-downtime deploy gating.
+**Readiness probe:** Returns HTTP 200 when `db_ok && llm_key_ok && feature_dependencies_ok && !heap_overloaded && !shuttingDown`. Returns HTTP 503 otherwise. Railway uses this for zero-downtime deploy gating. Inspect `feature_dependencies` when readiness fails; launched job surfaces should report `SERPAPI_API_KEY` for structured listings and `SERPER_API_KEY` for the legacy Job Finder agent.
 
 Do not proceed to frontend deployment if `/ready` returns 503.
 
@@ -376,11 +386,11 @@ These features depend on platform context produced by Tier 1 agents (primarily p
 
 | Flag | Feature | Prerequisites |
 |------|---------|---------------|
-| `FF_NETWORK_INTELLIGENCE` | Network Intelligence — contact discovery and NI scoring | Completed resume pipelines producing `positioning_strategy` in `user_platform_context` |
+| `FF_NETWORK_INTELLIGENCE` | Network Intelligence — contact discovery, Insider Jobs, and NI scoring | `SERPAPI_API_KEY`; completed resume pipelines producing `positioning_strategy` in `user_platform_context` |
 | `FF_NETWORKING_OUTREACH` | Networking Outreach — personalized outreach message generation | `FF_NETWORK_INTELLIGENCE` enabled and populated data |
 | `FF_NETWORKING_CRM` | Networking CRM — contact and relationship tracking | None (standalone CRUD), but most useful alongside `FF_NETWORK_INTELLIGENCE` |
-| `FF_JOB_FINDER` | Job Finder — multi-source job search (Firecrawl) | `FIRECRAWL_API_KEY` configured in Railway |
-| `FF_JOB_SEARCH` | Job Search API — underlying search adapter routes | `FIRECRAWL_API_KEY` configured in Railway |
+| `FF_JOB_FINDER` | Legacy Job Finder agent | `SERPER_API_KEY` configured in Railway until migrated to the structured listing provider |
+| `FF_JOB_SEARCH` | Job Search API — Broad Search structured listings | `SERPAPI_API_KEY` configured in Railway |
 | `FF_APPLICATION_PIPELINE` | Application Pipeline — Kanban job tracking CRUD | None (standalone), but pairs with `FF_JOB_FINDER` |
 | `FF_JOB_TRACKER` | Job Application Tracker (Agent #14) | None |
 | `FF_LINKEDIN_OPTIMIZER` | LinkedIn Optimizer | Completed resume pipeline for positioning input |
@@ -392,11 +402,14 @@ These features depend on platform context produced by Tier 1 agents (primarily p
 **Enablement:** Set each flag to `true` in Railway. For job search flags, confirm the relevant API keys are present first:
 
 ```bash
-# Verify job search keys are set before enabling FF_JOB_FINDER / FF_JOB_SEARCH
-curl -H "Authorization: Bearer <METRICS_KEY>" https://api.careeragent.ai/metrics | jq '.env_keys'
+# Verify job search dependencies before enabling or promoting job surfaces
+npm --prefix server run check:ready -- --url=https://api.careeragent.ai
+npm --prefix server run check:job-providers
 ```
 
-**Verification after each:** Run a representative user flow for the feature. For job search, confirm results return from at least one adapter. For LinkedIn flags, confirm the optimizer produces output when given a completed resume session.
+**Verification after each:** Run a representative user flow for the feature. For job search, confirm Broad Search and Insider Jobs both return fresh results with a posted-within filter of 30 days or less. For LinkedIn flags, confirm the optimizer produces output when given a completed resume session.
+
+`npm run gate:staging` now runs the live job-provider smoke after `/ready`. The smoke checks both Broad Search and the Insider Jobs company-specific path; override `JOB_PROVIDER_CHECK_*` variables when rehearsing a specific launch persona or geography.
 
 ---
 
@@ -438,8 +451,8 @@ supabase db diff --linked   # Should show no diff if all migrations are applied
 
 | Endpoint | Auth | Description |
 |----------|------|-------------|
-| `GET /health` | None | Returns `{ status, db_ok, llm_key_present, heap_overloaded, heap_used_mb, cached, checked_at }`. Status is `ok` when all systems nominal. |
-| `GET /ready` | None | Returns `{ ready, db_ok, llm_key_ok, heap_overloaded, heap_used_mb }` with HTTP 200 (ready) or HTTP 503 (not ready). Used as Railway readiness probe. |
+| `GET /health` | None | Returns `{ status, shutting_down, feature_dependencies_ok, heap_overloaded, heap_used_mb, cached, checked_at }`. Status is `ok` when all systems nominal. |
+| `GET /ready` | None | Returns `{ ready, shutting_down, db_ok, llm_key_ok, feature_dependencies_ok, feature_dependencies, heap_overloaded, heap_used_mb }` with HTTP 200 (ready) or HTTP 503 (not ready). Used as Railway readiness probe. |
 | `GET /metrics` | `Bearer <METRICS_KEY>` | Returns request metrics, rate limit stats, pipeline slot stats, session route stats, and health runtime data. Returns 401 if key is wrong, 200 with no auth check if `METRICS_KEY` is unset. |
 
 ---

@@ -74,10 +74,11 @@ describe('SerpApiGoogleJobsAdapter', () => {
     expect(capturedUrl).toBeDefined();
     const url = new URL(capturedUrl!);
     expect(url.searchParams.get('engine')).toBe('google_jobs');
-    expect(url.searchParams.get('q')).toBe('Cloud Operations Manager remote jobs in the last month');
+    expect(url.searchParams.get('q')).toBe('Cloud Operations Manager');
     expect(url.searchParams.get('gl')).toBe('us');
     expect(url.searchParams.get('hl')).toBe('en');
     expect(url.searchParams.get('ltype')).toBe('1');
+    expect(url.searchParams.get('chips')).toBe('date_posted:month');
     expect(url.searchParams.has('location')).toBe(false);
   });
 
@@ -98,9 +99,32 @@ describe('SerpApiGoogleJobsAdapter', () => {
     );
 
     const url = new URL(capturedUrl!);
-    expect(url.searchParams.get('q')).toBe('Director of Product jobs in the last week');
+    expect(url.searchParams.get('q')).toBe('Director of Product');
     expect(url.searchParams.get('location')).toBe('Austin, Texas, United States');
+    expect(url.searchParams.get('chips')).toBe('date_posted:week');
     expect(url.searchParams.has('ltype')).toBe(false);
+  });
+
+  it('uses Google Jobs chips for supported employment filters', async () => {
+    let capturedUrl: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((url: URL) => {
+      capturedUrl = url.toString();
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ jobs_results: [] }),
+      });
+    });
+
+    await new SerpApiGoogleJobsAdapter().search(
+      'Cloud Operations Manager',
+      '',
+      { datePosted: '3d', remoteType: 'remote', employmentType: 'full-time' },
+    );
+
+    const url = new URL(capturedUrl!);
+    expect(url.searchParams.get('q')).toBe('Cloud Operations Manager');
+    expect(url.searchParams.get('ltype')).toBe('1');
+    expect(url.searchParams.get('chips')).toBe('date_posted:3days,employment_type:FULLTIME');
   });
 
   it('maps Google Jobs results and prefers direct apply options', async () => {
@@ -200,4 +224,50 @@ describe('SerpApiGoogleJobsAdapter', () => {
     expect(urls).toHaveLength(2);
     expect(new URL(urls[1]!).searchParams.get('next_page_token')).toBe('next-token');
   });
+
+  it('keeps first-page jobs when later pagination returns a no-results error', async () => {
+    process.env.SERPAPI_GOOGLE_JOBS_MAX_PAGES = '2';
+    const urls: string[] = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: URL) => {
+      urls.push(url.toString());
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(
+          urls.length === 1
+            ? {
+              jobs_results: [
+                {
+                  title: 'Manager, Cloud Operations',
+                  company_name: 'Acme Cloud',
+                  location: 'Anywhere',
+                  extensions: ['6 days ago', 'Work from home', 'Full-time'],
+                  detected_extensions: { posted_at: '6 days ago', work_from_home: true },
+                  apply_options: [{ title: 'Acme Cloud', link: 'https://jobs.acme.com/cloud-ops' }],
+                  job_id: 'page-one-job',
+                },
+              ],
+              serpapi_pagination: { next_page_token: 'empty-next-page' },
+            }
+            : { error: "Google hasn't returned any results for this query." },
+        ),
+      });
+    });
+
+    const adapter = new SerpApiGoogleJobsAdapter();
+    const jobs = await adapter.search(
+      'Cloud Operations Manager pagination error unique',
+      '',
+      { datePosted: '30d', remoteType: 'remote' },
+    );
+
+    expect(jobs).toHaveLength(1);
+    expect(urls).toHaveLength(2);
+    expect(adapter.getDiagnostics()).toEqual([
+      expect.objectContaining({
+        status: 'ok',
+        jobs_returned: 1,
+      }),
+    ]);
+  });
+
 });

@@ -162,12 +162,29 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Probe staging /ready
         env:
           READY_CHECK_URL: ${{ inputs.ready_check_url }}
           READY_CHECK_TIMEOUT_MS: '90000'
           READY_CHECK_INTERVAL_MS: '1500'
         run: node scripts/check-ready.mjs
+
+      - name: Smoke live job providers
+        env:
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
+          JOB_PROVIDER_CHECK_DATE_POSTED: '30d'
+          JOB_PROVIDER_CHECK_REMOTE_TYPE: 'remote'
+          JOB_PROVIDER_CHECK_INSIDER_DATE_POSTED: '30d'
+          JOB_PROVIDER_CHECK_INSIDER_REMOTE_TYPE: 'any'
+        run: |
+          if [ -z "${SERPAPI_API_KEY:-}" ]; then
+            echo "::warning::Missing SERPAPI_API_KEY GitHub secret — skipping live job-provider smoke."
+            exit 0
+          fi
+          node --import tsx scripts/check-job-providers.ts
 
   resume-preservation-qa:
     name: Resume Preservation QA

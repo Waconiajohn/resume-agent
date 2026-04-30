@@ -101,6 +101,13 @@ Best-effort sub-queries (referral bonus, telemetry, things that should never
 break the user-visible flow) are an exception: log a warning, return a
 degraded value, and continue. Document the exception inline.
 
+## Production Fixes, Not Patches
+
+- Do not ship workaround patches for user-facing flows. Root-cause the issue and fix the owning contract, provider adapter, shared schema, shared utility, or UI state model.
+- Do not replace provider-native behavior with query stuffing, fragile string manipulation, or downstream filtering unless the provider lacks a reliable native capability and that limitation is documented.
+- Downstream validation is allowed as enforcement and safety. It must not be the primary implementation of a capability the upstream layer should own.
+- Temporary containment must be named as temporary, guarded where practical, documented with a removal condition, and excluded from any "done" claim until the production fix lands.
+
 ## React / Frontend
 
 - **Functional components only** — no class components.

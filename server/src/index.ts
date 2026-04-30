@@ -63,7 +63,7 @@ import { getPipelineMetrics } from './lib/pipeline-metrics.js';
 import logger from './lib/logger.js';
 import { initSentry, captureErrorWithContext, flushSentry } from './lib/sentry.js';
 import { validateRegisteredAgents } from './agents/runtime/agent-registry.js';
-import { FF_JOB_SEARCH, FF_NETWORK_INTELLIGENCE, FF_V3_PRIMARY } from './lib/feature-flags.js';
+import { FF_JOB_FINDER, FF_JOB_SEARCH, FF_NETWORK_INTELLIGENCE, FF_V3_PRIMARY } from './lib/feature-flags.js';
 import { ACTIVE_PROVIDER } from './lib/model-constants.js';
 import { createRedisBusIfConfigured, type RedisBus } from './agents/runtime/redis-bus.js';
 import { setAgentBus } from './agents/runtime/bus-factory.js';
@@ -228,25 +228,35 @@ function hasActiveLlmProviderKey(): boolean {
 }
 
 function getFeatureDependencySnapshot() {
-  const jobSearchPrimaryKeyPresent = Boolean(process.env.SERPAPI_API_KEY);
-  const jobSearchFallbackKeyPresent = Boolean(process.env.SERPER_API_KEY || process.env.FIRECRAWL_API_KEY);
-  const networkIntelligenceSearchKeyPresent = Boolean(process.env.SERPER_API_KEY);
+  const structuredJobListingKeyPresent = Boolean(process.env.SERPAPI_API_KEY);
+  const supplementalPublicLinkKeyPresent = Boolean(process.env.SERPER_API_KEY);
+  const supplementalCareerPageKeyPresent = Boolean(process.env.FIRECRAWL_API_KEY);
   const billingRequired = process.env.BILLING_REQUIRED === 'true';
   const billingConfigured = Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
 
   const dependencies = {
     job_search: {
       enabled: FF_JOB_SEARCH,
-      ok: !FF_JOB_SEARCH || jobSearchPrimaryKeyPresent,
+      ok: !FF_JOB_SEARCH || structuredJobListingKeyPresent,
       requires: ['SERPAPI_API_KEY'],
       supplemental: {
-        configured: jobSearchFallbackKeyPresent,
+        configured: supplementalPublicLinkKeyPresent || supplementalCareerPageKeyPresent,
         providers: ['SERPER_API_KEY', 'FIRECRAWL_API_KEY'],
       },
     },
     network_intelligence: {
       enabled: FF_NETWORK_INTELLIGENCE,
-      ok: !FF_NETWORK_INTELLIGENCE || networkIntelligenceSearchKeyPresent,
+      ok: !FF_NETWORK_INTELLIGENCE || structuredJobListingKeyPresent,
+      requires: ['SERPAPI_API_KEY'],
+      supplemental: {
+        configured: supplementalPublicLinkKeyPresent,
+        providers: ['SERPER_API_KEY'],
+        capabilities: ['ATS enrichment', 'referral bonus discovery', 'supplemental public-link search'],
+      },
+    },
+    job_finder: {
+      enabled: FF_JOB_FINDER,
+      ok: !FF_JOB_FINDER || supplementalPublicLinkKeyPresent,
       requires: ['SERPER_API_KEY'],
     },
     billing: {

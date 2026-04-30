@@ -25,6 +25,54 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function describeReadinessIssues(body) {
+  if (!isObject(body)) {
+    return ['No JSON readiness payload was returned.'];
+  }
+
+  const issues = [];
+  if (body.shutting_down === true) {
+    issues.push('Server is draining or shutting down.');
+  }
+  if (body.db_ok === false) {
+    issues.push('Database health check failed.');
+  }
+  if (body.llm_key_ok === false) {
+    issues.push('No active LLM provider key is configured.');
+  }
+  if (body.heap_overloaded === true) {
+    const heapUsed = Number.isFinite(body.heap_used_mb) ? ` (${body.heap_used_mb} MB used)` : '';
+    issues.push(`Server heap is over the configured limit${heapUsed}.`);
+  }
+
+  if (body.feature_dependencies_ok === false) {
+    const dependencies = isObject(body.feature_dependencies) ? body.feature_dependencies : {};
+    const blocked = Object.entries(dependencies)
+      .filter(([, dependency]) => isObject(dependency) && dependency.enabled !== false && dependency.ok === false)
+      .map(([name, dependency]) => {
+        const requires = Array.isArray(dependency.requires) && dependency.requires.length > 0
+          ? dependency.requires.join(', ')
+          : 'required configuration';
+        return `${name} requires ${requires}.`;
+      });
+
+    issues.push(...blocked);
+    if (blocked.length === 0) {
+      issues.push('One or more enabled feature dependencies are not ready.');
+    }
+  }
+
+  if (issues.length === 0 && body.ready !== true) {
+    issues.push('Readiness endpoint reported not ready without a recognized blocker.');
+  }
+
+  return issues;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const baseUrl = String(args.url ?? process.env.READY_CHECK_URL ?? '').trim();
@@ -96,6 +144,7 @@ async function main() {
     timeout_ms: timeoutMs,
     request_timeout_ms: requestTimeoutMs,
     last_status: lastStatus || null,
+    readiness_issues: describeReadinessIssues(lastBody),
     last_body: lastBody,
     last_error: lastError,
   }, null, 2));

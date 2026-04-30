@@ -74,6 +74,16 @@ If the task is clearly local and does not affect shared contracts, still read th
     - Coordinator bloat that moves decisions out of agents (coordinator sequences; agents reason)
     - Multi-LLM-call `execute()` in a single tool (split into multiple tools; let the agent loop sequence them)
 
+## No Workaround Patches
+
+For this application, a fix is not complete if it is only a local workaround, heuristic band-aid, query stuffing, duplicated downstream filter, UI-only masking, or one-off fallback around a deeper problem.
+
+Before changing code, identify the root cause and the owning layer: provider contract, API adapter, shared schema, agent prompt contract, shared context, persistence, or UI. Fix the owning layer first. Use downstream validation only to enforce or protect the contract, not to pretend unsupported behavior is actually supported.
+
+When a provider already exposes a native capability, use the provider's documented semantics instead of recreating the capability with string manipulation or local filtering. If a native capability is unreliable or deprecated, document that reality and design a first-class product behavior around it.
+
+Temporary mitigations are allowed only for containment. They must be explicitly labeled as temporary, behind a clear guard where practical, documented with an owner and removal condition, and never represented as the production fix.
+
 ## Anti-Drift Sentinel
 
 Review this before every substantial prompt or implementation session.
