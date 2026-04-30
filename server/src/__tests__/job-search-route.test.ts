@@ -206,6 +206,34 @@ describe('POST /api/job-search', () => {
     );
   });
 
+  it('does not carry a city location into remote searches or saved scans', async () => {
+    const scanChain = buildScanChain({ data: { id: 'scan-remote' }, error: null });
+    mockFrom.mockReturnValueOnce(scanChain);
+
+    const res = await app.request('/api/job-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok' },
+      body: validBody({
+        location: 'New York, NY',
+        filters: { datePosted: '30d', remoteType: 'remote' },
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockSearchAllSources).toHaveBeenCalledWith(
+      'Chief Technology Officer',
+      '',
+      { datePosted: '30d', remoteType: 'remote' },
+      expect.any(Array),
+    );
+    expect(scanChain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        location: null,
+        filters: { datePosted: '30d', remoteType: 'remote' },
+      }),
+    );
+  });
+
   it('returns 500 when scan insert fails', async () => {
     mockFrom.mockReturnValueOnce(
       buildScanChain({ data: null, error: { message: 'DB write failed' } }),

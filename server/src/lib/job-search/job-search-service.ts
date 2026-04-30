@@ -123,25 +123,26 @@ export async function runSearchPipeline(
 ): Promise<{ ok: true; result: SearchPipelineResult } | { ok: false; error: string; status: number }> {
   const primaryAdapters = buildPrimarySearchAdapters();
   const fallbackAdapters = buildFallbackSearchAdapters();
+  const effectiveLocation = filters.remoteType === 'remote' ? '' : location.trim();
 
   logger.info(
-    { userId, query, location, filters },
+    { userId, query, location: effectiveLocation, filters },
     'Job search started',
   );
 
-  let searchResult = await searchAllSources(query, location, filters, primaryAdapters);
+  let searchResult = await searchAllSources(query, effectiveLocation, filters, primaryAdapters);
   if (searchResult.jobs.length === 0 && fallbackAdapters.length > 0) {
     logger.info(
       {
         userId,
         query,
-        location,
+        location: effectiveLocation,
         filters,
         primaryEmptyReason: searchResult.empty_reason,
       },
       'Primary Google Jobs search returned no usable jobs; running fallback discovery',
     );
-    const fallbackResult = await searchAllSources(query, location, filters, fallbackAdapters);
+    const fallbackResult = await searchAllSources(query, effectiveLocation, filters, fallbackAdapters);
     searchResult = mergeFallbackSearchResult(searchResult, fallbackResult);
   }
 
@@ -151,7 +152,7 @@ export async function runSearchPipeline(
     .insert({
       user_id: userId,
       query,
-      location: location || null,
+      location: effectiveLocation || null,
       filters,
       result_count: searchResult.jobs.length,
       sources_queried: searchResult.sources_queried,
