@@ -229,6 +229,29 @@ describe('useRadarSearch — search()', () => {
       { id: 'c1', name: 'Pat Doe', title: 'VP Ops', company: 'Acme Corp' },
     ]);
   });
+
+  it('keeps jobs visible but surfaces enrichment failures', async () => {
+    const jobs = [makeJob('j1')];
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => makeSearchResponse(jobs),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'Could not load network contacts.' }),
+      }) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useRadarSearch());
+
+    await act(async () => {
+      await result.current.search('VP Engineering', 'San Francisco');
+    });
+
+    expect(result.current.jobs).toHaveLength(1);
+    expect(result.current.error).toBe('Could not load network contacts.');
+  });
 });
 
 describe('useRadarSearch — dismissJob()', () => {

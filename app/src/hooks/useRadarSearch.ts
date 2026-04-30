@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_BASE } from '@/lib/api';
+import { readApiError } from '@/lib/api-errors';
 import { supabase } from '@/lib/supabase';
 import { safeNumber, safeString, safeStringArray } from '@/lib/safe-cast';
 import {
@@ -117,6 +118,11 @@ interface EnrichedResult {
 interface EnrichedResponse {
   scan_id: string;
   results: EnrichedResult[];
+}
+
+interface EnrichmentResult {
+  jobs: RadarJob[];
+  warning: string | null;
 }
 
 function safeNullableString(value: unknown): string | null {
@@ -268,21 +274,30 @@ function sanitizeFilterStats(value: unknown): RadarSearchFilterStats | null {
 
 /**
  * Best-effort NI enrichment — fetches network contacts for a scan and merges them
- * into the job list. Returns the original jobs unchanged on any error.
+ * into the job list. Returns the original jobs unchanged on any error, plus a
+ * warning so the UI does not imply there were no network contacts.
  */
 async function enrichJobsWithContacts(
   scanId: string,
   jobs: RadarJob[],
   authHeader: Record<string, string>,
-): Promise<RadarJob[]> {
+): Promise<EnrichmentResult> {
   try {
     const res = await fetch(`${API_BASE}/job-search/enriched/${scanId}`, {
       headers: authHeader,
     });
-    if (!res.ok) return jobs;
+    if (!res.ok) {
+      return {
+        jobs,
+        warning: await readApiError(
+          res,
+          `Jobs loaded, but network contacts and referral bonuses could not be loaded (${res.status}).`,
+        ),
+      };
+    }
 
-        const data = (await res.json()) as EnrichedResponse;
-        if (!data.results || data.results.length === 0) return jobs;
+    const data = (await res.json()) as EnrichedResponse;
+    if (!data.results || data.results.length === 0) return { jobs, warning: null };
 
     const contactMap = new Map<string, NetworkContact[]>();
     const referralMap = new Map<string, ReferralBonusInfo>();
@@ -299,9 +314,9 @@ async function enrichJobsWithContacts(
       }
     }
 
-    if (contactMap.size === 0 && referralMap.size === 0) return jobs;
+    if (contactMap.size === 0 && referralMap.size === 0) return { jobs, warning: null };
 
-    return jobs.map((job) => {
+    const enrichedJobs = jobs.map((job) => {
       const contacts = contactMap.get(job.external_id);
       const bonus = referralMap.get(job.external_id);
       return {
@@ -310,9 +325,13 @@ async function enrichJobsWithContacts(
         ...(bonus ? { referral_bonus: bonus } : {}),
       };
     });
+
+    return { jobs: enrichedJobs, warning: null };
   } catch {
-    // Non-blocking — return original jobs on any failure
-    return jobs;
+    return {
+      jobs,
+      warning: 'Jobs loaded, but network contacts and referral bonuses could not be loaded.',
+    };
   }
 }
 
@@ -455,16 +474,18 @@ export function useRadarSearch() {
         const filterStats = sanitizeFilterStats(data.filter_stats);
 
         // Enrich with NI contacts (best-effort, non-blocking)
-        const enrichedJobs =
+        const enrichment =
           scanId && rawJobs.length > 0
             ? await enrichJobsWithContacts(scanId, rawJobs, authHeader)
-            : rawJobs;
+            : { jobs: rawJobs, warning: null };
+        const enrichedJobs = enrichment.jobs;
 
         if (mountedRef.current) {
           setState((prev) => ({
             ...prev,
             jobs: enrichedJobs,
             loading: false,
+            error: enrichment.warning,
             scanId,
             sourcesQueried,
             executionTimeMs,

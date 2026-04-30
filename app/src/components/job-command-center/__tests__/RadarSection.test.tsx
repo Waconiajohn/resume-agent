@@ -176,6 +176,21 @@ describe('RadarSection — error state', () => {
     render(<RadarSection {...defaultProps({ error: 'Search service unavailable' })} />);
     expect(screen.getByText('Search service unavailable')).toBeInTheDocument();
   });
+
+  it('keeps loaded jobs visible when a partial enrichment warning is set', () => {
+    const job = makeJob('j1', { title: 'Director of Product' });
+    render(
+      <RadarSection
+        {...defaultProps({
+          jobs: [job],
+          error: 'Jobs loaded, but network contacts could not be loaded.',
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Jobs loaded, but network contacts could not be loaded.')).toBeInTheDocument();
+    expect(screen.getByText('Director of Product')).toBeInTheDocument();
+  });
 });
 
 describe('RadarSection — empty state', () => {
