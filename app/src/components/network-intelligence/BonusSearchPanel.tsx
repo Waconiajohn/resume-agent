@@ -3,6 +3,7 @@ import { GlassButton } from '@/components/GlassButton';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassInput } from '@/components/GlassInput';
 import { API_BASE } from '@/lib/api';
+import { readApiError } from '@/lib/api-errors';
 import { cn } from '@/lib/utils';
 import type { BonusCompanySearchItem, TargetTitle } from '@/types/ni';
 import { useNiScrapeRunner } from './useNiScrapeRunner';
@@ -38,7 +39,11 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
   } = useNiScrapeRunner(accessToken);
 
   const loadPanelData = useCallback(async (minBonus: number) => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setLoading(false);
+      setLoadingError('Sign in to load bonus-company search.');
+      return;
+    }
 
     setLoading(true);
     setLoadingError(null);
@@ -54,7 +59,7 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
       ]);
 
       if (!companiesRes.ok) {
-        throw new Error(`Failed to load bonus companies (${companiesRes.status})`);
+        throw new Error(await readApiError(companiesRes, `Failed to load bonus companies (${companiesRes.status})`));
       }
 
       const companyData = await companiesRes.json();
@@ -86,6 +91,7 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
         );
       } else {
         setTitles([]);
+        setLoadingError(await readApiError(titlesRes, `Failed to load target titles (${titlesRes.status})`));
       }
     } catch (err) {
       setLoadingError(err instanceof Error ? err.message : 'Failed to load bonus companies');
@@ -161,7 +167,7 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
 
           <GlassButton
             onClick={() => void handleScan()}
-            disabled={running || companies.length === 0}
+            disabled={running || companies.length === 0 || Boolean(loadingError)}
             loading={running}
             className="shrink-0"
           >
@@ -226,11 +232,11 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
           )}
         </div>
 
-        {companies.length === 0 ? (
+        {companies.length === 0 && !loadingError ? (
           <div className="mt-4 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] p-4 text-sm text-[var(--text-soft)]">
             No companies meet the current bonus threshold yet.
           </div>
-        ) : (
+        ) : companies.length > 0 ? (
           <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
             {companies.map((company) => (
               <div
@@ -281,7 +287,7 @@ export function BonusSearchPanel({ accessToken }: BonusSearchPanelProps) {
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </GlassCard>
     </div>
   );

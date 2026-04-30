@@ -7,6 +7,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import { JobMatchesList } from '../JobMatchesList';
+import { BonusSearchPanel } from '../BonusSearchPanel';
 import { CompanyCard } from '../CompanyCard';
 import { ConnectionsBrowser } from '../ConnectionsBrowser';
 import { ScrapeJobsPanel } from '../ScrapeJobsPanel';
@@ -256,6 +257,41 @@ describe('network intelligence panels', () => {
 
     expect(await screen.findByText('Could not load target titles.')).toBeInTheDocument();
     expect(screen.queryByText(/Add target titles to match jobs/i)).not.toBeInTheDocument();
+  });
+
+  it('blocks bonus-company scans when target titles fail to load', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            companies: [
+              {
+                company_id: 'company-1',
+                company_name: 'Acme Corp',
+                domain: 'acme.example',
+                headquarters: 'Dallas, TX',
+                industry: 'Manufacturing',
+                bonus_display: '$5,000',
+                bonus_currency: 'USD',
+                bonus_amount_min: 1000,
+                bonus_amount_max: 5000,
+                confidence: 'high',
+                program_url: null,
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'Could not load target titles.' }), { status: 500 }),
+      );
+
+    render(<BonusSearchPanel accessToken="test-token" />);
+
+    expect(await screen.findByText('Could not load target titles.')).toBeInTheDocument();
+    expect(screen.getByText('Acme Corp')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Check Bonus Companies/i })).toBeDisabled();
   });
 
   it('shows the no-eligible-companies guidance in company job search when nothing can be checked', async () => {
