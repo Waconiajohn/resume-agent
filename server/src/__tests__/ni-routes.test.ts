@@ -22,6 +22,19 @@ const mockGetConnectionCount = vi.hoisted(() => vi.fn());
 const mockGetCompanySummary = vi.hoisted(() => vi.fn());
 const mockCreateScrapeLogEntry = vi.hoisted(() => vi.fn());
 const mockCompleteScrapeLogEntry = vi.hoisted(() => vi.fn());
+const mockSupabaseFrom = vi.hoisted(() => vi.fn(() => {
+  const chain: Record<string, unknown> = {};
+  chain.select = vi.fn().mockReturnValue(chain);
+  chain.insert = vi.fn().mockReturnValue(chain);
+  chain.update = vi.fn().mockReturnValue(chain);
+  chain.delete = vi.fn().mockReturnValue(chain);
+  chain.eq = vi.fn().mockReturnValue(chain);
+  chain.in = vi.fn().mockReturnValue(chain);
+  chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
+  chain.limit = vi.fn().mockResolvedValue({ data: [], error: null });
+  chain.then = undefined;
+  return chain;
+}));
 
 const mockInsertTargetTitle = vi.hoisted(() => vi.fn());
 const mockGetTargetTitlesByUser = vi.hoisted(() => vi.fn());
@@ -122,19 +135,7 @@ vi.mock('../lib/ni/career-scraper.js', () => ({
 // Supabase — stub to prevent missing env var errors in route tests.
 vi.mock('../lib/supabase.js', () => ({
   supabaseAdmin: {
-    from: vi.fn().mockImplementation(() => {
-      const chain: Record<string, unknown> = {};
-      chain.select = vi.fn().mockReturnValue(chain);
-      chain.insert = vi.fn().mockReturnValue(chain);
-      chain.update = vi.fn().mockReturnValue(chain);
-      chain.delete = vi.fn().mockReturnValue(chain);
-      chain.eq = vi.fn().mockReturnValue(chain);
-      chain.in = vi.fn().mockReturnValue(chain);
-      chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
-      chain.limit = vi.fn().mockResolvedValue({ data: [], error: null });
-      chain.then = undefined;
-      return chain;
-    }),
+    from: mockSupabaseFrom,
   },
 }));
 
@@ -195,6 +196,15 @@ function setupHappyPathStoreMocks() {
   mockDeleteConnectionsByUser.mockResolvedValue(true);
   mockInsertConnections.mockResolvedValue(1);
   mockCompleteScrapeLogEntry.mockResolvedValue(undefined);
+}
+
+function buildSingleChain(result: unknown) {
+  const chain: Record<string, unknown> = {};
+  for (const method of ['select', 'eq', 'in', 'limit']) {
+    chain[method] = vi.fn().mockReturnValue(chain);
+  }
+  chain.single = vi.fn().mockResolvedValue(result);
+  return chain;
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -952,6 +962,45 @@ describe('GET /api/ni/bonus-companies', () => {
     const body = await res.json() as Record<string, unknown>;
     expect(Array.isArray(body.companies)).toBe(true);
     expect(body.min_bonus).toBe(1000);
+  });
+});
+
+describe('GET /api/ni/scrape/status/:id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFF.FF_NETWORK_INTELLIGENCE = true;
+  });
+
+  it('returns 404 when the scrape log does not exist for the user', async () => {
+    mockSupabaseFrom.mockReturnValueOnce(
+      buildSingleChain({ data: null, error: { code: 'PGRST116', message: 'no rows returned' } }),
+    );
+
+    const app = makeApp();
+    const res = await app.request('/api/ni/scrape/status/log-missing', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(404);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.error).toBe('Company job search not found');
+  });
+
+  it('returns 500 when scrape log lookup fails', async () => {
+    mockSupabaseFrom.mockReturnValueOnce(
+      buildSingleChain({ data: null, error: { code: '42501', message: 'permission denied for table scrape_log' } }),
+    );
+
+    const app = makeApp();
+    const res = await app.request('/api/ni/scrape/status/log-db-error', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(500);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.error).toBe('Failed to fetch company job search status');
   });
 });
 

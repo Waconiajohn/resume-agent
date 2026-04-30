@@ -153,7 +153,7 @@ beforeEach(() => {
 describe('GET /api/job-search/enriched/:scanId', () => {
   it('returns 404 when scan does not belong to this user', async () => {
     mockFrom.mockReturnValueOnce(
-      buildSingleChain({ data: null, error: { message: 'not found' } }),
+      buildSingleChain({ data: null, error: { code: 'PGRST116', message: 'no rows returned' } }),
     );
 
     const res = await app.request('/api/job-search/enriched/scan-wrong-user', {
@@ -163,6 +163,20 @@ describe('GET /api/job-search/enriched/:scanId', () => {
     expect(res.status).toBe(404);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe('Scan not found');
+  });
+
+  it('returns 500 when scan ownership verification fails', async () => {
+    mockFrom.mockReturnValueOnce(
+      buildSingleChain({ data: null, error: { code: '42501', message: 'permission denied for table job_search_scans' } }),
+    );
+
+    const res = await app.request('/api/job-search/enriched/scan-db-error', {
+      headers: { Authorization: 'Bearer tok' },
+    });
+
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('Failed to load scan');
   });
 
   it('returns results with network_contacts field on each row', async () => {
@@ -223,6 +237,24 @@ describe('GET /api/job-search/enriched/:scanId', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { scan_id: string; results: unknown[] };
     expect(body.results).toHaveLength(0);
+  });
+});
+
+describe('POST /api/job-search/score', () => {
+  it('returns 500 when scan ownership verification fails', async () => {
+    mockFrom.mockReturnValueOnce(
+      buildSingleChain({ data: null, error: { code: '42P01', message: 'relation "job_search_scans" does not exist' } }),
+    );
+
+    const res = await app.request('/api/job-search/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok' },
+      body: JSON.stringify({ scan_id: '11111111-1111-4111-8111-111111111111' }),
+    });
+
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('Failed to load scan');
   });
 });
 
@@ -331,7 +363,7 @@ describe('GET /api/job-search/scans/latest', () => {
 
   it('returns empty state when user has no scans', async () => {
     mockFrom.mockReturnValueOnce(
-      buildSingleChain({ data: null, error: { message: 'no rows' } }),
+      buildSingleChain({ data: null, error: { code: 'PGRST116', message: 'no rows' } }),
     );
 
     const res = await app.request('/api/job-search/scans/latest', {
@@ -342,5 +374,19 @@ describe('GET /api/job-search/scans/latest', () => {
     const body = (await res.json()) as { scan: null; results: unknown[] };
     expect(body.scan).toBeNull();
     expect(body.results).toEqual([]);
+  });
+
+  it('returns 500 when latest scan lookup fails', async () => {
+    mockFrom.mockReturnValueOnce(
+      buildSingleChain({ data: null, error: { code: '42501', message: 'permission denied for table job_search_scans' } }),
+    );
+
+    const res = await app.request('/api/job-search/scans/latest', {
+      headers: { Authorization: 'Bearer tok' },
+    });
+
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('Failed to fetch latest scan');
   });
 });

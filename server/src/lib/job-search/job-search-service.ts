@@ -236,17 +236,30 @@ export async function runSearchPipeline(
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
 
+  if (resultRows.length !== searchResult.jobs.length) {
+    logger.error(
+      {
+        userId,
+        scanId,
+        jobCount: searchResult.jobs.length,
+        linkedResultCount: resultRows.length,
+      },
+      'Failed to map every job listing to a persisted job_search_results row',
+    );
+    return { ok: false, error: 'Failed to save search results', status: 500 };
+  }
+
   if (resultRows.length > 0) {
     const { error: resultsError } = await supabaseAdmin
       .from('job_search_results')
       .insert(resultRows);
 
     if (resultsError) {
-      // Non-fatal: scan and listings are persisted; log and continue
-      logger.warn(
+      logger.error(
         { userId, scanId, error: resultsError.message },
-        'Failed to insert job_search_results — scan and listings are persisted',
+        'Failed to insert job_search_results',
       );
+      return { ok: false, error: 'Failed to save search results', status: 500 };
     }
   }
 

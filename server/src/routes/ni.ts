@@ -35,6 +35,7 @@ import { crossReferenceReferralOpportunities } from '../lib/ni/referral-cross-re
 import { getBonusSearchCompanies } from '../lib/ni/bonus-company-search.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
+import { isSupabaseNoRowsError, supabaseErrorCode, supabaseErrorMessage } from '../lib/supabase-errors.js';
 import type { CsvUploadResponse, NiSearchContext, NiScrapeFilters } from '../lib/ni/types.js';
 
 export const ni = new Hono();
@@ -405,7 +406,18 @@ ni.get('/scrape/status/:id', rateLimitMiddleware(30, 60_000), async (c) => {
     .eq('user_id', userId)
     .single();
 
-  if (error || !data) {
+  if (error) {
+    if (isSupabaseNoRowsError(error)) {
+      return c.json({ error: 'Company job search not found' }, 404);
+    }
+    logger.error(
+      { userId, logId, code: supabaseErrorCode(error), error: supabaseErrorMessage(error) },
+      'scrape/status: failed to fetch scrape log',
+    );
+    return c.json({ error: 'Failed to fetch company job search status' }, 500);
+  }
+
+  if (!data) {
     return c.json({ error: 'Company job search not found' }, 404);
   }
 

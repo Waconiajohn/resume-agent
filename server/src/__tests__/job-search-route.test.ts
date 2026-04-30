@@ -272,6 +272,67 @@ describe('POST /api/job-search', () => {
     expect(body.error).toBe('Failed to save job listings');
   });
 
+  it('returns 500 when persisted listing IDs do not cover every returned job', async () => {
+    const job = makeJob('j-missing-map');
+    mockSearchAllSources.mockResolvedValueOnce({
+      jobs: [job],
+      executionTimeMs: 30,
+      sources_queried: ['serpapi_google_jobs'],
+    });
+
+    mockFrom.mockReturnValueOnce(
+      buildScanChain({ data: { id: 'scan-missing-map' }, error: null }),
+    );
+    mockFrom.mockReturnValueOnce(
+      buildListChain({
+        data: [{ id: 'lst-other', external_id: 'different_external_id', source: 'serpapi:google_jobs' }],
+        error: null,
+      }),
+    );
+
+    const res = await app.request('/api/job-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok' },
+      body: validBody(),
+    });
+
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('Failed to save search results');
+  });
+
+  it('returns 500 when result row insert fails', async () => {
+    const job = makeJob('j-result-insert');
+    mockSearchAllSources.mockResolvedValueOnce({
+      jobs: [job],
+      executionTimeMs: 30,
+      sources_queried: ['serpapi_google_jobs'],
+    });
+
+    mockFrom.mockReturnValueOnce(
+      buildScanChain({ data: { id: 'scan-result-insert' }, error: null }),
+    );
+    mockFrom.mockReturnValueOnce(
+      buildListChain({
+        data: [{ id: 'lst-1', external_id: 'firecrawl_j-result-insert', source: 'firecrawl' }],
+        error: null,
+      }),
+    );
+    mockFrom.mockReturnValueOnce(
+      buildListChain({ error: { message: 'insert failed' } }),
+    );
+
+    const res = await app.request('/api/job-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok' },
+      body: validBody(),
+    });
+
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('Failed to save search results');
+  });
+
   it('returns 200 with jobs on valid request with successful DB writes', async () => {
     const job = makeJob('j2');
     mockSearchAllSources.mockResolvedValueOnce({

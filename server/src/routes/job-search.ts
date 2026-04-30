@@ -15,6 +15,7 @@ import { rateLimitMiddleware } from '../middleware/rate-limit.js';
 import { FF_JOB_SEARCH } from '../lib/feature-flags.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
+import { isSupabaseNoRowsError, supabaseErrorCode, supabaseErrorMessage } from '../lib/supabase-errors.js';
 import {
   runSearchPipeline,
   runScorePipeline,
@@ -140,7 +141,18 @@ jobSearchRoutes.post(
       .eq('user_id', user.id)
       .single();
 
-    if (scanCheckError || !scanCheck) {
+    if (scanCheckError) {
+      if (isSupabaseNoRowsError(scanCheckError)) {
+        return c.json({ error: 'Scan not found' }, 404);
+      }
+      logger.error(
+        { userId: user.id, scanId: scan_id, code: supabaseErrorCode(scanCheckError), error: supabaseErrorMessage(scanCheckError) },
+        'score: failed to verify job search scan ownership',
+      );
+      return c.json({ error: 'Failed to load scan' }, 500);
+    }
+
+    if (!scanCheck) {
       return c.json({ error: 'Scan not found' }, 404);
     }
 
@@ -174,8 +186,18 @@ jobSearchRoutes.get(
       .limit(1)
       .single();
 
-    if (scanError || !scan) {
-      // No scans yet — return empty state rather than 404
+    if (scanError) {
+      if (isSupabaseNoRowsError(scanError)) {
+        return c.json({ scan: null, results: [] });
+      }
+      logger.error(
+        { userId: user.id, code: supabaseErrorCode(scanError), error: supabaseErrorMessage(scanError) },
+        'scans/latest: failed to fetch latest scan',
+      );
+      return c.json({ error: 'Failed to fetch latest scan' }, 500);
+    }
+
+    if (!scan) {
       return c.json({ scan: null, results: [] });
     }
 
@@ -296,7 +318,18 @@ jobSearchRoutes.get(
       .eq('user_id', user.id)
       .single();
 
-    if (scanCheckError || !scanCheck) {
+    if (scanCheckError) {
+      if (isSupabaseNoRowsError(scanCheckError)) {
+        return c.json({ error: 'Scan not found' }, 404);
+      }
+      logger.error(
+        { userId: user.id, scanId, code: supabaseErrorCode(scanCheckError), error: supabaseErrorMessage(scanCheckError) },
+        'enriched: failed to verify job search scan ownership',
+      );
+      return c.json({ error: 'Failed to load scan' }, 500);
+    }
+
+    if (!scanCheck) {
       return c.json({ error: 'Scan not found' }, 404);
     }
 
