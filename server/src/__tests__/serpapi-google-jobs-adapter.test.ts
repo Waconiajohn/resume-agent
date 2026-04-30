@@ -176,7 +176,7 @@ describe('SerpApiGoogleJobsAdapter', () => {
     });
   });
 
-  it('uses next_page_token only when the monthly-budget guard allows more pages', async () => {
+  it('uses next_page_token when configured for more pages', async () => {
     process.env.SERPAPI_GOOGLE_JOBS_MAX_PAGES = '2';
     const urls: string[] = [];
     globalThis.fetch = vi.fn().mockImplementation((url: URL) => {
@@ -194,7 +194,7 @@ describe('SerpApiGoogleJobsAdapter', () => {
     await new SerpApiGoogleJobsAdapter().search(
       'serpapi pagination unique',
       'Dallas, TX',
-      { datePosted: 'any', remoteType: 'any' },
+      { datePosted: '30d', remoteType: 'any' },
     );
 
     expect(urls).toHaveLength(2);

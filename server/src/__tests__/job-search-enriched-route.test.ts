@@ -301,7 +301,7 @@ describe('GET /api/job-search/scans/latest', () => {
     expect(Math.abs(threshold - (Date.now() - 14 * 24 * 60 * 60 * 1000))).toBeLessThan(10_000);
   });
 
-  it('does not apply a posted_date filter when the stored scan uses Any date', async () => {
+  it('maps legacy Any date scans to the 30-day freshness filter', async () => {
     mockFrom.mockReturnValueOnce(
       buildSingleChain({
         data: {
@@ -321,10 +321,12 @@ describe('GET /api/job-search/scans/latest', () => {
     });
 
     expect(res.status).toBe(200);
-    expect(resultsChain['gt']).not.toHaveBeenCalledWith(
+    expect(resultsChain['gt']).toHaveBeenCalledWith(
       'job_listings.posted_date',
       expect.any(String),
     );
+    const threshold = Date.parse((resultsChain['gt'] as ReturnType<typeof vi.fn>).mock.calls[0][1]);
+    expect(Math.abs(threshold - (Date.now() - 30 * 24 * 60 * 60 * 1000))).toBeLessThan(10_000);
   });
 
   it('returns empty state when user has no scans', async () => {

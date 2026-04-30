@@ -40,6 +40,7 @@ export async function searchJobsViaSerper(
   }
 
   const allJobs: ATSJob[] = [];
+  const effectiveMaxDaysOld = Math.min(Math.max(maxDaysOld ?? 7, 1), 30);
 
   // One search per target title (or one generic search if no titles)
   const queries = targetTitles.length > 0
@@ -50,7 +51,7 @@ export async function searchJobsViaSerper(
     try {
       // Build Serper request body with optional time filter
       const serperBody: Record<string, unknown> = { q: query, num: 10 };
-      const tbs = googleTbsForFreshnessDays(maxDaysOld);
+      const tbs = googleTbsForFreshnessDays(effectiveMaxDaysOld);
       if (tbs) serperBody.tbs = tbs;
 
       const res = await fetch(SERPER_API_URL, {

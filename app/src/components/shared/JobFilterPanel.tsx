@@ -27,7 +27,6 @@ const POSTED_WITHIN_OPTIONS: { value: PostedWithin; label: string }[] = [
   { value: '7d', label: 'Last 7 days' },
   { value: '14d', label: 'Last 14 days' },
   { value: '30d', label: 'Last 30 days' },
-  { value: 'any', label: 'Any date' },
 ];
 
 const WORK_MODE_CHIPS: { key: WorkModeKey; label: string }[] = [
@@ -50,10 +49,10 @@ const SCAN_SHAPE_CHIPS: { key: WorkModeKey; label: string; hint: string }[] = [
 ];
 
 const insiderGuidance =
-  'Run one search shape at a time: Remote is nationwide, while Hybrid and On-site use city/state as a search hint. Posted-within filters only include jobs with a readable source date; Any date also allows undated public job pages.';
+  'Run one search shape at a time: Remote is nationwide, while Hybrid and On-site use city/state as a search hint. Posted-within filters only include jobs with a readable source date; Last 30 days is the widest available window.';
 
 const broadSearchGuidance =
-  'Broad Search checks Google Jobs first, then falls back to public ATS and career pages when needed. Posted-within filters only show jobs with a readable source date; Any date also allows undated public job pages.';
+  'Broad Search checks fresh listings and verified public application links. Posted-within filters only show jobs with a readable source date; Last 30 days is the widest available window.';
 
 const selectBase =
   'rounded-lg border border-[var(--line-soft)] bg-[var(--surface-2)] px-2.5 py-1.5 text-sm text-[var(--text-strong)] outline-none transition-[border-color,background-color] duration-200 focus-visible:border-[var(--link)]/40 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] cursor-pointer';

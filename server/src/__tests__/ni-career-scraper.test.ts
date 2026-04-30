@@ -3,7 +3,8 @@
  *
  * Tests the three-tier ATS-native job scanning strategy:
  *   - Tier 1: ATS API dispatch (Lever, Greenhouse, Workday, Ashby)
- *   - Tier 3: Serper Google Jobs search fallback
+ *   - Tier 2: Structured public listing search
+ *   - Tier 3: Supplemental web/ATS search fallback
  *   - Title matching: keyword overlap scoring
  *   - Referral bonus detection
  *   - Error handling
@@ -35,6 +36,7 @@ const mockSupabase = vi.hoisted(() => {
 });
 
 const mockFetchFromATS = vi.hoisted(() => vi.fn());
+const mockSearchViaSerpApi = vi.hoisted(() => vi.fn());
 const mockSearchViaSerper = vi.hoisted(() => vi.fn());
 const mockExtractJobsFromCareerPage = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 
@@ -44,6 +46,10 @@ vi.mock('../lib/supabase.js', () => ({
 
 vi.mock('../lib/ni/ats-clients.js', () => ({
   fetchFromATS: mockFetchFromATS,
+}));
+
+vi.mock('../lib/ni/serpapi-job-search.js', () => ({
+  searchCompanyJobsViaSerpApi: mockSearchViaSerpApi,
 }));
 
 vi.mock('../lib/ni/serper-job-search.js', () => ({
@@ -98,6 +104,7 @@ describe('scrapeCareerPages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetchFromATS.mockResolvedValue([]);
+    mockSearchViaSerpApi.mockResolvedValue([]);
     mockSearchViaSerper.mockResolvedValue([]);
     // Default: no referral program
     const chainFn = () => {
@@ -133,35 +140,39 @@ describe('scrapeCareerPages', () => {
     expect(result.jobsFound).toBeGreaterThan(0);
   });
 
-  it('falls back to Serper when iCIMS returns zero jobs', async () => {
+  it('uses structured listings when iCIMS returns zero jobs', async () => {
     mockFetchFromATS.mockResolvedValue([]);
-    mockSearchViaSerper.mockResolvedValue(makeATSJobs(['Nurse Manager'], 'serper'));
+    mockSearchViaSerpApi.mockResolvedValue(makeATSJobs(['Nurse Manager'], 'serpapi'));
 
     const result = await scrapeCareerPages([COMPANY_ICIMS], ['Nurse Manager'], 'user-1');
 
     expect(mockFetchFromATS).toHaveBeenCalledWith('icims', 'bighealthcare');
-    expect(mockSearchViaSerper).toHaveBeenCalled();
+    expect(mockSearchViaSerpApi).toHaveBeenCalled();
+    expect(mockSearchViaSerper).not.toHaveBeenCalled();
     expect(result.jobsFound).toBeGreaterThan(0);
+    expect(result.sourceBreakdown.serpapi).toBeGreaterThan(0);
   });
 
-  it('falls back to Serper when company has no ATS info', async () => {
+  it('falls back to supplemental search when company has no ATS info and structured listings find nothing', async () => {
     mockSearchViaSerper.mockResolvedValue(makeATSJobs(['VP of Engineering'], 'serper'));
 
     const result = await scrapeCareerPages([COMPANY_NO_ATS], ['VP'], 'user-1');
 
     expect(mockFetchFromATS).not.toHaveBeenCalled();
-    // scrapeCareerPages passes filter details through to the Serper fallback.
+    expect(mockSearchViaSerpApi).toHaveBeenCalledWith(COMPANY_NO_ATS, ['VP'], { remote_only: false, max_days_old: 7 });
+    // scrapeCareerPages passes filter details through to the supplemental fallback.
     expect(mockSearchViaSerper).toHaveBeenCalledWith('Mystery Inc', ['VP'], undefined, 7, undefined, undefined);
     expect(result.jobsFound).toBeGreaterThan(0);
   });
 
-  it('falls back to Serper when ATS API returns zero jobs', async () => {
+  it('falls back to supplemental search when ATS API and structured listings return zero jobs', async () => {
     mockFetchFromATS.mockResolvedValue([]);
     mockSearchViaSerper.mockResolvedValue(makeATSJobs(['Director of Finance'], 'serper'));
 
     const result = await scrapeCareerPages([COMPANY_WITH_ATS], ['Director'], 'user-1');
 
     expect(mockFetchFromATS).toHaveBeenCalled();
+    expect(mockSearchViaSerpApi).toHaveBeenCalled();
     expect(mockSearchViaSerper).toHaveBeenCalled();
     expect(result.jobsFound).toBeGreaterThan(0);
   });
@@ -234,7 +245,7 @@ describe('scrapeCareerPages', () => {
     ];
 
     const result = await scrapeCareerPages(companies, ['Director'], 'user-1');
-    // Both companies scanned — first one falls through to Serper after ATS error
+    // Both companies scanned — first one falls through to supplemental search after ATS error
     expect(result.companiesScanned).toBe(2);
     // Second company found jobs via ATS
     expect(result.matchingJobs).toBeGreaterThan(0);

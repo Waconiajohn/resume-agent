@@ -3,7 +3,7 @@
  *
  * Two-tier ATS-native public job discovery strategy:
  *   1. Direct ATS API (Lever, Greenhouse, Workday, Ashby, iCIMS) — free, structured data
- *   2. Serper Google Jobs search fallback — for companies without known ATS
+ *   2. Structured public listing search for companies without usable ATS dates
  *   Plus: title matching + referral bonus detection on all results
  *
  * Compliance boundary: this module only uses public ATS endpoints, public
@@ -15,6 +15,7 @@ import { supabaseAdmin } from '../supabase.js';
 import { insertJobMatch } from './job-matches-store.js';
 import { fetchFromATS } from './ats-clients.js';
 import { extractJobsFromCareerPage } from './json-ld-extractor.js';
+import { searchCompanyJobsViaSerpApi } from './serpapi-job-search.js';
 import { searchJobsViaSerper } from './serper-job-search.js';
 import { classifyWorkMode } from '../job-search/work-mode-classifier.js';
 import { isWithinFreshnessWindow, normalizeJobPostedDate } from '../job-date.js';
@@ -257,6 +258,24 @@ function applyFilters(jobs: ATSJob[], filters: NiScrapeFilters): ATSJob[] {
   return result;
 }
 
+function shouldUseStructuredListingSearch(jobs: ATSJob[], filters: NiScrapeFilters): boolean {
+  if (jobs.length === 0) return true;
+  if (filters.max_days_old <= 0) return false;
+  return jobs.every((job) => !normalizeJobPostedDate(job.postedOn));
+}
+
+function mergeJobs(primary: ATSJob[], supplemental: ATSJob[]): ATSJob[] {
+  const seen = new Set<string>();
+  const merged: ATSJob[] = [];
+  for (const job of [...primary, ...supplemental]) {
+    const key = `${job.url ?? ''}|${job.title}|${job.location ?? ''}`.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(job);
+  }
+  return merged;
+}
+
 async function scanCompany(
   company: CompanyInfo,
   targetTitles: string[],
@@ -308,7 +327,29 @@ async function scanCompany(
     }
   }
 
-  // Tier 2: Serper Google Jobs search fallback
+  // Tier 2: Structured public listing search for companies where direct
+  // sources are unavailable or too sparse to satisfy the freshness rule.
+  if (shouldUseStructuredListingSearch(allJobs, filters)) {
+    try {
+      const structuredJobs = await searchCompanyJobsViaSerpApi(
+        company,
+        targetTitles,
+        filters,
+      );
+      if (structuredJobs.length > 0) {
+        allJobs = mergeJobs(allJobs, structuredJobs);
+        source = 'serpapi';
+        logger.info(
+          { companyId: company.id, companyName: company.name, jobCount: structuredJobs.length },
+          'company-job-discovery: structured listing search found jobs',
+        );
+      }
+    } catch (err) {
+      logger.debug({ err, companyId: company.id }, 'company-job-discovery: structured listing search failed');
+    }
+  }
+
+  // Tier 3: Serper web/ATS search fallback
   if (allJobs.length === 0) {
     try {
       allJobs = await searchJobsViaSerper(
@@ -417,7 +458,7 @@ export async function searchJobsByCompany(
   const jobs = await searchJobsViaSerper(companyName, targetTitles);
 
   const initBreakdown: Record<ScrapeSource, number> = {
-    lever: 0, greenhouse: 0, workday: 0, ashby: 0, icims: 0, recruitee: 0, workable: 0, personio: 0, jsonld: 0, serper: 0,
+    lever: 0, greenhouse: 0, workday: 0, ashby: 0, icims: 0, recruitee: 0, workable: 0, personio: 0, jsonld: 0, serpapi: 0, serper: 0,
   };
 
   if (jobs.length === 0) {
@@ -441,7 +482,8 @@ export async function searchJobsByCompany(
 /**
  * Discover job listings for the given companies using a two-tier strategy:
  *   1. Direct ATS API (Lever, Greenhouse, Workday, Ashby, iCIMS) when ats_platform is known
- *   2. Serper Google Jobs search for the rest
+ *   2. Structured public listing search when direct sources are missing or undated
+ *   3. Supplemental web/ATS search fallback for the rest
  *
  * Matches against target titles and stores results via insertJobMatch().
  * Max 50 companies per run, 500ms delay between companies.
@@ -472,7 +514,7 @@ export async function scrapeCareerPages(
   let matchingJobs = 0;
   let referralAvailable = 0;
   const sourceBreakdown: Record<ScrapeSource, number> = {
-    lever: 0, greenhouse: 0, workday: 0, ashby: 0, icims: 0, recruitee: 0, workable: 0, personio: 0, jsonld: 0, serper: 0,
+    lever: 0, greenhouse: 0, workday: 0, ashby: 0, icims: 0, recruitee: 0, workable: 0, personio: 0, jsonld: 0, serpapi: 0, serper: 0,
   };
 
   for (let i = 0; i < limited.length; i++) {

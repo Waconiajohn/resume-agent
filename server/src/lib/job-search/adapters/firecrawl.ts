@@ -126,7 +126,7 @@ export class FirecrawlAdapter implements SearchAdapter {
       logger.warn({ adapter: this.name }, 'FIRECRAWL_API_KEY not set — skipping adapter');
       this.setDiagnostic({
         status: 'missing_key',
-        message: 'Firecrawl is not configured, so supplemental career-page discovery is unavailable.',
+        message: 'Supplemental career-page discovery is not configured.',
         jobs_returned: 0,
       });
       return [];
@@ -154,8 +154,8 @@ export class FirecrawlAdapter implements SearchAdapter {
       this.setDiagnostic({
         status: 'ok',
         message: jobs.length > 0
-          ? `Firecrawl returned ${jobs.length} supplemental career-page result${jobs.length === 1 ? '' : 's'}.`
-          : 'Firecrawl responded successfully but returned no usable job-detail pages.',
+          ? `Supplemental career-page discovery returned ${jobs.length} result${jobs.length === 1 ? '' : 's'}.`
+          : 'Supplemental career-page discovery responded successfully but returned no usable job-detail pages.',
         jobs_returned: jobs.length,
       });
 
@@ -185,7 +185,7 @@ export class FirecrawlAdapter implements SearchAdapter {
       logger.warn({ adapter: this.name, error: message }, 'Firecrawl adapter error');
       this.setDiagnostic({
         status: message.toLowerCase().includes('timeout') ? 'network_error' : 'error',
-        message: `Firecrawl search failed: ${message}`,
+        message: `Supplemental career-page discovery failed: ${message}`,
         jobs_returned: 0,
       });
       return [];

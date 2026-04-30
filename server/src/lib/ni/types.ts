@@ -251,7 +251,7 @@ export interface CompanyInfo {
   ats_slug?: string | null;
 }
 
-export type ScrapeSource = 'lever' | 'greenhouse' | 'workday' | 'ashby' | 'icims' | 'recruitee' | 'workable' | 'personio' | 'jsonld' | 'serper';
+export type ScrapeSource = 'lever' | 'greenhouse' | 'workday' | 'ashby' | 'icims' | 'recruitee' | 'workable' | 'personio' | 'jsonld' | 'serpapi' | 'serper';
 
 export interface ATSJob {
   title: string;

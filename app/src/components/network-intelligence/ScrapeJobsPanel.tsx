@@ -414,7 +414,7 @@ export function ScrapeJobsPanel({
               </p>
               <p className="mt-1 text-center text-sm leading-relaxed text-[var(--text-soft)]">
                 {result.serperConfigured === false && result.rawJobsFound === 0
-                  ? 'The Google/Serper fallback is not configured, so only known ATS career pages could be checked.'
+                  ? 'The supplemental public-listing search is not configured, so only known ATS career pages could be checked.'
                   : result.rawJobsFound > 0 && result.jobsFound === 0
                     ? 'We found jobs before filtering, but the selected posted-within, work-mode, or city/state filter removed them. Try a wider date range or run Remote, Hybrid, and On-site separately.'
                     : result.jobsFound > 0

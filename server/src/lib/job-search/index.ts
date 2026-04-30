@@ -34,12 +34,18 @@ function buildEmptyReason(filters: SearchFilters, stats: SearchFilterStats, adap
 
   const providerErrors = stats.provider_diagnostics?.filter((diagnostic) => diagnostic.status !== 'ok') ?? [];
   if (providerErrors.length > 0 && stats.raw_returned === 0) {
-    return providerErrors.map((diagnostic) => diagnostic.message).join(' ');
+    if (providerErrors.some((diagnostic) => diagnostic.status === 'missing_key')) {
+      return 'Job search is not fully configured for this environment. Try again after the search connection is enabled.';
+    }
+    if (providerErrors.some((diagnostic) => diagnostic.http_status === 402 || diagnostic.http_status === 429)) {
+      return 'The job listing service is temporarily unavailable because the search quota or rate limit was reached. Try again shortly.';
+    }
+    return 'The job listing service could not return usable results. Try again in a moment or broaden the search.';
   }
 
   const rawProviderReturned = stats.provider_diagnostics
     ?.reduce((total, diagnostic) => total + (diagnostic.jobs_returned ?? 0), 0) ?? 0;
-  if (stats.raw_returned === 0 && rawProviderReturned > 0 && filters.datePosted !== 'any') {
+  if (stats.raw_returned === 0 && rawProviderReturned > 0) {
     return `The provider returned raw jobs, but none had a readable posting date inside ${filters.datePosted}. Try a wider posted-within filter or a broader title.`;
   }
 
@@ -49,7 +55,7 @@ function buildEmptyReason(filters: SearchFilters, stats: SearchFilterStats, adap
       : 'No jobs came back from the provider for this title and location. Try a broader title, fewer keywords, or a wider location.';
   }
 
-  if (stats.filtered_by_freshness >= stats.raw_returned && filters.datePosted !== 'any') {
+  if (stats.filtered_by_freshness >= stats.raw_returned) {
     const nextWindow = filters.datePosted === '24h'
       ? 'Last 3 days'
       : filters.datePosted === '3d'
@@ -58,8 +64,10 @@ function buildEmptyReason(filters: SearchFilters, stats: SearchFilterStats, adap
           ? 'Last 14 days'
           : filters.datePosted === '14d'
             ? 'Last 30 days'
-            : 'Any date';
-    return `We found jobs, but none had a readable posting date inside ${filters.datePosted}. Try ${nextWindow} or a broader title.`;
+            : null;
+    return nextWindow
+      ? `We found jobs, but none had a readable posting date inside ${filters.datePosted}. Try ${nextWindow} or a broader title.`
+      : `We found jobs, but none had a readable posting date inside ${filters.datePosted}. Try a broader title or fewer keywords.`;
   }
 
   if (stats.filtered_by_work_mode >= stats.raw_returned && filters.remoteType && filters.remoteType !== 'any') {

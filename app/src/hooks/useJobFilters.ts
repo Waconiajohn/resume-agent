@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-export type PostedWithin = '24h' | '3d' | '7d' | '14d' | '30d' | 'any';
+export type PostedWithin = '24h' | '3d' | '7d' | '14d' | '30d';
 export type WorkModeKey = 'remote' | 'hybrid' | 'onsite';
 
 export interface WorkModes {
@@ -24,7 +24,7 @@ const DEFAULT_FILTERS: JobFilters = {
 };
 
 function isPostingWithin(value: unknown): value is PostedWithin {
-  return value === '24h' || value === '3d' || value === '7d' || value === '14d' || value === '30d' || value === 'any';
+  return value === '24h' || value === '3d' || value === '7d' || value === '14d' || value === '30d';
 }
 
 function loadFromStorage(key: string): JobFilters {
@@ -54,7 +54,9 @@ function loadFromStorage(key: string): JobFilters {
 
     const postedWithin = isPostingWithin(parsed.postedWithin)
       ? parsed.postedWithin
-      : DEFAULT_FILTERS.postedWithin;
+      : parsed.postedWithin === 'any'
+        ? '30d'
+        : DEFAULT_FILTERS.postedWithin;
 
     return { location, radiusMiles, workModes, postedWithin };
   } catch {

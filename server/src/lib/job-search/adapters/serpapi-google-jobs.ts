@@ -15,8 +15,8 @@ import type { JobResult, SearchAdapter, SearchFilters, SearchProviderDiagnostic 
 
 const SERPAPI_GOOGLE_JOBS_URL = 'https://serpapi.com/search.json';
 const REQUEST_TIMEOUT_MS = 20_000;
-const DEFAULT_MAX_PAGES = 1;
-const MAX_ALLOWED_PAGES = 3;
+const DEFAULT_MAX_PAGES = 3;
+const MAX_SAFETY_PAGES = 10;
 const LOCAL_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const APPLY_AGGREGATOR_TITLES = new Set([
@@ -100,7 +100,7 @@ function parseMaxPages(): number {
   const raw = process.env.SERPAPI_GOOGLE_JOBS_MAX_PAGES;
   const parsed = Number.parseInt(raw ?? '', 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_MAX_PAGES;
-  return Math.min(parsed, MAX_ALLOWED_PAGES);
+  return Math.min(parsed, MAX_SAFETY_PAGES);
 }
 
 function normalizeSpaces(value: string): string {
@@ -323,7 +323,7 @@ export class SerpApiGoogleJobsAdapter implements SearchAdapter {
       logger.warn({ adapter: this.name }, 'SERPAPI_API_KEY not set — skipping Google Jobs adapter');
       this.setDiagnostic({
         status: 'missing_key',
-        message: 'SerpApi Google Jobs is not configured, so Broad Search cannot query the structured Google Jobs board.',
+        message: 'Structured job-listing search is not configured, so Broad Search cannot query the primary listing source.',
         jobs_returned: 0,
       });
       return [];
@@ -358,10 +358,10 @@ export class SerpApiGoogleJobsAdapter implements SearchAdapter {
           this.setDiagnostic({
             status: 'http_error',
             message: response.status === 401 || response.status === 403
-              ? 'SerpApi rejected the configured API key.'
+              ? 'The structured listing provider rejected the configured API key.'
               : response.status === 402 || response.status === 429
-                ? 'SerpApi Google Jobs did not return jobs because the API quota or rate limit was hit.'
-                : 'SerpApi Google Jobs returned an upstream error before jobs could be read.',
+                ? 'Structured job-listing search did not return jobs because the quota or rate limit was hit.'
+                : 'Structured job-listing search returned an upstream error before jobs could be read.',
             http_status: response.status,
             jobs_returned: 0,
           });
@@ -373,7 +373,7 @@ export class SerpApiGoogleJobsAdapter implements SearchAdapter {
           logger.warn({ adapter: this.name, query: searchQuery, error: data.error }, 'SerpApi Google Jobs returned error payload');
           this.setDiagnostic({
             status: 'error',
-            message: `SerpApi Google Jobs returned an error: ${data.error}`,
+            message: `Structured job-listing search returned an error: ${data.error}`,
             jobs_returned: 0,
           });
           return [];
@@ -392,8 +392,8 @@ export class SerpApiGoogleJobsAdapter implements SearchAdapter {
       this.setDiagnostic({
         status: 'ok',
         message: jobs.length > 0
-          ? `SerpApi Google Jobs returned ${jobs.length} raw job result${jobs.length === 1 ? '' : 's'}.`
-          : 'SerpApi Google Jobs responded successfully but returned no raw job results.',
+          ? `Structured job-listing search returned ${jobs.length} raw job result${jobs.length === 1 ? '' : 's'}.`
+          : 'Structured job-listing search responded successfully but returned no raw job results.',
         jobs_returned: jobs.length,
       });
 
@@ -417,7 +417,7 @@ export class SerpApiGoogleJobsAdapter implements SearchAdapter {
       );
       this.setDiagnostic({
         status: message.toLowerCase().includes('timeout') ? 'network_error' : 'error',
-        message: `SerpApi Google Jobs search failed: ${message}`,
+        message: `Structured job-listing search failed: ${message}`,
         jobs_returned: 0,
       });
       return [];

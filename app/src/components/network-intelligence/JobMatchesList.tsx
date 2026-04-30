@@ -70,7 +70,8 @@ const SOURCE_LABELS: Record<string, string> = {
   workable: 'Workable',
   personio: 'Personio',
   jsonld: 'Career Page',
-  serper: 'Google Jobs',
+  serpapi: 'Verified Listing',
+  serper: 'Public Listing',
 };
 
 function mapJobMatch(m: Record<string, unknown>): JobMatch {

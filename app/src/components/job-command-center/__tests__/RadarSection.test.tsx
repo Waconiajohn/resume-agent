@@ -85,9 +85,9 @@ function defaultProps(overrides: Partial<React.ComponentProps<typeof RadarSectio
     onDismiss: vi.fn(),
     onPromote: vi.fn(),
     // Phase 2.2.1 — controlled props (formerly inner-state). Defaults mirror
-    // the "unfiltered" state driven by the outer JobFilterPanel.
+    // the default freshness window driven by the outer JobFilterPanel.
     location: '',
-    datePosted: 'any' as const,
+    datePosted: '7d' as const,
     remoteType: 'any' as const,
     ...overrides,
   };
@@ -182,7 +182,7 @@ describe('RadarSection — empty state', () => {
   it('shows the empty state message when no jobs and not loading', () => {
     render(<RadarSection {...defaultProps()} />);
     expect(
-      screen.getByText(/search Google Jobs here/i),
+      screen.getByText(/search fresh job listings here/i),
     ).toBeInTheDocument();
   });
 
@@ -198,7 +198,7 @@ describe('RadarSection — empty state', () => {
 
     expect(screen.getByText(/no verified jobs found for "VP Operations"/i)).toBeInTheDocument();
     expect(screen.getByText(/no jobs came back/i)).toBeInTheDocument();
-    expect(screen.getByText(/sources: serper/i)).toBeInTheDocument();
+    expect(screen.queryByText(/sources:/i)).not.toBeInTheDocument();
   });
 });
 

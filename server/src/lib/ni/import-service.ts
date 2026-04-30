@@ -118,7 +118,8 @@ export async function runCsvImportPipeline(
 
 /**
  * Fetch company records from the database then check their public job pages.
- * Uses a public-source strategy: supported ATS endpoints -> Serper fallback.
+ * Uses a public-source strategy: supported ATS endpoints -> structured listing
+ * discovery -> web/ATS fallback.
  * Results are stored in job_matches and reflected in the discovery log.
  *
  * This is designed to be called as a background task. The caller (route handler)
@@ -171,7 +172,7 @@ export async function runCareerScrape(
       referral_available: result.referralAvailable,
       error_count: result.errors.length,
       source_breakdown: result.sourceBreakdown,
-      serper_configured: Boolean(process.env.SERPER_API_KEY),
+      serper_configured: Boolean(process.env.SERPAPI_API_KEY || process.env.SERPER_API_KEY),
       filters: filters ?? null,
     });
 

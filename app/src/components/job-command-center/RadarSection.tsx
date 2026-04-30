@@ -61,12 +61,12 @@ function formatSourceLabel(source: string | null | undefined): string | null {
   if (!source) return null;
   const normalized = source.toLowerCase();
   if (normalized.includes('serpapi')) {
-    return 'Google Jobs result';
+    return 'Verified listing';
   }
   if (normalized.includes('google search') || normalized.includes('serper')) {
-    return 'ATS/web fallback';
+    return 'Public application link';
   }
-  if (normalized.includes('firecrawl')) return 'Supplemental career result';
+  if (normalized.includes('firecrawl')) return 'Supplemental career listing';
   return source;
 }
 
@@ -119,7 +119,6 @@ export function RadarSection({
   hasSearched = false,
   lastQuery,
   lastLocation,
-  sourcesQueried = [],
   executionTimeMs,
   emptyReason,
   filterStats,
@@ -132,7 +131,7 @@ export function RadarSection({
     trackProductEvent('job_board_search_run', {
       query: query.trim(),
       location: location.trim() || null,
-      date_posted: datePosted ?? 'any',
+      date_posted: datePosted ?? '7d',
       remote_type: remoteType ?? 'any',
       source: 'manual',
     });
@@ -157,7 +156,7 @@ export function RadarSection({
       </div>
 
       <p className="mb-4 text-[13px] leading-relaxed text-[var(--text-soft)]">
-        Search Google Jobs plus verified public application links, then save the best 5 or 6 to your shortlist before tailoring resumes.
+        Search fresh job listings and verified public application links, then save the best 5 or 6 to your shortlist before tailoring resumes.
       </p>
 
       {/* Search bar — Location / Date Posted / Work Mode live in the outer
@@ -203,7 +202,7 @@ export function RadarSection({
         <div className="py-8 text-center">
           <Search size={24} className="mx-auto mb-3 text-[var(--text-soft)]" />
           <p className="text-[12px] text-[var(--text-soft)]">
-            Search Google Jobs here. Posted-within filters only show roles with a readable posting date from the source.
+            Search fresh job listings here. Posted-within filters only show roles with a readable posting date from the source.
           </p>
         </div>
       )}
@@ -222,7 +221,6 @@ export function RadarSection({
               </p>
               <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
                 Current search: {lastLocation?.trim() || 'no location'} · {datePosted ?? '7d'} · {remoteType ?? 'any'}
-                {sourcesQueried.length > 0 ? ` · sources: ${sourcesQueried.join(', ')}` : ''}
                 {typeof executionTimeMs === 'number' ? ` · ${Math.round(executionTimeMs / 100) / 10}s` : ''}
               </p>
               {filterStats && (
@@ -233,21 +231,6 @@ export function RadarSection({
                     {filterStats.filtered_by_work_mode > 0 ? ` · ${filterStats.filtered_by_work_mode} removed by work-mode filter` : ''}
                     {filterStats.deduped > 0 ? ` · ${filterStats.deduped} duplicate${filterStats.deduped === 1 ? '' : 's'} removed` : ''}
                   </p>
-                  {filterStats.provider_diagnostics.length > 0 && (
-                    <div className="mt-1 space-y-1">
-                      {filterStats.provider_diagnostics.map((diagnostic) => (
-                        <p
-                          key={`${diagnostic.provider}-${diagnostic.status}-${diagnostic.message}`}
-                          className="text-[12px] leading-relaxed text-[var(--text-soft)]"
-                        >
-                          {diagnostic.provider}: {diagnostic.message}
-                          {typeof diagnostic.http_status === 'number'
-                            ? ` (HTTP ${diagnostic.http_status})`
-                            : ''}
-                        </p>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
             </div>

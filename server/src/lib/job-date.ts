@@ -13,10 +13,11 @@ export type FreshnessFilter = keyof typeof FRESHNESS_DAYS_BY_FILTER;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function freshnessDaysForDatePosted(
-  datePosted: SearchFilters['datePosted'] | FreshnessFilter | undefined,
+  datePosted: SearchFilters['datePosted'] | FreshnessFilter | 'any' | undefined,
 ): number | null {
-  if (!datePosted || datePosted === 'any') return null;
-  return FRESHNESS_DAYS_BY_FILTER[datePosted];
+  if (!datePosted) return FRESHNESS_DAYS_BY_FILTER['7d'];
+  if (datePosted === 'any') return FRESHNESS_DAYS_BY_FILTER['30d'];
+  return FRESHNESS_DAYS_BY_FILTER[datePosted] ?? FRESHNESS_DAYS_BY_FILTER['7d'];
 }
 
 export function googleTbsForFreshnessDays(days: number | null | undefined): string | null {

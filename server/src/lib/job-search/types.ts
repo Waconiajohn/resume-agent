@@ -6,7 +6,7 @@
  */
 
 export interface SearchFilters {
-  datePosted: '24h' | '3d' | '7d' | '14d' | '30d' | 'any';
+  datePosted: '24h' | '3d' | '7d' | '14d' | '30d';
   remoteType?: 'remote' | 'hybrid' | 'onsite' | 'any';
   employmentType?: 'full-time' | 'contract' | 'freelance' | 'any';
   salaryMin?: number;

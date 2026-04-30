@@ -274,7 +274,7 @@ describe('network intelligence panels', () => {
     expect(screen.getByRole('option', { name: 'Last 7 days' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 14 days' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Last 30 days' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Any date' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Any date' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Remote Nationwide/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -296,7 +296,7 @@ describe('network intelligence panels', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Any' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText(/checks Google Jobs first/i)).toBeInTheDocument();
+    expect(screen.getByText(/checks fresh listings/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remote' }));
     expect(onWorkModesChange).toHaveBeenLastCalledWith({ remote: true, hybrid: false, onsite: false });

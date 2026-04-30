@@ -132,6 +132,7 @@ describe('searchJobsViaSerper', () => {
     [7, 'qdr:w'],
     [14, 'qdr:m'],
     [30, 'qdr:m'],
+    [90, 'qdr:m'],
   ])('uses supported Serper freshness filter for %i day(s)', async (maxDaysOld, expectedTbs) => {
     let capturedBody: string | undefined;
     globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
@@ -144,6 +145,20 @@ describe('searchJobsViaSerper', () => {
     const parsed = JSON.parse(capturedBody!);
     expect(parsed.tbs).toBe(expectedTbs);
   });
+
+  it('defaults supplemental searches to a bounded freshness window', async () => {
+    let capturedBody: string | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedBody = init.body as string;
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ organic: [] }) });
+    });
+
+    await searchJobsViaSerper('Acme Corp', ['VP Operations']);
+
+    const parsed = JSON.parse(capturedBody!);
+    expect(parsed.tbs).toBe('qdr:w');
+  });
+
   it('adds explicit work-mode intent to the fallback query', async () => {
     let capturedBody: string | undefined;
     globalThis.fetch = vi.fn().mockImplementation((_url: unknown, init: RequestInit) => {

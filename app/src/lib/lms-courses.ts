@@ -1117,22 +1117,22 @@ const COURSE_5_LESSONS: LessonConfig[] = [
     courseId: 'course-5',
     courseTitle: 'Precision Job Search',
     lessonNumber: 2,
-    title: 'The Hidden Google Job Board',
+    title: 'Hidden Public Job Listings',
     description: 'How to use it',
     duration: '3 min',
-    coreInsight: 'Google has one of the most comprehensive job aggregators in existence. Almost nobody knows it\'s there — which means every posting you find on it carries a built-in competitive advantage.',
+    coreInsight: 'Some of the best fresh postings surface through public listing indexes before candidates find them on the obvious boards. Using those listings with a tight recency filter creates a built-in competitive advantage.',
     videoNotes: [
-      'Google launched jobs.google.com then took it down because job boards (LinkedIn, Indeed, ZipRecruiter) were major Google advertisers. Conflict of interest. They didn\'t eliminate it — they absorbed it into Google Search.',
-      'Google now scrapes from everywhere: mainstream boards, corporate career pages, staffing agencies, niche sites. More comprehensive than any single board. Most candidates have never used it.',
-      'How to access: search a job title in Google, look for the job listing interface that appears with location, date, and type filters. When you see those filters, you\'ve activated the Google job board.',
+      'Fresh public listings come from many surfaces: mainstream boards, corporate career pages, staffing agencies, niche sites, and direct application pages. No single job board catches all of them.',
+      'The advantage is freshness. A role posted in the past 24 hours or past three days often has meaningfully less applicant volume than the same role a few weeks later.',
+      'How to work the surface: search by target title, location, work mode, and recency. Use the listing details to verify the company, title, posting age, and direct application path.',
       'First action every time: apply the recency filter. Last 24 hours or last three days. Isolates fresh postings with low applicant volume.',
-      'Most candidates don\'t know this board exists. Every posting found here means you\'re competing against a dramatically smaller applicant pool.',
+      'Most candidates do not search this systematically. Every fresh verified posting found this way can mean a smaller applicant pool.',
     ],
-    content: 'Google\'s job board is embedded in Google Search — activated by searching a job title and using the filter interface. Aggregates from mainstream boards, corporate career pages, staffing agencies, niche sites.\n\nAccess method: search target title in Google, activate job listing interface, apply recency filter immediately. Last 24 hours or last three days.\n\nMost candidates don\'t know this exists. Every posting found here has a built-in competitive advantage — dramatically lower applicant volume.\n\nAdd Google job search to the daily rotation. Run it alongside LinkedIn Jobs and Indeed. It surfaces postings those platforms miss.',
+    content: 'Public job listings aggregate from mainstream boards, corporate career pages, staffing agencies, niche sites, and direct application pages.\n\nAccess method: search the target title, confirm location and work mode, and apply the recency filter immediately. Last 24 hours or last three days is where the early advantage lives.\n\nMost candidates do not search fresh public listings systematically. Every verified posting found here can carry a built-in competitive advantage: lower applicant volume and faster response timing.\n\nAdd fresh public listing search to the daily rotation. Run it alongside the obvious job boards. It surfaces postings those platforms miss.',
     slots: [
       {
         key: 'google_jobs_found',
-        label: 'Google Jobs Results',
+        label: 'Public Listing Results',
         agentSource: 'job-finder',
         dataPath: 'google_results_count',
         format: 'number',
@@ -1146,7 +1146,7 @@ const COURSE_5_LESSONS: LessonConfig[] = [
       },
     ],
     linkedAgent: 'job-finder',
-    linkedAgentLabel: 'Search Google Jobs Now',
+    linkedAgentLabel: 'Search Fresh Listings Now',
   },
   {
     id: 'c5-l3',
@@ -1159,12 +1159,12 @@ const COURSE_5_LESSONS: LessonConfig[] = [
     coreInsight: 'The same role can have 30 different titles across 30 different companies. Searching one title at a time means missing most of the relevant market before you\'ve even started looking.',
     videoNotes: [
       'Job title nomenclature is wildly inconsistent. \'Director of Digital Transformation\' at one company is posted as \'Head of Digital Initiatives\' at another, \'VP of Innovation\' at a third. Same role. Completely different titles.',
-      'The Boolean search string: a custom query including 30+ job title variations in a single search, running on LinkedIn Jobs, Indeed, and Google Jobs simultaneously.',
+      'The Boolean search string: a custom query including 30+ job title variations in a single search, running across major boards and fresh public listings simultaneously.',
       'CareerIQ builds your custom Boolean string from your target role profile. It expands using semantic variations and emerging title patterns.',
       'Build it once. Run it daily with a recency filter applied. Same string, fresh results every day.',
       'The difference: single-title search returns 40 relevant postings. Multi-title Boolean for the same executive typically returns 150–400. Every additional posting is an opportunity that would have been missed.',
     ],
-    content: 'A single role can have 30+ different titles. Single-title searching misses most of the relevant market.\n\nThe Boolean search string: a custom query covering 30+ title variations running on LinkedIn Jobs, Indeed, and Google Jobs simultaneously. CareerIQ builds and expands this.\n\nBuild it once, run it daily with recency filter. Same string, fresh postings identified before competition accumulates.\n\nSingle-title search: dozens of relevant postings. Multi-title Boolean: hundreds. Every additional posting is an opportunity that would have been missed.',
+    content: 'A single role can have 30+ different titles. Single-title searching misses most of the relevant market.\n\nThe Boolean search string: a custom query covering 30+ title variations running across major boards and fresh public listings simultaneously. CareerIQ builds and expands this.\n\nBuild it once, run it daily with recency filter. Same string, fresh postings identified before competition accumulates.\n\nSingle-title search: dozens of relevant postings. Multi-title Boolean: hundreds. Every additional posting is an opportunity that would have been missed.',
     slots: [
       {
         key: 'boolean_string',
@@ -1287,7 +1287,7 @@ const COURSE_5_LESSONS: LessonConfig[] = [
     videoNotes: [
       'Most job seekers know that having a connection at a target company is valuable. What they lack is a systematic way to discover which connections work where — and which of those companies are currently hiring.',
       'LinkedIn allows you to export your first-level connections as a data file directly from your account settings. This is your data. LinkedIn provides the export as a standard feature.',
-      'CareerIQ ingests that file and does three things: organizes connections by company with profile links, cross-references against live job postings from those companies\' career pages via ATS integrations and Google Jobs supplementation, and delivers a curated list of positions at companies where you already have an internal connection.',
+      'CareerIQ ingests that file and does three things: organizes connections by company with profile links, cross-references against live job postings from those companies\' career pages, direct application systems, and fresh public listings, and delivers a curated list of positions at companies where you already have an internal connection.',
       'Why this changes the dynamic entirely: a warm application — accompanied by an internal referral, even a light one — bypasses the ATS queue in practice. It arrives with context. It gets reviewed by a human.',
       'The average executive has 300–500 connections working at hundreds of companies. Most have never systematically mapped which companies are currently hiring for relevant roles. The Connection Intelligence Method does this in minutes.',
       'Run it before beginning any cold application process. Warm paths first. Cold comes after.',
@@ -1374,7 +1374,7 @@ const COURSE_5_LESSONS: LessonConfig[] = [
     coreInsight: 'The Connection Intelligence Method, the Value Audit, and the standard application process are not alternatives — they\'re a system. Used together in the right sequence, they cover every path into a target company simultaneously.',
     videoNotes: [
       'The weekly operating system. Not separate activities — an integrated system with a clear sequence.',
-      'Monday–Wednesday: daily search rotation. Boolean string on LinkedIn Jobs, Indeed, and Google Jobs with recency filter. Verify each posting. Score against benchmark. Qualified roles go into weekly queue.',
+      'Monday–Wednesday: daily search rotation. Boolean string across major boards and fresh public listings with recency filter. Verify each posting. Score against benchmark. Qualified roles go into weekly queue.',
       'Tuesday: run Connection Intelligence against the week\'s target companies. Warm paths move to top of queue.',
       'Wednesday–Thursday: execute the 8-application workflow. Warm opportunities first. Then cold.',
       'Thursday–Friday: Value Audit targeting. Three fresh postings where you have genuine expertise. Find hiring managers. Send messages.',

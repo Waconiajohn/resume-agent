@@ -394,7 +394,7 @@ export class SerperJobsAdapter implements SearchAdapter {
       );
       this.setDiagnostic({
         status: 'missing_key',
-        message: 'Serper is not configured, so public job search cannot query ATS-hosted job pages.',
+        message: 'Supplemental public-link discovery is not configured.',
         jobs_returned: 0,
       });
       return [];
@@ -436,10 +436,10 @@ export class SerperJobsAdapter implements SearchAdapter {
         this.setDiagnostic({
           status: 'http_error',
           message: response.status === 401 || response.status === 403
-            ? 'Serper rejected the configured API key.'
+            ? 'The supplemental public-link provider rejected the configured API key.'
             : response.status === 402 || response.status === 429
-              ? 'Serper did not return jobs because the API quota or rate limit was hit.'
-              : 'Serper returned an upstream error before jobs could be read.',
+              ? 'Supplemental public-link discovery did not return jobs because the quota or rate limit was hit.'
+              : 'Supplemental public-link discovery returned an upstream error before jobs could be read.',
           http_status: response.status,
           jobs_returned: 0,
         });
@@ -477,8 +477,8 @@ export class SerperJobsAdapter implements SearchAdapter {
       this.setDiagnostic({
         status: 'ok',
         message: allJobs.length > 0
-          ? `Serper returned ${allJobs.length} raw job result${allJobs.length === 1 ? '' : 's'}.`
-          : 'Serper responded successfully but returned no raw job results.',
+          ? `Supplemental public-link discovery returned ${allJobs.length} raw job result${allJobs.length === 1 ? '' : 's'}.`
+          : 'Supplemental public-link discovery responded successfully but returned no raw job results.',
         jobs_returned: allJobs.length,
       });
 
@@ -529,7 +529,7 @@ export class SerperJobsAdapter implements SearchAdapter {
       );
       this.setDiagnostic({
         status: message.toLowerCase().includes('timeout') ? 'network_error' : 'error',
-        message: `Serper search failed: ${message}`,
+        message: `Supplemental public-link discovery failed: ${message}`,
         jobs_returned: 0,
       });
       return [];

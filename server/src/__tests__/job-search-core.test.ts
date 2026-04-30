@@ -144,6 +144,26 @@ describe('searchAllSources', () => {
     expect(result.empty_reason).toMatch(/no job-search provider/i);
   });
 
+  it('does not expose provider names in user-facing empty reasons', async () => {
+    const adapter: SearchAdapter = {
+      name: 'private_provider_name',
+      search: vi.fn().mockResolvedValue([]),
+      getDiagnostics: () => [
+        {
+          provider: 'private_provider_name',
+          status: 'missing_key' as const,
+          message: 'Private Provider X is not configured.',
+          jobs_returned: 0,
+        },
+      ],
+    };
+
+    const result = await searchAllSources('Engineer', 'NYC', baseFilters, [adapter]);
+
+    expect(result.empty_reason).toMatch(/not fully configured/i);
+    expect(result.empty_reason).not.toMatch(/Private Provider|private_provider_name/i);
+  });
+
   it('includes executionTimeMs in the response', async () => {
     const adapter = makeAdapter('fast', [makeJob()]);
 
@@ -233,16 +253,17 @@ describe('searchAllSources', () => {
     expect(result.empty_reason).toMatch(/readable posting date inside 7d/i);
   });
 
-  it('keeps unknown-date jobs only when datePosted is any', async () => {
+  it('excludes unknown-date jobs even at the widest freshness window', async () => {
     const unknownDateJob = makeJob({
       external_id: 'unknown_1',
       posted_date: null,
     });
     const adapter = makeAdapter('a', [unknownDateJob]);
 
-    const result = await searchAllSources('VP Operations', 'Dallas, TX', { datePosted: 'any' }, [adapter]);
+    const result = await searchAllSources('VP Operations', 'Dallas, TX', { datePosted: '30d' }, [adapter]);
 
-    expect(result.jobs).toEqual([unknownDateJob]);
+    expect(result.jobs).toEqual([]);
+    expect(result.filter_stats?.filtered_by_freshness).toBe(1);
   });
 
   it('deduplication is case-insensitive for title/company/location', async () => {
