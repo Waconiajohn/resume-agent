@@ -8,7 +8,9 @@ vi.mock('@/lib/api', () => ({
 
 import { JobMatchesList } from '../JobMatchesList';
 import { CompanyCard } from '../CompanyCard';
+import { ConnectionsBrowser } from '../ConnectionsBrowser';
 import { ScrapeJobsPanel } from '../ScrapeJobsPanel';
+import { TargetTitlesManager } from '../TargetTitlesManager';
 import { JobFilterPanel } from '@/components/shared/JobFilterPanel';
 
 describe('network intelligence panels', () => {
@@ -32,6 +34,17 @@ describe('network intelligence panels', () => {
     render(<JobMatchesList accessToken="test-token" />);
 
     expect(await screen.findByText(/No job matches yet/i)).toBeInTheDocument();
+  });
+
+  it('surfaces job match load failures instead of showing an empty matches state', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'Could not load job matches.' }), { status: 500 }),
+    );
+
+    render(<JobMatchesList accessToken="test-token" />);
+
+    expect(await screen.findByText('Could not load job matches.')).toBeInTheDocument();
+    expect(screen.queryByText(/No job matches yet/i)).not.toBeInTheDocument();
   });
 
   it('renders returned job matches with referral and score details', async () => {
@@ -197,6 +210,52 @@ describe('network intelligence panels', () => {
 
     expect(await screen.findByText('Jamie Taylor')).toBeInTheDocument();
     expect(screen.getAllByText('Director of Engineering').length).toBeGreaterThan(0);
+  });
+
+  it('surfaces company connection detail failures when a company card is expanded', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'Could not load connection details.' }), { status: 500 }),
+    );
+
+    render(
+      <CompanyCard
+        accessToken="test-token"
+        company={{
+          companyRaw: 'Acme Corp',
+          companyDisplayName: 'Acme Corp',
+          companyId: 'company-1',
+          connectionCount: 1,
+          topPositions: ['Director of Engineering'],
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Acme Corp'));
+
+    expect(await screen.findByText('Could not load connection details.')).toBeInTheDocument();
+    expect(screen.queryByText(/No connection details available/i)).not.toBeInTheDocument();
+  });
+
+  it('surfaces connection company load failures instead of showing no connections', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'Could not load network companies.' }), { status: 500 }),
+    );
+
+    render(<ConnectionsBrowser accessToken="test-token" />);
+
+    expect(await screen.findByText('Could not load network companies.')).toBeInTheDocument();
+    expect(screen.queryByText(/No connections found/i)).not.toBeInTheDocument();
+  });
+
+  it('surfaces target title load failures instead of showing an empty title hint', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'Could not load target titles.' }), { status: 500 }),
+    );
+
+    render(<TargetTitlesManager accessToken="test-token" />);
+
+    expect(await screen.findByText('Could not load target titles.')).toBeInTheDocument();
+    expect(screen.queryByText(/Add target titles to match jobs/i)).not.toBeInTheDocument();
   });
 
   it('shows the no-eligible-companies guidance in company job search when nothing can be checked', async () => {

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { CompanyCard } from '@/components/network-intelligence/CompanyCard';
 import type { CompanySummary } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
+import { readApiError } from '@/lib/api-errors';
 
 export interface ConnectionsBrowserProps {
   accessToken: string | null;
@@ -10,24 +11,36 @@ export interface ConnectionsBrowserProps {
 export function ConnectionsBrowser({ accessToken }: ConnectionsBrowserProps) {
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setError('Sign in to view network companies.');
+      setLoading(false);
+      return;
+    }
 
     let cancelled = false;
 
     async function load() {
       try {
+        setError(null);
         const res = await fetch(`${API_BASE}/ni/connections/companies`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (res.ok && !cancelled) {
           const data = await res.json();
           setCompanies(data.companies ?? []);
+        } else if (!res.ok && !cancelled) {
+          setError(await readApiError(res, `Unable to load network companies (${res.status}).`));
         }
-      } catch {
-        // Silently fail — empty state will show
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error && err.message
+            ? err.message
+            : 'Unable to load network companies. Please try again.');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -56,6 +69,14 @@ export function ConnectionsBrowser({ accessToken }: ConnectionsBrowserProps) {
             <div key={i} className="h-20 motion-safe:animate-pulse rounded-[18px] bg-[var(--accent-muted)]" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/5 p-6 text-center">
+        <p className="text-sm text-[var(--badge-red-text)]/80">{error}</p>
       </div>
     );
   }

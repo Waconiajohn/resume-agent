@@ -3,6 +3,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import { cn } from '@/lib/utils';
 import { API_BASE } from '@/lib/api';
+import { readApiError } from '@/lib/api-errors';
 import type { CompanySummary, TargetTitle } from '@/types/ni';
 import { useNiScrapeRunner } from './useNiScrapeRunner';
 import { useCompanySelection } from './useCompanySelection';
@@ -10,18 +11,6 @@ import { CompanyPickerList } from './CompanyPickerList';
 import { JobFilterPanel } from '@/components/shared/JobFilterPanel';
 
 import { useJobFilters, type WorkModeKey } from '@/hooks/useJobFilters';
-
-async function readApiError(res: Response, fallback: string): Promise<string> {
-  const data = await res.json().catch(() => null);
-  if (data && typeof data === 'object') {
-    const error = (data as { error?: unknown }).error;
-    if (typeof error === 'string' && error.trim()) {
-      return error;
-    }
-  }
-
-  return fallback;
-}
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { CheckCircle2, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { API_BASE } from '@/lib/api';
+import { readApiError } from '@/lib/api-errors';
 import type { CompanySummary, CompanyConnectionName } from '@/types/ni';
 
 export interface CompanyPickerRowProps {
@@ -24,6 +25,7 @@ export function CompanyPickerRow({
   const [expanded, setExpanded] = useState(false);
   const [connections, setConnections] = useState<CompanyConnectionName[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const eligible = company.companyId !== null;
   const displayName = company.companyDisplayName ?? company.companyRaw;
@@ -49,9 +51,13 @@ export function CompanyPickerRow({
 
     setExpanded(true);
     if (connections !== null) return;
-    if (!accessToken) return;
+    if (!accessToken) {
+      setError('Sign in to view connection details.');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(
         `${API_BASE}/ni/connections/by-company?company_raw=${encodeURIComponent(company.companyRaw)}`,
@@ -68,9 +74,13 @@ export function CompanyPickerRow({
             linkedinUrl: (c.linkedin_url as string) ?? null,
           })),
         );
+      } else {
+        setError(await readApiError(res, `Unable to load connection details (${res.status}).`));
       }
-    } catch {
-      // Silently fail — badge still shows count
+    } catch (err) {
+      setError(err instanceof Error && err.message
+        ? err.message
+        : 'Unable to load connection details. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -142,6 +152,8 @@ export function CompanyPickerRow({
                 <div key={i} className="h-3.5 w-32 motion-safe:animate-pulse rounded bg-[var(--accent-muted)]" />
               ))}
             </div>
+          ) : error ? (
+            <p className="py-0.5 text-xs text-[var(--badge-red-text)]/80">{error}</p>
           ) : connections && connections.length > 0 ? (
             <ul className="space-y-0.5 py-0.5">
               {connections.map((conn) => {

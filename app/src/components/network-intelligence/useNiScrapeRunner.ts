@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { API_BASE } from '@/lib/api';
+import { readApiError } from '@/lib/api-errors';
 import type { JobMatchSearchContext } from '@/types/ni';
 import type { WorkModeKey } from '@/hooks/useJobFilters';
 
@@ -62,18 +63,6 @@ function buildResult(log: NiScrapeStatus): NiScrapeResult {
 function isStale(startedAt?: string): boolean {
   if (!startedAt) return false;
   return Date.now() - new Date(startedAt).getTime() > STALE_THRESHOLD_MS;
-}
-
-async function readApiError(res: Response, fallback: string): Promise<string> {
-  const data = await res.json().catch(() => null);
-  if (data && typeof data === 'object') {
-    const error = (data as { error?: unknown }).error;
-    if (typeof error === 'string' && error.trim()) {
-      return error;
-    }
-  }
-
-  return fallback;
 }
 
 export function useNiScrapeRunner(accessToken: string | null) {

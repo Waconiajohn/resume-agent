@@ -4,6 +4,7 @@ import { GlassButton } from '@/components/GlassButton';
 import { GlassInput } from '@/components/GlassInput';
 import type { TargetTitle } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
+import { readApiError } from '@/lib/api-errors';
 
 export interface TargetTitlesManagerProps {
   accessToken: string | null;
@@ -14,10 +15,16 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState('');
   const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchTitles = useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setError('Sign in to manage target titles.');
+      setLoading(false);
+      return;
+    }
     try {
+      setError(null);
       const res = await fetch(`${API_BASE}/ni/target-titles`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -31,9 +38,13 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
             createdAt: t.created_at as string,
           })),
         );
+      } else {
+        setError(await readApiError(res, `Unable to load target titles (${res.status}).`));
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      setError(err instanceof Error && err.message
+        ? err.message
+        : 'Unable to load target titles. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -48,6 +59,7 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
     if (!trimmed || !accessToken) return;
 
     setAdding(true);
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/ni/target-titles`, {
         method: 'POST',
@@ -60,9 +72,13 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
       if (res.ok) {
         setNewTitle('');
         await fetchTitles();
+      } else {
+        setError(await readApiError(res, `Unable to add target title (${res.status}).`));
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      setError(err instanceof Error && err.message
+        ? err.message
+        : 'Unable to add target title. Please try again.');
     } finally {
       setAdding(false);
     }
@@ -70,6 +86,7 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
 
   const handleDelete = useCallback(async (titleId: string) => {
     if (!accessToken) return;
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/ni/target-titles/${titleId}`, {
         method: 'DELETE',
@@ -77,9 +94,13 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
       });
       if (res.ok) {
         setTitles((prev) => prev.filter((t) => t.id !== titleId));
+      } else {
+        setError(await readApiError(res, `Unable to remove target title (${res.status}).`));
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      setError(err instanceof Error && err.message
+        ? err.message
+        : 'Unable to remove target title. Please try again.');
     }
   }, [accessToken]);
 
@@ -127,11 +148,17 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
         </GlassButton>
       </div>
 
-      {titles.length === 0 ? (
+      {error && (
+        <div className="mt-3 rounded-md border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/5 px-3 py-2">
+          <p className="text-xs text-[var(--badge-red-text)]/80">{error}</p>
+        </div>
+      )}
+
+      {titles.length === 0 && !error ? (
         <p className="mt-3 text-center text-xs text-[var(--text-soft)]">
           Add target titles to match jobs
         </p>
-      ) : (
+      ) : titles.length > 0 ? (
         <ul className="mt-3 space-y-1.5">
           {titles.map((t) => (
             <li
@@ -149,7 +176,7 @@ export function TargetTitlesManager({ accessToken }: TargetTitlesManagerProps) {
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </GlassCard>
   );
 }

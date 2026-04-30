@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import type { JobMatch, JobMatchSearchContext, JobMatchStatus } from '@/types/ni';
 import type { WorkModes } from '@/hooks/useJobFilters';
 import { API_BASE } from '@/lib/api';
+import { readApiError } from '@/lib/api-errors';
 
 type MatchFilter = 'all' | JobMatchSearchContext | 'referral_bonus';
 
@@ -116,6 +117,7 @@ export function JobMatchesList({
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<MatchFilter>(initialFilter);
 
   useEffect(() => {
@@ -123,21 +125,32 @@ export function JobMatchesList({
   }, [initialFilter]);
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setError('Sign in to view job matches.');
+      setLoading(false);
+      return;
+    }
 
     let cancelled = false;
 
     async function load() {
       try {
+        setError(null);
         const res = await fetch(`${API_BASE}/ni/matches`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (res.ok && !cancelled) {
           const data = await res.json();
           setMatches((data.matches ?? []).map((m: Record<string, unknown>) => mapJobMatch(m)));
+        } else if (!res.ok && !cancelled) {
+          setError(await readApiError(res, `Unable to load job matches (${res.status}).`));
         }
-      } catch {
-        // Silently fail — empty state will show
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error && err.message
+            ? err.message
+            : 'Unable to load job matches. Please try again.');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -175,6 +188,8 @@ export function JobMatchesList({
   const handleStatusChange = useCallback(async (matchId: string, status: JobMatchStatus) => {
     if (!accessToken) return;
 
+    const previousMatches = matches;
+
     // Optimistic update
     setMatches((prev) => prev.map((m) => m.id === matchId ? { ...m, status } : m));
 
@@ -188,23 +203,21 @@ export function JobMatchesList({
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {
-        // Revert on failure — refetch
-        const refetch = await fetch(`${API_BASE}/ni/matches`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        if (refetch.ok) {
-          const data = await refetch.json();
-          setMatches((data.matches ?? []).map((m: Record<string, unknown>) => mapJobMatch(m)));
-        }
+        throw new Error(await readApiError(res, `Unable to update match status (${res.status}).`));
       }
-    } catch {
-      // Network error — state may be stale
+      setError(null);
+    } catch (err) {
+      setMatches(previousMatches);
+      setError(err instanceof Error && err.message
+        ? err.message
+        : 'Unable to update match status. Please try again.');
     }
-  }, [accessToken]);
+  }, [accessToken, matches]);
 
   const handleClearAll = useCallback(async () => {
     if (!accessToken) return;
     setClearing(true);
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/ni/matches`, {
         method: 'DELETE',
@@ -212,9 +225,13 @@ export function JobMatchesList({
       });
       if (res.ok) {
         setMatches([]);
+      } else {
+        setError(await readApiError(res, `Unable to clear job matches (${res.status}).`));
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      setError(err instanceof Error && err.message
+        ? err.message
+        : 'Unable to clear job matches. Please try again.');
     } finally {
       setClearing(false);
     }
@@ -226,6 +243,14 @@ export function JobMatchesList({
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-16 motion-safe:animate-pulse rounded-[18px] bg-[var(--accent-muted)]" />
         ))}
+      </div>
+    );
+  }
+
+  if (error && matches.length === 0) {
+    return (
+      <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/5 p-8 text-center">
+        <p className="text-sm text-[var(--badge-red-text)]/80">{error}</p>
       </div>
     );
   }
@@ -275,6 +300,12 @@ export function JobMatchesList({
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-md border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/5 px-4 py-3">
+          <p className="text-sm text-[var(--badge-red-text)]/80">{error}</p>
+        </div>
+      )}
 
       {filteredMatches.length === 0 && (
         <div className="rounded-xl border border-[var(--line-soft)] p-6 text-center">

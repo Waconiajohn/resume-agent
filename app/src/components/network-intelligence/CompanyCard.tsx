@@ -3,6 +3,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { cn } from '@/lib/utils';
 import type { CompanySummary, ConnectionItem } from '@/types/ni';
 import { API_BASE } from '@/lib/api';
+import { readApiError } from '@/lib/api-errors';
 
 export interface CompanyCardProps {
   company: CompanySummary;
@@ -13,6 +14,7 @@ export function CompanyCard({ company, accessToken }: CompanyCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [connections, setConnections] = useState<ConnectionItem[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const displayName = company.companyDisplayName ?? company.companyRaw;
 
@@ -25,9 +27,13 @@ export function CompanyCard({ company, accessToken }: CompanyCardProps) {
     setExpanded(true);
 
     if (connections !== null) return;
-    if (!accessToken) return;
+    if (!accessToken) {
+      setError('Sign in to view connection details.');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(
         `${API_BASE}/ni/connections/by-company?company_raw=${encodeURIComponent(company.companyRaw)}`,
@@ -49,13 +55,17 @@ export function CompanyCard({ company, accessToken }: CompanyCardProps) {
           }),
         );
         setConnections(mapped);
+      } else {
+        setError(await readApiError(res, `Unable to load connection details (${res.status}).`));
       }
-    } catch {
-      // Silently fail — card still shows summary
+    } catch (err) {
+      setError(err instanceof Error && err.message
+        ? err.message
+        : 'Unable to load connection details. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [expanded, connections, accessToken, company.companyRaw]);
+  }, [expanded, connections, accessToken, company.companyRaw, company.companyDisplayName]);
 
   return (
     <GlassCard
@@ -80,6 +90,8 @@ export function CompanyCard({ company, accessToken }: CompanyCardProps) {
                 <div key={i} className="h-4 motion-safe:animate-pulse rounded bg-[var(--accent-muted)]" />
               ))}
             </div>
+          ) : error ? (
+            <p className="text-xs text-[var(--badge-red-text)]/80">{error}</p>
           ) : connections && connections.length > 0 ? (
             <ul className="space-y-1.5">
               {connections.map((conn) => {
