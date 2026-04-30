@@ -47,26 +47,18 @@ export async function insertTargetTitle(
 export async function getTargetTitlesByUser(
   userId: string,
 ): Promise<ClientTargetTitleRow[]> {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('client_target_titles')
-      .select('*')
-      .eq('user_id', userId)
-      .order('priority', { ascending: true });
+  const { data, error } = await supabaseAdmin
+    .from('client_target_titles')
+    .select('*')
+    .eq('user_id', userId)
+    .order('priority', { ascending: true });
 
-    if (error) {
-      logger.error({ error: error.message, userId }, 'getTargetTitlesByUser: query failed');
-      return [];
-    }
-
-    return (data ?? []) as ClientTargetTitleRow[];
-  } catch (err) {
-    logger.error(
-      { error: err instanceof Error ? err.message : String(err), userId },
-      'getTargetTitlesByUser: unexpected error',
-    );
-    return [];
+  if (error) {
+    logger.error({ error: error.message, userId }, 'getTargetTitlesByUser: query failed');
+    throw new Error('Failed to fetch target titles');
   }
+
+  return (data ?? []) as ClientTargetTitleRow[];
 }
 
 // ─── Delete ──────────────────────────────────────────────────────────────────

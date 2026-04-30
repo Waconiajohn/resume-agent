@@ -20,6 +20,7 @@ const mockInsertConnections = vi.hoisted(() => vi.fn());
 const mockGetEnrichedConnectionsByUser = vi.hoisted(() => vi.fn());
 const mockGetConnectionCount = vi.hoisted(() => vi.fn());
 const mockGetCompanySummary = vi.hoisted(() => vi.fn());
+const mockGetConnectionsByCompanyRaw = vi.hoisted(() => vi.fn());
 const mockCreateScrapeLogEntry = vi.hoisted(() => vi.fn());
 const mockCompleteScrapeLogEntry = vi.hoisted(() => vi.fn());
 const mockSupabaseFrom = vi.hoisted(() => vi.fn(() => {
@@ -74,6 +75,7 @@ vi.mock('../lib/ni/connections-store.js', () => ({
   getEnrichedConnectionsByUser: mockGetEnrichedConnectionsByUser,
   getConnectionCount: mockGetConnectionCount,
   getCompanySummary: mockGetCompanySummary,
+  getConnectionsByCompanyRaw: mockGetConnectionsByCompanyRaw,
   createScrapeLogEntry: mockCreateScrapeLogEntry,
   completeScrapeLogEntry: mockCompleteScrapeLogEntry,
 }));
@@ -541,6 +543,20 @@ describe('GET /api/ni/connections', () => {
     expect(body.connections).toEqual([]);
   });
 
+  it('returns 500 when the connections query fails', async () => {
+    mockGetEnrichedConnectionsByUser.mockRejectedValue(new Error('client_connections query failed'));
+
+    const app = makeApp();
+    const res = await app.request('/api/ni/connections', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(500);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.error).toBe('Failed to fetch connections');
+  });
+
   it('passes default limit=100 and offset=0 when query params are absent', async () => {
     mockGetEnrichedConnectionsByUser.mockResolvedValue([]);
 
@@ -626,6 +642,20 @@ describe('GET /api/ni/connections/count', () => {
     expect(body.count).toBe(0);
   });
 
+  it('returns 500 when the count query fails', async () => {
+    mockGetConnectionCount.mockRejectedValue(new Error('count failed'));
+
+    const app = makeApp();
+    const res = await app.request('/api/ni/connections/count', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(500);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.error).toBe('Failed to fetch connection count');
+  });
+
   it('returns 404 when feature flag is disabled', async () => {
     mockFF.FF_NETWORK_INTELLIGENCE = false;
 
@@ -686,6 +716,20 @@ describe('GET /api/ni/connections/companies', () => {
     expect(body.companies).toEqual([]);
   });
 
+  it('returns 500 when the company summary query fails', async () => {
+    mockGetCompanySummary.mockRejectedValue(new Error('company summary failed'));
+
+    const app = makeApp();
+    const res = await app.request('/api/ni/connections/companies', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(500);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.error).toBe('Failed to fetch company summary');
+  });
+
   it('returns 404 when feature flag is disabled', async () => {
     mockFF.FF_NETWORK_INTELLIGENCE = false;
 
@@ -696,6 +740,60 @@ describe('GET /api/ni/connections/companies', () => {
     });
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /api/ni/connections/by-company', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFF.FF_NETWORK_INTELLIGENCE = true;
+  });
+
+  it('returns company-specific connections', async () => {
+    mockGetConnectionsByCompanyRaw.mockResolvedValue([
+      {
+        id: 'conn-1',
+        first_name: 'Jane',
+        last_name: 'Smith',
+        position: 'VP Engineering',
+        linkedin_url: null,
+      },
+    ]);
+
+    const app = makeApp();
+    const res = await app.request('/api/ni/connections/by-company?company_raw=Acme', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockGetConnectionsByCompanyRaw).toHaveBeenCalledWith('test-user-id', 'Acme');
+    const body = await res.json() as Record<string, unknown>;
+    expect((body.connections as unknown[])).toHaveLength(1);
+  });
+
+  it('returns 400 when company_raw is missing', async () => {
+    const app = makeApp();
+    const res = await app.request('/api/ni/connections/by-company', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 500 when the company connections query fails', async () => {
+    mockGetConnectionsByCompanyRaw.mockRejectedValue(new Error('company connections failed'));
+
+    const app = makeApp();
+    const res = await app.request('/api/ni/connections/by-company?company_raw=Acme', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(500);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.error).toBe('Failed to fetch company connections');
   });
 });
 
@@ -721,6 +819,20 @@ describe('GET /api/ni/target-titles', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(Array.isArray(body.titles)).toBe(true);
+  });
+
+  it('returns 500 when the target-title query fails', async () => {
+    mockGetTargetTitlesByUser.mockRejectedValue(new Error('target titles failed'));
+
+    const app = makeApp();
+    const res = await app.request('/api/ni/target-titles', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(500);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.error).toBe('Failed to fetch target titles');
   });
 
   it('returns 404 when feature flag is disabled', async () => {
@@ -913,6 +1025,20 @@ describe('GET /api/ni/matches', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(body.matches).toEqual([]);
+  });
+
+  it('returns 500 when the job-match query fails', async () => {
+    mockGetJobMatchesByUser.mockRejectedValue(new Error('job matches failed'));
+
+    const app = makeApp();
+    const res = await app.request('/api/ni/matches', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer test-token' },
+    });
+
+    expect(res.status).toBe(500);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.error).toBe('Failed to fetch job matches');
   });
 
   it('returns 404 when feature flag is disabled', async () => {

@@ -258,7 +258,7 @@ describe('getJobMatchesByUser', () => {
     expect(result).toEqual([]);
   });
 
-  it('returns an empty array on DB error', async () => {
+  it('rejects on DB error', async () => {
     mockSupabase.from.mockImplementation(() => {
       const chain: Record<string, unknown> = {};
       chain.select = vi.fn().mockReturnValue(chain);
@@ -275,9 +275,7 @@ describe('getJobMatchesByUser', () => {
       return chain;
     });
 
-    const result = await getJobMatchesByUser('user-001');
-
-    expect(result).toEqual([]);
+    await expect(getJobMatchesByUser('user-001')).rejects.toThrow('Failed to fetch job matches');
   });
 
   it('clamps limit to 200 when a larger value is supplied', async () => {

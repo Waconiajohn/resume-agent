@@ -80,63 +80,55 @@ export async function getJobMatchesByUser(
   userId: string,
   filters: JobMatchFilters = {},
 ): Promise<JobMatchRow[]> {
-  try {
-    const limit = Math.min(filters.limit ?? 50, 200);
-    const offset = filters.offset ?? 0;
+  const limit = Math.min(filters.limit ?? 50, 200);
+  const offset = filters.offset ?? 0;
 
-    // Auto-expire: exclude rows older than 30 days that have not been saved/actioned.
-    // This keeps the matches list fresh without deleting data.
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Auto-expire: exclude rows older than 30 days that have not been saved/actioned.
+  // This keeps the matches list fresh without deleting data.
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    let query = supabaseAdmin
-      .from('job_matches')
-      .select('*, company_directory(name_display)')
-      .eq('user_id', userId)
-      // Staleness guard: drop matches older than 30 days unless saved/actioned
-      .or(
-        `created_at.gt.${thirtyDaysAgo},status.in.(applied,referred,interviewing,saved)`,
-      )
-      // New-first: rows without first_seen_at sort to the top, then by created_at desc
-      .order('first_seen_at', { ascending: true, nullsFirst: true })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+  let query = supabaseAdmin
+    .from('job_matches')
+    .select('*, company_directory(name_display)')
+    .eq('user_id', userId)
+    // Staleness guard: drop matches older than 30 days unless saved/actioned
+    .or(
+      `created_at.gt.${thirtyDaysAgo},status.in.(applied,referred,interviewing,saved)`,
+    )
+    // New-first: rows without first_seen_at sort to the top, then by created_at desc
+    .order('first_seen_at', { ascending: true, nullsFirst: true })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
-    if (filters.status) {
-      query = query.eq('status', filters.status);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      logger.error({ error: error.message, userId }, 'getJobMatchesByUser: query failed');
-      return [];
-    }
-
-    // Mark first_seen_at for unseen matches (fire-and-forget)
-    const unseenIds = (data ?? [])
-      .filter((m) => !(m as unknown as Record<string, unknown>).first_seen_at)
-      .map((m) => m.id)
-      .filter(Boolean);
-    if (unseenIds.length > 0) {
-      void (async () => {
-        const { error: markError } = await supabaseAdmin
-          .from('job_matches')
-          .update({ first_seen_at: new Date().toISOString() })
-          .in('id', unseenIds);
-        if (markError) {
-          logger.warn({ userId, count: unseenIds.length, error: markError.message }, 'getJobMatchesByUser: failed to mark first_seen_at');
-        }
-      })();
-    }
-
-    return (data ?? []) as JobMatchRow[];
-  } catch (err) {
-    logger.error(
-      { error: err instanceof Error ? err.message : String(err), userId },
-      'getJobMatchesByUser: unexpected error',
-    );
-    return [];
+  if (filters.status) {
+    query = query.eq('status', filters.status);
   }
+
+  const { data, error } = await query;
+
+  if (error) {
+    logger.error({ error: error.message, userId }, 'getJobMatchesByUser: query failed');
+    throw new Error('Failed to fetch job matches');
+  }
+
+  // Mark first_seen_at for unseen matches (fire-and-forget)
+  const unseenIds = (data ?? [])
+    .filter((m) => !(m as unknown as Record<string, unknown>).first_seen_at)
+    .map((m) => m.id)
+    .filter(Boolean);
+  if (unseenIds.length > 0) {
+    void (async () => {
+      const { error: markError } = await supabaseAdmin
+        .from('job_matches')
+        .update({ first_seen_at: new Date().toISOString() })
+        .in('id', unseenIds);
+      if (markError) {
+        logger.warn({ userId, count: unseenIds.length, error: markError.message }, 'getJobMatchesByUser: failed to mark first_seen_at');
+      }
+    })();
+  }
+
+  return (data ?? []) as JobMatchRow[];
 }
 
 // ─── Update Metadata ─────────────────────────────────────────────────────────

@@ -167,17 +167,15 @@ describe('getEnrichedConnectionsByUser', () => {
     expect(result).toEqual([]);
   });
 
-  // ── 4. Returns empty array on DB error ──────────────────────────────────────
+  // ── 4. Rejects on DB error ─────────────────────────────────────────────────
 
-  it('returns an empty array when the query returns an error', async () => {
+  it('rejects when the query returns an error', async () => {
     chain.range.mockResolvedValueOnce({
       data: null,
       error: { message: 'relation "client_connections" does not exist' },
     });
 
-    const result = await getEnrichedConnectionsByUser('user-abc');
-
-    expect(result).toEqual([]);
+    await expect(getEnrichedConnectionsByUser('user-abc')).rejects.toThrow('Failed to fetch connections');
   });
 
   // ── 5. Passes correct limit and offset to range() ───────────────────────────
@@ -223,17 +221,15 @@ describe('getConnectionCount', () => {
     expect(result).toBe(42);
   });
 
-  // ── 2. Returns 0 on DB error ─────────────────────────────────────────────────
+  // ── 2. Rejects on DB error ─────────────────────────────────────────────────
 
-  it('returns 0 when the query returns an error', async () => {
+  it('rejects when the query returns an error', async () => {
     chain.eq.mockResolvedValueOnce({
       count: null,
       error: { message: 'permission denied' },
     });
 
-    const result = await getConnectionCount('user-abc');
-
-    expect(result).toBe(0);
+    await expect(getConnectionCount('user-abc')).rejects.toThrow('Failed to fetch connection count');
   });
 
   // ── 3. Returns 0 when count is null ─────────────────────────────────────────
@@ -346,17 +342,15 @@ describe('getCompanySummary', () => {
     expect(acme.topPositions).not.toContain('Consultant');
   });
 
-  // ── 4. Returns empty array on DB error ──────────────────────────────────────
+  // ── 4. Rejects on DB error ─────────────────────────────────────────────────
 
-  it('returns an empty array when the query returns an error', async () => {
+  it('rejects when the query returns an error', async () => {
     chain.eq.mockResolvedValueOnce({
       data: null,
       error: { message: 'query timeout' },
     });
 
-    const result = await getCompanySummary('user-abc');
-
-    expect(result).toEqual([]);
+    await expect(getCompanySummary('user-abc')).rejects.toThrow('Failed to fetch company summary');
   });
 });
 

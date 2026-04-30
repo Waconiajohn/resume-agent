@@ -132,20 +132,32 @@ ni.get('/connections', rateLimitMiddleware(60, 60_000), async (c) => {
   const limit = Math.min(parseInt(c.req.query('limit') ?? '100', 10) || 100, 500);
   const offset = parseInt(c.req.query('offset') ?? '0', 10) || 0;
 
-  const connections = await getEnrichedConnectionsByUser(userId, limit, offset);
-  return c.json({ connections });
+  try {
+    const connections = await getEnrichedConnectionsByUser(userId, limit, offset);
+    return c.json({ connections });
+  } catch {
+    return c.json({ error: 'Failed to fetch connections' }, 500);
+  }
 });
 
 ni.get('/connections/count', rateLimitMiddleware(60, 60_000), async (c) => {
   const userId = c.get('user').id;
-  const count = await getConnectionCount(userId);
-  return c.json({ count });
+  try {
+    const count = await getConnectionCount(userId);
+    return c.json({ count });
+  } catch {
+    return c.json({ error: 'Failed to fetch connection count' }, 500);
+  }
 });
 
 ni.get('/connections/companies', rateLimitMiddleware(60, 60_000), async (c) => {
   const userId = c.get('user').id;
-  const companies = await getCompanySummary(userId);
-  return c.json({ companies });
+  try {
+    const companies = await getCompanySummary(userId);
+    return c.json({ companies });
+  } catch {
+    return c.json({ error: 'Failed to fetch company summary' }, 500);
+  }
 });
 
 ni.get('/connections/by-company', rateLimitMiddleware(60, 60_000), async (c) => {
@@ -156,16 +168,24 @@ ni.get('/connections/by-company', rateLimitMiddleware(60, 60_000), async (c) => 
     return c.json({ error: 'company_raw query parameter is required' }, 400);
   }
 
-  const connections = await getConnectionsByCompanyRaw(userId, companyRaw);
-  return c.json({ connections });
+  try {
+    const connections = await getConnectionsByCompanyRaw(userId, companyRaw);
+    return c.json({ connections });
+  } catch {
+    return c.json({ error: 'Failed to fetch company connections' }, 500);
+  }
 });
 
 // ─── Target Titles ───────────────────────────────────────────────────────────
 
 ni.get('/target-titles', rateLimitMiddleware(60, 60_000), async (c) => {
   const userId = c.get('user').id;
-  const titles = await getTargetTitlesByUser(userId);
-  return c.json({ titles });
+  try {
+    const titles = await getTargetTitlesByUser(userId);
+    return c.json({ titles });
+  } catch {
+    return c.json({ error: 'Failed to fetch target titles' }, 500);
+  }
 });
 
 ni.post('/target-titles', rateLimitMiddleware(30, 60_000), async (c) => {
@@ -207,7 +227,12 @@ ni.get('/matches', rateLimitMiddleware(60, 60_000), async (c) => {
   const limit = parseInt(c.req.query('limit') ?? '50', 10) || 50;
   const offset = parseInt(c.req.query('offset') ?? '0', 10) || 0;
 
-  const matches = await getJobMatchesByUser(userId, { status, limit, offset });
+  let matches: Awaited<ReturnType<typeof getJobMatchesByUser>>;
+  try {
+    matches = await getJobMatchesByUser(userId, { status, limit, offset });
+  } catch {
+    return c.json({ error: 'Failed to fetch job matches' }, 500);
+  }
   const enriched = matches.map((m) => {
     const rec = m as unknown as Record<string, unknown>;
     const company = rec.company_directory as { name_display: string } | null;

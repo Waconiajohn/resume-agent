@@ -101,27 +101,19 @@ export async function getConnectionsByUser(
   limit = 100,
   offset = 0,
 ): Promise<ClientConnectionRow[]> {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('client_connections')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+  const { data, error } = await supabaseAdmin
+    .from('client_connections')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
-    if (error) {
-      logger.error({ error: error.message, userId }, 'getConnectionsByUser: query failed');
-      return [];
-    }
-
-    return (data ?? []) as ClientConnectionRow[];
-  } catch (err) {
-    logger.error(
-      { error: err instanceof Error ? err.message : String(err), userId },
-      'getConnectionsByUser: unexpected error',
-    );
-    return [];
+  if (error) {
+    logger.error({ error: error.message, userId }, 'getConnectionsByUser: query failed');
+    throw new Error('Failed to fetch connections');
   }
+
+  return (data ?? []) as ClientConnectionRow[];
 }
 
 // ─── Enriched Connections ─────────────────────────────────────────────────────
@@ -134,34 +126,26 @@ export async function getEnrichedConnectionsByUser(
   limit = 100,
   offset = 0,
 ): Promise<EnrichedConnectionRow[]> {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('client_connections')
-      .select('*, company_directory(name_display)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+  const { data, error } = await supabaseAdmin
+    .from('client_connections')
+    .select('*, company_directory(name_display)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
-    if (error) {
-      logger.error({ error: error.message, userId }, 'getEnrichedConnectionsByUser: query failed');
-      return [];
-    }
-
-    return (data ?? []).map((row: Record<string, unknown>) => {
-      const company = row.company_directory as { name_display: string } | null;
-      const { company_directory: _cd, ...rest } = row;
-      return {
-        ...rest,
-        company_display_name: company?.name_display ?? null,
-      } as EnrichedConnectionRow;
-    });
-  } catch (err) {
-    logger.error(
-      { error: err instanceof Error ? err.message : String(err), userId },
-      'getEnrichedConnectionsByUser: unexpected error',
-    );
-    return [];
+  if (error) {
+    logger.error({ error: error.message, userId }, 'getEnrichedConnectionsByUser: query failed');
+    throw new Error('Failed to fetch connections');
   }
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const company = row.company_directory as { name_display: string } | null;
+    const { company_directory: _cd, ...rest } = row;
+    return {
+      ...rest,
+      company_display_name: company?.name_display ?? null,
+    } as EnrichedConnectionRow;
+  });
 }
 
 // ─── Connection Count ────────────────────────────────────────────────────────
@@ -170,25 +154,17 @@ export async function getEnrichedConnectionsByUser(
  * Fast count of a user's connections (head-only query).
  */
 export async function getConnectionCount(userId: string): Promise<number> {
-  try {
-    const { count, error } = await supabaseAdmin
-      .from('client_connections')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId);
+  const { count, error } = await supabaseAdmin
+    .from('client_connections')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
 
-    if (error) {
-      logger.error({ error: error.message, userId }, 'getConnectionCount: query failed');
-      return 0;
-    }
-
-    return count ?? 0;
-  } catch (err) {
-    logger.error(
-      { error: err instanceof Error ? err.message : String(err), userId },
-      'getConnectionCount: unexpected error',
-    );
-    return 0;
+  if (error) {
+    logger.error({ error: error.message, userId }, 'getConnectionCount: query failed');
+    throw new Error('Failed to fetch connection count');
   }
+
+  return count ?? 0;
 }
 
 // ─── Connections by Company ──────────────────────────────────────────────────
@@ -205,28 +181,20 @@ export async function getConnectionsByCompanyRaw(
   userId: string,
   companyRaw: string,
 ): Promise<CompanyConnectionRow[]> {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('client_connections')
-      .select('id, first_name, last_name, position, linkedin_url')
-      .eq('user_id', userId)
-      .eq('company_raw', companyRaw)
-      .order('last_name', { ascending: true })
-      .order('first_name', { ascending: true });
+  const { data, error } = await supabaseAdmin
+    .from('client_connections')
+    .select('id, first_name, last_name, position, linkedin_url')
+    .eq('user_id', userId)
+    .eq('company_raw', companyRaw)
+    .order('last_name', { ascending: true })
+    .order('first_name', { ascending: true });
 
-    if (error) {
-      logger.error({ error: error.message, userId, companyRaw }, 'getConnectionsByCompanyRaw: query failed');
-      return [];
-    }
-
-    return (data ?? []) as CompanyConnectionRow[];
-  } catch (err) {
-    logger.error(
-      { error: err instanceof Error ? err.message : String(err), userId },
-      'getConnectionsByCompanyRaw: unexpected error',
-    );
-    return [];
+  if (error) {
+    logger.error({ error: error.message, userId, companyRaw }, 'getConnectionsByCompanyRaw: query failed');
+    throw new Error('Failed to fetch company connections');
   }
+
+  return (data ?? []) as CompanyConnectionRow[];
 }
 
 // ─── Company Summary ─────────────────────────────────────────────────────────
@@ -236,84 +204,76 @@ export async function getConnectionsByCompanyRaw(
  * LinkedIn exports cap at ~5K connections.
  */
 export async function getCompanySummary(userId: string): Promise<CompanySummaryRow[]> {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('client_connections')
-      .select('company_raw, company_id, position, company_directory(name_display)')
-      .eq('user_id', userId);
+  const { data, error } = await supabaseAdmin
+    .from('client_connections')
+    .select('company_raw, company_id, position, company_directory(name_display)')
+    .eq('user_id', userId);
 
-    if (error) {
-      logger.error({ error: error.message, userId }, 'getCompanySummary: query failed');
-      return [];
-    }
-
-    const grouped = new Map<string, {
-      companyRaw: string;
-      companyDisplayName: string | null;
-      companyId: string | null;
-      count: number;
-      positions: Map<string, number>;
-    }>();
-
-    for (const row of (data ?? []) as Array<Record<string, unknown>>) {
-      const companyRaw = row.company_raw as string;
-      const companyId = row.company_id as string | null;
-      const position = row.position as string | null;
-      const company = row.company_directory as { name_display: string } | null;
-
-      // Group by company_id when available so that variant spellings of the
-      // same company (e.g. "AWS" and "Amazon Web Services (AWS)") that were
-      // both matched to the same directory entry are merged into one bucket.
-      // Fall back to company_raw for unmatched rows.
-      const groupKey = companyId ?? companyRaw;
-
-      const existing = grouped.get(groupKey);
-      if (existing) {
-        existing.count++;
-        if (position) {
-          existing.positions.set(position, (existing.positions.get(position) ?? 0) + 1);
-        }
-      } else {
-        const positions = new Map<string, number>();
-        if (position) positions.set(position, 1);
-        grouped.set(groupKey, {
-          companyRaw,
-          companyDisplayName: company?.name_display ?? null,
-          companyId,
-          count: 1,
-          positions,
-        });
-      }
-    }
-
-    // Filter out non-company entries from LinkedIn imports.
-    // Anchored to end-of-string to avoid false positives like "Seeking Alpha" or "Confidential Computing".
-    // Skip filter if companyDisplayName exists (company was matched in directory).
-    const invalidCompanyPatterns = /^(retired|self-employed|self employed|seeking|seeking new|currently seeking[^,]*|freelance|freelancer|unemployed|confidential|looking for[^,]*|open to[^,]*|career break|between jobs|between opportunities|n\/a|--)\s*$/i;
-    const filtered = Array.from(grouped.values()).filter(
-      (g) => g.companyRaw.length >= 2
-        && (g.companyDisplayName || !invalidCompanyPatterns.test(g.companyRaw.trim())),
-    );
-
-    return filtered
-      .sort((a, b) => b.count - a.count)
-      .map((g) => ({
-        companyRaw: g.companyRaw,
-        companyDisplayName: g.companyDisplayName,
-        companyId: g.companyId,
-        connectionCount: g.count,
-        topPositions: Array.from(g.positions.entries())
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([title]) => title),
-      }));
-  } catch (err) {
-    logger.error(
-      { error: err instanceof Error ? err.message : String(err), userId },
-      'getCompanySummary: unexpected error',
-    );
-    return [];
+  if (error) {
+    logger.error({ error: error.message, userId }, 'getCompanySummary: query failed');
+    throw new Error('Failed to fetch company summary');
   }
+
+  const grouped = new Map<string, {
+    companyRaw: string;
+    companyDisplayName: string | null;
+    companyId: string | null;
+    count: number;
+    positions: Map<string, number>;
+  }>();
+
+  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+    const companyRaw = row.company_raw as string;
+    const companyId = row.company_id as string | null;
+    const position = row.position as string | null;
+    const company = row.company_directory as { name_display: string } | null;
+
+    // Group by company_id when available so that variant spellings of the
+    // same company (e.g. "AWS" and "Amazon Web Services (AWS)") that were
+    // both matched to the same directory entry are merged into one bucket.
+    // Fall back to company_raw for unmatched rows.
+    const groupKey = companyId ?? companyRaw;
+
+    const existing = grouped.get(groupKey);
+    if (existing) {
+      existing.count++;
+      if (position) {
+        existing.positions.set(position, (existing.positions.get(position) ?? 0) + 1);
+      }
+    } else {
+      const positions = new Map<string, number>();
+      if (position) positions.set(position, 1);
+      grouped.set(groupKey, {
+        companyRaw,
+        companyDisplayName: company?.name_display ?? null,
+        companyId,
+        count: 1,
+        positions,
+      });
+    }
+  }
+
+  // Filter out non-company entries from LinkedIn imports.
+  // Anchored to end-of-string to avoid false positives like "Seeking Alpha" or "Confidential Computing".
+  // Skip filter if companyDisplayName exists (company was matched in directory).
+  const invalidCompanyPatterns = /^(retired|self-employed|self employed|seeking|seeking new|currently seeking[^,]*|freelance|freelancer|unemployed|confidential|looking for[^,]*|open to[^,]*|career break|between jobs|between opportunities|n\/a|--)\s*$/i;
+  const filtered = Array.from(grouped.values()).filter(
+    (g) => g.companyRaw.length >= 2
+      && (g.companyDisplayName || !invalidCompanyPatterns.test(g.companyRaw.trim())),
+  );
+
+  return filtered
+    .sort((a, b) => b.count - a.count)
+    .map((g) => ({
+      companyRaw: g.companyRaw,
+      companyDisplayName: g.companyDisplayName,
+      companyId: g.companyId,
+      connectionCount: g.count,
+      topPositions: Array.from(g.positions.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([title]) => title),
+    }));
 }
 
 // ─── Background Operation Log ─────────────────────────────────────────────────
