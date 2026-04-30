@@ -228,7 +228,8 @@ function hasActiveLlmProviderKey(): boolean {
 }
 
 function getFeatureDependencySnapshot() {
-  const jobSearchKeyPresent = Boolean(process.env.SERPER_API_KEY || process.env.FIRECRAWL_API_KEY);
+  const jobSearchPrimaryKeyPresent = Boolean(process.env.SERPAPI_API_KEY);
+  const jobSearchFallbackKeyPresent = Boolean(process.env.SERPER_API_KEY || process.env.FIRECRAWL_API_KEY);
   const networkIntelligenceSearchKeyPresent = Boolean(process.env.SERPER_API_KEY);
   const billingRequired = process.env.BILLING_REQUIRED === 'true';
   const billingConfigured = Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
@@ -236,8 +237,12 @@ function getFeatureDependencySnapshot() {
   const dependencies = {
     job_search: {
       enabled: FF_JOB_SEARCH,
-      ok: !FF_JOB_SEARCH || jobSearchKeyPresent,
-      requires: ['SERPER_API_KEY or FIRECRAWL_API_KEY'],
+      ok: !FF_JOB_SEARCH || jobSearchPrimaryKeyPresent,
+      requires: ['SERPAPI_API_KEY'],
+      supplemental: {
+        configured: jobSearchFallbackKeyPresent,
+        providers: ['SERPER_API_KEY', 'FIRECRAWL_API_KEY'],
+      },
     },
     network_intelligence: {
       enabled: FF_NETWORK_INTELLIGENCE,

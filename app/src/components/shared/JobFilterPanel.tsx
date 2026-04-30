@@ -53,7 +53,7 @@ const insiderGuidance =
   'Run one search shape at a time: Remote is nationwide, while Hybrid and On-site use city/state as a search hint. Posted-within filters only include jobs with a readable source date; Any date also allows undated public job pages.';
 
 const broadSearchGuidance =
-  'Broad Search checks Google web results for public ATS and career pages. Posted-within filters only show jobs with a readable source date; Any date also allows undated public job pages.';
+  'Broad Search checks Google Jobs first, then falls back to public ATS and career pages when needed. Posted-within filters only show jobs with a readable source date; Any date also allows undated public job pages.';
 
 const selectBase =
   'rounded-lg border border-[var(--line-soft)] bg-[var(--surface-2)] px-2.5 py-1.5 text-sm text-[var(--text-strong)] outline-none transition-[border-color,background-color] duration-200 focus-visible:border-[var(--link)]/40 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--focus-ring-offset-bg)] cursor-pointer';

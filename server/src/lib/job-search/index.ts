@@ -100,7 +100,10 @@ export async function searchAllSources(
   const primaryQuery = extractPrimaryQuery(query);
 
   const settled = await Promise.allSettled(
-    adapters.map(adapter => adapter.search(primaryQuery, location, filters)),
+    adapters.map((adapter) => {
+      const adapterQuery = adapter.queryMode === 'raw' ? query : primaryQuery;
+      return adapter.search(adapterQuery, location, filters);
+    }),
   );
 
   const seen = new Set<string>();

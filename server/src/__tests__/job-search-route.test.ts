@@ -14,11 +14,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockFrom = vi.hoisted(() => vi.fn());
 
 const mockSearchAllSources = vi.hoisted(() =>
-  vi.fn().mockResolvedValue({
-    jobs: [],
-    executionTimeMs: 42,
-    sources_queried: ['firecrawl'],
-  }),
+  vi.fn(),
 );
 
 vi.mock('../lib/supabase.js', () => ({
@@ -141,11 +137,11 @@ function validBody(overrides: Record<string, unknown> = {}) {
 describe('POST /api/job-search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSearchAllSources.mockResolvedValue({
+    mockSearchAllSources.mockImplementation((_query, _location, _filters, adapters: Array<{ name: string }>) => Promise.resolve({
       jobs: [],
       executionTimeMs: 42,
-      sources_queried: ['firecrawl'],
-    });
+      sources_queried: adapters.map((adapter) => adapter.name),
+    }));
   });
 
   it('returns 400 on invalid request body — missing query', async () => {
@@ -240,7 +236,12 @@ describe('POST /api/job-search', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { jobs: unknown[]; sources_queried: string[] };
     expect(body.jobs).toHaveLength(0);
-    expect(body.sources_queried).toEqual(['firecrawl']);
+    expect(body.sources_queried).toEqual(expect.arrayContaining(['serpapi_google_jobs', 'serper']));
+    expect(mockSearchAllSources).toHaveBeenCalledTimes(2);
+    expect((mockSearchAllSources.mock.calls[0]?.[3] as Array<{ name: string }>).map((adapter) => adapter.name))
+      .toEqual(['serpapi_google_jobs']);
+    expect((mockSearchAllSources.mock.calls[1]?.[3] as Array<{ name: string }>).map((adapter) => adapter.name))
+      .toEqual(expect.arrayContaining(['serper']));
   });
 
   it('returns 500 when listing upsert fails', async () => {

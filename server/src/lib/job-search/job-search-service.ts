@@ -9,12 +9,13 @@
 import { supabaseAdmin } from '../supabase.js';
 import logger from '../logger.js';
 import { searchAllSources } from './index.js';
+import { SerpApiGoogleJobsAdapter } from './adapters/serpapi-google-jobs.js';
 import { SerperJobsAdapter } from './adapters/serper-jobs.js';
 import { FirecrawlAdapter } from './adapters/firecrawl.js';
 import { matchJobsToProfile } from './ai-matcher.js';
 import { crossReferenceWithNetwork } from './ni-crossref.js';
 import { enrichWithReferralBonuses } from './referral-enrichment.js';
-import type { JobResult, SearchFilterStats, SearchFilters } from './types.js';
+import type { JobResult, SearchFilterStats, SearchFilters, SearchResponse } from './types.js';
 
 export type { SearchFilters };
 
@@ -56,12 +57,61 @@ type JobStub = { external_id: string; company: string };
 
 // ─── Search pipeline ──────────────────────────────────────────────────────────
 
+function buildPrimarySearchAdapters() {
+  return [new SerpApiGoogleJobsAdapter()];
+}
+
+function buildFallbackSearchAdapters() {
+  return [
+    new SerperJobsAdapter(),
+    ...(process.env.FIRECRAWL_API_KEY ? [new FirecrawlAdapter()] : []),
+  ];
+}
+
+function mergeFilterStats(
+  primary: SearchFilterStats | undefined,
+  fallback: SearchFilterStats | undefined,
+): SearchFilterStats | undefined {
+  if (!primary) return fallback;
+  if (!fallback) return primary;
+  return {
+    raw_returned: primary.raw_returned + fallback.raw_returned,
+    filtered_by_work_mode: primary.filtered_by_work_mode + fallback.filtered_by_work_mode,
+    filtered_by_freshness: primary.filtered_by_freshness + fallback.filtered_by_freshness,
+    deduped: primary.deduped + fallback.deduped,
+    adapter_failures: primary.adapter_failures + fallback.adapter_failures,
+    provider_diagnostics: [
+      ...(primary.provider_diagnostics ?? []),
+      ...(fallback.provider_diagnostics ?? []),
+    ],
+  };
+}
+
+function mergeFallbackSearchResult(
+  primary: SearchResponse,
+  fallback: SearchResponse,
+): SearchResponse {
+  const jobs = fallback.jobs.length > 0 ? fallback.jobs : primary.jobs;
+  const emptyReason = jobs.length > 0
+    ? undefined
+    : [primary.empty_reason, fallback.empty_reason].filter(Boolean).join(' ') || undefined;
+  return {
+    jobs,
+    executionTimeMs: primary.executionTimeMs + fallback.executionTimeMs,
+    sources_queried: [...primary.sources_queried, ...fallback.sources_queried],
+    filter_stats: mergeFilterStats(primary.filter_stats, fallback.filter_stats),
+    ...(emptyReason ? { empty_reason: emptyReason } : {}),
+  };
+}
+
 /**
  * Executes the full search pipeline:
- * 1. Fan-out to Firecrawl adapter
- * 2. Persist scan record
- * 3. Upsert job listings
- * 4. Insert job_search_results join records
+ * 1. Query SerpApi Google Jobs as the primary structured job-board provider
+ * 2. If the primary tier returns no usable jobs, fall back to Serper web/ATS
+ *    discovery and optional Firecrawl career-page discovery
+ * 3. Persist scan record
+ * 4. Upsert job listings
+ * 5. Insert job_search_results join records
  *
  * Returns null (with an error reason) if scan persistence fails.
  */
@@ -71,21 +121,29 @@ export async function runSearchPipeline(
   location: string,
   filters: SearchFilters,
 ): Promise<{ ok: true; result: SearchPipelineResult } | { ok: false; error: string; status: number }> {
-  // Serper Search is primary — Google web/SERP discovery narrowed to public ATS
-  // and career pages. Firecrawl is supplemental when configured; it is useful
-  // for career-page discovery and as a scraping fallback elsewhere, but it does
-  // not replace Serper's real-time Google query.
-  const adapters = [
-    new SerperJobsAdapter(),
-    ...(process.env.FIRECRAWL_API_KEY ? [new FirecrawlAdapter()] : []),
-  ];
+  const primaryAdapters = buildPrimarySearchAdapters();
+  const fallbackAdapters = buildFallbackSearchAdapters();
 
   logger.info(
     { userId, query, location, filters },
     'Job search started',
   );
 
-  const searchResult = await searchAllSources(query, location, filters, adapters);
+  let searchResult = await searchAllSources(query, location, filters, primaryAdapters);
+  if (searchResult.jobs.length === 0 && fallbackAdapters.length > 0) {
+    logger.info(
+      {
+        userId,
+        query,
+        location,
+        filters,
+        primaryEmptyReason: searchResult.empty_reason,
+      },
+      'Primary Google Jobs search returned no usable jobs; running fallback discovery',
+    );
+    const fallbackResult = await searchAllSources(query, location, filters, fallbackAdapters);
+    searchResult = mergeFallbackSearchResult(searchResult, fallbackResult);
+  }
 
   // Persist scan record
   const { data: scanData, error: scanError } = await supabaseAdmin

@@ -296,7 +296,7 @@ describe('network intelligence panels', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Any' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText(/checks Google web results for public ATS and career pages/i)).toBeInTheDocument();
+    expect(screen.getByText(/checks Google Jobs first/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remote' }));
     expect(onWorkModesChange).toHaveBeenLastCalledWith({ remote: true, hybrid: false, onsite: false });

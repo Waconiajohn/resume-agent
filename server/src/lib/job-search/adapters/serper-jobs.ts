@@ -1,9 +1,10 @@
 /**
- * Serper Google Jobs Adapter — job listings discovered through Google Search.
+ * Serper ATS/Web Fallback Adapter — job pages discovered through Google Search.
  *
- * Serper does not expose a stable /jobs endpoint on the current API. This adapter
- * uses the supported /search endpoint and narrows results to known ATS/career
- * domains so Broad Search can still return real job pages with freshness signals.
+ * Serper does not expose a stable structured Google Jobs endpoint on the
+ * current API. This adapter uses the supported /search endpoint and narrows
+ * results to known ATS/career domains. It is intentionally a fallback behind
+ * the SerpApi Google Jobs adapter, not the broad job-board source of truth.
  *
  * Auth: X-API-KEY header with SERPER_API_KEY env var.
  * Returns empty array on missing key or any error (graceful degradation).

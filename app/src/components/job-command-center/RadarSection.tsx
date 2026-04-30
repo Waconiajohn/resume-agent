@@ -60,8 +60,11 @@ function formatSalary(min: number | null, max: number | null): string | null {
 function formatSourceLabel(source: string | null | undefined): string | null {
   if (!source) return null;
   const normalized = source.toLowerCase();
+  if (normalized.includes('serpapi')) {
+    return 'Google Jobs result';
+  }
   if (normalized.includes('google search') || normalized.includes('serper')) {
-    return 'Google/ATS result';
+    return 'ATS/web fallback';
   }
   if (normalized.includes('firecrawl')) return 'Supplemental career result';
   return source;
@@ -154,7 +157,7 @@ export function RadarSection({
       </div>
 
       <p className="mb-4 text-[13px] leading-relaxed text-[var(--text-soft)]">
-        Search ATS-hosted public job pages and career boards, then save the best 5 or 6 to your shortlist before tailoring resumes.
+        Search Google Jobs plus verified public application links, then save the best 5 or 6 to your shortlist before tailoring resumes.
       </p>
 
       {/* Search bar — Location / Date Posted / Work Mode live in the outer
@@ -200,7 +203,7 @@ export function RadarSection({
         <div className="py-8 text-center">
           <Search size={24} className="mx-auto mb-3 text-[var(--text-soft)]" />
           <p className="text-[12px] text-[var(--text-soft)]">
-            Search public ATS job pages here. Posted-within filters only show roles with a readable posting date from the source.
+            Search Google Jobs here. Posted-within filters only show roles with a readable posting date from the source.
           </p>
         </div>
       )}

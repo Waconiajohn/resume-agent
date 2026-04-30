@@ -160,6 +160,17 @@ describe('searchAllSources', () => {
     expect(adapter.search).toHaveBeenCalledWith('CTO', 'US', baseFilters);
   });
 
+  it('passes the raw query to adapters that opt into raw query mode', async () => {
+    const adapter = {
+      ...makeAdapter('structured', []),
+      queryMode: 'raw' as const,
+    };
+
+    await searchAllSources('(CTO OR VP) AND remote', 'US', baseFilters, [adapter]);
+
+    expect(adapter.search).toHaveBeenCalledWith('(CTO OR VP) AND remote', 'US', baseFilters);
+  });
+
   it('enforces a requested remoteType across adapters', async () => {
     const remoteJob = makeJob({
       external_id: 'remote_1',

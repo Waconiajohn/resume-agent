@@ -647,7 +647,7 @@ export function JobCommandCenterRoom({
             companies={watchlist.companies}
             onSearchCompany={handleSearchCompany}
             onManage={() => setShowWatchlistManager(true)}
-            description="Click a company to search ATS-hosted public jobs from the board."
+            description="Click a company to search Google Jobs and public application links from the board."
           />
 
           <details className="group rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)]">

@@ -230,11 +230,12 @@ export const FF_JOB_FINDER = envBool('FF_JOB_FINDER', true);
 export const FF_APPLICATION_PIPELINE = envBool('FF_APPLICATION_PIPELINE', true);
 
 /**
- * FF_JOB_SEARCH — Enable the Job Search API routes (Firecrawl adapter).
+ * FF_JOB_SEARCH — Enable the Job Search API routes.
  *
  * Default: true (consumer-ready).
  * Set FF_JOB_SEARCH=false in server/.env to deactivate.
- * Requires: FIRECRAWL_API_KEY.
+ * Requires: SERPAPI_API_KEY for structured Google Jobs. SERPER_API_KEY and
+ * FIRECRAWL_API_KEY are supplemental fallback providers.
  */
 export const FF_JOB_SEARCH = envBool('FF_JOB_SEARCH', true);
 

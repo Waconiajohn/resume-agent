@@ -32,6 +32,11 @@ export interface JobResult {
 
 export interface SearchAdapter {
   name: string;
+  /**
+   * Most legacy web-search adapters do better with a single title extracted
+   * from boolean strings. Structured providers can opt into the full query.
+   */
+  queryMode?: 'primary' | 'raw';
   search(query: string, location: string, filters: SearchFilters): Promise<JobResult[]>;
   getDiagnostics?(): SearchProviderDiagnostic[];
 }
