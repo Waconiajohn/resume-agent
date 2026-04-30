@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API_BASE } from '@/lib/api';
+import { readApiError } from '@/lib/api-errors';
 import { supabase } from '@/lib/supabase';
 import type { TimelinePayload } from '@/lib/timeline/rules';
 import {
@@ -51,7 +52,10 @@ export function useTodayTimeline(
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) {
-      if (mountedRef.current) setError('Not authenticated');
+      if (mountedRef.current) {
+        setPursuits([]);
+        setError('Not authenticated');
+      }
       return;
     }
 
@@ -65,8 +69,9 @@ export function useTodayTimeline(
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
+        const message = await readApiError(res, `Failed to load Today (${res.status})`);
         if (mountedRef.current) {
-          setError(`Failed to load Today (${res.status})`);
+          setError(message);
           setPursuits([]);
         }
         return;

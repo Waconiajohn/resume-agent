@@ -28,7 +28,8 @@ function setHook({
   aggregation = { tierA: [], tierB: [], tierC: [] } as TodayAggregation,
   loading = false,
   error = null as string | null,
-}: Partial<{ aggregation: TodayAggregation; loading: boolean; error: string | null }> = {}) {
+  refresh = vi.fn(),
+}: Partial<{ aggregation: TodayAggregation; loading: boolean; error: string | null; refresh: () => Promise<void> }> = {}) {
   const totalCount = aggregation.tierA.length + aggregation.tierB.length + aggregation.tierC.length;
   useTodayTimelineMock.mockReturnValue({
     pursuits: [],
@@ -36,7 +37,7 @@ function setHook({
     loading,
     error,
     totalCount,
-    refresh: vi.fn(),
+    refresh,
   });
 }
 
@@ -75,6 +76,23 @@ describe('TodayView', () => {
     );
     expect(screen.getByTestId('today-empty-state')).toBeInTheDocument();
     expect(screen.getByText(/Nothing urgent right now/i)).toBeInTheDocument();
+  });
+
+  it('renders the specific load error and retries on request', () => {
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    setHook({ error: 'Timeline aggregation failed.', refresh });
+    render(
+      <MemoryRouter>
+        <TodayView />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("We couldn't load Today.")).toBeInTheDocument();
+    expect(screen.getByText('Timeline aggregation failed.')).toBeInTheDocument();
+    expect(screen.queryByTestId('today-empty-state')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it('renders tier-A items with the time-sensitive region label', () => {

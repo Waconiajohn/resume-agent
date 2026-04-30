@@ -10,7 +10,7 @@
  * tier C (waiting / stale). Empty state nudges toward prospecting.
  */
 
-import { AlertCircle, ArrowRight, Building2, Clock, Hourglass, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowRight, Building2, Clock, Hourglass, RefreshCw, Sparkles } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
 import { GlassButton } from '@/components/GlassButton';
 import {
@@ -207,7 +207,7 @@ function Region({
 // ─── Main component ────────────────────────────────────────────────────
 
 export function TodayView({ onNavigate }: TodayViewProps) {
-  const { aggregation, loading, error, totalCount } = useTodayTimeline();
+  const { aggregation, loading, error, refresh, totalCount } = useTodayTimeline();
 
   return (
     <div className="flex flex-col gap-6" data-testid="today-view">
@@ -221,10 +221,15 @@ export function TodayView({ onNavigate }: TodayViewProps) {
       {loading ? (
         <TodaySkeleton />
       ) : error ? (
-        <GlassCard className="p-5">
-          <p className="text-sm text-[var(--text-muted)]">
-            We couldn&apos;t load Today. Try refreshing in a moment.
-          </p>
+        <GlassCard className="flex flex-wrap items-center justify-between gap-3 p-5">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text-strong)]">We couldn&apos;t load Today.</p>
+            <p className="mt-1 text-sm text-[var(--badge-red-text)]/85">{error}</p>
+          </div>
+          <GlassButton variant="ghost" size="sm" onClick={() => void refresh()}>
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+            Retry
+          </GlassButton>
         </GlassCard>
       ) : totalCount === 0 ? (
         <GlassCard className="p-6" data-testid="today-empty-state">
