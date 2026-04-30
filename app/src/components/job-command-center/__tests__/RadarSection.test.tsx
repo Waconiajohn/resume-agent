@@ -215,6 +215,20 @@ describe('RadarSection — empty state', () => {
     expect(screen.getByText(/no jobs came back/i)).toBeInTheDocument();
     expect(screen.queryByText(/sources:/i)).not.toBeInTheDocument();
   });
+
+  it('labels remote no-results searches as Remote instead of no location', () => {
+    render(<RadarSection {...defaultProps({
+      hasSearched: true,
+      lastQuery: 'Cloud Operations Manager',
+      lastLocation: '',
+      datePosted: '30d',
+      remoteType: 'remote',
+      emptyReason: 'No jobs came back from the provider for this title and location.',
+    })} />);
+
+    expect(screen.getByText(/Current search: Remote · 30d · remote/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Current search: no location · 30d · remote/i)).not.toBeInTheDocument();
+  });
 });
 
 describe('RadarSection — button callbacks', () => {

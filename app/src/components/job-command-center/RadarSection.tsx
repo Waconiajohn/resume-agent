@@ -124,6 +124,9 @@ export function RadarSection({
   filterStats,
 }: RadarSectionProps) {
   const [query, setQuery] = useState('');
+  const currentSearchLocation = remoteType === 'remote'
+    ? 'Remote'
+    : lastLocation?.trim() || 'no location';
 
   const handleSearch = useCallback(() => {
     if (!query.trim()) return;
@@ -220,7 +223,7 @@ export function RadarSection({
                 {emptyReason ?? 'No jobs matched the current filters. Try a broader title, a wider location, or Last 30 days.'}
               </p>
               <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-soft)]">
-                Current search: {lastLocation?.trim() || 'no location'} · {datePosted ?? '7d'} · {remoteType ?? 'any'}
+                Current search: {currentSearchLocation} · {datePosted ?? '7d'} · {remoteType ?? 'any'}
                 {typeof executionTimeMs === 'number' ? ` · ${Math.round(executionTimeMs / 100) / 10}s` : ''}
               </p>
               {filterStats && (
