@@ -1,6 +1,13 @@
 // Chrome Extension Service Worker — handles auth, API proxy, tab monitoring, badge
 
 import { CONFIG } from '../shared/config.js';
+import {
+  buildApplyStatusRequest,
+  buildInferFieldRequest,
+  buildJobDiscoverRequest,
+  buildResumeLookupRequest,
+  readElementIndex,
+} from '../shared/api-contract.js';
 import { normalizeJobUrl, isJobApplicationPage, detectPlatform } from '../shared/url-normalizer.js';
 import type { ExtensionMessage, TabStatus, ResumePayload, ATSPlatform, ReadyResumeResult } from '../shared/types.js';
 
@@ -64,7 +71,18 @@ async function apiRequest<T>(endpoint: string, method = 'GET', body?: unknown): 
     throw new Error('NOT_AUTHENTICATED');
   }
 
-  return response.json() as Promise<T>;
+  const data = await response.json().catch(() => null) as { error?: unknown; feature_disabled?: unknown } | null;
+
+  if (!response.ok) {
+    const message = typeof data?.error === 'string' ? data.error : `API request failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  if (data?.feature_disabled === true) {
+    throw new Error('FEATURE_DISABLED');
+  }
+
+  return data as T;
 }
 
 // ─── Resume Lookup with Cache ──────────────────────────────────────────────────
@@ -95,7 +113,7 @@ async function fetchResumeForJob(jobUrl: string): Promise<ResumePayload | null> 
     const result = await apiRequest<{ resume: ResumePayload | null }>(
       CONFIG.ENDPOINTS.RESUME_LOOKUP,
       'POST',
-      { jobUrl: normalizedUrl }
+      buildResumeLookupRequest(normalizedUrl)
     );
 
     const resume = result.resume ?? null;
@@ -179,9 +197,7 @@ async function discoverJob(tab: chrome.tabs.Tab): Promise<void> {
   if (!tab.url) return;
 
   apiRequest<void>(CONFIG.ENDPOINTS.JOB_DISCOVER, 'POST', {
-    url: tab.url,
-    title: tab.title ?? '',
-    platform: detectPlatform(tab.url),
+    ...buildJobDiscoverRequest(tab.url, tab.title ?? ''),
   }).catch((err: Error) => {
     console.log('[CareerIQ] Job discovery error (non-critical):', err.message);
   });
@@ -190,12 +206,7 @@ async function discoverJob(tab: chrome.tabs.Tab): Promise<void> {
 // ─── Apply Status ──────────────────────────────────────────────────────────────
 
 async function updateApplyStatus(jobUrl: string, platform: ATSPlatform): Promise<void> {
-  const normalizedUrl = normalizeJobUrl(jobUrl);
-  await apiRequest<void>(CONFIG.ENDPOINTS.APPLY_STATUS, 'POST', {
-    jobUrl: normalizedUrl,
-    platform,
-    appliedAt: new Date().toISOString(),
-  });
+  await apiRequest<void>(CONFIG.ENDPOINTS.APPLY_STATUS, 'POST', buildApplyStatusRequest(jobUrl, platform));
 }
 
 // ─── Badge Helpers ─────────────────────────────────────────────────────────────
@@ -414,16 +425,16 @@ async function handleMessage(
       }
 
       try {
-        const result = await apiRequest<{ id: string; email: string }>(
+        const result = await apiRequest<{ authenticated: boolean; user?: { id: string; email: string } }>(
           CONFIG.ENDPOINTS.AUTH_VERIFY,
           'GET'
         );
-        const id = result.id ?? (await getUserId()) ?? '';
-        const email = result.email ?? (await getUserEmail()) ?? '';
+        const id = result.user?.id ?? (await getUserId()) ?? '';
+        const email = result.user?.email ?? (await getUserEmail()) ?? '';
 
         // Persist latest email from server
-        if (result.email) {
-          await chrome.storage.local.set({ [CONFIG.STORAGE.USER_EMAIL]: result.email });
+        if (result.user?.email) {
+          await chrome.storage.local.set({ [CONFIG.STORAGE.USER_EMAIL]: result.user.email });
         }
 
         return { authenticated: true, user: { id, email } };
@@ -433,12 +444,12 @@ async function handleMessage(
     }
 
     case 'AI_FIELD_INFERENCE': {
-      const result = await apiRequest<{ elementIndex: number | null }>(
+      const result = await apiRequest<{ element_index: number | null }>(
         CONFIG.ENDPOINTS.INFER_FIELD,
         'POST',
-        message.payload
+        buildInferFieldRequest(message.payload)
       );
-      return { elementIndex: result.elementIndex ?? null };
+      return { elementIndex: readElementIndex(result) };
     }
 
     case 'TRIGGER_FILL': {

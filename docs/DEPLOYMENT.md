@@ -124,6 +124,14 @@ Set these in the Railway project dashboard under Variables.
 | `SERPER_API_KEY` | Required while `FF_JOB_FINDER=true`. Also used as supplemental public-link discovery for Network Intelligence and job research. |
 | `FIRECRAWL_API_KEY` | Optional supplemental career-page/JD scrape provider. Do not treat this as the primary job-board dependency. |
 
+#### Chrome extension build
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_CAREERIQ_API_BASE_URL` | API origin baked into the Chrome extension build. Defaults to localhost in dev and the Railway production app in production builds. |
+| `VITE_CAREERIQ_APP_BASE_URL` | Web app origin opened by the extension for sign-in and tailoring flows. Defaults to localhost in dev and the Railway production app in production builds. |
+| `VITE_CAREERIQ_EXTENSION_HOST_PERMISSIONS` | Optional comma-separated API origins added to the packaged extension manifest, useful when production moves to a custom API domain. |
+
 #### Optional Groq model overrides
 
 | Variable | Default | Description |
@@ -189,6 +197,7 @@ FF_NETWORKING_CRM=true
 FF_INTERVIEW_DEBRIEF=true
 FF_COUNTER_OFFER_SIM=true
 FF_MOMENTUM=true
+FF_EXTENSION=true
 FF_RETIREMENT_BRIDGE=true
 FF_B2B_OUTPLACEMENT=true
 ```
@@ -393,6 +402,7 @@ These features depend on platform context produced by Tier 1 agents (primarily p
 | `FF_JOB_SEARCH` | Job Search API — Broad Search structured listings | `SERPAPI_API_KEY` configured in Railway |
 | `FF_APPLICATION_PIPELINE` | Application Pipeline — Kanban job tracking CRUD | None (standalone), but pairs with `FF_JOB_FINDER` |
 | `FF_JOB_TRACKER` | Job Application Tracker (Agent #14) | None |
+| `FF_EXTENSION` | Chrome extension API — resume handoff, form fill, apply-status, and token exchange | Extension package built with the production API/app URLs; `extension_support` migration applied |
 | `FF_LINKEDIN_OPTIMIZER` | LinkedIn Optimizer | Completed resume pipeline for positioning input |
 | `FF_LINKEDIN_CONTENT` | LinkedIn Content Writer | `FF_LINKEDIN_OPTIMIZER` recommended first |
 | `FF_LINKEDIN_EDITOR` | LinkedIn Profile Editor | `FF_LINKEDIN_OPTIMIZER` recommended first |

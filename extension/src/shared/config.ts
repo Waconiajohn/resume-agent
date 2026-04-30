@@ -1,7 +1,45 @@
 import type { ATSPlatform } from './types.js';
 
+type ExtensionEnv = Record<string, string | boolean | undefined>;
+
+export interface ExtensionRuntimeConfig {
+  API_BASE_URL: string;
+  APP_BASE_URL: string;
+}
+
+const DEFAULT_DEV_API_BASE_URL = 'http://localhost:3001';
+const DEFAULT_DEV_APP_BASE_URL = 'http://localhost:5173';
+const DEFAULT_PROD_BASE_URL = 'https://resume-agent-production-fc86.up.railway.app';
+
+function readEnv(): ExtensionEnv {
+  return ((import.meta as unknown as { env?: ExtensionEnv }).env ?? {});
+}
+
+export function normalizeBaseUrl(value: string): string {
+  return value.trim().replace(/\/+$/, '');
+}
+
+export function resolveExtensionConfig(env: ExtensionEnv = readEnv()): ExtensionRuntimeConfig {
+  const isProd = env.PROD === true || env.PROD === 'true';
+  const defaultApiBaseUrl = isProd ? DEFAULT_PROD_BASE_URL : DEFAULT_DEV_API_BASE_URL;
+  const defaultAppBaseUrl = isProd ? DEFAULT_PROD_BASE_URL : DEFAULT_DEV_APP_BASE_URL;
+  const apiBaseUrl = typeof env.VITE_CAREERIQ_API_BASE_URL === 'string' && env.VITE_CAREERIQ_API_BASE_URL.trim()
+    ? env.VITE_CAREERIQ_API_BASE_URL
+    : defaultApiBaseUrl;
+  const appBaseUrl = typeof env.VITE_CAREERIQ_APP_BASE_URL === 'string' && env.VITE_CAREERIQ_APP_BASE_URL.trim()
+    ? env.VITE_CAREERIQ_APP_BASE_URL
+    : defaultAppBaseUrl;
+
+  return {
+    API_BASE_URL: normalizeBaseUrl(apiBaseUrl),
+    APP_BASE_URL: normalizeBaseUrl(appBaseUrl),
+  };
+}
+
+const runtimeConfig = resolveExtensionConfig();
+
 export const CONFIG = {
-  API_BASE_URL: 'http://localhost:3001',
+  ...runtimeConfig,
 
   ENDPOINTS: {
     RESUME_LOOKUP: '/api/extension/resume-lookup',

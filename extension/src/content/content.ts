@@ -1,5 +1,6 @@
 import { FieldMapper } from './field-mapper.js';
 import { detectPlatform } from '../shared/url-normalizer.js';
+import { CONFIG } from '../shared/config.js';
 import type { ATSPlatform, ResumePayload, ReadyResumeResult } from '../shared/types.js';
 
 // ─── Module State ─────────────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ function injectStatusBanner(state: 'ready' | 'warn', resume: ResumePayload | nul
         <span class="ciq-banner-icon">⚠</span>
         <span class="ciq-banner-text">
           No tailored resume found for this job.
-          <a href="http://localhost:5173" target="_blank" class="ciq-link">Build one on CareerIQ →</a>
+          <a href="${CONFIG.APP_BASE_URL}" target="_blank" class="ciq-link">Build one on CareerIQ →</a>
         </span>
         <button class="ciq-banner-close" title="Dismiss">✕</button>
       </div>

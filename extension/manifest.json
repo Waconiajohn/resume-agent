@@ -16,6 +16,7 @@
     "https://*.indeed.com/*",
     "https://*.myworkdayjobs.com/*",
     "https://*.icims.com/*",
+    "https://resume-agent-production-fc86.up.railway.app/*",
     "http://localhost:3001/*"
   ],
   "background": {

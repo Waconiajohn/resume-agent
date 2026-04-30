@@ -153,10 +153,9 @@ function renderStatus(status: TabStatus | null): void {
     // Show tailor button
     if (tailorBtn) {
       tailorBtn.style.display = 'block';
-      const appBase = CONFIG.API_BASE_URL.replace(':3001', ':5173');
       const jobUrl = status.url ? encodeURIComponent(status.url) : '';
       if (tailorBtn instanceof HTMLAnchorElement) {
-        tailorBtn.href = `${appBase}/tailor?url=${jobUrl}`;
+        tailorBtn.href = `${CONFIG.APP_BASE_URL}/tailor?url=${jobUrl}`;
       }
     }
   }
@@ -251,8 +250,6 @@ function buildUI(): void {
   const app = document.getElementById('app');
   if (!app) return;
 
-  const appBase = CONFIG.API_BASE_URL.replace(':3001', ':5173');
-
   app.innerHTML = `
     <!-- Loading Screen -->
     <div id="loading-screen" style="display:none;">
@@ -270,7 +267,7 @@ function buildUI(): void {
         <div class="status-value">Auto-fill job applications with your tailored resume.</div>
       </div>
       <a
-        href="${appBase}/login?source=extension"
+        href="${CONFIG.APP_BASE_URL}/login?source=extension"
         target="_blank"
         rel="noopener noreferrer"
         class="btn"
@@ -375,8 +372,7 @@ async function init(): Promise<void> {
   const openAppBtn = $('open-app-btn');
   if (openAppBtn) {
     openAppBtn.addEventListener('click', () => {
-      const appBase = CONFIG.API_BASE_URL.replace(':3001', ':5173');
-      chrome.tabs.create({ url: appBase });
+      chrome.tabs.create({ url: CONFIG.APP_BASE_URL });
     });
   }
 }
