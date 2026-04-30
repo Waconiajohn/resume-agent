@@ -46,6 +46,7 @@ describe('useJobApplications', () => {
 
     expect(result.current.applications).toEqual([]);
     expect(result.current.error).toBe('Could not load applications.');
+    expect(result.current.getLastError()).toBe('Could not load applications.');
   });
 
   it('reverts optimistic stage moves and surfaces the API error', async () => {
@@ -69,5 +70,6 @@ describe('useJobApplications', () => {
     expect(moved).toBe(false);
     expect(result.current.applications[0].stage).toBe('saved');
     expect(result.current.error).toBe('Could not update stage.');
+    expect(result.current.getLastError()).toBe('Could not update stage.');
   });
 });

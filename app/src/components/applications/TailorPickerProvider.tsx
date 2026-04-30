@@ -78,6 +78,7 @@ export function TailorPickerProvider({ children }: TailorPickerProviderProps) {
     loading,
     fetchApplications,
     createApplication,
+    getLastError,
   } = useJobApplications({ archived: 'active' });
 
   const openPicker = useCallback((context: TailorPickerContext) => {
@@ -143,7 +144,7 @@ export function TailorPickerProvider({ children }: TailorPickerProviderProps) {
         source: 'tailor_picker',
       });
       if (!created) {
-        return { ok: false, error: 'Failed to create application' };
+        return { ok: false, error: getLastError() ?? 'Failed to create application' };
       }
 
       if (pickerContext) {
@@ -156,7 +157,7 @@ export function TailorPickerProvider({ children }: TailorPickerProviderProps) {
       navigate(buildApplicationWorkspaceRoute(created.id, 'resume'));
       return { ok: true, applicationId: created.id };
     },
-    [accessToken, createApplication, pickerContext, fireResolution, close, navigate],
+    [accessToken, createApplication, getLastError, pickerContext, fireResolution, close, navigate],
   );
 
   const api = useMemo<TailorPickerApi>(() => ({ openPicker }), [openPicker]);

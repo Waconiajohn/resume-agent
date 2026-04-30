@@ -152,16 +152,29 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
   // Prevents a stale list response from clobbering a newer one if the hook
   // fetches twice in quick succession (e.g. list() called after create()).
   const requestIdRef = useRef(0);
+  const errorRef = useRef<string | null>(null);
+
+  const setErrorMessage = useCallback((message: string): void => {
+    errorRef.current = message;
+    setError(message);
+  }, []);
+
+  const clearErrorMessage = useCallback((): void => {
+    errorRef.current = null;
+    setError(null);
+  }, []);
+
+  const getLastError = useCallback((): string | null => errorRef.current, []);
 
   const fetchApplications = useCallback(async (): Promise<JobApplication[] | null> => {
     if (!accessToken) {
       setApplications([]);
-      setError('Not authenticated');
+      setErrorMessage('Not authenticated');
       return null;
     }
     const id = ++requestIdRef.current;
     setLoading(true);
-    setError(null);
+    clearErrorMessage();
     try {
       const params = new URLSearchParams({
         sort_by: 'updated_at',
@@ -173,7 +186,7 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
       });
       if (!res.ok) {
         const message = await readApiError(res, `Failed to list applications (HTTP ${res.status})`);
-        if (id === requestIdRef.current) setError(message);
+        if (id === requestIdRef.current) setErrorMessage(message);
         return null;
       }
       const body = (await res.json()) as ListResponse | { feature_disabled?: boolean };
@@ -186,27 +199,28 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
       return list;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to list applications';
-      if (id === requestIdRef.current) setError(message);
+      if (id === requestIdRef.current) setErrorMessage(message);
       return null;
     } finally {
       if (id === requestIdRef.current) setLoading(false);
     }
-  }, [accessToken, archivedFilter]);
+  }, [accessToken, archivedFilter, clearErrorMessage, setErrorMessage]);
 
   const archiveApplication = useCallback(
     async (id: string): Promise<JobApplication | null> => {
       if (!accessToken) {
-        setError('Not authenticated');
+        setErrorMessage('Not authenticated');
         return null;
       }
-      setError(null);
+      clearErrorMessage();
       try {
         const res = await fetch(`${API_BASE}/job-applications/${id}/archive`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!res.ok) {
-          setError(await readApiError(res, `Failed to archive application (HTTP ${res.status})`));
+          const message = await readApiError(res, `Failed to archive application (HTTP ${res.status})`);
+          setErrorMessage(message);
           return null;
         }
         const archived = (await res.json()) as JobApplication;
@@ -221,27 +235,28 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
         }
         return archived;
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to archive application');
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to archive application');
         return null;
       }
     },
-    [accessToken, archivedFilter],
+    [accessToken, archivedFilter, clearErrorMessage, setErrorMessage],
   );
 
   const restoreApplication = useCallback(
     async (id: string): Promise<JobApplication | null> => {
       if (!accessToken) {
-        setError('Not authenticated');
+        setErrorMessage('Not authenticated');
         return null;
       }
-      setError(null);
+      clearErrorMessage();
       try {
         const res = await fetch(`${API_BASE}/job-applications/${id}/restore`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!res.ok) {
-          setError(await readApiError(res, `Failed to restore application (HTTP ${res.status})`));
+          const message = await readApiError(res, `Failed to restore application (HTTP ${res.status})`);
+          setErrorMessage(message);
           return null;
         }
         const restored = (await res.json()) as JobApplication;
@@ -254,20 +269,20 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
         }
         return restored;
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to restore application');
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to restore application');
         return null;
       }
     },
-    [accessToken, archivedFilter],
+    [accessToken, archivedFilter, clearErrorMessage, setErrorMessage],
   );
 
   const createApplication = useCallback(
     async (input: NewJobApplicationInput): Promise<JobApplication | null> => {
       if (!accessToken) {
-        setError('Not authenticated');
+        setErrorMessage('Not authenticated');
         return null;
       }
-      setError(null);
+      clearErrorMessage();
       try {
         const res = await fetch(`${API_BASE}/job-applications`, {
           method: 'POST',
@@ -278,7 +293,8 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
           body: JSON.stringify(input),
         });
         if (!res.ok) {
-          setError(await readApiError(res, `Failed to create application (HTTP ${res.status})`));
+          const message = await readApiError(res, `Failed to create application (HTTP ${res.status})`);
+          setErrorMessage(message);
           return null;
         }
         const created = (await res.json()) as JobApplication;
@@ -286,20 +302,20 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
         setApplications((prev) => [created, ...prev]);
         return created;
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create application');
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to create application');
         return null;
       }
     },
-    [accessToken],
+    [accessToken, clearErrorMessage, setErrorMessage],
   );
 
   const updateApplication = useCallback(
     async (id: string, patch: Partial<NewJobApplicationInput> & { stage?: JobApplicationStage }): Promise<JobApplication | null> => {
       if (!accessToken) {
-        setError('Not authenticated');
+        setErrorMessage('Not authenticated');
         return null;
       }
-      setError(null);
+      clearErrorMessage();
       try {
         const res = await fetch(`${API_BASE}/job-applications/${id}`, {
           method: 'PATCH',
@@ -310,18 +326,19 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
           body: JSON.stringify(patch),
         });
         if (!res.ok) {
-          setError(await readApiError(res, `Failed to update application (HTTP ${res.status})`));
+          const message = await readApiError(res, `Failed to update application (HTTP ${res.status})`);
+          setErrorMessage(message);
           return null;
         }
         const updated = (await res.json()) as JobApplication;
         setApplications((prev) => prev.map((a) => (a.id === id ? updated : a)));
         return updated;
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to update application');
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to update application');
         return null;
       }
     },
-    [accessToken],
+    [accessToken, clearErrorMessage, setErrorMessage],
   );
 
   /** Move an application to a new stage. Optimistic; reverts on error. */
@@ -331,10 +348,10 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
       setApplications((prev) => prev.map((a) => (a.id === id ? { ...a, stage } : a)));
       if (!accessToken) {
         setApplications(previous);
-        setError('Not authenticated');
+        setErrorMessage('Not authenticated');
         return false;
       }
-      setError(null);
+      clearErrorMessage();
       try {
         const res = await fetch(`${API_BASE}/job-applications/${id}`, {
           method: 'PATCH',
@@ -346,45 +363,47 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
         });
         if (!res.ok) {
           setApplications(previous);
-          setError(await readApiError(res, `Failed to update application stage (HTTP ${res.status})`));
+          const message = await readApiError(res, `Failed to update application stage (HTTP ${res.status})`);
+          setErrorMessage(message);
           return false;
         }
         return true;
       } catch (err) {
         setApplications(previous);
-        setError(err instanceof Error ? err.message : 'Failed to update application stage');
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to update application stage');
         return false;
       }
     },
-    [accessToken, applications],
+    [accessToken, applications, clearErrorMessage, setErrorMessage],
   );
 
   /** Hard delete. Soft-archive is usually preferred — see archiveApplication. */
   const deleteApplication = useCallback(
     async (id: string): Promise<boolean> => {
       if (!accessToken) {
-        setError('Not authenticated');
+        setErrorMessage('Not authenticated');
         return false;
       }
-      setError(null);
+      clearErrorMessage();
       try {
         const res = await fetch(`${API_BASE}/job-applications/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!res.ok) {
-          setError(await readApiError(res, `Failed to delete application (HTTP ${res.status})`));
+          const message = await readApiError(res, `Failed to delete application (HTTP ${res.status})`);
+          setErrorMessage(message);
           return false;
         }
         setApplications((prev) => prev.filter((a) => a.id !== id));
         setDueActions((prev) => prev.filter((a) => a.id !== id));
         return true;
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete application');
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to delete application');
         return false;
       }
     },
-    [accessToken],
+    [accessToken, clearErrorMessage, setErrorMessage],
   );
 
   /** Fetch items with `next_action_due` inside the next `days` window. */
@@ -392,7 +411,7 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
     async (days = 7): Promise<void> => {
       if (!accessToken) {
         setDueActions([]);
-        setError('Not authenticated');
+        setErrorMessage('Not authenticated');
         return;
       }
       try {
@@ -401,7 +420,8 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
         });
         if (!res.ok) {
           setDueActions([]);
-          setError(await readApiError(res, `Failed to load due actions (HTTP ${res.status})`));
+          const message = await readApiError(res, `Failed to load due actions (HTTP ${res.status})`);
+          setErrorMessage(message);
           return;
         }
         const body = (await res.json()) as { actions?: unknown; feature_disabled?: boolean };
@@ -412,10 +432,10 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
         setDueActions(sanitizeDueActions(body.actions));
       } catch (err) {
         setDueActions([]);
-        setError(err instanceof Error ? err.message : 'Failed to load due actions');
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to load due actions');
       }
     },
-    [accessToken],
+    [accessToken, setErrorMessage],
   );
 
   const refresh = useCallback(async (): Promise<void> => {
@@ -425,9 +445,9 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
   const clear = useCallback((): void => {
     setApplications([]);
     setDueActions([]);
-    setError(null);
+    clearErrorMessage();
     setLoading(false);
-  }, []);
+  }, [clearErrorMessage]);
 
   // Load on mount (once per access-token change). Skips when no token
   // (signed-out user) — the consumer handles that state.
@@ -456,6 +476,7 @@ export function useJobApplications(options?: { archived?: JobApplicationArchived
     fetchDueActions,
     refresh,
     clear,
+    getLastError,
     createApplication,
     updateApplication,
     moveToStage,

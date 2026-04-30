@@ -71,6 +71,7 @@ const mockApplications = [
 
 const mockCreateApplication = vi.fn();
 const mockFetchApplications = vi.fn();
+let mockLastApplicationError: string | null = null;
 vi.mock('@/hooks/useJobApplications', async () => {
   const actual = await vi.importActual<typeof import('@/hooks/useJobApplications')>('@/hooks/useJobApplications');
   return {
@@ -78,9 +79,10 @@ vi.mock('@/hooks/useJobApplications', async () => {
     useJobApplications: () => ({
       applications: mockApplications,
       loading: false,
-      error: null,
+      error: mockLastApplicationError,
       fetchApplications: mockFetchApplications,
       createApplication: mockCreateApplication,
+      getLastError: () => mockLastApplicationError,
       updateApplication: vi.fn(),
       moveToStage: vi.fn(),
       deleteApplication: vi.fn(),
@@ -138,6 +140,7 @@ function PathProbe({ onPath }: { onPath: (path: string) => void }) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLastApplicationError = null;
   vi.stubGlobal('fetch', vi.fn());
 });
 
@@ -290,6 +293,31 @@ describe('TailorForApplicationPicker', () => {
       source: 'workshop_landing',
       resolution: 'new_app_jd_text',
     });
+  });
+
+  it('JD text create failure surfaces the specific application error', async () => {
+    mockCreateApplication.mockImplementationOnce(async () => {
+      mockLastApplicationError = 'Invalid input: company and role are required.';
+      return null;
+    });
+
+    const { getByText } = renderHarness({ source: 'workshop_landing' });
+    fireEvent.click(getByText('OPEN_PICKER'));
+    fireEvent.click(screen.getByRole('button', { name: 'Paste JD text' }));
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Medtronic'), { target: { value: 'Delta' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. VP of Supply Chain'), { target: { value: 'Director Ops' } });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Paste the full job description/i),
+      { target: { value: 'A real job description with at least fifty characters present here.' } },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Create.*tailor/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Invalid input: company and role are required.')).toBeInTheDocument();
+    });
+    expect(mockTrack).not.toHaveBeenCalledWith('resume_builder_session_started', expect.anything());
   });
 
   it('Create-and-tailor button is disabled until form is valid', () => {
