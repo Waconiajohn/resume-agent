@@ -403,11 +403,17 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
         </GlassCard>
       )}
 
+      {view === 'pipeline' && error && (
+        <GlassCard className="border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.04] p-4">
+          <p className="text-sm text-[var(--badge-red-text)]/85">{error}</p>
+        </GlassCard>
+      )}
+
       {view === 'pipeline' && loading && applications.length === 0 && (
         <GlassCard className="p-8 text-sm text-[var(--text-soft)]">Loading your applications…</GlassCard>
       )}
 
-      {view === 'pipeline' && !loading && applications.length === 0 && !formOpen && (
+      {view === 'pipeline' && !loading && !error && applications.length === 0 && !formOpen && (
         <GlassCard className="p-8 text-center">
           <Briefcase size={24} className="mx-auto text-[var(--text-soft)]" />
           <h2 className="mt-3 text-lg font-semibold text-[var(--text-strong)]">No applications yet</h2>
@@ -535,12 +541,6 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
               </section>
             );
           })}
-        </div>
-      )}
-
-      {view === 'pipeline' && error && (
-        <div className="rounded-xl border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/[0.06] px-4 py-3 text-[13px] text-[var(--badge-red-text)]/80">
-          {error}
         </div>
       )}
     </div>
