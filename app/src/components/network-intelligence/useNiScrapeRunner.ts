@@ -64,6 +64,18 @@ function isStale(startedAt?: string): boolean {
   return Date.now() - new Date(startedAt).getTime() > STALE_THRESHOLD_MS;
 }
 
+async function readApiError(res: Response, fallback: string): Promise<string> {
+  const data = await res.json().catch(() => null);
+  if (data && typeof data === 'object') {
+    const error = (data as { error?: unknown }).error;
+    if (typeof error === 'string' && error.trim()) {
+      return error;
+    }
+  }
+
+  return fallback;
+}
+
 export function useNiScrapeRunner(accessToken: string | null) {
   const [scrapeLogId, setScrapeLogId] = useState<string | null>(null);
   const [scrapeStatus, setScrapeStatus] = useState<NiScrapeStatus | null>(null);
@@ -93,7 +105,12 @@ export function useNiScrapeRunner(accessToken: string | null) {
       const res = await fetch(`${API_BASE}/ni/scrape/status/${logId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        stopPolling();
+        setRunning(false);
+        setError(await readApiError(res, `Company job search status failed (${res.status}).`));
+        return;
+      }
 
       const data = await res.json();
       const log = data.log as NiScrapeStatus;
@@ -197,8 +214,7 @@ export function useNiScrapeRunner(accessToken: string | null) {
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error ?? `Server error ${res.status}`);
+        throw new Error(await readApiError(res, `Server error ${res.status}`));
       }
 
       const data = await res.json();

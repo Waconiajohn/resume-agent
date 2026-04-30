@@ -33,7 +33,7 @@ describe('useNiScrapeRunner', () => {
 
     expect(started).toBe(false);
     expect(result.current.running).toBe(false);
-    expect(result.current.error).toBe('Sign in to start a company scan.');
+    expect(result.current.error).toBe('Sign in to start company job search.');
   });
 
   it('stops polling and clears running state when auth disappears mid-scan', async () => {
@@ -81,7 +81,7 @@ describe('useNiScrapeRunner', () => {
     expect(result.current.scrapeLogId).toBeNull();
     expect(result.current.scrapeStatus).toBeNull();
     expect(result.current.result).toBeNull();
-    expect(result.current.error).toBe('Sign in again to continue scanning.');
+    expect(result.current.error).toBe('Sign in again to continue company job search.');
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -126,10 +126,12 @@ describe('useNiScrapeRunner', () => {
 
     expect(result.current.result).toEqual({
       companiesScanned: 2,
+      rawJobsFound: 4,
       jobsFound: 4,
       matchingJobs: 3,
       referralAvailable: 1,
       errorCount: 0,
+      serperConfigured: null,
     });
 
     await act(async () => {
@@ -201,6 +203,40 @@ describe('useNiScrapeRunner', () => {
         }),
       }),
     );
+  });
+
+  it('stops polling and surfaces status read failures', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ scrape_log_id: 'scrape-1' }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'Could not load company job search status.' }),
+      });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useNiScrapeRunner('token-1'));
+
+    await act(async () => {
+      await result.current.startScan({
+        companyIds: ['company-1'],
+        searchContext: 'network_connections',
+        emptyMessage: 'No companies available.',
+      });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.running).toBe(false);
+    expect(result.current.error).toBe('Could not load company job search status.');
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('can send a 30-day freshness window', async () => {

@@ -217,6 +217,24 @@ describe('network intelligence panels', () => {
     expect(screen.getByRole('button', { name: /Find Jobs/i })).toBeDisabled();
   });
 
+  it('surfaces company job panel load failures instead of showing an empty-state explanation', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'Could not load network companies.' }), { status: 500 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ titles: [] }), { status: 200 }),
+      );
+
+    render(<ScrapeJobsPanel accessToken="test-token" />);
+
+    expect(await screen.findByText('Find Job Openings')).toBeInTheDocument();
+    expect(screen.getByText('Could not load network companies.')).toBeInTheDocument();
+    expect(screen.queryByText(/Import LinkedIn connections first/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Add target titles/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Find Jobs/i })).toBeDisabled();
+  });
+
   it('makes selected companies obvious and enables the company job search action', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(

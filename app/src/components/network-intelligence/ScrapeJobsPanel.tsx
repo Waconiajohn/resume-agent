@@ -11,6 +11,18 @@ import { JobFilterPanel } from '@/components/shared/JobFilterPanel';
 
 import { useJobFilters, type WorkModeKey } from '@/hooks/useJobFilters';
 
+async function readApiError(res: Response, fallback: string): Promise<string> {
+  const data = await res.json().catch(() => null);
+  if (data && typeof data === 'object') {
+    const error = (data as { error?: unknown }).error;
+    if (typeof error === 'string' && error.trim()) {
+      return error;
+    }
+  }
+
+  return fallback;
+}
+
 // ─── Stat Card ─────────────────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -82,6 +94,7 @@ export function ScrapeJobsPanel({
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [titles, setTitles] = useState<TargetTitle[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const mountedRef = useRef(true);
   const {
     scrapeLogId,
@@ -115,11 +128,15 @@ export function ScrapeJobsPanel({
 
   const loadPanelData = useCallback(async (options?: { silent?: boolean }) => {
     if (!accessToken) {
-      if (!options?.silent && mountedRef.current) setLoadingData(false);
+      if (!options?.silent && mountedRef.current) {
+        setLoadError(null);
+        setLoadingData(false);
+      }
       return;
     }
 
     if (!options?.silent && mountedRef.current) {
+      setLoadError(null);
       setLoadingData(true);
     }
 
@@ -135,11 +152,18 @@ export function ScrapeJobsPanel({
 
       if (!mountedRef.current) return;
 
+      const errors: string[] = [];
+
       if (companiesRes.ok) {
         const data = await companiesRes.json();
         if (mountedRef.current) {
           setCompanies(data.companies ?? []);
         }
+      } else {
+        errors.push(await readApiError(
+          companiesRes,
+          `Unable to load network companies (${companiesRes.status}).`,
+        ));
       }
 
       if (titlesRes.ok) {
@@ -154,9 +178,22 @@ export function ScrapeJobsPanel({
             })),
           );
         }
+      } else {
+        errors.push(await readApiError(
+          titlesRes,
+          `Unable to load target titles (${titlesRes.status}).`,
+        ));
       }
-    } catch {
-      // Silently fail — empty state shown below
+
+      if (!options?.silent && mountedRef.current) {
+        setLoadError(errors.length > 0 ? errors.join(' ') : null);
+      }
+    } catch (err) {
+      if (!options?.silent && mountedRef.current) {
+        setLoadError(err instanceof Error && err.message
+          ? err.message
+          : 'Unable to load company job search data. Please try again.');
+      }
     } finally {
       if (!options?.silent && mountedRef.current) {
         setLoadingData(false);
@@ -263,7 +300,13 @@ export function ScrapeJobsPanel({
               .
             </p>
 
-            {eligibleCompanyCount === 0 && !running && (
+            {loadError && (
+              <div className="mt-3 rounded-md border border-[var(--badge-red-text)]/20 bg-[var(--badge-red-text)]/5 px-4 py-3">
+                <p className="text-sm text-[var(--badge-red-text)]/80">{loadError}</p>
+              </div>
+            )}
+
+            {eligibleCompanyCount === 0 && !running && !loadError && (
               <p className="mt-2 text-xs text-[var(--badge-amber-text)]/70">
                 {normalizationPending
                   ? 'Connections imported — company matching is still normalizing before we can check public job pages. This updates automatically.'
@@ -274,7 +317,7 @@ export function ScrapeJobsPanel({
 
           <GlassButton
             onClick={() => void handleScan()}
-            disabled={running || selection.selectedCount === 0}
+            disabled={running || selection.selectedCount === 0 || Boolean(loadError)}
             loading={running}
             className="shrink-0"
           >
@@ -447,7 +490,7 @@ export function ScrapeJobsPanel({
       )}
 
       {/* Target titles hint */}
-      {titles.length === 0 && !running && (
+      {titles.length === 0 && !running && !loadError && (
         <GlassCard className="rounded-xl p-4">
           <p className="text-center text-xs text-[var(--text-soft)]">
             Add target titles in the Target Titles section to filter jobs by role.
