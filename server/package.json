@@ -16,6 +16,7 @@
     "check:migrations": "node scripts/check-migration-drift.mjs --json=true",
     "check:ready": "node scripts/check-ready.mjs",
     "check:job-providers": "node --env-file=.env --disable-warning=DEP0040 --import tsx scripts/check-job-providers.ts",
+    "check:job-providers:personas": "node --env-file=.env --disable-warning=DEP0040 --import tsx scripts/check-job-providers.ts --personas",
     "gate:staging": "npm run check:migrations && npm run check:ready && npm run check:job-providers && npm run qa:real",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
