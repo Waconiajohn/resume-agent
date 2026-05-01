@@ -1,5 +1,6 @@
 import type { Context, Next } from 'hono';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { recordSupabaseIdentity } from '../lib/auth-context.js';
 import logger from '../lib/logger.js';
 
 export interface AuthUser {
@@ -300,6 +301,14 @@ export async function authMiddleware(c: Context, next: Next) {
 
   cacheUser(token, authUser);
   c.set('user', authUser);
+
+  // Bridge the canonical user into platform_auth_identities. Only fires on
+  // cache miss (~once per 5-min token lifetime per user), is idempotent
+  // (upsert on auth_provider+provider_subject), and runs fire-and-forget
+  // so it never blocks the request. The bridge migration only seeded
+  // existing users at apply time; this keeps newly-created auth.users in
+  // sync without a Supabase auth-schema trigger.
+  void recordSupabaseIdentity(authUser);
 
   await next();
 }
