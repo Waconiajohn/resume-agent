@@ -89,7 +89,7 @@ if (import.meta.env.VITE_E2E_MOCK_AUTH === 'true' && !e2eMockAuthDisabled) {
     },
     signInWithPassword: async () => buildAuthResponse({ user: mockUser, session: mockSession }),
     signUp: async () => buildAuthResponse({ user: mockUser, session: mockSession }),
-    signInWithOAuth: async () => buildAuthResponse({ provider: 'google', url: null }),
+    signInWithOAuth: async ({ provider }: { provider: string }) => buildAuthResponse({ provider, url: null }),
     signOut: async () => buildAuthResponse(undefined),
     updateUser: async ({ data }: { data?: Record<string, unknown> }) => {
       mockUser = {

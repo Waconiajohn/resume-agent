@@ -1,9 +1,19 @@
-import { useState } from 'react';
-import { GlassCard } from './GlassCard';
+import { useState, type FormEvent, type ReactNode } from 'react';
+import {
+  ArrowRight,
+  BadgeCheck,
+  BriefcaseBusiness,
+  Building2,
+  CheckCircle2,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+} from 'lucide-react';
 import { GlassButton } from './GlassButton';
 import { GlassInput } from './GlassInput';
-import { Briefcase, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { SOCIAL_AUTH_PROVIDERS, type SocialAuthProvider } from '@/lib/auth-providers';
 import {
   MIN_PASSWORD_LENGTH,
   validatePasswordPolicy,
@@ -11,10 +21,8 @@ import {
 } from '@/lib/password-policy';
 
 /**
- * Sprint E4 — initial view preference. Sales page "Get started free" links
- * include `?auth=signup` so the gate opens on the signup tab; "Sign In" links
- * do not. Returns 'sign_up' when the URL advertises signup, otherwise
- * 'sign_in' (the pre-E4 default).
+ * Sales page "Get started" links include `?auth=signup` so the gate opens on
+ * the signup tab. Direct app links keep the default sign-in view.
  */
 function initialViewFromUrl(): AuthView {
   if (typeof window === 'undefined') return 'sign_in';
@@ -24,15 +32,39 @@ function initialViewFromUrl(): AuthView {
 
 interface AuthGateProps {
   onSignIn: (email: string, password: string) => Promise<{ error: unknown }>;
-  onSignUp: (email: string, password: string, metadata?: { firstName: string; lastName: string; phone?: string }) => Promise<{ error: unknown }>;
-  onGoogleSignIn: () => Promise<{ error: unknown }>;
+  onSignUp: (
+    email: string,
+    password: string,
+    metadata?: { firstName: string; lastName: string; phone?: string },
+  ) => Promise<{ error: unknown }>;
+  onSocialSignIn: (provider: SocialAuthProvider) => Promise<{ error: unknown }>;
 }
 
 type AuthView = 'sign_in' | 'sign_up' | 'forgot_password';
 
+const PROOF_POINTS = [
+  'Build one master profile, then tailor each application from it.',
+  'Keep every claim grounded in your actual career evidence.',
+  'Move from job search to resume, networking, interview prep, and follow-up in one workspace.',
+];
+
+const PRODUCT_STEPS = [
+  { label: 'Profile', value: 'Career proof' },
+  { label: 'Target', value: 'Role benchmark' },
+  { label: 'Apply', value: 'Resume and outreach' },
+];
+
 function getAuthErrorMessage(error: unknown, mode: AuthView): string {
   const raw = ((error as { message?: string; code?: string })?.message ?? String(error)).trim();
   const normalized = raw.toLowerCase();
+
+  if (
+    normalized.includes('provider is not enabled')
+    || normalized.includes('unsupported provider')
+    || normalized.includes('provider not found')
+  ) {
+    return 'That sign-in option is not enabled in Supabase yet. Use email and password for now, or try another social option.';
+  }
 
   if (normalized.includes('rate limit') || normalized.includes('too many')) {
     if (mode === 'sign_up') {
@@ -49,13 +81,103 @@ function getAuthErrorMessage(error: unknown, mode: AuthView): string {
   }
 
   if (normalized.includes('invalid login credentials')) {
-    return 'That email and password did not match. Check the password, or use “Forgot password?” to reset it.';
+    return 'That email and password did not match. Check the password, or use "Forgot password?" to reset it.';
   }
 
   return raw || 'Something went wrong. Please try again.';
 }
 
-export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) {
+function ProviderMark({ provider }: { provider: SocialAuthProvider }) {
+  if (provider === 'google') {
+    return (
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-[13px] font-extrabold text-[#4285f4]">
+        G
+      </span>
+    );
+  }
+
+  if (provider === 'azure') {
+    return (
+      <span className="grid h-5 w-5 grid-cols-2 gap-0.5" aria-hidden="true">
+        <span className="bg-[#f25022]" />
+        <span className="bg-[#7fba00]" />
+        <span className="bg-[#00a4ef]" />
+        <span className="bg-[#ffb900]" />
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-[#0a66c2] text-[12px] font-extrabold text-white">
+      in
+    </span>
+  );
+}
+
+function AuthShell({
+  children,
+  eyebrow,
+  title,
+  subtitle,
+}: {
+  children: ReactNode;
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="min-h-screen bg-surface">
+      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(90deg,rgba(5,102,141,0.08)_1px,transparent_1px),linear-gradient(180deg,rgba(5,102,141,0.06)_1px,transparent_1px)] bg-[length:56px_56px]" />
+      <div className="relative mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_440px] lg:px-8">
+        <section className="hidden lg:block">
+          <div className="max-w-xl">
+            <a href="/sales" className="inline-flex items-center gap-2 text-sm font-extrabold text-[var(--text-strong)]">
+              <BriefcaseBusiness className="h-5 w-5 text-[var(--link)]" />
+              Career<span className="text-[var(--link)]">IQ</span>
+            </a>
+            <p className="mt-16 text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--link)]">
+              {eyebrow}
+            </p>
+            <h1 className="mt-4 text-4xl font-extrabold tracking-normal text-[var(--text-strong)] xl:text-5xl">
+              {title}
+            </h1>
+            <p className="mt-5 max-w-lg text-base leading-7 text-[var(--text-muted)]">
+              {subtitle}
+            </p>
+            <div className="mt-8 grid gap-3">
+              {PROOF_POINTS.map((point) => (
+                <div key={point} className="flex items-start gap-3 rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-4">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--badge-green-text)]" />
+                  <span className="text-sm font-medium leading-6 text-[var(--text-muted)]">{point}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 grid max-w-lg grid-cols-3 gap-3">
+              {PRODUCT_STEPS.map((step) => (
+                <div key={step.label} className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-4">
+                  <div className="text-xs font-bold uppercase text-[var(--text-soft)]">{step.label}</div>
+                  <div className="mt-2 text-sm font-extrabold text-[var(--text-strong)]">{step.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <main className="mx-auto w-full max-w-[440px]">
+          <div className="mb-5 flex items-center justify-center gap-2 lg:hidden">
+            <BriefcaseBusiness className="h-5 w-5 text-[var(--link)]" />
+            <span className="text-base font-extrabold text-[var(--text-strong)]">
+              Career<span className="text-[var(--link)]">IQ</span>
+            </span>
+          </div>
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function AuthGate({ onSignIn, onSignUp, onSocialSignIn }: AuthGateProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -64,19 +186,17 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
   const [view, setView] = useState<AuthView>(initialViewFromUrl);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState<SocialAuthProvider | null>(null);
   const [resetSent, setResetSent] = useState(false);
   const [signUpSent, setSignUpSent] = useState(false);
   const [signUpEmail, setSignUpEmail] = useState('');
 
   const isSignUp = view === 'sign_up';
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Password policy enforced only on signup. Sign-in passes the existing
-    // password through unchanged (a user with a legacy short password should
-    // still be able to sign in; they'd hit the policy on their next reset).
     if (isSignUp) {
       const policy = validatePasswordPolicy(password);
       if (!policy.ok) {
@@ -89,7 +209,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
         setLoading(false);
         setError(
           `This password has appeared in ${breach.count.toLocaleString()} known data breaches. `
-            + 'Pick a different one — even one not on the list — or use a password manager to generate a strong unique password.',
+            + 'Pick a different one, or use a password manager to generate a strong unique password.',
         );
         return;
       }
@@ -104,18 +224,24 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
     if (error) {
       setError(getAuthErrorMessage(error, view));
     } else if (isSignUp) {
-      // Supabase email-confirmation flow: signUp succeeded but the user
-      // must click the link in their inbox before they're authenticated.
-      // Show the check-your-email state so they know what to do next.
       setSignUpEmail(email);
       setSignUpSent(true);
-      // Clear sensitive fields from the form state.
       setPassword('');
     }
     setLoading(false);
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  const handleSocialSignIn = async (provider: SocialAuthProvider) => {
+    setError(null);
+    setLoadingProvider(provider);
+    const { error } = await onSocialSignIn(provider);
+    if (error) {
+      setError(getAuthErrorMessage(error, view));
+      setLoadingProvider(null);
+    }
+  };
+
+  const handleForgotPassword = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -147,30 +273,30 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
 
   if (view === 'forgot_password') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface p-4">
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(5,102,141,0.08),transparent_42%)]" />
-
-        <GlassCard className="relative z-10 w-full max-w-sm p-8">
-          <div className="mb-6 flex flex-col items-center gap-2">
-            <Briefcase className="h-8 w-8 text-[var(--link)]" />
-            <h1 className="text-xl font-semibold text-[var(--text-strong)]">Reset password</h1>
-            <p className="text-center text-sm text-[var(--text-soft)]">
-              Enter your email and we&apos;ll send you a reset link.
-            </p>
+      <AuthShell
+        eyebrow="Account recovery"
+        title="Get back into your workspace."
+        subtitle="Password reset stays inside Supabase Auth. We only send the recovery link to the email on the account."
+      >
+        <section className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-6 shadow-[var(--shadow-mid)] sm:p-8">
+          <div className="mb-6 flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--badge-blue-bg)] text-[var(--link)]">
+              <LockKeyhole className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold text-[var(--text-strong)]">Reset password</h1>
+              <p className="mt-1 text-sm text-[var(--text-soft)]">Enter your email and we will send a reset link.</p>
+            </div>
           </div>
 
           {resetSent ? (
             <div className="space-y-4">
-              <p className="rounded-lg bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-strong)]">
+              <p className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-strong)]">
                 Check your email for a reset link. It may take a minute to arrive.
               </p>
-              <button
-                type="button"
-                onClick={() => switchView('sign_in')}
-                className="w-full text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
-              >
+              <GlassButton type="button" variant="secondary" onClick={() => switchView('sign_in')} className="w-full">
                 Back to sign in
-              </button>
+              </GlassButton>
             </div>
           ) : (
             <form onSubmit={handleForgotPassword} className="space-y-4">
@@ -190,85 +316,144 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
               </div>
 
               {error && (
-                <p id="auth-error" className="text-xs text-[var(--badge-red-text)]" role="alert">{error}</p>
+                <p id="auth-error" className="rounded-[8px] bg-[var(--badge-red-bg)] px-3 py-2 text-xs font-semibold text-[var(--badge-red-text)]" role="alert">{error}</p>
               )}
 
-              <GlassButton type="submit" disabled={loading} className="w-full">
-                {loading ? 'Sending...' : 'Send reset link'}
+              <GlassButton type="submit" loading={loading} className="w-full">
+                Send reset link
               </GlassButton>
 
               <button
                 type="button"
                 onClick={() => switchView('sign_in')}
-                className="w-full text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
+                className="w-full text-xs font-bold text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
               >
                 Back to sign in
               </button>
             </form>
           )}
-        </GlassCard>
-      </div>
+        </section>
+      </AuthShell>
     );
   }
 
-  // Post-signup "check your email" screen. Shown instead of the form after
-  // a successful signUp() call, because Supabase's default flow requires
-  // email confirmation before the user is authenticated.
   if (signUpSent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface p-4">
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(5,102,141,0.08),transparent_42%)]" />
-
-        <GlassCard className="relative z-10 w-full max-w-sm p-8">
-          <div className="mb-6 flex flex-col items-center gap-2">
-            <Briefcase className="h-8 w-8 text-[var(--link)]" />
-            <h1 className="text-xl font-semibold text-[var(--text-strong)]">Almost there</h1>
-            <p className="text-center text-sm text-[var(--text-soft)]">
-              Confirm your email to finish creating your account.
-            </p>
+      <AuthShell
+        eyebrow="One last step"
+        title="Confirm your email to activate CareerIQ."
+        subtitle="Supabase email confirmation is on, so new accounts are not active until the inbox link is clicked."
+      >
+        <section className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-6 shadow-[var(--shadow-mid)] sm:p-8">
+          <div className="mb-6 flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]">
+              <Mail className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold text-[var(--text-strong)]">Almost there</h1>
+              <p className="mt-1 text-sm text-[var(--text-soft)]">Confirm your email to finish creating your account.</p>
+            </div>
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-lg bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-strong)] space-y-2">
+            <div className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3 text-sm text-[var(--text-strong)]">
               <p>
                 We sent a confirmation link to{' '}
-                <span className="font-semibold text-[var(--link)]">{signUpEmail}</span>.
+                <span className="font-extrabold text-[var(--link)]">{signUpEmail}</span>.
               </p>
-              <p className="text-[13px] text-[var(--text-muted)]">
-                Click the link in that email to verify your address, then come back here and sign in.
-                It may take a minute to arrive — and check your spam folder if you don&apos;t see it.
+              <p className="mt-2 text-[13px] leading-5 text-[var(--text-muted)]">
+                Click that link, then return here and sign in. Check spam if it does not show up in a minute.
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => switchView('sign_in')}
-              className="w-full rounded-[var(--radius-control,12px)] bg-[var(--surface-2)] py-2 text-sm text-[var(--text-strong)] hover:bg-[var(--surface-elevated)] transition-colors"
-            >
+            <GlassButton type="button" variant="secondary" onClick={() => switchView('sign_in')} className="w-full">
               Back to sign in
-            </button>
+            </GlassButton>
           </div>
-        </GlassCard>
-      </div>
+        </section>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface p-4">
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(5,102,141,0.08),transparent_42%)]" />
+    <AuthShell
+      eyebrow={isSignUp ? 'Create your workspace' : 'Welcome back'}
+      title={isSignUp ? 'Start with your career proof, not a blank page.' : 'Open your career command center.'}
+      subtitle={isSignUp
+        ? 'Create your account, confirm your email, and CareerIQ will guide you into your first Benchmark Profile.'
+        : 'Pick up your job search, applications, networking, interview prep, and follow-ups where you left them.'}
+    >
+      <section className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-6 shadow-[var(--shadow-mid)] sm:p-8">
+        <div className="mb-6">
+          <div className="inline-flex rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-1" role="tablist" aria-label="Authentication mode">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!isSignUp}
+              onClick={() => switchView('sign_in')}
+              className={`min-h-[36px] rounded-[6px] px-4 text-sm font-extrabold transition-colors ${
+                !isSignUp
+                  ? 'bg-[var(--surface-3)] text-[var(--text-strong)] shadow-[var(--shadow-low)]'
+                  : 'text-[var(--text-soft)] hover:text-[var(--text-strong)]'
+              }`}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isSignUp}
+              onClick={() => switchView('sign_up')}
+              className={`min-h-[36px] rounded-[6px] px-4 text-sm font-extrabold transition-colors ${
+                isSignUp
+                  ? 'bg-[var(--surface-3)] text-[var(--text-strong)] shadow-[var(--shadow-low)]'
+                  : 'text-[var(--text-soft)] hover:text-[var(--text-strong)]'
+              }`}
+            >
+              Create account
+            </button>
+          </div>
+          <h1 className="mt-5 text-2xl font-extrabold text-[var(--text-strong)]">
+            {isSignUp ? 'Create your account' : 'Sign in'}
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+            {isSignUp
+              ? 'Use social login or email. Email accounts require confirmation before the workspace opens.'
+              : 'Use the same method you used when you created the account.'}
+          </p>
+        </div>
 
-      <GlassCard className="relative z-10 w-full max-w-sm p-8">
-        <div className="mb-6 flex flex-col items-center gap-2">
-          <Briefcase className="h-8 w-8 text-[var(--link)]" />
-          <h1 className="text-xl font-semibold text-[var(--text-strong)]">CareerIQ</h1>
-          <p className="text-sm text-[var(--text-soft)]">Your career workspace</p>
+        <div className="grid gap-2">
+          {SOCIAL_AUTH_PROVIDERS.map((provider) => (
+            <GlassButton
+              key={provider.id}
+              variant="ghost"
+              type="button"
+              onClick={() => void handleSocialSignIn(provider.id)}
+              disabled={Boolean(loadingProvider)}
+              className="w-full justify-start border-[var(--line-soft)] bg-[var(--surface-3)] px-4"
+            >
+              {loadingProvider === provider.id ? (
+                <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
+              ) : (
+                <ProviderMark provider={provider.id} />
+              )}
+              <span>{provider.label}</span>
+            </GlassButton>
+          ))}
+        </div>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-[var(--line-soft)]" />
+          <span className="text-xs font-bold uppercase text-[var(--text-soft)]">or use email</span>
+          <div className="h-px flex-1 bg-[var(--line-soft)]" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp && (
             <>
-              <div className="flex gap-3">
-                <div className="flex-1">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
                   <label htmlFor="auth-first-name" className="sr-only">First name</label>
                   <GlassInput
                     id="auth-first-name"
@@ -281,7 +466,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
                     required
                   />
                 </div>
-                <div className="flex-1">
+                <div>
                   <label htmlFor="auth-last-name" className="sr-only">Last name</label>
                   <GlassInput
                     id="auth-last-name"
@@ -306,7 +491,7 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
-                <p className="text-xs text-[var(--text-soft)] mt-1">For account recovery only. Never shared.</p>
+                <p className="mt-1.5 text-xs text-[var(--text-soft)]">For account recovery only. Never shared.</p>
               </div>
             </>
           )}
@@ -339,11 +524,11 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
               aria-describedby={error ? 'auth-error' : undefined}
             />
             {!isSignUp && (
-              <div className="mt-1.5 text-right">
+              <div className="mt-2 text-right">
                 <button
                   type="button"
                   onClick={() => switchView('forgot_password')}
-                  className="text-xs text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
+                  className="text-xs font-bold text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
                 >
                   Forgot password?
                 </button>
@@ -352,49 +537,34 @@ export function AuthGate({ onSignIn, onSignUp, onGoogleSignIn }: AuthGateProps) 
           </div>
 
           {error && (
-            <p id="auth-error" className="text-xs text-[var(--badge-red-text)]" role="alert">{error}</p>
+            <p id="auth-error" className="rounded-[8px] bg-[var(--badge-red-bg)] px-3 py-2 text-xs font-semibold text-[var(--badge-red-text)]" role="alert">{error}</p>
           )}
 
-          <GlassButton type="submit" disabled={loading} className="w-full">
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
-                {isSignUp ? 'Creating account...' : 'Signing in...'}
-              </>
-            ) : isSignUp ? 'Create Account' : 'Sign In'}
+          <GlassButton type="submit" loading={loading} className="w-full">
+            {isSignUp ? 'Create Account' : 'Sign In'}
+            {!loading && <ArrowRight className="h-4 w-4" />}
           </GlassButton>
         </form>
 
-        <div className="mt-4 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <div className="h-px flex-1 bg-[var(--accent-muted)]" />
-            <span className="text-xs text-[var(--text-soft)]">or</span>
-            <div className="h-px flex-1 bg-[var(--accent-muted)]" />
+        <div className="mt-5 grid gap-3 rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-2)] p-4 text-sm">
+          <div className="flex items-center gap-2 font-bold text-[var(--text-strong)]">
+            <ShieldCheck className="h-4 w-4 text-[var(--badge-green-text)]" />
+            Supabase-secured session
           </div>
-
-          <GlassButton
-            variant="ghost"
-            onClick={() => onGoogleSignIn()}
-            className="w-full border border-[var(--line-soft)] gap-2"
-          >
-            <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Continue with Google
-          </GlassButton>
-
-          <button
-            type="button"
-            onClick={() => switchView(isSignUp ? 'sign_in' : 'sign_up')}
-            className="text-xs text-[var(--text-soft)] hover:text-[var(--text-strong)] transition-colors"
-          >
-            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-          </button>
+          <div className="grid gap-2 text-xs font-medium leading-5 text-[var(--text-muted)]">
+            <span className="flex items-center gap-2"><BadgeCheck className="h-3.5 w-3.5 text-[var(--link)]" /> Email confirmation stays on.</span>
+            <span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5 text-[var(--link)]" /> Built to support future outplacement teams.</span>
+          </div>
         </div>
-      </GlassCard>
-    </div>
+
+        <button
+          type="button"
+          onClick={() => switchView(isSignUp ? 'sign_in' : 'sign_up')}
+          className="mt-5 w-full text-xs font-bold text-[var(--text-soft)] transition-colors hover:text-[var(--text-strong)]"
+        >
+          {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+        </button>
+      </section>
+    </AuthShell>
   );
 }

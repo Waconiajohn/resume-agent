@@ -64,7 +64,7 @@ export default function App() {
     sessionDegraded,
     signInWithEmail,
     signUpWithEmail,
-    signInWithGoogle,
+    signInWithProvider,
     updateProfile,
     signOut,
   } = useAuth();
@@ -586,7 +586,7 @@ export default function App() {
           <AuthGate
             onSignIn={signInWithEmail}
             onSignUp={signUpWithEmail}
-            onGoogleSignIn={signInWithGoogle}
+            onSocialSignIn={signInWithProvider}
           />
         ) : (
           <NotFoundPage />

@@ -28,7 +28,7 @@ vi.mock('@/hooks/useAuth', () => ({
     displayName: 'Test User',
     signInWithEmail: vi.fn(),
     signUpWithEmail: vi.fn(),
-    signInWithGoogle: vi.fn(),
+    signInWithProvider: vi.fn(),
     updateProfile: vi.fn(async () => ({ error: null })),
     signOut: vi.fn(async () => undefined),
   }),

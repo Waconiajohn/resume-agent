@@ -105,7 +105,7 @@ const PUBLIC_AUDIT_PAGES = [
     slug: 'sales',
     path: '/sales',
     readyRole: 'heading',
-    readyText: 'Your resume undersells you.',
+    readyText: 'CareerIQ job search workspace',
   },
   {
     slug: 'auth-signup',

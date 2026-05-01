@@ -46,8 +46,15 @@ import {
   createCohort,
   getOrgCohorts,
   getOrgEngagementMetrics,
+  createOrganizationMember,
 } from '../lib/b2b.js';
 import type { SeatStatus, ContractTier, B2BOrganization } from '../lib/b2b.js';
+import {
+  getB2BOrgMembershipForUser,
+  membershipAllowsRole,
+  normalizeIdentityEmail,
+  recordSupabaseIdentity,
+} from '../lib/auth-context.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import logger from '../lib/logger.js';
 
@@ -158,7 +165,13 @@ async function requireOrgAdmin(
     return c.json({ error: 'Organization not found' }, 404);
   }
   const user = c.get('user') as { id: string; email: string };
-  if (org.admin_email !== user.email) {
+  const legacyAdminEmailMatches = normalizeIdentityEmail(org.admin_email) === normalizeIdentityEmail(user.email);
+  if (legacyAdminEmailMatches) {
+    return { org };
+  }
+
+  const membership = await getB2BOrgMembershipForUser(user, orgId);
+  if (!membershipAllowsRole(membership, ['owner', 'admin'])) {
     return c.json({ error: 'Forbidden: not the organization admin' }, 403);
   }
   return { org };
@@ -203,6 +216,28 @@ b2bAdminRoutes.post(
       if (!org) {
         return c.json({ error: 'Failed to create organization. The slug may already be taken.' }, 409);
       }
+      const user = c.get('user');
+      await recordSupabaseIdentity(user);
+      await createOrganizationMember({
+        org_id: org.id,
+        user_id: user.id,
+        email: user.email || parsed.data.admin_email,
+        role: 'owner',
+        status: 'active',
+        auth_provider: 'supabase',
+        provider_subject: user.id,
+      });
+
+      if (normalizeIdentityEmail(parsed.data.admin_email) !== normalizeIdentityEmail(user.email)) {
+        await createOrganizationMember({
+          org_id: org.id,
+          email: parsed.data.admin_email,
+          role: 'owner',
+          status: 'invited',
+          auth_provider: 'manual',
+        });
+      }
+
       return c.json({ organization: org }, 201);
     } catch (err) {
       logger.warn(

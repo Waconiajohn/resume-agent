@@ -13,23 +13,52 @@ If you change anything in the dashboard, update this file in the same PR.
 - **Backend:** Hono on port 3001. Auth middleware at `server/src/middleware/auth.ts` validates JWTs by calling `supabaseAdmin.auth.getUser(token)` with a 5-minute LRU cache (max 1,000 tokens, expiry-respecting).
 - **Database:** Postgres + RLS. 63 tables in `public.*` with RLS enabled; 43 user-scoped via `auth.uid() = user_id`.
 
+## Consumer + outplacement auth boundary
+
+Supabase Auth remains the only live session provider for the consumer app and the first outplacement release. Outplacement must not introduce route-specific auth rules that bypass the shared app identity.
+
+The provider-neutral boundary is:
+
+- `platform_auth_identities` — maps a provider subject (`supabase`, future `clerk`, future `workos`) to the canonical platform user ID.
+- `b2b_organization_members` — maps canonical users and invited emails to organization roles (`owner`, `admin`, `coach`, `employee`) and seat links.
+- `server/src/lib/auth-context.ts` — resolves the current Supabase session into the same identity/member shape future SSO providers must produce.
+
+Rule: any future Clerk or WorkOS integration must land in this bridge first. Product routes should continue to authorize against canonical `user.id` plus organization membership, not against provider-specific IDs.
+
 ## Sign-in methods
 
 - **Email + password** (primary)
-- **Google OAuth** (secondary; configured in dashboard → Authentication → Providers → Google)
+- **Google OAuth** (configured in dashboard → Authentication → Providers → Google)
+- **Microsoft OAuth** (code-supported via Supabase `azure`; dashboard credentials required before it works in production)
+- **LinkedIn OAuth** (code-supported via Supabase `linkedin_oidc`; dashboard credentials required before it works in production)
 - **Magic link** — *not enabled.* Backlog item in the Sprint C section of the auth-hardening plan.
 - **SAML SSO** — *not enabled.* Future B2B work.
 
-When you enable a new OAuth provider in the dashboard, add a row to the table below in the same change.
+The app renders Google, Microsoft, and LinkedIn buttons from `app/src/lib/auth-providers.ts`. A button is safe to show before dashboard credentials are present: Supabase returns a provider configuration error, and the UI falls back to a friendly message. Before production launch, each visible provider should be enabled in the dashboard.
 
 | Provider | Status | Configured in dashboard | Notes |
 |---|---|---|---|
 | Email + password | enabled | Authentication → Providers → Email | Email confirmation **required** before account is active. |
 | Google OAuth | enabled | Authentication → Providers → Google | OAuth client ID + secret in dashboard. |
+| Microsoft OAuth | code-supported; dashboard setup required | Authentication → Providers → Azure | Supabase provider id is `azure`; add Microsoft Entra app credentials before launch. |
+| LinkedIn OIDC | code-supported; dashboard setup required | Authentication → Providers → LinkedIn (OIDC) | Supabase provider id is `linkedin_oidc`; use LinkedIn OIDC credentials, not the legacy LinkedIn provider. |
 | GitHub | disabled | — | — |
 | Apple | disabled | — | — |
-| LinkedIn | disabled | — | — |
 | Magic link | disabled | — | Sprint C if/when we add it. |
+
+Recommended redirect URLs:
+
+- Local: `http://localhost:5173/workspace`
+- Production: `https://<frontend-domain>/workspace`
+
+Keep `/reset-password` configured separately for password recovery links.
+
+## B2B organization access
+
+- Organization admins are authorized by `b2b_organization_members` roles (`owner` or `admin`). The legacy `b2b_organizations.admin_email` check remains as a compatibility fallback and primary-contact field.
+- Employees are linked through `b2b_seats` and mirrored into `b2b_organization_members` when a seat is activated.
+- Unclaimed HR roster entries can exist as `invited` members by email before a platform user exists.
+- SCIM/directory provisioning, if added later, should create or update `b2b_organization_members` rows and should not create a separate user/role system.
 
 ## Password policy
 
@@ -159,7 +188,7 @@ The CHECK constraint pins this list; adding a new event type requires both a mig
 
 The frontend skips `TOKEN_REFRESHED` (noisy, every 45 min) and de-dupes back-to-back duplicates inside 5s for the OAuth-redirect double-fire case.
 
-### Server-side events via Supabase Auth Hook
+### Optional server-side events via Supabase Auth Hook
 
 `POST /api/auth/webhook` receives Standard-Webhooks-signed events from Supabase Auth Hooks and writes the **failure** cases to `auth_audit_log`:
 
@@ -167,6 +196,8 @@ The frontend skips `TOKEN_REFRESHED` (noisy, every 45 min) and de-dupes back-to-
 - `mfa_challenge_failed` — MFA Verification Attempt with `valid=false`
 
 Successful sign-ins and MFA passes are intentionally NOT recorded by the webhook — those go through the frontend `AuthEventEmitter` / `MfaChallengeGate` paths so we capture the user's IP and user-agent, which the webhook can't see. The webhook only fills the gap the frontend can't.
+
+This hook is optional hardening. It is not required for email/password login, social login, MFA enrollment, normal frontend auth events, or the outplacement identity bridge. It should be enabled later if/when the Supabase plan supports Auth Hooks.
 
 Authentication is the Standard Webhooks HMAC signature, verified against `AUTH_HOOK_SECRET`. Stale timestamps (> 5 min skew) and forged signatures return 401/400 and never reach the DB.
 
@@ -176,7 +207,7 @@ Authentication is the Standard Webhooks HMAC signature, verified against `AUTH_H
 3. Enable **Password Verification Attempt Hook** and **MFA Verification Attempt Hook**
 4. Copy the signing secret (looks like `v1,whsec_<base64>`) into the `AUTH_HOOK_SECRET` env var on the Hono server and redeploy
 
-Until `AUTH_HOOK_SECRET` is set, the route returns 503 — by design, so a misconfigured deploy can't accidentally accept unsigned events.
+Until `AUTH_HOOK_SECRET` is set, the route returns 503 — by design, so a misconfigured deploy can't accidentally accept unsigned events. This 503 means the optional hook is off; it does not mean the main app authentication path is broken.
 
 ## Out of scope today
 

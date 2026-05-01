@@ -16,6 +16,8 @@
 
 import { supabaseAdmin } from './supabase.js';
 import logger from './logger.js';
+import type { AuthProvider, B2BMembershipStatus, B2BOrgRole } from './auth-context.js';
+import { normalizeIdentityEmail } from './auth-context.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +42,20 @@ export interface B2BOrganization {
 export type ContractTier = 'standard' | 'plus' | 'concierge';
 export type ContractStatus = 'active' | 'paused' | 'terminated' | 'expired';
 export type SeatStatus = 'provisioned' | 'active' | 'completed' | 'expired';
+
+export interface B2BOrganizationMember {
+  id: string;
+  org_id: string;
+  user_id: string | null;
+  email: string;
+  role: B2BOrgRole;
+  status: B2BMembershipStatus;
+  auth_provider: AuthProvider;
+  provider_subject: string | null;
+  seat_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface B2BContract {
   id: string;
@@ -163,6 +179,58 @@ export async function updateOrganization(
     return null;
   }
   return data as B2BOrganization;
+}
+
+// ─── Organization Memberships ────────────────────────────────────────────────
+
+export async function createOrganizationMember(input: {
+  org_id: string;
+  email: string;
+  role: B2BOrgRole;
+  status?: B2BMembershipStatus;
+  user_id?: string | null;
+  auth_provider?: AuthProvider;
+  provider_subject?: string | null;
+  seat_id?: string | null;
+}): Promise<B2BOrganizationMember | null> {
+  const normalizedEmail = normalizeIdentityEmail(input.email);
+  if (!normalizedEmail) {
+    logger.warn({ orgId: input.org_id, role: input.role }, 'B2B: cannot create member without email');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('b2b_organization_members')
+      .insert({
+        org_id: input.org_id,
+        user_id: input.user_id ?? null,
+        email: normalizedEmail,
+        role: input.role,
+        status: input.status ?? 'invited',
+        auth_provider: input.auth_provider ?? 'manual',
+        provider_subject: input.provider_subject ?? null,
+        seat_id: input.seat_id ?? null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      logger.warn(
+        { orgId: input.org_id, email: normalizedEmail, code: error.code, message: error.message },
+        'B2B: failed to create organization member',
+      );
+      return null;
+    }
+
+    return data as B2BOrganizationMember;
+  } catch (err) {
+    logger.warn(
+      { orgId: input.org_id, email: normalizedEmail, err: err instanceof Error ? err.message : String(err) },
+      'B2B: organization membership bridge unavailable',
+    );
+    return null;
+  }
 }
 
 // ─── Contract CRUD ────────────────────────────────────────────────────────────
@@ -307,7 +375,7 @@ export async function activateSeat(seatId: string, userId: string): Promise<'ok'
   // First check if seat exists
   const { data: seat, error: lookupError } = await supabaseAdmin
     .from('b2b_seats')
-    .select('id, status')
+    .select('id, org_id, employee_email, status')
     .eq('id', seatId)
     .maybeSingle();
 
@@ -332,6 +400,20 @@ export async function activateSeat(seatId: string, userId: string): Promise<'ok'
     logger.warn({ error: error.message, seatId, userId }, 'B2B: failed to activate seat');
     return 'not_found';
   }
+
+  if (typeof seat.org_id === 'string' && typeof seat.employee_email === 'string') {
+    await createOrganizationMember({
+      org_id: seat.org_id,
+      user_id: userId,
+      email: seat.employee_email,
+      role: 'employee',
+      status: 'active',
+      auth_provider: 'supabase',
+      provider_subject: userId,
+      seat_id: seatId,
+    });
+  }
+
   return 'ok';
 }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
+import type { SocialAuthProvider } from '@/lib/auth-providers';
 
 // How often to proactively refresh the session (45 min, before the 60-min default expiry).
 const REFRESH_INTERVAL_MS = 45 * 60 * 1000;
@@ -118,22 +119,29 @@ export function useAuth() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: metadata
-        ? {
-            data: {
+      options: {
+        emailRedirectTo: `${window.location.origin}/workspace`,
+        data: metadata
+          ? {
               full_name: `${metadata.firstName} ${metadata.lastName}`,
               first_name: metadata.firstName,
               last_name: metadata.lastName,
               phone: metadata.phone,
-            },
-          }
-        : undefined,
+            }
+          : undefined,
+      },
     });
     return { error };
   };
 
-  const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+  const signInWithProvider = async (provider: SocialAuthProvider) => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/workspace`,
+        queryParams: provider === 'azure' ? { prompt: 'select_account' } : undefined,
+      },
+    });
     return { error };
   };
 
@@ -175,7 +183,7 @@ export function useAuth() {
     clearSessionDegraded,
     signInWithEmail,
     signUpWithEmail,
-    signInWithGoogle,
+    signInWithProvider,
     updateProfile,
     signOut,
   };

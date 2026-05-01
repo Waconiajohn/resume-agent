@@ -22,7 +22,8 @@ test.describe('Auth gate smoke', () => {
     await page.getByRole('button', { name: /Sign In/i }).click();
 
     await expect(page.getByText('Your Pipeline').first()).toBeVisible({ timeout: 10_000 });
-    await page.getByRole('button', { name: /^Sign out$/i }).click();
+    await page.getByRole('button', { name: /Test User/i }).click();
+    await page.getByRole('menuitem', { name: /^Sign out$/i }).click();
 
     await expect(page).toHaveURL(/\/sales$/, { timeout: 10_000 });
     await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 10_000 });

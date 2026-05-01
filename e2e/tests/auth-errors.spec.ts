@@ -36,7 +36,7 @@ test.describe('Auth gate error handling', () => {
     await page.getByRole('button', { name: /Sign In/i }).click();
 
     await expect(page.locator('[role="alert"]')).toBeVisible({ timeout: 8_000 });
-    await expect(page.locator('[role="alert"]')).toContainText(/Invalid login credentials/i);
+    await expect(page.locator('[role="alert"]')).toContainText(/email and password did not match/i);
   });
 
   test('after a failed login the form stays interactive for retry', async ({ page }) => {
@@ -60,5 +60,13 @@ test.describe('Auth gate error handling', () => {
     await expect(page.getByPlaceholder('Last name')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByPlaceholder(/Phone \(optional\)/i)).toBeVisible({ timeout: 5_000 });
     await expect(page.getByRole('button', { name: /Create Account/i })).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('social sign-in options are visible on the auth gate', async ({ page }) => {
+    await goToAuthGate(page);
+
+    await expect(page.getByRole('button', { name: /Continue with Google/i })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /Continue with Microsoft/i })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /Continue with LinkedIn/i })).toBeVisible({ timeout: 5_000 });
   });
 });

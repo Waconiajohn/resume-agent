@@ -426,6 +426,38 @@ describe('org admin authorization (requireOrgAdmin)', () => {
     expect(body.error).toContain('not the organization admin');
   });
 
+  it('allows an active organization admin membership even when admin_email differs', async () => {
+    mockUser = { id: 'user-member-admin', email: 'ops@corp.com', accessToken: 'tok' };
+    mockOrgLookup();
+    mockFrom.mockReturnValueOnce(
+      buildChain({
+        data: {
+          id: 'member-1',
+          org_id: 'org-1',
+          user_id: 'user-member-admin',
+          email: 'ops@corp.com',
+          role: 'admin',
+          status: 'active',
+          auth_provider: 'supabase',
+          provider_subject: 'user-member-admin',
+          seat_id: null,
+        },
+        error: null,
+      }),
+    );
+    mockFrom.mockReturnValueOnce(
+      buildChain({ data: { ...ADMIN_ORG, secondary_color: '#111827' }, error: null }),
+    );
+
+    const res = await app.request('/b2b/orgs/org-1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok' },
+      body: JSON.stringify({ secondary_color: '#111827' }),
+    });
+
+    expect(res.status).toBe(200);
+  });
+
   it('rejects non-admin on POST contracts with 403', async () => {
     mockUser = { id: 'user-xyz', email: 'notadmin@other.com', accessToken: 'tok' };
     mockOrgLookup();
