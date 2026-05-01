@@ -10,6 +10,57 @@ const REFRESH_THRESHOLD_MS = 10 * 60 * 1000;
 // Skip refresh side-effects in E2E mock auth mode — refreshSession is not stubbed there.
 const IS_MOCK_AUTH = import.meta.env.VITE_E2E_MOCK_AUTH === 'true';
 
+function readStringField(value: unknown, field: string): string | null {
+  if (!value || typeof value !== 'object' || !(field in value)) return null;
+  const fieldValue = (value as Record<string, unknown>)[field];
+  return typeof fieldValue === 'string' && fieldValue.trim() ? fieldValue : null;
+}
+
+function getOAuthStartErrorMessage(payload: unknown, status: number): string {
+  return readStringField(payload, 'msg')
+    ?? readStringField(payload, 'message')
+    ?? readStringField(payload, 'error_description')
+    ?? readStringField(payload, 'error')
+    ?? `Unable to start social sign-in. Supabase returned HTTP ${status}.`;
+}
+
+async function startOAuthRedirect(url: string): Promise<{ error: unknown }> {
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+      redirect: 'manual',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+      window.location.assign(url);
+      return { error: null };
+    }
+
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      return { error: new Error(getOAuthStartErrorMessage(payload, response.status)) };
+    }
+
+    const redirectUrl = readStringField(payload, 'url');
+    if (redirectUrl) {
+      window.location.assign(redirectUrl);
+      return { error: null };
+    }
+
+    window.location.assign(url);
+    return { error: null };
+  } catch {
+    return {
+      error: new Error(
+        'Unable to verify that sign-in option right now. Use email and password for now, or try again in a minute.',
+      ),
+    };
+  }
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -135,14 +186,21 @@ export function useAuth() {
   };
 
   const signInWithProvider = async (provider: SocialAuthProvider) => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: `${window.location.origin}/workspace`,
         queryParams: provider === 'azure' ? { prompt: 'select_account' } : undefined,
+        skipBrowserRedirect: true,
       },
     });
-    return { error };
+
+    if (error) return { error };
+    if (!data.url) {
+      return { error: new Error('Unable to start social sign-in. Supabase did not return an authorization URL.') };
+    }
+
+    return startOAuthRedirect(data.url);
   };
 
   const updateProfile = async (data: { firstName: string; lastName: string }) => {

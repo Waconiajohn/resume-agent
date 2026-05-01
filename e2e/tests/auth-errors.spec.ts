@@ -69,4 +69,33 @@ test.describe('Auth gate error handling', () => {
     await expect(page.getByRole('button', { name: /Continue with Microsoft/i })).toBeVisible({ timeout: 5_000 });
     await expect(page.getByRole('button', { name: /Continue with LinkedIn/i })).toBeVisible({ timeout: 5_000 });
   });
+
+  test('disabled social provider shows the in-app fallback instead of leaving the auth gate', async ({ page }) => {
+    await page.route('**/auth/v1/authorize**', async (route) => {
+      const authorizeUrl = new URL(route.request().url());
+      expect(authorizeUrl.searchParams.get('provider')).toBe('azure');
+      expect(authorizeUrl.searchParams.get('prompt')).toBe('select_account');
+
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 400,
+          error_code: 'validation_failed',
+          msg: 'Unsupported provider: provider is not enabled',
+        }),
+      });
+    });
+
+    await goToAuthGate(page);
+
+    await page.getByRole('button', { name: /Continue with Microsoft/i }).click();
+
+    await expect(page).toHaveURL(/\/workspace$/);
+    await expect(page.locator('[role="alert"]')).toContainText(
+      /That sign-in option is not enabled in Supabase yet/i,
+      { timeout: 5_000 },
+    );
+    await expect(page.getByRole('button', { name: /Continue with Microsoft/i })).toBeEnabled({ timeout: 5_000 });
+  });
 });
