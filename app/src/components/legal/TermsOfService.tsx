@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-const LAST_UPDATED = 'April 10, 2026';
+const LAST_UPDATED = 'May 1, 2026';
 
 export function TermsOfService() {
   useEffect(() => { document.title = 'Terms of Service | CareerIQ'; }, []);

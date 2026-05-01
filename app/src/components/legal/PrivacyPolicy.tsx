@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-const LAST_UPDATED = 'April 10, 2026';
+const LAST_UPDATED = 'May 1, 2026';
 
 export function PrivacyPolicy() {
   useEffect(() => { document.title = 'Privacy Policy | CareerIQ'; }, []);
@@ -149,11 +149,20 @@ export function PrivacyPolicy() {
                 </p>
               </div>
               <div className="rounded-lg p-4" style={{ background: 'var(--surface-elevated)', border: '1px solid var(--line-soft)' }}>
-                <p className="font-medium" style={{ color: 'var(--text-strong)' }}>Groq / AI Language Model Providers</p>
+                <p className="font-medium" style={{ color: 'var(--text-strong)' }}>AI model providers</p>
                 <p className="mt-1 text-sm">
-                  Your resume text and job descriptions are sent to AI providers for processing.
-                  These providers process data to generate responses and do not retain inputs for
-                  training by default. See their respective data processing agreements for details.
+                  Your resume text, job descriptions, and career context may be sent to configured
+                  AI providers, including OpenAI, Anthropic, Groq, Z.AI, Vertex AI, or similar
+                  model providers, to generate coaching, resume, cover letter, and job-search
+                  responses. These providers process data on our behalf to return responses.
+                </p>
+              </div>
+              <div className="rounded-lg p-4" style={{ background: 'var(--surface-elevated)', border: '1px solid var(--line-soft)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-strong)' }}>Search and job discovery providers</p>
+                <p className="mt-1 text-sm">
+                  When you use job-search or company-research features, submitted company names,
+                  job descriptions, or search criteria may be sent to configured search providers
+                  such as Perplexity, SerpAPI, Serper, Firecrawl, or similar services.
                 </p>
               </div>
               <div className="rounded-lg p-4" style={{ background: 'var(--surface-elevated)', border: '1px solid var(--line-soft)' }}>
