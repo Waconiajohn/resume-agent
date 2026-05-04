@@ -13,6 +13,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import {
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   HelpCircle,
   MessageSquare,
   RefreshCw,
@@ -60,6 +62,8 @@ interface Props {
   discoveryRunning?: boolean;
   /** Kept for API compatibility; advanced position controls are hidden. */
   pendingPositions?: Set<number>;
+  /** Bumped when Final Check should scroll the user back to the question card. */
+  focusDiscoveryTick?: number;
 }
 
 type EvidenceOpportunity = NonNullable<V3Strategy['evidenceOpportunities']>[number];
@@ -487,17 +491,30 @@ function DiscoveryCard({
   strategy,
   onRunDiscoveryAnswers,
   discoveryRunning,
+  focusTick,
 }: {
   strategy: V3Strategy | null;
   onRunDiscoveryAnswers?: (answers: V3DiscoveryAnswer[]) => void;
   discoveryRunning?: boolean;
+  focusTick?: number;
 }) {
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const evidenceOpportunities = strategy?.evidenceOpportunities ?? [];
   const discoveryItems = useMemo(
     () => evidenceOpportunities.filter(shouldAskDiscoveryQuestion),
     [evidenceOpportunities],
   );
   const { drafts, setChoice, setDetail, clear } = useDiscoveryDrafts(discoveryItems);
+
+  useEffect(() => {
+    if (!focusTick || discoveryItems.length === 0) return;
+    const el = cardRef.current;
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.remove('v3-address-flash');
+    void el.offsetWidth;
+    el.classList.add('v3-address-flash');
+  }, [discoveryItems.length, focusTick]);
 
   const answerCount = discoveryItems.reduce((count, item, index) => {
     return count + (isDraftAnswered(drafts[discoveryKey(item, index)]) ? 1 : 0);
@@ -527,123 +544,125 @@ function DiscoveryCard({
   }
 
   return (
-    <GlassCard className="p-5">
-      <div className="flex items-center gap-2">
-        <MessageSquare className="h-4 w-4 text-[var(--badge-amber-text)]" />
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-          Questions that could make this stronger
-        </h2>
-      </div>
-
-      <p className="mt-3 text-[12px] leading-snug text-[var(--text-muted)]">
-        We did not claim these yet. If you have proof, answer here and we will
-        rebuild the resume with the stronger, confirmed version.
-      </p>
-
-      <ul className="mt-4 space-y-4">
-        {discoveryItems.map((item, index) => {
-          const key = discoveryKey(item, index);
-          const draft = drafts[key];
-          return (
-            <li
-              key={key}
-              className="rounded border border-[var(--badge-amber-text)]/30 bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
-            >
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <div>
-                  <StatusPill tone="amber">Needs your answer</StatusPill>
-                  <p className="mt-2 font-medium text-[var(--text-strong)]">
-                    {item.requirement}
-                  </p>
-                </div>
-              </div>
-
-              {item.sourceSignal && (
-                <p className="mt-1 text-[11px] text-[var(--text-muted)]">
-                  Current proof: {item.sourceSignal}
-                </p>
-              )}
-
-              <label
-                htmlFor={`discovery-detail-${index}`}
-                className="mt-3 block text-[11px] font-medium text-[var(--text-strong)]"
-              >
-                {item.discoveryQuestion}
-              </label>
-
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {answerOptionsFor(item).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setChoice(item, index, option)}
-                    disabled={discoveryRunning || !onRunDiscoveryAnswers}
-                    className={cn(
-                      'rounded border px-2 py-1 text-[10px] font-medium transition-colors',
-                      draft?.choice === option
-                        ? 'border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)]'
-                        : 'border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text-strong)]',
-                      (discoveryRunning || !onRunDiscoveryAnswers) && 'cursor-not-allowed opacity-60',
-                    )}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-
-              <textarea
-                id={`discovery-detail-${index}`}
-                aria-label={`Add detail for ${item.requirement}`}
-                value={draft?.detail ?? ''}
-                onChange={(event) => setDetail(item, index, event.target.value)}
-                rows={3}
-                disabled={discoveryRunning || !onRunDiscoveryAnswers}
-                placeholder="Optional: add budget size, decision rights, audience, cadence, tool, metric, or outcome."
-                className="mt-3 min-h-[76px] w-full resize-y rounded border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-1.5 text-[11px] leading-snug text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus:ring-1 focus:ring-[var(--bullet-confirm)] disabled:cursor-wait disabled:opacity-60"
-              />
-
-              <p className="mt-2 text-[10px] leading-snug text-[var(--text-soft)]">
-                Current handling: {item.recommendedFraming}
-              </p>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)]">
-          {answerCount} answered
-        </div>
+    <div ref={cardRef}>
+      <GlassCard className="p-5">
         <div className="flex items-center gap-2">
-          {answerCount > 0 && (
+          <MessageSquare className="h-4 w-4 text-[var(--badge-amber-text)]" />
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+            Answer before export
+          </h2>
+        </div>
+
+        <p className="mt-3 text-[12px] leading-snug text-[var(--text-muted)]">
+          We did not claim these yet. Answer what you can, then rebuild the resume
+          so the stronger version is based on confirmed proof.
+        </p>
+
+        <ul className="mt-4 space-y-4">
+          {discoveryItems.map((item, index) => {
+            const key = discoveryKey(item, index);
+            const draft = drafts[key];
+            return (
+              <li
+                key={key}
+                className="rounded border border-[var(--badge-amber-text)]/30 bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div>
+                    <StatusPill tone="amber">Needs your answer</StatusPill>
+                    <p className="mt-2 font-medium text-[var(--text-strong)]">
+                      {item.requirement}
+                    </p>
+                  </div>
+                </div>
+
+                {item.sourceSignal && (
+                  <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                    Current proof: {item.sourceSignal}
+                  </p>
+                )}
+
+                <label
+                  htmlFor={`discovery-detail-${index}`}
+                  className="mt-3 block text-[11px] font-medium text-[var(--text-strong)]"
+                >
+                  {item.discoveryQuestion}
+                </label>
+
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {answerOptionsFor(item).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setChoice(item, index, option)}
+                      disabled={discoveryRunning || !onRunDiscoveryAnswers}
+                      className={cn(
+                        'rounded border px-2 py-1 text-[10px] font-medium transition-colors',
+                        draft?.choice === option
+                          ? 'border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)]'
+                          : 'border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text-strong)]',
+                        (discoveryRunning || !onRunDiscoveryAnswers) && 'cursor-not-allowed opacity-60',
+                      )}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  id={`discovery-detail-${index}`}
+                  aria-label={`Add detail for ${item.requirement}`}
+                  value={draft?.detail ?? ''}
+                  onChange={(event) => setDetail(item, index, event.target.value)}
+                  rows={3}
+                  disabled={discoveryRunning || !onRunDiscoveryAnswers}
+                  placeholder="Optional: add budget size, decision rights, audience, cadence, tool, metric, or outcome."
+                  className="mt-3 min-h-[76px] w-full resize-y rounded border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-1.5 text-[11px] leading-snug text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus:ring-1 focus:ring-[var(--bullet-confirm)] disabled:cursor-wait disabled:opacity-60"
+                />
+
+                <p className="mt-2 text-[10px] leading-snug text-[var(--text-soft)]">
+                  Current handling: {item.recommendedFraming}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)]">
+            {answerCount} answered
+          </div>
+          <div className="flex items-center gap-2">
+            {answerCount > 0 && (
+              <button
+                type="button"
+                onClick={clear}
+                disabled={discoveryRunning}
+                className="inline-flex h-8 items-center gap-1.5 rounded border border-[var(--line-soft)] px-2 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-strong)] disabled:cursor-wait disabled:opacity-60"
+              >
+                <X className="h-3 w-3" />
+                Clear
+              </button>
+            )}
             <button
               type="button"
-              onClick={clear}
-              disabled={discoveryRunning}
-              className="inline-flex h-8 items-center gap-1.5 rounded border border-[var(--line-soft)] px-2 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-strong)] disabled:cursor-wait disabled:opacity-60"
+              onClick={handleRunDiscoveryAnswers}
+              disabled={answerCount === 0 || discoveryRunning || !onRunDiscoveryAnswers}
+              className={cn(
+                'inline-flex h-8 items-center gap-1.5 rounded border px-2 text-[11px] font-semibold',
+                answerCount > 0 && onRunDiscoveryAnswers
+                  ? 'border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)] hover:brightness-105'
+                  : 'border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-soft)]',
+                (discoveryRunning || !onRunDiscoveryAnswers) && 'cursor-wait opacity-60',
+              )}
             >
-              <X className="h-3 w-3" />
-              Clear
+              <RefreshCw className={cn('h-3 w-3', discoveryRunning && 'animate-spin')} />
+              Rebuild resume with my answers
             </button>
-          )}
-          <button
-            type="button"
-            onClick={handleRunDiscoveryAnswers}
-            disabled={answerCount === 0 || discoveryRunning || !onRunDiscoveryAnswers}
-            className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded border px-2 text-[11px] font-semibold',
-              answerCount > 0 && onRunDiscoveryAnswers
-                ? 'border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)] hover:brightness-105'
-                : 'border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-soft)]',
-              (discoveryRunning || !onRunDiscoveryAnswers) && 'cursor-wait opacity-60',
-            )}
-          >
-            <RefreshCw className={cn('h-3 w-3', discoveryRunning && 'animate-spin')} />
-            Rebuild resume with my answers
-          </button>
+          </div>
         </div>
-      </div>
-    </GlassCard>
+      </GlassCard>
+    </div>
   );
 }
 
@@ -654,6 +673,7 @@ function HandledCarefullyCard({
   benchmark: V3BenchmarkProfile | null;
   strategy: V3Strategy | null;
 }) {
+  const [open, setOpen] = useState(false);
   const evidenceOpportunities = strategy?.evidenceOpportunities ?? [];
   const unansweredRiskItems = evidenceOpportunities.filter((item) => {
     if (item.level === 'direct_proof' || item.level === 'reasonable_inference') return false;
@@ -663,14 +683,27 @@ function HandledCarefullyCard({
   const benchmarkGaps = benchmark?.gapAssessment.filter((gap) => gap.severity !== 'noise') ?? [];
   const objections = strategy?.objections ?? [];
   const hasItems = unansweredRiskItems.length > 0 || benchmarkGaps.length > 0 || objections.length > 0;
+  const itemCount = unansweredRiskItems.length + benchmarkGaps.length + objections.length;
 
   return (
     <GlassCard className="p-5">
-      <div className="flex items-center gap-2">
-        <ShieldCheck className="h-4 w-4 text-[var(--badge-blue-text)]" />
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-          What we handled carefully
-        </h2>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-[var(--badge-blue-text)]" />
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+            What we handled carefully
+          </h2>
+        </div>
+        {hasItems && (
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium text-[var(--badge-blue-text)] hover:bg-[var(--badge-blue-bg)]"
+          >
+            {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {open ? 'Hide' : 'Show'}
+          </button>
+        )}
       </div>
 
       {!benchmark && !strategy ? (
@@ -682,57 +715,66 @@ function HandledCarefullyCard({
           No unsupported claims stood out. The resume stayed inside the proof we found.
         </p>
       ) : (
-        <div className="mt-4 space-y-3">
-          {objections.slice(0, 3).map((item, index) => (
-            <div
-              key={`objection-${index}`}
-              className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
-            >
-              <StatusPill tone="blue">Handled without overclaiming</StatusPill>
-              <p className="mt-2 text-[var(--text-muted)]">
-                Possible concern: {item.objection}
-              </p>
-              <p className="mt-1 font-medium text-[var(--text-strong)]">
-                Resume response: {item.rebuttal}
-              </p>
-            </div>
-          ))}
-
-          {unansweredRiskItems.slice(0, 3).map((item, index) => (
-            <div
-              key={`risk-${index}`}
-              className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
-            >
-              <StatusPill tone="muted">Not claimed yet</StatusPill>
-              <p className="mt-2 font-medium text-[var(--text-strong)]">
-                {item.requirement}
-              </p>
-              <p className="mt-1 text-[var(--text-muted)]">
-                Current safe handling: {item.recommendedFraming}
-              </p>
-            </div>
-          ))}
-
-          {benchmarkGaps.slice(0, 2).map((gap, index) => (
-            <div
-              key={`gap-${index}`}
-              className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
-            >
-              <StatusPill tone="amber">Careful framing</StatusPill>
-              <p className="mt-2 text-[var(--text-muted)]">
-                Gap we noticed: {gap.gap}
-              </p>
-              <p className="mt-1 font-medium text-[var(--text-strong)]">
-                How we positioned around it: {gap.bridgingStrategy}
-              </p>
-            </div>
-          ))}
-
-          <p className="text-[11px] leading-snug text-[var(--text-soft)]">
-            If one of these is stronger than your source material shows, answer
-            the question above and rebuild. Otherwise, CareerIQ keeps the claim
-            conservative so the resume does not overstate your record.
+        <div className="mt-4">
+          <p className="text-[12px] leading-snug text-[var(--text-muted)]">
+            {itemCount} {itemCount === 1 ? 'item was' : 'items were'} handled without
+            overstating your record. Open this if you want to inspect the details.
           </p>
+
+          {open && (
+            <div className="mt-3 space-y-3">
+              {objections.slice(0, 3).map((item, index) => (
+                <div
+                  key={`objection-${index}`}
+                  className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+                >
+                  <StatusPill tone="blue">Handled without overclaiming</StatusPill>
+                  <p className="mt-2 text-[var(--text-muted)]">
+                    Possible concern: {item.objection}
+                  </p>
+                  <p className="mt-1 font-medium text-[var(--text-strong)]">
+                    Resume response: {item.rebuttal}
+                  </p>
+                </div>
+              ))}
+
+              {unansweredRiskItems.slice(0, 3).map((item, index) => (
+                <div
+                  key={`risk-${index}`}
+                  className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+                >
+                  <StatusPill tone="muted">Not claimed yet</StatusPill>
+                  <p className="mt-2 font-medium text-[var(--text-strong)]">
+                    {item.requirement}
+                  </p>
+                  <p className="mt-1 text-[var(--text-muted)]">
+                    Current safe handling: {item.recommendedFraming}
+                  </p>
+                </div>
+              ))}
+
+              {benchmarkGaps.slice(0, 2).map((gap, index) => (
+                <div
+                  key={`gap-${index}`}
+                  className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+                >
+                  <StatusPill tone="amber">Careful framing</StatusPill>
+                  <p className="mt-2 text-[var(--text-muted)]">
+                    Gap we noticed: {gap.gap}
+                  </p>
+                  <p className="mt-1 font-medium text-[var(--text-strong)]">
+                    How we positioned around it: {gap.bridgingStrategy}
+                  </p>
+                </div>
+              ))}
+
+              <p className="text-[11px] leading-snug text-[var(--text-soft)]">
+                If one of these is stronger than your source material shows, answer
+                the question above and rebuild. Otherwise, CareerIQ keeps the claim
+                conservative so the resume does not overstate your record.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </GlassCard>
@@ -744,6 +786,7 @@ function ProofReceiptsCard({
 }: {
   strategy: V3Strategy | null;
 }) {
+  const [open, setOpen] = useState(false);
   const proofItems = (strategy?.evidenceOpportunities ?? [])
     .filter((item) => item.level === 'direct_proof' || item.level === 'reasonable_inference')
     .slice(0, 4);
@@ -754,34 +797,50 @@ function ProofReceiptsCard({
 
   return (
     <GlassCard className="p-5">
-      <div className="flex items-center gap-2">
-        <CheckCircle2 className="h-4 w-4 text-[var(--bullet-confirm)]" />
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-          Proof we found
-        </h2>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-[var(--bullet-confirm)]" />
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+            Proof we found
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium text-[var(--bullet-confirm)] hover:bg-[var(--bullet-confirm-bg)]"
+        >
+          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          {open ? 'Hide' : 'Show'}
+        </button>
       </div>
 
-      <ul className="mt-4 space-y-2">
-        {proofItems.map((item, index) => (
-          <li
-            key={`${item.requirement}-${index}`}
-            className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
-          >
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <p className="font-medium text-[var(--text-strong)]">{item.requirement}</p>
-              <StatusPill>{item.level === 'direct_proof' ? 'Direct proof' : 'Supported'}</StatusPill>
-            </div>
-            {item.sourceSignal && (
-              <p className="text-[11px] text-[var(--text-muted)]">
-                Source: {item.sourceSignal}
+      <p className="mt-4 text-[12px] leading-snug text-[var(--text-muted)]">
+        {proofItems.length} source-backed {proofItems.length === 1 ? 'match' : 'matches'} supported this rewrite.
+      </p>
+
+      {open && (
+        <ul className="mt-3 space-y-2">
+          {proofItems.map((item, index) => (
+            <li
+              key={`${item.requirement}-${index}`}
+              className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <p className="font-medium text-[var(--text-strong)]">{item.requirement}</p>
+                <StatusPill>{item.level === 'direct_proof' ? 'Direct proof' : 'Supported'}</StatusPill>
+              </div>
+              {item.sourceSignal && (
+                <p className="text-[11px] text-[var(--text-muted)]">
+                  Source: {item.sourceSignal}
+                </p>
+              )}
+              <p className="mt-1 text-[11px] text-[var(--text-soft)]">
+                Resume handling: {item.recommendedFraming}
               </p>
-            )}
-            <p className="mt-1 text-[11px] text-[var(--text-soft)]">
-              Resume handling: {item.recommendedFraming}
-            </p>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      )}
     </GlassCard>
   );
 }
@@ -791,11 +850,19 @@ export function V3StrategyPanel({
   strategy,
   structured,
   written,
+  focusDiscoveryTick,
   flashPositionIndex,
   flashTick,
   onRunDiscoveryAnswers,
   discoveryRunning,
 }: Props) {
+  const evidenceOpportunities = strategy?.evidenceOpportunities ?? [];
+  const discoveryCount = evidenceOpportunities.filter(shouldAskDiscoveryQuestion).length;
+  const usedProofCount = strategy?.emphasizedAccomplishments.length ?? 0;
+  const supportedProofCount = evidenceOpportunities.filter(
+    (item) => item.level === 'direct_proof' || item.level === 'reasonable_inference',
+  ).length;
+
   return (
     <div className="space-y-4">
       <GlassCard className="p-4">
@@ -803,28 +870,45 @@ export function V3StrategyPanel({
           <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bullet-confirm)]" />
           <div>
             <h2 className="text-[13px] font-semibold text-[var(--text-strong)]">
-              Why we wrote this resume this way
+              Tailoring Plan
             </h2>
             <p className="mt-1 text-[12px] leading-snug text-[var(--text-muted)]">
-              CareerIQ compares the job to your source material, rewrites only
-              from proof it can support, and asks before making stronger claims.
+              Here is how CareerIQ matched this job to your proof, what it
+              changed in the resume, and what it still needs from you before
+              making stronger claims.
             </p>
+            {strategy && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <StatusPill tone="blue">
+                  {usedProofCount} {usedProofCount === 1 ? 'proof point' : 'proof points'} used
+                </StatusPill>
+                <StatusPill tone={discoveryCount > 0 ? 'amber' : 'green'}>
+                  {discoveryCount > 0
+                    ? `${discoveryCount} ${discoveryCount === 1 ? 'answer' : 'answers'} needed`
+                    : 'No answers needed'}
+                </StatusPill>
+                <StatusPill tone="muted">
+                  {supportedProofCount} source-backed {supportedProofCount === 1 ? 'match' : 'matches'}
+                </StatusPill>
+              </div>
+            )}
           </div>
         </div>
       </GlassCard>
 
       <JobReadCard benchmark={benchmark} strategy={strategy} />
+      <DiscoveryCard
+        strategy={strategy}
+        onRunDiscoveryAnswers={onRunDiscoveryAnswers}
+        discoveryRunning={discoveryRunning}
+        focusTick={focusDiscoveryTick}
+      />
       <UsedProofCard
         strategy={strategy}
         structured={structured}
         written={written}
         flashPositionIndex={flashPositionIndex}
         flashTick={flashTick}
-      />
-      <DiscoveryCard
-        strategy={strategy}
-        onRunDiscoveryAnswers={onRunDiscoveryAnswers}
-        discoveryRunning={discoveryRunning}
       />
       <HandledCarefullyCard benchmark={benchmark} strategy={strategy} />
       <ProofReceiptsCard strategy={strategy} />

@@ -148,15 +148,20 @@ describe('V3StrategyPanel editorial evidence layer', () => {
       />,
     );
 
-    expect(screen.getByText('Why we wrote this resume this way')).toBeInTheDocument();
+    expect(screen.getByText('Tailoring Plan')).toBeInTheDocument();
     expect(screen.getByText('What this job is asking for')).toBeInTheDocument();
+    expect(screen.getByText('Answer before export')).toBeInTheDocument();
     expect(screen.getByText('What we changed in your resume')).toBeInTheDocument();
+    expect(
+      screen.getByText('Answer before export').compareDocumentPosition(
+        screen.getByText('What we changed in your resume'),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getByText(/3-facility operating scope with measurable employee scale/i)).toBeInTheDocument();
     expect(screen.getByText(/look for it in: summary, selected accomplishments, meridian industrial group - vice president of operations/i)).toBeInTheDocument();
-    expect(screen.getByText('Questions that could make this stronger')).toBeInTheDocument();
     expect(screen.getByText('What we handled carefully')).toBeInTheDocument();
     expect(screen.getByText('Proof we found')).toBeInTheDocument();
-    expect(screen.getByText('Multi-site manufacturing leadership')).toBeInTheDocument();
+    expect(screen.getByText(/1 source-backed match supported this rewrite/i)).toBeInTheDocument();
     expect(screen.getAllByText('SAP experience').length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('Strategist read')).not.toBeInTheDocument();
     expect(screen.queryByText('Evidence map (2)')).not.toBeInTheDocument();

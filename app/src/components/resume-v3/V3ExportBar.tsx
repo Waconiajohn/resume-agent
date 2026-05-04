@@ -2,8 +2,8 @@
  * V3ExportBar — DOCX + PDF + TXT + Copy buttons for a completed V3 run.
  *
  * Structurally parallel to resume-v2/ExportBar but without v2's queue /
- * health-score / final-review gating. V3 has no queue so we skip all of that
- * and render the minimum needed surface: template selector + four actions.
+ * health-score gating. V3 keeps export available, with a non-blocking
+ * readiness warning when Tailoring Plan or Final Check still has open items.
  *
  * The adapter (`v3ToFinalResume`) bridges V3's split (structured + written)
  * into the FinalResume shape that export-docx and export-pdf expect, so the
@@ -36,6 +36,8 @@ interface V3ExportBarProps {
   jobTitle?: string;
   /** Session id for telemetry; optional. */
   sessionId?: string | null;
+  /** Non-blocking readiness warning shown when Final Check still has open items. */
+  readinessWarning?: string | null;
 }
 
 export function V3ExportBar({
@@ -44,6 +46,7 @@ export function V3ExportBar({
   companyName,
   jobTitle,
   sessionId,
+  readinessWarning,
 }: V3ExportBarProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>(DEFAULT_TEMPLATE_ID);
   const [exporting, setExporting] = useState<'docx' | 'pdf' | null>(null);
@@ -113,6 +116,16 @@ export function V3ExportBar({
 
   return (
     <div className="space-y-2">
+      {readinessWarning && (
+        <div className="flex items-start gap-2 rounded border border-[var(--badge-amber-text)]/25 bg-[var(--badge-amber-bg)]/35 px-3 py-2 text-[12px] leading-snug text-[var(--badge-amber-text)]">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <div>
+            <div className="font-semibold">Review before export</div>
+            <p className="mt-0.5">{readinessWarning}</p>
+          </div>
+        </div>
+      )}
+
       <TemplateSelector
         selected={selectedTemplate}
         onChange={setSelectedTemplate}

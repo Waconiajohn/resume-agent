@@ -1,26 +1,27 @@
 /**
- * V3VerifyPanel — right-column "Review" summary of the verify stage.
+ * V3VerifyPanel — "Final Check" summary of the verify stage.
  *
- * Role in the three-panel model: this is the SECOND OPINION panel, a peer
- * view of the resume that surfaces verify's disagreements. It's a
- * disagreement surface, not a fix queue — every row has three actions:
+ * Role in the resume builder: this is the export-readiness check after the
+ * resume has been written. It surfaces verify's disagreements without taking
+ * a permanent third column away from the resume workspace. Rows keep the same
+ * mechanics, but the user-facing model is "what needs attention before I
+ * export?"
  *
- *   - Address ▸ — scroll the middle panel to the target, flash it. The
+ *   - Show me ▸ — scroll the resume to the target, flash it. The
  *     user edits in the resume itself.
- *   - Apply ▸  — one-click accept a pre-written patch (additive-only,
+ *   - Use this fix ▸  — one-click accept a pre-written patch (additive-only,
  *     phase-3 feature; button is rendered only when suggestedPatches
  *     exist so phase 2 ships as a shell).
- *   - Dismiss ▸ — "I did this on purpose." The row collapses to a
+ *   - Keep as written ▸ — "I did this on purpose." The row collapses to a
  *     dismissed-strip at the bottom of the list, and the inline
- *     triangle in the middle panel dims but stays visible.
+ *     triangle in the resume dims but stays visible.
  *
  * The panel also participates in bi-directional scroll-sync: clicking an
  * inline triangle in V3ResumeView scrolls the corresponding row into
  * view here and flashes it.
  *
  * Staleness: when the user has edited a bullet that an issue targets,
- * that row renders at reduced opacity with an "edited — re-verify?"
- * label. Phase 2 shows awareness only; actual re-verify lands in phase 4.
+ * that row renders at reduced opacity with a changed-after-check label.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -49,11 +50,11 @@ interface Props {
   isRunning: boolean;
   /** The pipeline stage currently executing. Lets the placeholder copy
    *  distinguish "verify is actively working" from "an earlier stage is
-   *  still running" so the review panel doesn't claim active fact-checking
+   *  still running" so the final check doesn't claim active fact-checking
    *  before verify begins. */
   currentStage?: V3Stage | null;
   /** True while a Phase-4 re-verify REST call is in flight. Renders a
-   *  subtle "Re-checking…" label without throwing away the visible issues. */
+   *  subtle "checking latest edits…" label without throwing away the visible issues. */
   reverifying?: boolean;
   /** The edited resume (if the user has diverged from the pipeline output). */
   editedWritten: V3WrittenResume | null;
@@ -67,7 +68,7 @@ interface Props {
   dismissedIssueKeys: Set<string>;
   /** Issues resolved via Apply (Phase 3); distinct bucket from dismissed for UX signaling. */
   appliedIssueKeys: Set<string>;
-  /** Address click — scroll middle panel to the target. */
+  /** Show-me click — scroll the resume to the target. */
   onAddress: (key: string, section: string) => void;
   /** Dismiss click — mark issue as deliberately ignored. */
   onDismiss: (key: string) => void;
@@ -75,9 +76,11 @@ interface Props {
   onUndismiss: (key: string) => void;
   /** Apply a pre-written patch — inserts into editedWritten and auto-resolves the issue. */
   onApplyPatch: (key: string, patch: V3SuggestedPatch) => void;
+  /** Jump back to the Tailoring Plan questions when proof is still needed. */
+  onAnswerDiscoveryWarning?: () => void;
   /**
-   * Bridge from a rewrite-class review note (no suggestedPatches) whose
-   * target is regeneratable (summary/bullet) to the middle-panel's
+   * Bridge from a rewrite-class final-check item (no suggestedPatches) whose
+   * target is regeneratable (summary/bullet) to the resume's
    * regenerate flow. Uses the note's `suggestion` as the guidance hint.
    * Optional: the host screen only provides this when the pipeline is
    * complete — otherwise the button stays hidden.
@@ -92,7 +95,7 @@ interface Props {
 interface DisplayItem {
   /** Stable, session-scoped key: `${section}#${rawIndex}`. */
   key: string;
-  /** Raw verify section path — the scroll target in the middle panel. */
+  /** Raw verify section path — the scroll target in the resume. */
   section: string;
   severity: 'error' | 'warning';
   label: string;
@@ -213,6 +216,7 @@ export function V3VerifyPanel({
   onDismiss,
   onUndismiss,
   onApplyPatch,
+  onAnswerDiscoveryWarning,
   onRegenerateFromSuggestion,
 }: Props) {
   const [reverifyToast, setReverifyToast] = useState<string | null>(null);
@@ -225,14 +229,14 @@ export function V3VerifyPanel({
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-[var(--text-soft)]" />
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-            Review
+            Final Check
           </h2>
         </div>
         <p className="text-sm text-[var(--text-soft)] mt-3">
           {isRunning
             ? currentStage === 'verify'
-              ? 'Fact-checking every claim against your source material…'
-              : 'Your review notes will appear here once fact-checking runs.'
+              ? 'Checking every claim against your source material…'
+              : 'The final check will run after the resume is written.'
             : 'Not yet run.'}
         </p>
         {isRunning && (
@@ -257,20 +261,22 @@ export function V3VerifyPanel({
   const hasDiscoveryWarning = unresolvedDiscoveryCount > 0;
 
   const handleReverifyToast = () => {
-    setReverifyToast('Re-verify coming in the next phase. For now, verify reflects the original run.');
+    setReverifyToast('This note may be stale because the resume changed after the last check.');
     setTimeout(() => setReverifyToast(null), 4000);
   };
 
   return (
     <GlassCard className="p-5">
-      <div className="flex items-center gap-2">
-        <Shield className="h-4 w-4 text-[var(--text-soft)]" />
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-          Review
-        </h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-[var(--text-soft)]" />
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+            Final Check
+          </h2>
+        </div>
         {reverifying && (
           <span className="text-[10px] text-[var(--text-soft)] italic">
-            re-checking…
+            checking latest edits…
           </span>
         )}
       </div>
@@ -281,28 +287,28 @@ export function V3VerifyPanel({
           <>
             <AlertTriangle className="h-5 w-5 text-[var(--badge-red-text)]" />
             <span className="text-sm font-semibold text-[var(--text-strong)]">
-              Needs review
+              Needs your attention
             </span>
           </>
         ) : totalShown > 0 ? (
           <>
             <AlertCircle className="h-5 w-5 text-[var(--badge-amber-text)]" />
             <span className="text-sm font-semibold text-[var(--text-strong)]">
-              {totalShown} review {totalShown === 1 ? 'note' : 'notes'}
+              {totalShown} {totalShown === 1 ? 'item' : 'items'} to check
             </span>
           </>
         ) : hasDiscoveryWarning ? (
           <>
             <AlertCircle className="h-5 w-5 text-[var(--badge-amber-text)]" />
             <span className="text-sm font-semibold text-[var(--text-strong)]">
-              Discovery still needed
+              Answer needed in tailoring plan
             </span>
           </>
         ) : (
           <>
             <CheckCircle2 className="h-5 w-5 text-[var(--bullet-confirm)]" />
             <span className="text-sm font-semibold text-[var(--text-strong)]">
-              No review notes
+              Ready to export
             </span>
           </>
         )}
@@ -316,19 +322,33 @@ export function V3VerifyPanel({
           </div>
         </div>
       )}
-      {totalShown === 0 && dismissedItems.length === 0 && hasDiscoveryWarning && (
-        <p className="mt-1.5 text-[11px] text-[var(--badge-amber-text)]/90">
-          {unresolvedDiscoveryCount} role-specific proof {unresolvedDiscoveryCount === 1 ? 'question still needs' : 'questions still need'} an answer before this is export-ready
-          {discoveryWarning?.highRiskCount ? `, including ${discoveryWarning.highRiskCount} high-risk ${discoveryWarning.highRiskCount === 1 ? 'item' : 'items'}` : ''}.
-        </p>
+      {hasDiscoveryWarning && (
+        <div className="mt-3 rounded border border-[var(--badge-amber-text)]/25 bg-[var(--badge-amber-bg)]/35 p-3">
+          <p className="text-[11px] leading-snug text-[var(--badge-amber-text)]/95">
+            {unresolvedDiscoveryCount} role-specific proof{' '}
+            {unresolvedDiscoveryCount === 1 ? 'question still needs' : 'questions still need'} an
+            answer in the Tailoring Plan before this is export-ready
+            {discoveryWarning?.highRiskCount ? `, including ${discoveryWarning.highRiskCount} high-risk ${discoveryWarning.highRiskCount === 1 ? 'item' : 'items'}` : ''}.
+          </p>
+          {onAnswerDiscoveryWarning && (
+            <button
+              type="button"
+              onClick={onAnswerDiscoveryWarning}
+              className="mt-2 inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-[var(--badge-amber-text)] hover:bg-[var(--badge-amber-bg)]"
+            >
+              Answer in Tailoring Plan
+              <ArrowRight className="h-3 w-3" />
+            </button>
+          )}
+        </div>
       )}
       {totalShown === 0 && dismissedItems.length === 0 && !hasDiscoveryWarning && (
         <p className="mt-1.5 text-[11px] text-[var(--text-soft)]">
-          Nothing flagged. Safe to export.
+          No unsupported claims found. Ready to export.
         </p>
       )}
 
-      {/* Reverify toast (phase-2 stub — actual re-verify is phase 4) */}
+      {/* Stale-note toast. */}
       {reverifyToast && (
         <div
           role="status"
@@ -340,28 +360,33 @@ export function V3VerifyPanel({
 
       {/* Active items */}
       {activeItems.length > 0 && (
-        <div className="mt-4 space-y-2 max-h-[540px] overflow-y-auto pr-1">
-          {activeItems.map((item) => (
-            <IssueRow
-              key={item.key}
-              item={item}
-              stale={isSectionStale(item.section, editedWritten, pristineWritten)}
-              focusCue={focusCue}
-              onAddress={() => onAddress(item.key, item.section)}
-              onDismiss={() => onDismiss(item.key)}
-              onReverifyToast={handleReverifyToast}
-              onApplyPatch={(patch) => onApplyPatch(item.key, patch)}
-              onRegenerateFromSuggestion={
-                onRegenerateFromSuggestion && item.suggestion
-                  ? () => onRegenerateFromSuggestion(item.key, item.section, item.suggestion!)
-                  : undefined
-              }
-            />
-          ))}
+        <div className="mt-4">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-soft)]">
+            Check before export
+          </div>
+          <div className="grid gap-3 xl:grid-cols-2">
+            {activeItems.map((item) => (
+              <IssueRow
+                key={item.key}
+                item={item}
+                stale={isSectionStale(item.section, editedWritten, pristineWritten)}
+                focusCue={focusCue}
+                onAddress={() => onAddress(item.key, item.section)}
+                onDismiss={() => onDismiss(item.key)}
+                onReverifyToast={handleReverifyToast}
+                onApplyPatch={(patch) => onApplyPatch(item.key, patch)}
+                onRegenerateFromSuggestion={
+                  onRegenerateFromSuggestion && item.suggestion
+                    ? () => onRegenerateFromSuggestion(item.key, item.section, item.suggestion!)
+                    : undefined
+                }
+              />
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Resolved strip — applied (phase 3) + dismissed items, session-scoped. */}
+      {/* Done strip — applied (phase 3) + kept-as-written items, session-scoped. */}
       {(dismissedItems.length > 0 || appliedItems.length > 0) && (
         <ResolvedStrip
           appliedItems={appliedItems}
@@ -399,7 +424,7 @@ function IssueRow({
   const [pickerOpen, setPickerOpen] = useState(false);
   const patches = item.suggestedPatches ?? [];
   const hasPatches = patches.length > 0;
-  // The Review-bridge button qualifies only for rewrite-class rows whose
+  // The Final Check rewrite button qualifies only for rewrite-class rows whose
   // section is regeneratable. Additive rows route through Apply instead
   // (different semantic — insert vs rewrite).
   const isRegeneratable =
@@ -420,7 +445,7 @@ function IssueRow({
     el.classList.add('v3-address-flash');
   }, [focusCue, item.key]);
 
-  // Keyboard: Enter = Address, Alt+Enter = Dismiss.
+  // Keyboard: Enter = Show me, Alt+Enter = Keep as written.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
@@ -468,22 +493,22 @@ function IssueRow({
           type="button"
           onClick={onReverifyToast}
           className="mt-2 inline-flex items-center gap-1 text-[10px] text-[var(--badge-amber-text)] hover:underline"
-          title="This section was edited after the review ran"
+          title="This section was edited after the final check ran"
         >
           <AlertCircle className="h-3 w-3" />
-          Edited — re-verify?
+          Changed after check
         </button>
       )}
 
       {/* Action row */}
-      <div className="mt-2 flex items-center gap-1">
+      <div className="mt-2 flex flex-wrap items-center gap-1">
         <button
           type="button"
           onClick={onAddress}
           className="inline-flex items-center gap-0.5 text-[11px] text-[var(--bullet-confirm)] hover:bg-[var(--bullet-confirm-bg)] rounded px-1.5 py-1 transition-colors font-medium"
           title="Jump to this spot in the resume"
         >
-          Address
+          Show me
           <ArrowRight className="h-3 w-3" />
         </button>
         {hasPatches && (
@@ -498,13 +523,13 @@ function IssueRow({
             )}
             title={
               patches.length === 1
-                ? 'Apply the suggested fix'
+                ? 'Use the suggested fix'
                 : `Pick from ${patches.length} suggested fixes`
             }
             aria-expanded={pickerOpen}
           >
             <Sparkles className="h-3 w-3" />
-            Apply
+            Use this fix
           </button>
         )}
         {showRegenButton && (
@@ -512,19 +537,19 @@ function IssueRow({
             type="button"
             onClick={onRegenerateFromSuggestion}
             className="inline-flex items-center gap-0.5 text-[11px] rounded px-1.5 py-1 transition-colors font-medium text-[var(--badge-blue-text)] hover:bg-[var(--badge-blue-bg)]"
-            title="Regenerate the target using this note's suggestion as guidance"
+            title="Rewrite this resume line using this suggestion"
           >
             <Sparkles className="h-3 w-3" />
-            AI rewrite
+            Rewrite this line
           </button>
         )}
         <button
           type="button"
           onClick={onDismiss}
           className="inline-flex items-center gap-0.5 text-[11px] text-[var(--text-soft)] hover:text-[var(--text-muted)] rounded px-1.5 py-1 transition-colors ml-auto"
-          title="I did this on purpose — hide this note"
+          title="Keep the resume as written and hide this item"
         >
-          Dismiss
+          Keep as written
           <X className="h-3 w-3" />
         </button>
       </div>
@@ -554,7 +579,7 @@ function IssueRow({
                   onClick={() => onApplyPatch(patch)}
                   className="inline-flex items-center gap-0.5 text-[11px] text-[var(--badge-blue-text)] hover:underline font-medium"
                 >
-                  Insert
+                  Use this
                   <ArrowRight className="h-3 w-3" />
                 </button>
               </div>
@@ -567,19 +592,15 @@ function IssueRow({
 }
 
 function patchTargetLabel(target: string): string {
-  if (target === 'summary') return 'Replaces summary';
-  if (target === 'selectedAccomplishments') return 'Adds key accomplishment';
-  const m = target.match(/^positions\[(\d+)\]$/);
-  if (m) return `Adds bullet to position ${Number(m[1]) + 1}`;
+  if (target === 'summary') return 'Updates summary';
+  if (target === 'selectedAccomplishments') return 'Adds proof point';
+  if (/^positions\[\d+\]$/.test(target)) return 'Adds resume bullet';
   return target;
 }
 
 /**
- * Resolved strip — one collapsible footer that shows both "applied" (the
- * user accepted a pre-written patch) and "dismissed" (the user said the
- * issue was intentional) items. They share a section because they share a
- * meaning: "this row is no longer in the active list." The distinction
- * shows as a per-row prefix so the user can tell at a glance what happened.
+ * Done strip — one collapsible footer that shows both accepted fixes and
+ * items the user deliberately kept as written.
  */
 function ResolvedStrip({
   appliedItems,
@@ -601,7 +622,7 @@ function ResolvedStrip({
         className="flex items-center gap-1 text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)] hover:text-[var(--text-muted)]"
       >
         {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRightIcon className="h-3 w-3" />}
-        Resolved ({total})
+        Done ({total})
         {appliedItems.length > 0 && (
           <span className="ml-1 text-[var(--badge-blue-text)] normal-case tracking-normal">
             · {appliedItems.length} {appliedLabel}
@@ -619,7 +640,7 @@ function ResolvedStrip({
               <span className="flex-1 truncate" title={item.message}>
                 <span className="text-[var(--text-muted)] font-medium">{item.label}</span>
                 {' — '}
-                <span className="italic">applied suggested fix</span>
+                <span className="italic">used suggested fix</span>
               </span>
             </li>
           ))}
@@ -632,7 +653,7 @@ function ResolvedStrip({
               <span className="flex-1 truncate" title={item.message}>
                 <span className="text-[var(--text-muted)] font-medium">{item.label}</span>
                 {' — '}
-                <span className="italic">{item.message}</span>
+                <span className="italic">kept as written</span>
               </span>
               <GlassButton
                 variant="ghost"
@@ -640,7 +661,7 @@ function ResolvedStrip({
                 onClick={() => onUndismiss(item.key)}
                 className="text-[10px]"
               >
-                Restore
+                Undo
               </GlassButton>
             </li>
           ))}

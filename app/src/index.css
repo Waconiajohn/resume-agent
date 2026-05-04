@@ -1797,11 +1797,10 @@
       background-color 180ms ease-out;
   }
 
-  /* V3 three-panel cross-scroll flash. Used by V3ResumeView (when the user
-     clicks Address in the Review panel) and V3VerifyPanel (when the user
-     clicks an inline triangle in the resume). Intentionally brief so it
-     reads as an "I see what you clicked" confirmation, not a sustained UI
-     state. Coral to match the rest of the v3 accent system. */
+  /* V3 cross-scroll flash. Used when Final Check jumps to the resume, when
+     resume inline alerts jump to Final Check, and when Final Check sends the
+     user back to Tailoring Plan questions. Intentionally brief so it reads as
+     an "I see what you clicked" confirmation, not a sustained UI state. */
   @keyframes v3-address-flash {
     0% {
       box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.6);

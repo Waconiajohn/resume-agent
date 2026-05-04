@@ -1,7 +1,7 @@
 /**
  * V3PipelineScreen — top-level v3 resume UI.
  *
- * Composes intake → pipeline progress → (strategy, resume, verify panels).
+ * Composes intake → pipeline progress → (tailoring plan, resume, final check).
  * State lives in useV3Pipeline. The screen is stateless beyond UI concerns.
  *
  * Layout:
@@ -9,10 +9,9 @@
  *   ├─ Stage progress strip (5 dots)
  *   ├─ Intake form (when no pipeline is running)  OR
  *   └─ Results layout:
- *      ┌─ 3-col grid on desktop
- *      │  ├─ Strategy panel (left)
- *      │  ├─ Resume view (center, widest)
- *      │  └─ Verify panel (right)
+ *      ┌─ 2-col grid on desktop
+ *      │  ├─ Tailoring Plan (left)
+ *      │  └─ Resume workspace (resume, final check, export)
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -77,7 +76,7 @@ interface V3PipelineScreenProps {
 
 /**
  * Shared cross-panel cue. Bumping `.at` on each interaction re-triggers the
- * flash animation even when the target key is unchanged (e.g. Address is
+ * flash animation even when the target key is unchanged (e.g. "Show me" is
  * clicked twice on the same row).
  */
 interface FocusCue {
@@ -177,6 +176,17 @@ function buildDiscoveryReviewWarning(
   };
 }
 
+function visibleVerifyIssueKeys(verify: V3VerifyResult | null): string[] {
+  if (!verify) return [];
+  const translated = verify.translated;
+  return verify.issues.flatMap((issue, index) => {
+    if (translated && translated.length === verify.issues.length && translated[index]?.shouldShow === false) {
+      return [];
+    }
+    return [`${issue.section}#${index}`];
+  });
+}
+
 export function V3PipelineScreen({
   accessToken,
   initialResumeText,
@@ -199,12 +209,13 @@ export function V3PipelineScreen({
   const [runJdCompany, setRunJdCompany] = useState<string | null>(null);
   const [lastStartInput, setLastStartInput] = useState<StartV3PipelineInput | null>(null);
   const [confirmedDiscoveryAnswers, setConfirmedDiscoveryAnswers] = useState<V3DiscoveryAnswer[]>([]);
+  const [tailoringQuestionFocusTick, setTailoringQuestionFocusTick] = useState(0);
 
-  // Three-panel cross-scroll state (Phase 2). Lives here so both the Resume
-  // view (middle) and the Review panel (right) can react to the same events.
+  // Cross-scroll state (Phase 2). Lives here so both the resume view and the
+  // Final Check panel can react to the same events.
   const [focusCue, setFocusCue] = useState<FocusCue | null>(null);
   const [dismissedIssueKeys, setDismissedIssueKeys] = useState<Set<string>>(new Set());
-  // Phase 3: issues whose resolution came from clicking Apply on a pre-written
+  // Phase 3: issues whose resolution came from using a pre-written
   // patch. Tracked separately from dismissal so the strip can show a success
   // badge for these instead of the generic "dismissed" tag.
   const [appliedIssueKeys, setAppliedIssueKeys] = useState<Set<string>>(new Set());
@@ -216,7 +227,7 @@ export function V3PipelineScreen({
   // and stash the new result here, shadowing the pipeline's original
   // verify for display purposes. Cleared on Start over.
   const [overrideVerify, setOverrideVerify] = useState<V3VerifyResult | null>(null);
-  // Phase 4: the resume snapshot that was last verified. The Review panel
+  // Phase 4: the resume snapshot that was last verified. The Final Check panel
   // uses this (not pristineWritten) to compute staleness, so that after a
   // reverify completes, the staleness cue clears even though editedWritten
   // still diverges from the pipeline's pristine output.
@@ -283,12 +294,35 @@ export function V3PipelineScreen({
     [confirmedDiscoveryAnswers, pipeline.strategy],
   );
 
+  const finalCheckActiveIssueCount = useMemo(() => {
+    return visibleVerifyIssueKeys(effectiveVerify).filter(
+      (key) => !dismissedIssueKeys.has(key) && !appliedIssueKeys.has(key),
+    ).length;
+  }, [appliedIssueKeys, dismissedIssueKeys, effectiveVerify]);
+
+  const exportReadinessWarning = useMemo(() => {
+    const warnings: string[] = [];
+    if (discoveryReviewWarning) {
+      warnings.push(
+        `${discoveryReviewWarning.count} tailoring ${discoveryReviewWarning.count === 1 ? 'answer is' : 'answers are'} still needed`,
+      );
+    }
+    if (finalCheckActiveIssueCount > 0) {
+      warnings.push(
+        `${finalCheckActiveIssueCount} final-check ${finalCheckActiveIssueCount === 1 ? 'item is' : 'items are'} still open`,
+      );
+    }
+    if (warnings.length === 0) return null;
+    return `${warnings.join(' and ')} before this resume is fully ready. You can still export, but review those items first.`;
+  }, [discoveryReviewWarning, finalCheckActiveIssueCount]);
+
   const resetRunViewState = useCallback(() => {
     setEditedWritten(null);
     setFocusCue(null);
     setDismissedIssueKeys(new Set());
     setAppliedIssueKeys(new Set());
     setStrategyFlash(null);
+    setTailoringQuestionFocusTick(0);
     setOverrideVerify(null);
     setLastVerifiedWritten(null);
   }, []);
@@ -422,7 +456,7 @@ export function V3PipelineScreen({
   );
 
   // Fire-and-forget re-verify after any resume-changing action (regenerate
-  // bullet, regenerate position). Silent: no spinner, the Review panel's
+  // bullet, regenerate position). Silent: no spinner, the Final Check panel's
   // staleness cue from Phase 2 already tells the user the notes are stale;
   // this just clears them when the re-run finishes. Non-blocking so the
   // user can keep editing while verify runs.
@@ -476,12 +510,12 @@ export function V3PipelineScreen({
     [editedWritten, pipeline.written, regen, scheduleReverify],
   );
 
-  // Phase-5 AI-button consistency pass: Review row → regenerate bridge.
-  // When a review note has an actionable `suggestion` AND targets a
+  // Phase-5 AI-button consistency pass: Final Check row -> regenerate bridge.
+  // When a final-check item has an actionable `suggestion` AND targets a
   // regeneratable section (summary or a specific bullet), offer a button
   // that fires the existing regenerate flow with the note's suggestion
-  // passed through as the guidance hint. Treats the row as "applied" for
-  // the resolved-strip visual (same semantic as the Apply flow).
+  // passed through as the guidance hint. Treats the row as done for the
+  // Final Check footer (same semantic as using a suggested fix).
   const handleRegenerateFromSuggestion = useCallback(
     (issueKey: string, section: string, suggestion: string) => {
       const base = editedWritten ?? pipeline.written;
@@ -541,7 +575,7 @@ export function V3PipelineScreen({
       if (!newSummary) return;
       const nextWritten = { ...base, summary: newSummary };
       setEditedWritten(nextWritten);
-      // Scroll middle column to the new summary + flash it.
+      // Scroll the resume to the new summary + flash it.
       setFocusCue({
         key: `regen-summary-${Date.now()}`,
         section: 'summary',
@@ -552,11 +586,11 @@ export function V3PipelineScreen({
     [editedWritten, pipeline.written, regen, scheduleReverify],
   );
 
-  // Apply a translator-provided patch to editedWritten and mark the issue
-  // resolved. The apply targets come from the verify-translate.v1 prompt's
+  // Apply a translator-provided patch to editedWritten and mark the item
+  // done. The patch targets come from the verify-translate.v1 prompt's
   // suggestedPatches — additive only (never rewrite-class), enforced
   // server-side by the Zod target regex. After applying, we point focusCue
-  // at the newly inserted content so the middle column scrolls+flashes it.
+  // at the newly inserted content so the resume scrolls+flashes it.
   const handleApplyPatch = useCallback(
     (issueKey: string, patch: V3SuggestedPatch) => {
       const base = editedWritten ?? pipeline.written;
@@ -614,7 +648,7 @@ export function V3PipelineScreen({
       {/* ─── Top strip (flows with internal scroll, not pinned) ──────
           Header + stage progress + any error banner. When the user
           scrolls down (inside this container's scroll), the strip
-          scrolls off screen so the three columns / intake form below
+          scrolls off screen so the results workspace / intake form below
           get the full viewport. During an active run the default
           position shows the stage progress; once the user scrolls or
           the pipeline completes and the card auto-collapses, they see
@@ -725,9 +759,9 @@ export function V3PipelineScreen({
 
       {/* ─── Content zone ──────────────────────────────────────────────
           Flows with the page. Intake form: natural content height.
-          Results grid: three columns flow as a standard CSS grid — each
+          Results grid: two columns flow as a standard CSS grid — each
           column sizes to its content, tallest column sets the row
-          height. Page scroll (on document.body) is how the user gets
+          height. Internal page scroll is how the user gets
           past the top strip to see column content. */}
       <div className="w-full mx-auto max-w-7xl px-4 pb-4">
         {showIntake && (
@@ -756,14 +790,15 @@ export function V3PipelineScreen({
         )}
 
         {showResults && (
-          <div className="grid lg:grid-cols-[320px_1fr_300px] gap-6">
-            {/* Left: benchmark + strategy */}
+          <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]">
+            {/* Left: tailoring plan, proof, and clarifying questions */}
             <div className="space-y-4">
               <V3StrategyPanel
                 benchmark={pipeline.benchmark}
                 strategy={pipeline.strategy}
                 structured={pipeline.structured}
                 written={effectiveWritten}
+                focusDiscoveryTick={tailoringQuestionFocusTick}
                 flashPositionIndex={strategyFlash?.positionIndex ?? null}
                 flashTick={strategyFlash?.at ?? 0}
                 onRegeneratePosition={
@@ -777,8 +812,9 @@ export function V3PipelineScreen({
               />
             </div>
 
-            {/* Center: resume + promote (promote sits at the bottom of the
-                column — wrap-up action for the resume itself). */}
+            {/* Main workspace: resume first, then final check at the export
+                decision point. Verification stays available without taking
+                a permanent third column away from the resume. */}
             <div className="space-y-6">
               <V3ResumeView
                 structured={pipeline.structured}
@@ -800,6 +836,26 @@ export function V3PipelineScreen({
                 }
                 summaryPending={regen.summaryPending}
               />
+              <V3VerifyPanel
+                verify={effectiveVerify}
+                discoveryWarning={discoveryReviewWarning}
+                isRunning={pipeline.isRunning}
+                currentStage={pipeline.currentStage}
+                reverifying={regen.reverifying}
+                editedWritten={editedWritten}
+                pristineWritten={lastVerifiedWritten ?? pipeline.written}
+                focusCue={focusCue}
+                dismissedIssueKeys={dismissedIssueKeys}
+                appliedIssueKeys={appliedIssueKeys}
+                onAddress={handleFocusIssue}
+                onDismiss={handleDismissIssue}
+                onUndismiss={handleUndismissIssue}
+                onApplyPatch={handleApplyPatch}
+                onAnswerDiscoveryWarning={() => setTailoringQuestionFocusTick(Date.now())}
+                onRegenerateFromSuggestion={
+                  pipeline.isComplete ? handleRegenerateFromSuggestion : undefined
+                }
+              />
               {pipeline.isComplete && !pipeline.error && pipeline.written && pipeline.structured && (
                 <V3ExportBar
                   structured={pipeline.structured}
@@ -807,6 +863,7 @@ export function V3PipelineScreen({
                   companyName={runJdCompany ?? undefined}
                   jobTitle={runJdTitle ?? undefined}
                   sessionId={sessionId}
+                  readinessWarning={exportReadinessWarning}
                 />
               )}
               {pipeline.isComplete && !pipeline.error && pipeline.written && sessionId && (
@@ -833,29 +890,6 @@ export function V3PipelineScreen({
                   className="mt-4"
                 />
               )}
-            </div>
-
-            {/* Right: verify */}
-            <div className="space-y-4">
-              <V3VerifyPanel
-                verify={effectiveVerify}
-                discoveryWarning={discoveryReviewWarning}
-                isRunning={pipeline.isRunning}
-                currentStage={pipeline.currentStage}
-                reverifying={regen.reverifying}
-                editedWritten={editedWritten}
-                pristineWritten={lastVerifiedWritten ?? pipeline.written}
-                focusCue={focusCue}
-                dismissedIssueKeys={dismissedIssueKeys}
-                appliedIssueKeys={appliedIssueKeys}
-                onAddress={handleFocusIssue}
-                onDismiss={handleDismissIssue}
-                onUndismiss={handleUndismissIssue}
-                onApplyPatch={handleApplyPatch}
-                onRegenerateFromSuggestion={
-                  pipeline.isComplete ? handleRegenerateFromSuggestion : undefined
-                }
-              />
             </div>
           </div>
         )}

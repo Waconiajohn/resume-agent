@@ -257,9 +257,9 @@ export function V3StageProgress({ stageStatus, currentStage }: V3StageProgressPr
           keep it visible for the rest of the run. Pending stages show a
           compact header so the user can see what's still to come. The
           region is bounded and scrollable so the top strip doesn't
-          crowd the three-panel content below.
+          crowd the resume workspace below.
 
-          Auto-collapsed on pipeline complete so the three-column view
+          Auto-collapsed on pipeline complete so the results view
           has enough vertical room to be visible without page scroll.
           User can re-open via the toggle above. */}
       {detailsOpen && (

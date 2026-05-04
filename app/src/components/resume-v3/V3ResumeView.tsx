@@ -57,7 +57,7 @@ interface Props {
   dismissedIssueKeys?: Set<string>;
   /**
    * Emitted when the user clicks an inline alert triangle on a bullet. The
-   * screen uses this to scroll the Review panel to the matching row.
+   * screen uses this to scroll the Final Check panel to the matching row.
    */
   onTriangleClick?: (key: string, section: string) => void;
   /**
@@ -174,7 +174,7 @@ function confidenceClass(confidence: number): string {
 /** Look up verify issues (with their raw index) that cite this bullet's path. */
 interface IndexedIssue {
   issue: V3VerifyResult['issues'][number];
-  /** Raw index in verify.issues — used to build stable keys matching the Review panel. */
+  /** Raw index in verify.issues — used to build stable keys matching Final Check. */
   index: number;
 }
 function issuesForPath(verify: V3VerifyResult | null, pathPrefix: string): IndexedIssue[] {

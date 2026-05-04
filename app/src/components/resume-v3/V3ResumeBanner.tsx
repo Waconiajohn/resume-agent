@@ -4,7 +4,7 @@
  * Rendered above the intake form when useV3SessionPersistence surfaces a
  * resumable snapshot. Two actions:
  *   • Resume — hydrates the pipeline state in-place, jumps straight to the
- *     three-panel results view.
+ *     tailored resume results view.
  *   • Start fresh — dismisses the banner, clears the cache, leaves the
  *     intake form visible.
  */
