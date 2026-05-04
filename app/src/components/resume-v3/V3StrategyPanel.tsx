@@ -1,48 +1,52 @@
 /**
- * V3StrategyPanel — the "why" behind the rewrite.
+ * V3StrategyPanel - consumer-facing explanation of the resume rewrite.
  *
- * Two layers:
- *  1. Benchmark (stage 3a output): what a strong candidate for this role
- *     looks like, how this specific candidate stacks up, and the specific
- *     gaps the writer is positioning around. v2 hid this; v3 exposes it.
- *  2. Strategy (stage 3 output): the positioning angle the writer committed
- *     to, with emphasized accomplishments, objections, per-position weight.
- *
- * Both render as progressive skeleton-pulses until their respective
- * stage_complete events arrive.
+ * The pipeline still produces benchmark and strategy objects, but this panel
+ * translates them into the questions a normal user is asking:
+ * - What did CareerIQ notice about this job?
+ * - What did it change in my resume?
+ * - What does it need from me before it can claim more?
+ * - What did it avoid saying because the proof is not there yet?
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GlassCard } from '@/components/GlassCard';
 import {
-  Target, AlertCircle, Sparkles, Layers,
-  ShieldCheck, Microscope, TrendingUp, ChevronDown, ChevronRight, Loader2,
-  MessageSquare, RefreshCw, X,
+  CheckCircle2,
+  HelpCircle,
+  MessageSquare,
+  RefreshCw,
+  SearchCheck,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type {
   V3Strategy,
   V3BenchmarkProfile,
-  V3BenchmarkGap,
   V3DiscoveryAnswer,
+  V3StructuredResume,
+  V3WrittenResume,
 } from '@/hooks/useV3Pipeline';
 import type { PositionWeight } from '@/hooks/useV3Regenerate';
 
 interface Props {
   benchmark: V3BenchmarkProfile | null;
   strategy: V3Strategy | null;
+  structured?: V3StructuredResume | null;
+  written?: V3WrittenResume | null;
   /**
    * When the user clicks a bullet's source chip in the resume view, this
-   * index is set to that bullet's position. Any emphasized-accomplishment
-   * cards with a matching `positionIndex` flash briefly. `flashTick`
-   * re-triggers the animation even when positionIndex hasn't changed.
+   * index is set to that bullet's position. Matching proof cards flash so
+   * the user can connect the resume line back to the strategy.
    */
   flashPositionIndex?: number | null;
   flashTick?: number;
   /**
-   * Regenerate a position with a new weight (Phase 4). When provided, the
-   * per-position weight badges become clickable — cycling primary → secondary
-   * → brief → primary. Pending changes accumulate locally; "Re-run" applies.
+   * Kept for API compatibility with the pipeline screen. The consumer panel
+   * intentionally hides raw position-weight controls.
    */
   onRegeneratePosition?: (
     positionIndex: number,
@@ -54,51 +58,15 @@ interface Props {
    */
   onRunDiscoveryAnswers?: (answers: V3DiscoveryAnswer[]) => void;
   discoveryRunning?: boolean;
-  /** Position indices currently regenerating — spinner. */
+  /** Kept for API compatibility; advanced position controls are hidden. */
   pendingPositions?: Set<number>;
-}
-
-const WEIGHT_CYCLE: PositionWeight[] = ['primary', 'secondary', 'brief'];
-
-function nextWeight(w: PositionWeight): PositionWeight {
-  const idx = WEIGHT_CYCLE.indexOf(w);
-  return WEIGHT_CYCLE[(idx + 1) % WEIGHT_CYCLE.length]!;
-}
-
-function weightBadgeClass(weight: 'primary' | 'secondary' | 'brief'): string {
-  if (weight === 'primary') return 'bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)] border border-[var(--bullet-confirm-border)]';
-  if (weight === 'secondary') return 'bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]';
-  return 'bg-[var(--accent-muted)] text-[var(--text-muted)]';
-}
-
-function severityBadgeClass(severity: V3BenchmarkGap['severity']): string {
-  if (severity === 'disqualifying') return 'bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]';
-  if (severity === 'manageable') return 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]';
-  return 'bg-[var(--accent-muted)] text-[var(--text-soft)]';
 }
 
 type EvidenceOpportunity = NonNullable<V3Strategy['evidenceOpportunities']>[number];
 
-function evidenceLevelLabel(level: EvidenceOpportunity['level']): string {
-  if (level === 'direct_proof') return 'direct';
-  if (level === 'reasonable_inference') return 'inferred';
-  if (level === 'adjacent_proof') return 'adjacent';
-  if (level === 'candidate_discovery_needed') return 'ask';
-  return 'gap';
-}
-
-function evidenceLevelClass(level: EvidenceOpportunity['level']): string {
-  if (level === 'direct_proof') return 'bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)] border border-[var(--bullet-confirm-border)]';
-  if (level === 'reasonable_inference') return 'bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]';
-  if (level === 'adjacent_proof') return 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]';
-  if (level === 'candidate_discovery_needed') return 'bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--line-soft)]';
-  return 'bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]';
-}
-
-function riskLabel(risk: EvidenceOpportunity['risk']): string {
-  if (risk === 'low') return 'low risk';
-  if (risk === 'medium') return 'medium risk';
-  return 'high risk';
+interface AnswerDraft {
+  choice: string;
+  detail: string;
 }
 
 function shouldAskDiscoveryQuestion(item: EvidenceOpportunity): boolean {
@@ -117,144 +85,294 @@ function SkeletonPulse({ rows = 3 }: { rows?: number }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className={cn('h-3 rounded bg-[var(--surface-2)] motion-safe:animate-pulse', widths[i % widths.length])} />
+        <div
+          key={i}
+          className={cn(
+            'h-3 rounded bg-[var(--surface-2)] motion-safe:animate-pulse',
+            widths[i % widths.length],
+          )}
+        />
       ))}
     </div>
   );
 }
 
-function BenchmarkCard({ benchmark }: { benchmark: V3BenchmarkProfile | null }) {
-  const [objectionsOpen, setObjectionsOpen] = useState(false);
-  const [matchesOpen, setMatchesOpen] = useState(false);
+function StatusPill({
+  children,
+  tone = 'green',
+}: {
+  children: React.ReactNode;
+  tone?: 'green' | 'amber' | 'blue' | 'muted';
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]',
+        tone === 'green' && 'border border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)]',
+        tone === 'amber' && 'bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]',
+        tone === 'blue' && 'bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]',
+        tone === 'muted' && 'border border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-muted)]',
+      )}
+    >
+      {children}
+    </span>
+  );
+}
 
+function positionLabel(
+  positionIndex: number | null | undefined,
+  structured?: V3StructuredResume | null,
+): string {
+  if (positionIndex === null || positionIndex === undefined) return 'Career-wide proof';
+  const position = structured?.positions[positionIndex];
+  if (!position) return 'Professional Experience';
+  const title = position.title?.trim();
+  const company = position.company?.trim();
+  if (title && company) return `${company} - ${title}`;
+  return company || title || 'Professional Experience';
+}
+
+function defaultPlacement(
+  positionIndex: number | null | undefined,
+  structured?: V3StructuredResume | null,
+): string[] {
+  const locations = ['Selected Accomplishments'];
+  if (positionIndex !== null && positionIndex !== undefined) {
+    locations.push(positionLabel(positionIndex, structured));
+  }
+  return locations;
+}
+
+const STOP_WORDS = new Set([
+  'about',
+  'across',
+  'after',
+  'also',
+  'and',
+  'are',
+  'because',
+  'been',
+  'but',
+  'can',
+  'for',
+  'from',
+  'has',
+  'have',
+  'into',
+  'not',
+  'over',
+  'that',
+  'the',
+  'this',
+  'through',
+  'with',
+  'without',
+  'your',
+]);
+
+function contentWords(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9$%.]+/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 2 && !STOP_WORDS.has(word));
+}
+
+function hasUsefulOverlap(source: string, target: string): boolean {
+  const words = contentWords(source);
+  if (words.length === 0) return false;
+  const targetText = target.toLowerCase();
+  const metrics = source.match(/\$?\d[\d.,]*(?:m|k|b|%|mm)?/gi) ?? [];
+  if (metrics.length > 0 && metrics.some((metric) => targetText.includes(metric.toLowerCase()))) {
+    return true;
+  }
+  const uniqueWords = [...new Set(words)];
+  const hits = uniqueWords.filter((word) => targetText.includes(word)).length;
+  return hits >= Math.min(4, Math.max(2, Math.ceil(uniqueWords.length * 0.45)));
+}
+
+function findResumeLocations(
+  signal: string,
+  written?: V3WrittenResume | null,
+  fallbackPositionIndex?: number | null,
+  structured?: V3StructuredResume | null,
+): string[] {
+  if (!signal || !written) return defaultPlacement(fallbackPositionIndex, structured);
+
+  const locations: string[] = [];
+  if (hasUsefulOverlap(signal, written.summary)) locations.push('Summary');
+  if (written.selectedAccomplishments.some((item) => hasUsefulOverlap(signal, item))) {
+    locations.push('Selected Accomplishments');
+  }
+  written.positions.forEach((position) => {
+    const positionText = [
+      position.scope ?? '',
+      ...position.bullets.map((bullet) => bullet.text),
+    ].join(' ');
+    if (hasUsefulOverlap(signal, positionText)) {
+      locations.push(positionLabel(position.positionIndex, structured));
+    }
+  });
+
+  return locations.length > 0
+    ? [...new Set(locations)]
+    : defaultPlacement(fallbackPositionIndex, structured);
+}
+
+function answerOptionsFor(item: EvidenceOpportunity): string[] {
+  const text = `${item.requirement} ${item.discoveryQuestion ?? ''}`.toLowerCase();
+
+  if (/\bp&l\b|profit|loss|budget|financial|margin|capital|working capital|cost target/.test(text)) {
+    return [
+      'I had final P&L sign-off',
+      'I owned budget or cost targets, but not final P&L',
+      'I partnered with Finance on P&L reviews',
+      'I influenced margin, cost, working capital, or capital allocation',
+      'No direct ownership / not sure',
+    ];
+  }
+
+  if (/board|pe sponsor|private equity|sponsor|executive committee|ceo|cfo|senior leadership/.test(text)) {
+    return [
+      'Yes, board or PE sponsor',
+      'Yes, CEO or executive team',
+      'Yes, CFO or finance leadership',
+      'Advisory board only',
+      'No direct board-facing work / not sure',
+    ];
+  }
+
+  if (/sap|oracle|erp|system|platform|tool|software/.test(text)) {
+    return [
+      'Hands-on with this exact system',
+      'Worked with a similar system',
+      'Led the business side, not the tool work',
+      'Only adjacent exposure',
+      'No direct experience / not sure',
+    ];
+  }
+
+  if (/certification|certified|credential|degree|mba|license/.test(text)) {
+    return [
+      'I have this credential',
+      'I have a related credential',
+      'I have hands-on experience but no credential',
+      'I do not have this credential',
+      'Not sure',
+    ];
+  }
+
+  if (/m&a|merger|acquisition|integration|divestiture|recapitalization/.test(text)) {
+    return [
+      'I led this directly',
+      'I played a major supporting role',
+      'I handled adjacent integration work',
+      'I have no direct experience',
+      'Not sure',
+    ];
+  }
+
+  return [
+    'I have direct proof',
+    'I have related experience',
+    'I influenced this through adjacent work',
+    'No direct experience',
+    'Not sure',
+  ];
+}
+
+function draftToAnswerText(draft: AnswerDraft | undefined): string {
+  if (!draft) return '';
+  const parts = [draft.choice.trim(), draft.detail.trim()].filter(Boolean);
+  return parts.join(' - ');
+}
+
+function isDraftAnswered(draft: AnswerDraft | undefined): boolean {
+  return draftToAnswerText(draft).length > 0;
+}
+
+function useDiscoveryDrafts(discoveryItems: EvidenceOpportunity[]) {
+  const signature = useMemo(
+    () => discoveryItems.map((item, index) => discoveryKey(item, index)).join('|'),
+    [discoveryItems],
+  );
+  const [drafts, setDrafts] = useState<Record<string, AnswerDraft>>({});
+
+  useEffect(() => {
+    setDrafts({});
+  }, [signature]);
+
+  const setChoice = (item: EvidenceOpportunity, index: number, choice: string) => {
+    const key = discoveryKey(item, index);
+    setDrafts((prev) => ({
+      ...prev,
+      [key]: {
+        choice,
+        detail: prev[key]?.detail ?? '',
+      },
+    }));
+  };
+
+  const setDetail = (item: EvidenceOpportunity, index: number, detail: string) => {
+    const key = discoveryKey(item, index);
+    setDrafts((prev) => ({
+      ...prev,
+      [key]: {
+        choice: prev[key]?.choice ?? '',
+        detail,
+      },
+    }));
+  };
+
+  return {
+    drafts,
+    setChoice,
+    setDetail,
+    clear: () => setDrafts({}),
+  };
+}
+
+function JobReadCard({
+  benchmark,
+  strategy,
+}: {
+  benchmark: V3BenchmarkProfile | null;
+  strategy: V3Strategy | null;
+}) {
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2">
-        <Microscope className="h-4 w-4 text-[var(--bullet-confirm)]" />
+        <SearchCheck className="h-4 w-4 text-[var(--bullet-confirm)]" />
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-          Benchmark
+          What this job is asking for
         </h2>
       </div>
 
-      {!benchmark ? (
-        <div className="mt-4"><SkeletonPulse rows={4} /></div>
+      {!benchmark && !strategy ? (
+        <div className="mt-4">
+          <SkeletonPulse rows={4} />
+        </div>
       ) : (
-        <div className="mt-4 space-y-5">
-          {/* Role problem hypothesis */}
-          <div>
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-1.5">
-              <TrendingUp className="h-3 w-3" />
-              Role problem
-            </div>
-            <div className="text-[12px] text-[var(--text-muted)] leading-snug">
+        <div className="mt-4 space-y-4">
+          {benchmark?.roleProblemHypothesis && (
+            <p className="text-[12px] leading-snug text-[var(--text-muted)]">
               {benchmark.roleProblemHypothesis}
-            </div>
-          </div>
+            </p>
+          )}
 
-          {/* Ideal profile summary */}
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-1.5">
-              Ideal candidate
-            </div>
-            <div className="text-[12px] text-[var(--text-strong)] leading-snug border-l-2 border-[var(--bullet-confirm-border)] pl-2 italic">
-              {benchmark.idealProfileSummary}
-            </div>
-          </div>
-
-          {/* Positioning frame (the one committed angle) */}
-          <div>
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-1.5">
-              <Target className="h-3 w-3" />
-              Frame
-            </div>
-            <div className="text-[12px] text-[var(--text-strong)] leading-snug">
-              {benchmark.positioningFrame}
-            </div>
-          </div>
-
-          {/* Gaps */}
-          {benchmark.gapAssessment.length > 0 && (
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
-                Gaps vs benchmark ({benchmark.gapAssessment.length})
+          {(strategy?.positioningFrame || benchmark?.positioningFrame) && (
+            <div className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3">
+              <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)]">
+                <Target className="h-3 w-3" />
+                Resume angle
               </div>
-              <ul className="space-y-2">
-                {benchmark.gapAssessment.map((g, i) => (
-                  <li key={i} className="text-[11px] leading-snug">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider', severityBadgeClass(g.severity))}>
-                        {g.severity}
-                      </span>
-                    </div>
-                    <div className="text-[var(--text-strong)]">{g.gap}</div>
-                    <div className="text-[var(--text-muted)] mt-0.5 italic">
-                      → {g.bridgingStrategy}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Direct matches (collapsible) */}
-          {benchmark.directMatches.length > 0 && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setMatchesOpen((o) => !o)}
-                className="flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] hover:text-[var(--text-muted)] w-full text-left"
-              >
-                {matchesOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                <ShieldCheck className="h-3 w-3" />
-                Direct matches ({benchmark.directMatches.length})
-              </button>
-              {matchesOpen && (
-                <ul className="mt-2 space-y-1.5 pl-4">
-                  {benchmark.directMatches.map((m, i) => (
-                    <li key={i} className="text-[11px] leading-snug border-l-2 border-[var(--line-soft)] pl-2">
-                      <div className="text-[var(--text-strong)] font-medium">{m.jdRequirement}</div>
-                      <div className="text-[var(--text-muted)] mt-0.5">{m.candidateEvidence}</div>
-                      <div className={cn('inline-block mt-1 px-1 py-0.5 rounded text-[9px] uppercase tracking-wider',
-                        m.strength === 'strong'
-                          ? 'bg-[var(--badge-green-bg,rgba(34,197,94,0.12))] text-[var(--badge-green-text)]'
-                          : 'bg-[var(--accent-muted)] text-[var(--text-muted)]')}
-                      >
-                        {m.strength}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-
-          {/* HM objections (collapsible) */}
-          {benchmark.hiringManagerObjections.length > 0 && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setObjectionsOpen((o) => !o)}
-                className="flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] hover:text-[var(--text-muted)] w-full text-left"
-              >
-                {objectionsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                <AlertCircle className="h-3 w-3" />
-                Hiring manager objections ({benchmark.hiringManagerObjections.length})
-              </button>
-              {objectionsOpen && (
-                <ul className="mt-2 space-y-2 pl-4">
-                  {benchmark.hiringManagerObjections.map((o, i) => (
-                    <li key={i} className="text-[11px] leading-snug border-l-2 border-[var(--line-soft)] pl-2">
-                      <div className="text-[var(--text-muted)]">
-                        <span className="font-medium">Fear: </span>
-                        {o.objection}
-                      </div>
-                      <div className="text-[var(--text-strong)] mt-0.5">
-                        <span className="font-medium text-[var(--bullet-confirm)]">Preempt: </span>
-                        {o.neutralizationStrategy}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+              <p className="text-[13px] font-medium leading-snug text-[var(--text-strong)]">
+                {strategy?.positioningFrame ?? benchmark?.positioningFrame}
+              </p>
+              {strategy?.editorialAssessment?.strongestAngle && (
+                <p className="mt-2 text-[11px] leading-snug text-[var(--text-muted)]">
+                  Best proof to lead with: {strategy.editorialAssessment.strongestAngle}
+                </p>
               )}
             </div>
           )}
@@ -264,100 +382,131 @@ function BenchmarkCard({ benchmark }: { benchmark: V3BenchmarkProfile | null }) 
   );
 }
 
-function StrategyCard({
+function UsedProofCard({
   strategy,
+  structured,
+  written,
   flashPositionIndex,
   flashTick,
-  onRegeneratePosition,
-  onRunDiscoveryAnswers,
-  discoveryRunning,
-  pendingPositions,
 }: {
   strategy: V3Strategy | null;
+  structured?: V3StructuredResume | null;
+  written?: V3WrittenResume | null;
   flashPositionIndex?: number | null;
   flashTick?: number;
-  onRegeneratePosition?: (positionIndex: number, weight?: PositionWeight) => void | Promise<void>;
-  onRunDiscoveryAnswers?: (answers: V3DiscoveryAnswer[]) => void;
-  discoveryRunning?: boolean;
-  pendingPositions?: Set<number>;
 }) {
   const emphasisRefs = useRef<Map<number, HTMLLIElement>>(new Map());
-  // Pending weight changes not yet applied. Keyed by positionIndex;
-  // cleared when the user clicks "Re-run" or resets an individual row.
-  const [pendingWeights, setPendingWeights] = useState<Map<number, PositionWeight>>(new Map());
 
-  const currentWeights = useMemo(() => {
-    const m = new Map<number, PositionWeight>();
-    strategy?.positionEmphasis.forEach((p) => m.set(p.positionIndex, p.weight));
-    return m;
-  }, [strategy]);
+  useEffect(() => {
+    if (flashPositionIndex === null || flashPositionIndex === undefined) return;
+    strategy?.emphasizedAccomplishments.forEach((item, index) => {
+      if (item.positionIndex !== flashPositionIndex) return;
+      const el = emphasisRefs.current.get(index);
+      if (!el) return;
+      el.classList.remove('v3-strategy-flash');
+      void el.offsetWidth;
+      el.classList.add('v3-strategy-flash');
+    });
+  }, [flashPositionIndex, flashTick, strategy]);
 
-  const hasPendingChanges = pendingWeights.size > 0;
-  const editorial = strategy?.editorialAssessment;
+  return (
+    <GlassCard className="p-5">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-[var(--bullet-confirm)]" />
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+          What we changed in your resume
+        </h2>
+      </div>
+
+      {!strategy ? (
+        <div className="mt-4">
+          <SkeletonPulse rows={3} />
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {strategy.editorialAssessment?.recommendedMove && (
+            <div className="rounded border border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] p-3">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--bullet-confirm)]">
+                Main rewrite move
+              </div>
+              <p className="text-[12px] leading-snug text-[var(--text-strong)]">
+                {strategy.editorialAssessment.recommendedMove}
+              </p>
+            </div>
+          )}
+
+          {strategy.emphasizedAccomplishments.length > 0 ? (
+            <ul className="space-y-2">
+              {strategy.emphasizedAccomplishments.map((item, index) => {
+                const locations = findResumeLocations(
+                  item.summary,
+                  written,
+                  item.positionIndex,
+                  structured,
+                );
+                return (
+                  <li
+                    key={`${item.summary}-${index}`}
+                    ref={(el) => {
+                      if (el) emphasisRefs.current.set(index, el);
+                      else emphasisRefs.current.delete(index);
+                    }}
+                    className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+                  >
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <StatusPill>Used</StatusPill>
+                      <span className="text-[10px] text-[var(--text-soft)]">
+                        {positionLabel(item.positionIndex, structured)}
+                      </span>
+                    </div>
+                    <p className="font-medium text-[var(--text-strong)]">{item.summary}</p>
+                    {item.rationale && (
+                      <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                        Why it matters: {item.rationale}
+                      </p>
+                    )}
+                    <p className="mt-2 text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)]">
+                      Look for it in: {locations.join(', ')}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-[12px] leading-snug text-[var(--text-muted)]">
+              We are still identifying the strongest proof to move into the resume.
+            </p>
+          )}
+        </div>
+      )}
+    </GlassCard>
+  );
+}
+
+function DiscoveryCard({
+  strategy,
+  onRunDiscoveryAnswers,
+  discoveryRunning,
+}: {
+  strategy: V3Strategy | null;
+  onRunDiscoveryAnswers?: (answers: V3DiscoveryAnswer[]) => void;
+  discoveryRunning?: boolean;
+}) {
   const evidenceOpportunities = strategy?.evidenceOpportunities ?? [];
   const discoveryItems = useMemo(
     () => evidenceOpportunities.filter(shouldAskDiscoveryQuestion),
     [evidenceOpportunities],
   );
-  const discoverySignature = useMemo(
-    () => discoveryItems.map((item, index) => discoveryKey(item, index)).join('|'),
-    [discoveryItems],
-  );
-  const [discoveryAnswers, setDiscoveryAnswers] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    setDiscoveryAnswers({});
-  }, [discoverySignature]);
-
-  const handleCycleWeight = (positionIndex: number) => {
-    if (!onRegeneratePosition) return;
-    setPendingWeights((prev) => {
-      const next = new Map(prev);
-      const cur = next.get(positionIndex) ?? currentWeights.get(positionIndex) ?? 'secondary';
-      const cycled = nextWeight(cur);
-      const original = currentWeights.get(positionIndex) ?? 'secondary';
-      if (cycled === original) {
-        next.delete(positionIndex);
-      } else {
-        next.set(positionIndex, cycled);
-      }
-      return next;
-    });
-  };
-
-  const handleApplyChanges = () => {
-    if (!onRegeneratePosition) return;
-    // Fire regenerate for each pending change. Capture keys first since
-    // state mutates as each call kicks off.
-    const entries = [...pendingWeights.entries()];
-    for (const [positionIndex, weight] of entries) {
-      void onRegeneratePosition(positionIndex, weight);
-    }
-    setPendingWeights(new Map());
-  };
+  const { drafts, setChoice, setDetail, clear } = useDiscoveryDrafts(discoveryItems);
 
   const answerCount = discoveryItems.reduce((count, item, index) => {
-    const key = discoveryKey(item, index);
-    return discoveryAnswers[key]?.trim() ? count + 1 : count;
+    return count + (isDraftAnswered(drafts[discoveryKey(item, index)]) ? 1 : 0);
   }, 0);
-
-  const handleDiscoveryAnswerChange = (
-    item: EvidenceOpportunity,
-    index: number,
-    value: string,
-  ) => {
-    const key = discoveryKey(item, index);
-    setDiscoveryAnswers((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleClearDiscoveryAnswers = () => {
-    setDiscoveryAnswers({});
-  };
 
   const handleRunDiscoveryAnswers = () => {
     if (!onRunDiscoveryAnswers) return;
     const answers = discoveryItems.flatMap((item, index): V3DiscoveryAnswer[] => {
-      const answer = discoveryAnswers[discoveryKey(item, index)]?.trim();
+      const answer = draftToAnswerText(drafts[discoveryKey(item, index)]);
       if (!answer) return [];
       return [{
         requirement: item.requirement,
@@ -373,363 +522,266 @@ function StrategyCard({
     onRunDiscoveryAnswers(answers);
   };
 
-  useEffect(() => {
-    if (flashPositionIndex === null || flashPositionIndex === undefined) return;
-    // Flash every emphasized accomplishment that targets this position.
-    strategy?.emphasizedAccomplishments.forEach((a, i) => {
-      if (a.positionIndex !== flashPositionIndex) return;
-      const el = emphasisRefs.current.get(i);
-      if (!el) return;
-      el.classList.remove('v3-strategy-flash');
-      // Force reflow so re-adding the class re-runs the animation.
-      void el.offsetWidth;
-      el.classList.add('v3-strategy-flash');
-    });
-    // flashTick is intentionally in the deps: bumping it re-triggers the flash
-    // even when positionIndex is unchanged.
-  }, [flashPositionIndex, flashTick, strategy]);
+  if (!strategy || discoveryItems.length === 0) {
+    return null;
+  }
 
   return (
     <GlassCard className="p-5">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-[var(--bullet-confirm)]" />
+        <MessageSquare className="h-4 w-4 text-[var(--badge-amber-text)]" />
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-          Strategy
+          Questions that could make this stronger
         </h2>
       </div>
 
-      {/* Pending-weight-changes bar — appears only when the user has cycled
-          one or more weights. Clicking "Re-run" fires regenerate per-change. */}
-      {hasPendingChanges && (
-        <div className="mt-3 rounded border border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] p-2 flex items-center gap-2">
-          <span className="text-[11px] text-[var(--text-strong)] flex-1">
-            {pendingWeights.size} position{pendingWeights.size === 1 ? '' : 's'} to re-run
-          </span>
-          <button
-            type="button"
-            onClick={handleApplyChanges}
-            className="text-[11px] font-semibold text-[var(--bullet-confirm)] hover:underline"
-          >
-            Re-run
-          </button>
-          <button
-            type="button"
-            onClick={() => setPendingWeights(new Map())}
-            className="text-[11px] text-[var(--text-soft)] hover:text-[var(--text-muted)]"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
+      <p className="mt-3 text-[12px] leading-snug text-[var(--text-muted)]">
+        We did not claim these yet. If you have proof, answer here and we will
+        rebuild the resume with the stronger, confirmed version.
+      </p>
 
-      {!strategy ? (
-        <div className="mt-4"><SkeletonPulse rows={3} /></div>
-      ) : (
-        <div className="mt-4 space-y-5">
-          {/* Positioning frame */}
-          <div>
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-1.5">
-              <Target className="h-3 w-3" />
-              Frame
-            </div>
-            <div className="text-sm text-[var(--text-strong)] font-medium leading-snug">
-              {strategy.positioningFrame}
-            </div>
-          </div>
-
-          {/* Target discipline phrase */}
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-1.5">
-              Target discipline
-            </div>
-            <div className="text-[13px] text-[var(--text-muted)] italic leading-snug">
-              {strategy.targetDisciplinePhrase}
-            </div>
-          </div>
-
-          {/* Human editorial assessment */}
-          {editorial && (
-            <div className="pt-3 border-t border-[var(--line-soft)]">
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
-                <TrendingUp className="h-3 w-3" />
-                Strategist read
-                <span className="ml-auto text-[var(--text-muted)] tracking-normal">
-                  {Math.round(editorial.callbackPower)}/100
-                </span>
-              </div>
-              <div className="h-1.5 rounded-full bg-[var(--surface-2)] overflow-hidden mb-3">
-                <div
-                  className="h-full rounded-full bg-[var(--bullet-confirm)]"
-                  style={{ width: `${Math.max(0, Math.min(100, editorial.callbackPower))}%` }}
-                />
-              </div>
-              <dl className="space-y-2 text-[11px] leading-snug">
+      <ul className="mt-4 space-y-4">
+        {discoveryItems.map((item, index) => {
+          const key = discoveryKey(item, index);
+          const draft = drafts[key];
+          return (
+            <li
+              key={key}
+              className="rounded border border-[var(--badge-amber-text)]/30 bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
-                  <dt className="text-[var(--text-soft)]">Strongest angle</dt>
-                  <dd className="text-[var(--text-strong)]">{editorial.strongestAngle}</dd>
+                  <StatusPill tone="amber">Needs your answer</StatusPill>
+                  <p className="mt-2 font-medium text-[var(--text-strong)]">
+                    {item.requirement}
+                  </p>
                 </div>
-                <div>
-                  <dt className="text-[var(--text-soft)]">Weak spot</dt>
-                  <dd className="text-[var(--text-muted)]">{editorial.weakestAngle}</dd>
-                </div>
-                <div>
-                  <dt className="text-[var(--text-soft)]">Question to answer</dt>
-                  <dd className="text-[var(--text-muted)]">{editorial.hiringManagerQuestion}</dd>
-                </div>
-                <div>
-                  <dt className="text-[var(--text-soft)]">Next move</dt>
-                  <dd className="text-[var(--bullet-confirm)]">{editorial.recommendedMove}</dd>
-                </div>
-              </dl>
-            </div>
-          )}
-
-          {/* Evidence opportunities */}
-          {evidenceOpportunities.length > 0 && (
-            <div className="pt-3 border-t border-[var(--line-soft)]">
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
-                <Microscope className="h-3 w-3" />
-                Evidence map ({evidenceOpportunities.length})
               </div>
-              <ul className="space-y-2">
-                {evidenceOpportunities.map((item, i) => (
-                  <li key={`${item.requirement}-${i}`} className="text-[11px] leading-snug border-l-2 border-[var(--line-soft)] pl-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-[var(--text-strong)]">{item.requirement}</span>
-                      <span className={cn('shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider', evidenceLevelClass(item.level))}>
-                        {evidenceLevelLabel(item.level)}
-                      </span>
-                    </div>
-                    {item.sourceSignal && (
-                      <div className="mt-1 text-[var(--text-soft)]">
-                        Proof: {item.sourceSignal}
-                      </div>
-                    )}
-                    <div className="mt-1 text-[var(--text-muted)]">
-                      {item.recommendedFraming}
-                    </div>
-                    {item.discoveryQuestion && (
-                      <div className="mt-1 text-[var(--badge-amber-text)]">
-                        Ask: {item.discoveryQuestion}
-                      </div>
-                    )}
-                    <div className="mt-1 text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)]">
-                      {riskLabel(item.risk)}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
-          {/* Candidate discovery answers */}
-          {onRunDiscoveryAnswers && discoveryItems.length > 0 && (
-            <div className="pt-3 border-t border-[var(--line-soft)]">
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
-                <MessageSquare className="h-3 w-3" />
-                Discovery ({discoveryItems.length})
-              </div>
-              <ul className="space-y-3">
-                {discoveryItems.map((item, index) => {
-                  const key = discoveryKey(item, index);
-                  return (
-                    <li
-                      key={key}
-                      className="text-[11px] leading-snug border-l-2 border-[var(--badge-amber-text)]/40 pl-2"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-[var(--text-strong)]">{item.requirement}</span>
-                        <span className={cn('shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider', evidenceLevelClass(item.level))}>
-                          {evidenceLevelLabel(item.level)}
-                        </span>
-                      </div>
-                      <label
-                        htmlFor={`discovery-answer-${index}`}
-                        className="mt-1 block text-[var(--text-muted)]"
-                      >
-                        {item.discoveryQuestion}
-                      </label>
-                      <textarea
-                        id={`discovery-answer-${index}`}
-                        aria-label={`Answer for ${item.requirement}`}
-                        value={discoveryAnswers[key] ?? ''}
-                        onChange={(event) => handleDiscoveryAnswerChange(item, index, event.target.value)}
-                        rows={3}
-                        disabled={discoveryRunning}
-                        placeholder="Concrete detail, scope, tool, result, or 'No direct experience'."
-                        className="mt-2 min-h-[78px] w-full resize-y rounded border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-1.5 text-[11px] leading-snug text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus:ring-1 focus:ring-[var(--bullet-confirm)] disabled:cursor-wait disabled:opacity-60"
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)]">
-                  {answerCount} answered
-                </div>
-                <div className="flex items-center gap-2">
-                  {answerCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleClearDiscoveryAnswers}
-                      disabled={discoveryRunning}
-                      className="inline-flex h-8 items-center gap-1.5 rounded border border-[var(--line-soft)] px-2 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-strong)] disabled:cursor-wait disabled:opacity-60"
-                    >
-                      <X className="h-3 w-3" />
-                      Clear
-                    </button>
-                  )}
+              {item.sourceSignal && (
+                <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                  Current proof: {item.sourceSignal}
+                </p>
+              )}
+
+              <label
+                htmlFor={`discovery-detail-${index}`}
+                className="mt-3 block text-[11px] font-medium text-[var(--text-strong)]"
+              >
+                {item.discoveryQuestion}
+              </label>
+
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {answerOptionsFor(item).map((option) => (
                   <button
+                    key={option}
                     type="button"
-                    onClick={handleRunDiscoveryAnswers}
-                    disabled={answerCount === 0 || discoveryRunning}
+                    onClick={() => setChoice(item, index, option)}
+                    disabled={discoveryRunning || !onRunDiscoveryAnswers}
                     className={cn(
-                      'inline-flex h-8 items-center gap-1.5 rounded border px-2 text-[11px] font-semibold',
-                      answerCount > 0
-                        ? 'border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)] hover:brightness-105'
-                        : 'border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-soft)]',
-                      discoveryRunning && 'cursor-wait opacity-60',
+                      'rounded border px-2 py-1 text-[10px] font-medium transition-colors',
+                      draft?.choice === option
+                        ? 'border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)]'
+                        : 'border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text-strong)]',
+                      (discoveryRunning || !onRunDiscoveryAnswers) && 'cursor-not-allowed opacity-60',
                     )}
                   >
-                    <RefreshCw className={cn('h-3 w-3', discoveryRunning && 'animate-spin')} />
-                    Re-run
+                    {option}
                   </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Emphasized accomplishments */}
-          {strategy.emphasizedAccomplishments.length > 0 && (
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
-                Emphasized wins ({strategy.emphasizedAccomplishments.length})
-              </div>
-              <ul className="space-y-2">
-                {strategy.emphasizedAccomplishments.map((a, i) => (
-                  <li
-                    key={i}
-                    ref={(el) => {
-                      if (el) emphasisRefs.current.set(i, el);
-                      else emphasisRefs.current.delete(i);
-                    }}
-                    className="text-[12px] text-[var(--text-muted)] leading-snug border-l-2 border-[var(--bullet-confirm-border)] pl-2"
-                  >
-                    <span className="text-[var(--text-strong)]">{a.summary}</span>
-                    {a.rationale && (
-                      <span className="block text-[11px] text-[var(--text-soft)] mt-0.5 italic">
-                        {a.rationale}
-                      </span>
-                    )}
-                  </li>
                 ))}
-              </ul>
-            </div>
-          )}
+              </div>
 
-          {/* Objections (strategize-level) */}
-          {strategy.objections && strategy.objections.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
-                <AlertCircle className="h-3 w-3" />
-                Objections handled ({strategy.objections.length})
-              </div>
-              <ul className="space-y-2">
-                {strategy.objections.map((o, i) => (
-                  <li key={i} className="text-[11px] leading-snug">
-                    <div className="text-[var(--text-muted)]">
-                      <span className="font-medium">Likely question: </span>
-                      {o.objection}
-                    </div>
-                    <div className="text-[var(--text-strong)] mt-0.5">
-                      <span className="font-medium text-[var(--bullet-confirm)]">Preempt: </span>
-                      {o.rebuttal}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+              <textarea
+                id={`discovery-detail-${index}`}
+                aria-label={`Add detail for ${item.requirement}`}
+                value={draft?.detail ?? ''}
+                onChange={(event) => setDetail(item, index, event.target.value)}
+                rows={3}
+                disabled={discoveryRunning || !onRunDiscoveryAnswers}
+                placeholder="Optional: add budget size, decision rights, audience, cadence, tool, metric, or outcome."
+                className="mt-3 min-h-[76px] w-full resize-y rounded border border-[var(--line-soft)] bg-[var(--surface-1)] px-2 py-1.5 text-[11px] leading-snug text-[var(--text-strong)] placeholder:text-[var(--text-soft)] focus:outline-none focus:ring-1 focus:ring-[var(--bullet-confirm)] disabled:cursor-wait disabled:opacity-60"
+              />
 
-          {/* Per-position weight */}
-          {strategy.positionEmphasis.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-2">
-                <Layers className="h-3 w-3" />
-                Position weight
-                {onRegeneratePosition && (
-                  <span className="ml-auto text-[var(--text-soft)] normal-case tracking-normal italic">
-                    click to cycle
-                  </span>
-                )}
-              </div>
-              <ul className="space-y-1">
-                {strategy.positionEmphasis.map((p, i) => {
-                  const pending = pendingWeights.get(p.positionIndex);
-                  const displayWeight = pending ?? p.weight;
-                  const isPending = pending !== undefined;
-                  const isRegenerating = pendingPositions?.has(p.positionIndex) ?? false;
-                  return (
-                    <li
-                      key={i}
-                      className="flex items-center justify-between gap-2 text-[11px]"
-                    >
-                      <span className="text-[var(--text-muted)]">
-                        Position {p.positionIndex}
-                      </span>
-                      {onRegeneratePosition ? (
-                        <button
-                          type="button"
-                          onClick={() => handleCycleWeight(p.positionIndex)}
-                          disabled={isRegenerating}
-                          className={cn(
-                            'px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider transition-colors inline-flex items-center gap-1',
-                            weightBadgeClass(displayWeight),
-                            isPending && 'ring-1 ring-[var(--bullet-confirm)]',
-                            isRegenerating && 'cursor-wait opacity-60',
-                          )}
-                          title={
-                            isRegenerating
-                              ? 'Regenerating…'
-                              : isPending
-                                ? `Changed from ${p.weight} — click to cycle further`
-                                : 'Click to cycle weight'
-                          }
-                        >
-                          {isRegenerating && (
-                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                          )}
-                          {displayWeight}
-                        </button>
-                      ) : (
-                        <span
-                          className={cn(
-                            'px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider',
-                            weightBadgeClass(p.weight),
-                          )}
-                        >
-                          {p.weight}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+              <p className="mt-2 text-[10px] leading-snug text-[var(--text-soft)]">
+                Current handling: {item.recommendedFraming}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
 
-          {strategy.notes && (
-            <div className="pt-2 border-t border-[var(--line-soft)]">
-              <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--text-soft)] mb-1">
-                Notes
-              </div>
-              <div className="text-[11px] text-[var(--text-muted)] leading-snug italic">
-                {strategy.notes}
-              </div>
-            </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-soft)]">
+          {answerCount} answered
+        </div>
+        <div className="flex items-center gap-2">
+          {answerCount > 0 && (
+            <button
+              type="button"
+              onClick={clear}
+              disabled={discoveryRunning}
+              className="inline-flex h-8 items-center gap-1.5 rounded border border-[var(--line-soft)] px-2 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-strong)] disabled:cursor-wait disabled:opacity-60"
+            >
+              <X className="h-3 w-3" />
+              Clear
+            </button>
           )}
+          <button
+            type="button"
+            onClick={handleRunDiscoveryAnswers}
+            disabled={answerCount === 0 || discoveryRunning || !onRunDiscoveryAnswers}
+            className={cn(
+              'inline-flex h-8 items-center gap-1.5 rounded border px-2 text-[11px] font-semibold',
+              answerCount > 0 && onRunDiscoveryAnswers
+                ? 'border-[var(--bullet-confirm-border)] bg-[var(--bullet-confirm-bg)] text-[var(--bullet-confirm)] hover:brightness-105'
+                : 'border-[var(--line-soft)] bg-[var(--surface-2)] text-[var(--text-soft)]',
+              (discoveryRunning || !onRunDiscoveryAnswers) && 'cursor-wait opacity-60',
+            )}
+          >
+            <RefreshCw className={cn('h-3 w-3', discoveryRunning && 'animate-spin')} />
+            Rebuild resume with my answers
+          </button>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+function HandledCarefullyCard({
+  benchmark,
+  strategy,
+}: {
+  benchmark: V3BenchmarkProfile | null;
+  strategy: V3Strategy | null;
+}) {
+  const evidenceOpportunities = strategy?.evidenceOpportunities ?? [];
+  const unansweredRiskItems = evidenceOpportunities.filter((item) => {
+    if (item.level === 'direct_proof' || item.level === 'reasonable_inference') return false;
+    if (shouldAskDiscoveryQuestion(item)) return false;
+    return item.level === 'unsupported' || item.risk === 'high';
+  });
+  const benchmarkGaps = benchmark?.gapAssessment.filter((gap) => gap.severity !== 'noise') ?? [];
+  const objections = strategy?.objections ?? [];
+  const hasItems = unansweredRiskItems.length > 0 || benchmarkGaps.length > 0 || objections.length > 0;
+
+  return (
+    <GlassCard className="p-5">
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="h-4 w-4 text-[var(--badge-blue-text)]" />
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+          What we handled carefully
+        </h2>
+      </div>
+
+      {!benchmark && !strategy ? (
+        <div className="mt-4">
+          <SkeletonPulse rows={3} />
+        </div>
+      ) : !hasItems ? (
+        <p className="mt-4 text-[12px] leading-snug text-[var(--text-muted)]">
+          No unsupported claims stood out. The resume stayed inside the proof we found.
+        </p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {objections.slice(0, 3).map((item, index) => (
+            <div
+              key={`objection-${index}`}
+              className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+            >
+              <StatusPill tone="blue">Handled without overclaiming</StatusPill>
+              <p className="mt-2 text-[var(--text-muted)]">
+                Possible concern: {item.objection}
+              </p>
+              <p className="mt-1 font-medium text-[var(--text-strong)]">
+                Resume response: {item.rebuttal}
+              </p>
+            </div>
+          ))}
+
+          {unansweredRiskItems.slice(0, 3).map((item, index) => (
+            <div
+              key={`risk-${index}`}
+              className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+            >
+              <StatusPill tone="muted">Not claimed yet</StatusPill>
+              <p className="mt-2 font-medium text-[var(--text-strong)]">
+                {item.requirement}
+              </p>
+              <p className="mt-1 text-[var(--text-muted)]">
+                Current safe handling: {item.recommendedFraming}
+              </p>
+            </div>
+          ))}
+
+          {benchmarkGaps.slice(0, 2).map((gap, index) => (
+            <div
+              key={`gap-${index}`}
+              className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+            >
+              <StatusPill tone="amber">Careful framing</StatusPill>
+              <p className="mt-2 text-[var(--text-muted)]">
+                Gap we noticed: {gap.gap}
+              </p>
+              <p className="mt-1 font-medium text-[var(--text-strong)]">
+                How we positioned around it: {gap.bridgingStrategy}
+              </p>
+            </div>
+          ))}
+
+          <p className="text-[11px] leading-snug text-[var(--text-soft)]">
+            If one of these is stronger than your source material shows, answer
+            the question above and rebuild. Otherwise, CareerIQ keeps the claim
+            conservative so the resume does not overstate your record.
+          </p>
         </div>
       )}
+    </GlassCard>
+  );
+}
+
+function ProofReceiptsCard({
+  strategy,
+}: {
+  strategy: V3Strategy | null;
+}) {
+  const proofItems = (strategy?.evidenceOpportunities ?? [])
+    .filter((item) => item.level === 'direct_proof' || item.level === 'reasonable_inference')
+    .slice(0, 4);
+
+  if (!strategy || proofItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <GlassCard className="p-5">
+      <div className="flex items-center gap-2">
+        <CheckCircle2 className="h-4 w-4 text-[var(--bullet-confirm)]" />
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+          Proof we found
+        </h2>
+      </div>
+
+      <ul className="mt-4 space-y-2">
+        {proofItems.map((item, index) => (
+          <li
+            key={`${item.requirement}-${index}`}
+            className="rounded border border-[var(--line-soft)] bg-[var(--surface-1)] p-3 text-[12px] leading-snug"
+          >
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <p className="font-medium text-[var(--text-strong)]">{item.requirement}</p>
+              <StatusPill>{item.level === 'direct_proof' ? 'Direct proof' : 'Supported'}</StatusPill>
+            </div>
+            {item.sourceSignal && (
+              <p className="text-[11px] text-[var(--text-muted)]">
+                Source: {item.sourceSignal}
+              </p>
+            )}
+            <p className="mt-1 text-[11px] text-[var(--text-soft)]">
+              Resume handling: {item.recommendedFraming}
+            </p>
+          </li>
+        ))}
+      </ul>
     </GlassCard>
   );
 }
@@ -737,25 +789,45 @@ function StrategyCard({
 export function V3StrategyPanel({
   benchmark,
   strategy,
+  structured,
+  written,
   flashPositionIndex,
   flashTick,
-  onRegeneratePosition,
   onRunDiscoveryAnswers,
   discoveryRunning,
-  pendingPositions,
 }: Props) {
   return (
     <div className="space-y-4">
-      <BenchmarkCard benchmark={benchmark} />
-      <StrategyCard
+      <GlassCard className="p-4">
+        <div className="flex items-start gap-3">
+          <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bullet-confirm)]" />
+          <div>
+            <h2 className="text-[13px] font-semibold text-[var(--text-strong)]">
+              Why we wrote this resume this way
+            </h2>
+            <p className="mt-1 text-[12px] leading-snug text-[var(--text-muted)]">
+              CareerIQ compares the job to your source material, rewrites only
+              from proof it can support, and asks before making stronger claims.
+            </p>
+          </div>
+        </div>
+      </GlassCard>
+
+      <JobReadCard benchmark={benchmark} strategy={strategy} />
+      <UsedProofCard
         strategy={strategy}
+        structured={structured}
+        written={written}
         flashPositionIndex={flashPositionIndex}
         flashTick={flashTick}
-        onRegeneratePosition={onRegeneratePosition}
+      />
+      <DiscoveryCard
+        strategy={strategy}
         onRunDiscoveryAnswers={onRunDiscoveryAnswers}
         discoveryRunning={discoveryRunning}
-        pendingPositions={pendingPositions}
       />
+      <HandledCarefullyCard benchmark={benchmark} strategy={strategy} />
+      <ProofReceiptsCard strategy={strategy} />
     </div>
   );
 }

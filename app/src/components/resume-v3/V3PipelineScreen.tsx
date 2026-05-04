@@ -762,6 +762,8 @@ export function V3PipelineScreen({
               <V3StrategyPanel
                 benchmark={pipeline.benchmark}
                 strategy={pipeline.strategy}
+                structured={pipeline.structured}
+                written={effectiveWritten}
                 flashPositionIndex={strategyFlash?.positionIndex ?? null}
                 flashTick={strategyFlash?.at ?? 0}
                 onRegeneratePosition={
