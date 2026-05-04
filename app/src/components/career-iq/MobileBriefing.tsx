@@ -238,11 +238,11 @@ function BottomNav({
   const applicationsActive = isApplicationsPath(location.pathname);
   const shortLabel = (id: string, label: string) => {
     if (id === 'dashboard') return 'Today';
-    if (id === 'career-profile') return 'Profile';
+    if (id === 'career-profile') return 'Vault';
     if (id === 'linkedin') return 'LinkedIn';
     if (id === 'resume') return 'Resume';
     if (id === 'jobs') return 'Jobs';
-    if (id === 'applications') return 'Pipeline';
+    if (id === 'applications') return 'Apps';
     if (id === 'live-webinars') return 'Live';
     return label;
   };
@@ -250,7 +250,7 @@ function BottomNav({
   return (
     <nav
       className={cn(
-        'safe-area-pb z-50 grid grid-cols-5 gap-1 border-t border-[var(--line-soft)] bg-[var(--surface-3)]/96 px-2 py-2 shadow-[0_-8px_24px_rgba(16,24,32,0.08)]',
+        'safe-area-pb z-50 grid grid-cols-6 gap-1 border-t border-[var(--line-soft)] bg-[var(--surface-3)]/96 px-2 py-2 shadow-[0_-8px_24px_rgba(16,24,32,0.08)]',
         fixed ? 'fixed bottom-0 left-0 right-0 backdrop-blur-xl' : 'relative shrink-0',
       )}
     >

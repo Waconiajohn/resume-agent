@@ -102,7 +102,7 @@ async function setupSignedInApp(page: Page) {
 
 async function expectWorkspaceHome(page: Page) {
   await expect(page).toHaveURL(/\/workspace$/, { timeout: 10_000 });
-  await expect(page.getByText('Your Pipeline').first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Your Applications').first()).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe('Smoke: major routes and redirects', () => {
@@ -199,7 +199,7 @@ test.describe('Smoke: shell navigation', () => {
   });
 
   test('workspace home primary entry opens Find Jobs', async ({ page }) => {
-    await page.locator('section', { hasText: 'Your Pipeline' }).getByRole('button', { name: /^Find Jobs$/i }).click();
+    await page.locator('section', { hasText: 'Your Applications' }).getByRole('button', { name: /^Find Jobs$/i }).click();
     await expect(page).toHaveURL(/\/workspace\?room=jobs/, { timeout: 10_000 });
     await expect(page.getByRole('heading', { name: /Find your next role two ways/i })).toBeVisible({
       timeout: 10_000,
@@ -268,6 +268,6 @@ test.describe('Smoke: billing entry points', () => {
 
     await page.getByRole('button', { name: /^Manage$/i }).click();
     await expect(page).toHaveURL(/\/workspace\?room=career-profile/, { timeout: 10_000 });
-    await expect(page.getByRole('heading', { name: 'Benchmark Profile', exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'Career Vault', exact: true })).toBeVisible({ timeout: 10_000 });
   });
 });

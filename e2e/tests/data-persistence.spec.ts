@@ -277,7 +277,7 @@ async function openResumeBuilderWorkspace(page: Page): Promise<void> {
     page.getByRole('heading', { name: /Tailor your resume to a job you actually want/i }),
   ).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole('button', { name: /^Browse Saved Resumes$/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Open Source Material$/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Open Career Vault$/i })).toBeVisible();
 }
 
 async function waitForListSettled(page: Page): Promise<void> {
@@ -344,7 +344,7 @@ test.describe('Tailor Resume persistence', () => {
     await mockAllWithData(page);
     await openResumeBuilderWorkspace(page);
 
-    await page.getByRole('button', { name: /^Open Source Material$/i }).click();
+    await page.getByRole('button', { name: /^Open Career Vault$/i }).click();
     await waitForListSettled(page);
 
     await expect(page.getByText(/Experienced engineering leader with 15 years building distributed systems\./i)).toBeVisible({ timeout: 10_000 });
@@ -355,10 +355,10 @@ test.describe('Tailor Resume persistence', () => {
     await mockAllWithData(page, { masterResume: null });
     await openResumeBuilderWorkspace(page);
 
-    await page.getByRole('button', { name: /^Open Source Material$/i }).click();
+    await page.getByRole('button', { name: /^Open Career Vault$/i }).click();
     await waitForListSettled(page);
 
-    await expect(page.getByText(/No Career Proof found\./i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/No achievement proof found\./i)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/Complete an application and save your resume to get started\./i)).toBeVisible();
   });
 });

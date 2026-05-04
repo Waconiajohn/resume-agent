@@ -139,7 +139,7 @@ describe('ResearchDashboardPanel', () => {
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
-  // --- Benchmark Profile ---
+  // --- Career Vault ---
   it('renders benchmark summary', () => {
     render(
       <ResearchDashboardPanel
@@ -277,6 +277,6 @@ describe('ResearchDashboardPanel', () => {
     expect(screen.getByText('Role Research')).toBeInTheDocument();
     expect(screen.getByText('Company')).toBeInTheDocument();
     expect(screen.getByText('Job Requirements')).toBeInTheDocument();
-    expect(screen.getByText('Benchmark Profile')).toBeInTheDocument();
+    expect(screen.getByText('Career Vault')).toBeInTheDocument();
   });
 });

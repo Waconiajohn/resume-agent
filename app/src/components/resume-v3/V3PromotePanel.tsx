@@ -1,11 +1,11 @@
 /**
- * V3PromotePanel — post-pipeline "save to knowledge base" surface.
+ * V3PromotePanel — post-pipeline "save to Career Vault" surface.
  *
  * Design philosophy (after v1 proved too intrusive):
  *  - Collapsed by default. The resume is the deliverable; the promote
  *    action is a wrap-up. Render as a slim banner below the results.
  *  - Two CTAs in collapsed mode:
- *      * "Save defaults to knowledge base" — one-click commit of
+ *      * "Save defaults to Career Vault" — one-click commit of
  *        pre-selected high-confidence items. 90% of users want this.
  *      * "Review & pick ▸" — expands into the full checkbox UI.
  *  - Expanded mode: sticky header with counts + Save + Collapse.
@@ -245,21 +245,21 @@ export function V3PromotePanel({
               <>
                 <div className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text-strong)]">
                   <CheckCircle2 className="h-4 w-4 text-[var(--badge-green-text)]" />
-                  Saved as knowledge base v{savedVersion}
+                  Saved to Career Vault v{savedVersion}
                 </div>
                 <p className="text-[12px] text-[var(--text-muted)] mt-1">
-                  {selectedCount} item{selectedCount === 1 ? '' : 's'} added. Your next run will auto-load this updated master.
+                  {selectedCount} item{selectedCount === 1 ? '' : 's'} added. Future resumes, LinkedIn updates, and interview prep can reuse this stronger proof.
                 </p>
               </>
             ) : (
               <>
                 <div className="text-sm font-semibold text-[var(--text-strong)]">
-                  {master ? 'Ready to update your knowledge base' : 'Save this run as your knowledge base'}
+                  {master ? 'Ready to strengthen your Career Vault' : 'Save this run as your Career Vault'}
                 </div>
                 <p className="text-[12px] text-[var(--text-muted)] mt-1 leading-relaxed">
                   {summaryLine} {master
-                    ? `${highConfidenceCount} are pre-selected as high-confidence; you can save defaults or review first.`
-                    : `This will create knowledge base v1 — the starting point of your vault.`}
+                    ? `${highConfidenceCount} are pre-selected as high-confidence; save the defaults or review first.`
+                    : `This creates Career Vault v1 — the starting point for smarter future applications.`}
                 </p>
               </>
             )}
@@ -276,7 +276,7 @@ export function V3PromotePanel({
                 disabled={saving || !accessToken}
                 onClick={() => void save(defaultSelection)}
               >
-                {saving ? 'Saving…' : master ? 'Save defaults to knowledge base' : 'Save as v1'}
+                {saving ? 'Saving...' : master ? 'Save defaults to Career Vault' : 'Save as Career Vault v1'}
               </GlassButton>
               <GlassButton
                 variant="ghost"
@@ -302,11 +302,11 @@ export function V3PromotePanel({
           <BookMarked className="h-5 w-5 text-[var(--bullet-confirm)] flex-shrink-0" />
           <div>
             <h2 className="text-sm font-semibold text-[var(--text-strong)]">
-              Add to knowledge base
+              Add to Career Vault
             </h2>
             <p className="text-[11px] text-[var(--text-muted)]">
               {selectedCount} of {items.length} selected
-              {master ? ` · master v${master.version} → v${master.version + 1}` : ' · will create v1'}
+              {master ? ` · vault v${master.version} -> v${master.version + 1}` : ' · will create v1'}
             </p>
           </div>
         </div>
@@ -317,7 +317,7 @@ export function V3PromotePanel({
             disabled={saving || selectedCount === 0 || !accessToken}
             onClick={() => void save()}
           >
-            {saving ? 'Saving…' : 'Save to knowledge base'}
+            {saving ? 'Saving...' : 'Save to Career Vault'}
           </GlassButton>
           <button
             type="button"
@@ -563,7 +563,7 @@ function buildSummaryLine({
   if (scopeCount > 0) parts.push(`${scopeCount} updated scope statement${scopeCount === 1 ? '' : 's'}`);
   if (evidenceCount > 0) parts.push(`${evidenceCount} confirmed evidence note${evidenceCount === 1 ? '' : 's'}`);
   if (hasSummary) parts.push('a refreshed summary');
-  if (parts.length === 0) return 'No changes to promote.';
+  if (parts.length === 0) return 'No new Career Vault items.';
   if (parts.length === 1) return `We wrote ${parts[0]}.`;
   if (parts.length === 2) return `We wrote ${parts[0]} and ${parts[1]}.`;
   return `We wrote ${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}.`;

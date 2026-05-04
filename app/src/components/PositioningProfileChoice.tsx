@@ -36,7 +36,7 @@ export function PositioningProfileChoice({
         </span>
       </div>
       <p className="text-xs text-[var(--text-muted)]">
-        This is your previously saved Career Profile interview context (career story, strengths, and evidence). It only affects how Step 3 starts and can speed up this run.
+        This is your previously saved Career Vault context (career story, strengths, and evidence). It only affects how Step 3 starts and can speed up this run.
       </p>
       <p className="mb-4 mt-1 text-xs text-[var(--text-soft)]">
         Last updated: {formatDate(updatedAt)}

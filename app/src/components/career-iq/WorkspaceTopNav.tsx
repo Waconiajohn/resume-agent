@@ -23,6 +23,7 @@ const ROOM_TOUR_TARGETS: Partial<Record<NavItem['id'], string>> = {
 
 const PRIMARY_TOP_NAV_IDS: readonly NavItem['id'][] = [
   'dashboard',
+  'career-profile',
   'jobs',
   'resume',
   'applications',

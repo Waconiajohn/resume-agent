@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 
 // Built-in definitions for common platform terms.
 const BUILT_IN_DEFINITIONS: Record<string, string> = {
+  'Career Vault':
+    'Your saved resume, LinkedIn profile, proof, stories, and positioning — the source material every job-search tool uses.',
   'Career Profile':
     'Your professional identity — the story that drives every tool in the workspace.',
   'Gap Analysis':

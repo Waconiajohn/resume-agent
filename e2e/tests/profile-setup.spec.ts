@@ -218,7 +218,7 @@ async function mockProfileSetupApis(page: Page) {
           room: 'profile-setup',
           urgency: 'immediate',
           phase: 'career_profile',
-          phase_label: 'Career Profile',
+          phase_label: 'Career Vault',
           rationale: 'Start with your career profile.',
         }),
       });
@@ -257,13 +257,13 @@ test.describe('Profile Setup', () => {
     await expect(page.getByLabel(/Optional LinkedIn context/i)).toBeVisible();
     await expect(page.getByLabel(/Target roles/i)).toBeVisible();
     await expect(page.getByLabel(/Your situation/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Build my Benchmark Profile/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Build my Career Vault/i })).toBeVisible();
   });
 
   test('submit button stays disabled until resume detail and target roles meet validation minimums', async ({ page }) => {
     await navigateToProfileSetup(page);
 
-    const submit = page.getByRole('button', { name: /Build my Benchmark Profile/i });
+    const submit = page.getByRole('button', { name: /Build my Career Vault/i });
     await expect(submit).toBeDisabled();
 
     // Short resume text is still disabled because it does not meet the client/server minimum.
@@ -284,7 +284,7 @@ test.describe('Profile Setup', () => {
 
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
+    await page.getByRole('button', { name: /Build my Career Vault/i }).click();
 
     await expect(page.getByText(/Are you sure you want to skip it/i)).not.toBeVisible();
 
@@ -298,7 +298,7 @@ test.describe('Profile Setup', () => {
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
     await page.getByLabel(/Optional LinkedIn context/i).fill('I am a cloud infrastructure leader.');
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
+    await page.getByRole('button', { name: /Build my Career Vault/i }).click();
 
     // Should go straight to processing or interview — no skip confirmation
     await expect(page.getByText(/Are you sure you want to skip it/i)).not.toBeVisible();
@@ -314,7 +314,7 @@ test.describe('Profile Setup', () => {
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
     await page.getByLabel(/Optional LinkedIn context/i).fill('Cloud infrastructure leader.');
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
+    await page.getByRole('button', { name: /Build my Career Vault/i }).click();
 
     // With instant mocks, processing screen may flash by — check interview directly
     await expect(page.getByText(/Here is what we found/i)).toBeVisible({ timeout: 10_000 });
@@ -336,7 +336,7 @@ test.describe('Profile Setup', () => {
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
     await page.getByLabel(/Optional LinkedIn context/i).fill('Cloud leader.');
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
+    await page.getByRole('button', { name: /Build my Career Vault/i }).click();
 
     // Wait for interview screen
     await expect(page.getByText(/Here is what we found/i)).toBeVisible({ timeout: 10_000 });
@@ -361,7 +361,7 @@ test.describe('Profile Setup', () => {
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
     await page.getByLabel(/Optional LinkedIn context/i).fill('Cloud infrastructure leader.');
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
+    await page.getByRole('button', { name: /Build my Career Vault/i }).click();
 
     // ── Processing → Interview ──
     await expect(page.getByText(/Here is what we found/i)).toBeVisible({ timeout: 10_000 });
@@ -380,7 +380,7 @@ test.describe('Profile Setup', () => {
     }
 
     // ── Building flashes by with instant mocks → Profile Reveal ──
-    await expect(page.getByRole('heading', { name: /Your Benchmark Profile/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /Your Career Vault/i })).toBeVisible({ timeout: 15_000 });
 
     // Verify profile sections are displayed
     await expect(page.getByText(/Career Thread/i)).toBeVisible();
@@ -431,7 +431,7 @@ test.describe('Profile Setup', () => {
     await page.getByLabel(/Resume text/i).fill(REAL_RESUME_TEXT);
     await page.getByLabel(/Optional LinkedIn context/i).fill('Cloud leader.');
     await page.getByLabel(/Target roles/i).fill('VP of Infrastructure');
-    await page.getByRole('button', { name: /Build my Benchmark Profile/i }).click();
+    await page.getByRole('button', { name: /Build my Career Vault/i }).click();
 
     // Should show error and return to intake
     await expect(page.locator('[role="alert"]')).toBeVisible({ timeout: 10_000 });

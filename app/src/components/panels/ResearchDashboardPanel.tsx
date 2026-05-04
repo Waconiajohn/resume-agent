@@ -184,12 +184,12 @@ export function ResearchDashboardPanel({ data }: ResearchDashboardPanelProps) {
           )}
         </GlassCard>
 
-        {/* Benchmark Profile */}
+        {/* Career Vault */}
         <GlassCard className="p-4">
           <div className="flex items-center gap-2 mb-3">
             <UserCheck className="h-4 w-4 text-[var(--link)]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-soft)]">
-              Benchmark Profile
+              Career Vault
             </h3>
           </div>
 

@@ -403,7 +403,7 @@ export function ApplicationWorkspaceRoute({
       .catch((err: unknown) => {
         if (!cancelled) {
           setError(err instanceof DOMException && err.name === 'AbortError'
-            ? 'Application load timed out. Try opening the Pipeline and selecting this application again.'
+            ? 'Application load timed out. Try opening Applications and selecting this role again.'
             : err instanceof Error ? err.message : 'Failed to load application');
         }
       })
@@ -830,7 +830,7 @@ export function ApplicationWorkspaceRoute({
     <div className="mx-auto flex h-full max-w-[1280px] flex-col gap-6 overflow-y-auto p-6">
       {/* Sprint B6 — breadcrumb. Matches the pattern rendered by room
           screens (Workspace > Section) but adds the application's company
-          name and active tool for a full trail. Workspace and Pipeline are
+          name and active tool for a full trail. Workspace and Applications are
           clickable back-links. */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 overflow-x-auto py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
         <button
@@ -846,7 +846,7 @@ export function ApplicationWorkspaceRoute({
           className="shrink-0 whitespace-nowrap hover:text-[var(--text-strong)]"
           onClick={() => onNavigate?.('/workspace/applications')}
         >
-          Pipeline
+          Applications
         </button>
         <ChevronRight className="h-3 w-3 flex-none" aria-hidden="true" />
         <span className="shrink-0 whitespace-nowrap text-[var(--text-strong)]">{application.company_name}</span>

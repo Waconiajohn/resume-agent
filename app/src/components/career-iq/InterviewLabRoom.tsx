@@ -547,7 +547,7 @@ function UpcomingInterviews({ interviews, onGeneratePrep }: {
           <Mic size={24} className="text-[var(--text-soft)] mx-auto mb-2" />
           <p className="text-[13px] text-[var(--text-soft)]">No interviews scheduled</p>
           <p className="text-[13px] text-[var(--text-soft)] mt-1">
-            Open a role from Pipeline, or move an application into the Interviewing stage.
+            Open a role from Applications, or move an application into the Interviewing stage.
           </p>
         </div>
       ) : (
@@ -1032,7 +1032,7 @@ function PostInterviewFollowUpEmailForm({
         <p className="text-[13px] leading-relaxed text-[var(--text-soft)]">
           The follow-up email tool is scoped to a specific application so it can pull your
           prior interview-prep notes, the interview date, and whether you&rsquo;ve already
-          sent a thank-you. Open this from <span className="font-medium text-[var(--text-strong)]">Pipeline</span> to
+          sent a thank-you. Open this from <span className="font-medium text-[var(--text-strong)]">Applications</span> to
           draft one.
         </p>
         <div className="flex justify-end">
@@ -1100,7 +1100,7 @@ function InLabThankYouNoteEntry({
         <p className="text-[13px] leading-relaxed text-[var(--text-soft)]">
           Thank-you notes are scoped to a specific application so the agent can reference the interview
           context, recipient roles, and any prior interview-prep notes you captured. Open this from{' '}
-          <span className="font-medium text-[var(--text-strong)]">Pipeline</span> to draft notes.
+          <span className="font-medium text-[var(--text-strong)]">Applications</span> to draft notes.
         </p>
         <div className="flex justify-end">
           <GlassButton variant="ghost" onClick={onBack} className="text-[13px]">

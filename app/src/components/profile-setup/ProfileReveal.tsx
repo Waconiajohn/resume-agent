@@ -55,7 +55,7 @@ export function ProfileReveal({
             className="text-3xl font-light text-[var(--text-strong)] mb-2"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            Your Benchmark Profile
+            Your Career Vault
           </h1>
           <p className="text-sm text-[var(--text-muted)] mb-2">
             Built from your resume, LinkedIn profile, and discovery answers.
@@ -73,10 +73,10 @@ export function ProfileReveal({
               }}
             >
               <p className="text-sm font-medium text-[var(--text-strong)] mb-1">
-                Your Career Proof is ready now.
+                Your achievement proof is ready now.
               </p>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                The retry worked. Future Tailor Resume runs will use this Benchmark Profile and Career Proof together.
+                The retry worked. Future Tailor Resume runs will use your Career Vault and achievement proof together.
               </p>
             </div>
           )}
@@ -89,10 +89,10 @@ export function ProfileReveal({
               }}
             >
               <p className="text-sm font-medium text-[var(--text-strong)] mb-1">
-                Your profile is saved, but your first Career Proof still needs one more step.
+                Your Career Vault is saved, but your first achievement proof still needs one more step.
               </p>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-3">
-                We kept your setup data so you can retry Career Proof creation now without losing anything.
+                We kept your setup data so you can retry achievement proof creation now without losing anything.
               </p>
               <button
                 type="button"
@@ -104,7 +104,7 @@ export function ProfileReveal({
                   color: retryingMasterResume ? 'var(--text-muted)' : 'var(--bg-0)',
                 }}
               >
-                {retryingMasterResume ? 'Retrying Career Proof creation...' : 'Retry creating my Career Proof'}
+                {retryingMasterResume ? 'Retrying achievement proof creation...' : 'Retry creating my achievement proof'}
               </button>
             </div>
           )}

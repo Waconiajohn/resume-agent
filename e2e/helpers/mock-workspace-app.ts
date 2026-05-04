@@ -412,7 +412,7 @@ const MOCK_ONBOARDING_SUMMARY = {
   financial_signals: ['The transition timeline is steady, not crisis-driven.'],
   emotional_signals: ['Confidence is high enough for direct guidance.'],
   recommended_actions: [
-    'Refresh the Career Profile and reuse it in Resume Builder and LinkedIn.',
+    'Refresh the Career Vault and reuse it in Tailor Resume and LinkedIn.',
     'Lead with executive operating cadence in top-of-funnel materials.',
   ],
 } as const;
@@ -1611,7 +1611,7 @@ async function fulfillApiRoute(
     await route.fulfill(buildSSEStreamResponse([
       {
         event: 'stage_start',
-        data: { stage: 'search', message: 'Building search strings from your Career Profile...' },
+        data: { stage: 'search', message: 'Building search strings from your Career Vault...' },
       },
       {
         event: 'search_progress',

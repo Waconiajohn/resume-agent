@@ -83,7 +83,7 @@ afterEach(() => {
 });
 
 describe('V3PromotePanel discovery evidence promotion', () => {
-  it('shows confirmed discovery evidence as a promotable knowledge-base item', async () => {
+  it('shows confirmed discovery evidence as a promotable Career Vault item', async () => {
     const user = userEvent.setup();
 
     render(
@@ -125,7 +125,7 @@ describe('V3PromotePanel discovery evidence promotion', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: /save defaults to knowledge base/i }));
+    await user.click(screen.getByRole('button', { name: /save defaults to Career Vault/i }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const [, init] = fetchMock.mock.calls[0]!;

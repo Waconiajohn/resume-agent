@@ -19,7 +19,7 @@ interface CareerProfileSummaryCardProps {
 export function CareerProfileSummaryCard({
   summary,
   whyMeSignals,
-  title = 'Career Profile driving this tool',
+  title = 'Career Vault driving this tool',
   description,
   usagePoints = [],
   onOpenProfile,
@@ -39,7 +39,7 @@ export function CareerProfileSummaryCard({
             </div>
             <div>
               <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
-                Career Profile
+                Career Vault
               </div>
               <h2 className="mt-1 text-sm font-semibold text-[var(--text-strong)]">{title}</h2>
             </div>
@@ -54,10 +54,10 @@ export function CareerProfileSummaryCard({
               type="button"
               onClick={onOpenProfile}
               className="mt-3 flex items-center gap-3 rounded-lg border border-[var(--line-soft)] bg-[var(--accent-muted)] px-3 py-2 text-left transition-colors hover:bg-[var(--accent-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--link)]/40"
-              aria-label="View Why-Me story signals in Benchmark Profile"
+              aria-label="View story signals in Career Vault"
             >
               <span className="text-[12px] font-medium uppercase tracking-widest text-[var(--text-soft)]">
-                Why-Me
+                Story
               </span>
               <SignalPip level={whyMeSignals.clarity} label="Clarity" />
               <SignalPip level={whyMeSignals.alignment} label="Alignment" />
@@ -107,7 +107,7 @@ export function CareerProfileSummaryCard({
         <div className="flex w-full max-w-xs flex-col gap-2">
           {onOpenProfile && (
             <GlassButton variant="ghost" onClick={onOpenProfile}>
-              Review Career Profile
+              Review Career Vault
             </GlassButton>
           )}
           {onContinue && (

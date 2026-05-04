@@ -10,7 +10,7 @@ test.describe('Auth gate smoke', () => {
     await page.getByRole('button', { name: /Sign In/i }).click();
 
     await expect(page).toHaveURL(/\/workspace$/, { timeout: 10_000 });
-    await expect(page.getByText('Your Pipeline').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Your Applications').first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('button', { name: /^Find Jobs$/i }).first()).toBeVisible({ timeout: 10_000 });
   });
 
@@ -21,7 +21,7 @@ test.describe('Auth gate smoke', () => {
     await fillCredentials(page, 'test@example.com', 'password123');
     await page.getByRole('button', { name: /Sign In/i }).click();
 
-    await expect(page.getByText('Your Pipeline').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Your Applications').first()).toBeVisible({ timeout: 10_000 });
     await page.getByRole('button', { name: /Test User/i }).click();
     await page.getByRole('menuitem', { name: /^Sign out$/i }).click();
 

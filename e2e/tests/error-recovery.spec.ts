@@ -346,8 +346,8 @@ test.describe('Current error recovery', () => {
       page.getByRole('heading', { name: /Tailor your resume to a job you actually want/i }),
     ).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole('button', { name: /^Open Source Material$/i }).click();
-    await expect(page.getByText(/No Career Proof found\./i)).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('button', { name: /^Open Career Vault$/i }).click();
+    await expect(page.getByText(/No achievement proof found\./i)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Something went wrong')).not.toBeVisible();
   });
 });

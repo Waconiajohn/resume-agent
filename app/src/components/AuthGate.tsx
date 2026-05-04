@@ -380,7 +380,7 @@ export function AuthGate({ onSignIn, onSignUp, onSocialSignIn }: AuthGateProps) 
       eyebrow={isSignUp ? 'Create your workspace' : 'Welcome back'}
       title={isSignUp ? 'Start with your career proof, not a blank page.' : 'Open your career command center.'}
       subtitle={isSignUp
-        ? 'Create your account, confirm your email, and CareerIQ will guide you into your first Benchmark Profile.'
+        ? 'Create your account, confirm your email, and CareerIQ will guide you into your first Career Vault.'
         : 'Pick up your job search, applications, networking, interview prep, and follow-ups where you left them.'}
     >
       <section className="rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-6 shadow-[var(--shadow-mid)] sm:p-8">

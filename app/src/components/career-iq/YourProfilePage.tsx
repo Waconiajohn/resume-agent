@@ -1,15 +1,15 @@
 /**
- * YourProfilePage — renders at the "Benchmark Profile" workspace destination.
+ * YourProfilePage — renders at the "Career Vault" workspace destination.
  *
  * Phase 3 — three explicit sections matching the product model:
  *   Section 1 — Positioning
- *     Why-Me Story today. Future surfaces: Why-Not-Me, target industries /
+ *     "Why employers should pick you" story today. Future surfaces: Why-Not-Me, target industries /
  *     ideal companies / target roles.
- *   Section 2 — Career Proof
+ *   Section 2 — Achievement Proof
  *     Resume summary (ResumeSection) + Story Bank (STAR+R stories reused
  *     across Interview Prep). Future surface: Signature Accomplishments as
  *     a first-class managed list.
- *   Section 3 — Benchmark LinkedIn Brand
+ *   Section 3 — LinkedIn Inputs
  *     LinkedIn headline + About storage (LinkedInSection). Future surfaces:
  *     five-second LinkedIn test audit, blogging / carousels.
  *
@@ -369,13 +369,13 @@ function BenchmarkProfileDraftPanel({
   return (
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-4">
-        <SectionHeader icon={Sparkles} label="AI Draft" title="Benchmark Profile Draft" />
+        <SectionHeader icon={Sparkles} label="AI Draft" title="Career Vault Draft" />
         <span className="rounded-md border border-[var(--link)]/20 bg-[var(--link)]/[0.07] px-2.5 py-1 text-[12px] font-semibold text-[var(--link)]">
           Ready for review
         </span>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-        Confirm the headline and Why-Me first. Supporting proof is still available, but it stays out of the way until you want to inspect it.
+        Confirm why employers should pick you first. Supporting proof stays close by when you want to inspect it.
       </p>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -390,7 +390,7 @@ function BenchmarkProfileDraftPanel({
             <span>
               <span className="block text-sm font-semibold text-[var(--text-strong)]">Review supporting details</span>
               <span className="mt-0.5 block text-xs text-[var(--text-soft)]">
-                Why-not-me, LinkedIn five-second verdict, proof points, and discovery questions.
+                Fit risks, LinkedIn first-impression notes, proof points, and discovery questions.
               </span>
             </span>
             <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -407,7 +407,7 @@ function BenchmarkProfileDraftPanel({
             {topProof.length > 0 && (
               <div>
                 <div className="mb-3 text-[12px] font-semibold uppercase tracking-widest text-[var(--text-soft)]">
-                  Signature Proof
+                  Achievement Proof
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   {topProof.map((item) => (
@@ -443,7 +443,7 @@ function BenchmarkProfileDraftPanel({
   );
 }
 
-// ─── ResumeSection (Career Proof inner card) ─────────────────────────────────
+// ─── ResumeSection (Achievement Proof inner card) ────────────────────────────
 
 interface ResumeSectionProps {
   onGetDefaultResume?: () => Promise<MasterResume | null>;
@@ -493,10 +493,10 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume, benchmarkProfile 
   if (resumeLoading) {
     return (
       <GlassCard className="p-6">
-        <SectionHeader icon={FileText} label="Resume" title="Your Career Proof" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Achievement Proof" />
         <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-soft)]">
           <Loader2 size={16} className="animate-spin text-[var(--link)]" />
-          Loading your Career Proof...
+          Loading your achievement proof...
         </div>
       </GlassCard>
     );
@@ -506,15 +506,15 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume, benchmarkProfile 
     const proofDrafts = benchmarkProfile?.proof.signature_accomplishments ?? [];
     return (
       <GlassCard className="p-6">
-        <SectionHeader icon={FileText} label="Resume" title="Your Career Proof" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Achievement Proof" />
         <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
-          Your Career Proof is the source material for every tool in the workspace. Upload it once
+          Your achievement proof is the source material for every tool in the workspace. Upload it once
           and every application starts with full context.
         </p>
         <div className="mt-5 text-center py-6">
           {resumeError ? (
             <div className="text-sm text-[var(--text-soft)]">
-              <p>We couldn't load your Career Proof. You may not have uploaded a source resume yet.</p>
+              <p>We couldn't load your achievement proof. You may not have uploaded a source resume yet.</p>
               <button onClick={() => navigate('/workspace?room=resume')} className="mt-2 text-[var(--link)] hover:underline text-sm">
                 Go to Tailor Resume →
               </button>
@@ -522,7 +522,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume, benchmarkProfile 
           ) : proofDrafts.length > 0 ? (
             <div className="text-left">
               <p className="text-sm font-semibold text-[var(--text-strong)]">
-                Benchmark proof draft is ready for review.
+                Achievement proof draft is ready for review.
               </p>
               <p className="mt-1 text-sm leading-relaxed text-[var(--text-soft)]">
                 The profile setup created proof points from your source material. Confirming a comprehensive resume will make this stronger, but downstream tools already have draft evidence to work from.
@@ -536,13 +536,13 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume, benchmarkProfile 
                 ))}
               </div>
               <GlassButton onClick={() => navigate('/workspace?room=resume')} className="mt-4">
-                Add or confirm Career Proof
+                Add or confirm achievement proof
               </GlassButton>
             </div>
           ) : (
             <>
               <p className="text-sm text-[var(--text-muted)] mb-3">
-                No Career Proof yet.
+                No achievement proof yet.
               </p>
               <GlassButton onClick={() => navigate('/workspace?room=resume')}>
                 Go to Tailor Resume
@@ -564,7 +564,7 @@ function ResumeSection({ onGetDefaultResume, onNavigateResume, benchmarkProfile 
   return (
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-4">
-        <SectionHeader icon={FileText} label="Resume" title="Your Career Proof" />
+        <SectionHeader icon={FileText} label="Resume" title="Your Achievement Proof" />
         <div className="flex items-center gap-2 shrink-0">
           {onNavigateResume && (
             <GlassButton variant="ghost" size="sm" onClick={onNavigateResume}>
@@ -1064,7 +1064,7 @@ export function YourProfilePage({
     return () => clearTimeout(t);
   }, [lastSavedAt]);
 
-  // Phase 3.1 — deep-link into a specific Benchmark Profile section when the
+  // Phase 3.1 — deep-link into a specific Career Vault section when the
   // `focus` URL param matches one of the three section ids. Uses rAF to let
   // the layout settle (education strips default-collapsed, but the outer
   // career-vault strip may reflow as it reads localStorage on mount).
@@ -1096,9 +1096,9 @@ export function YourProfilePage({
       {/* Page title */}
       <div className="mb-2 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Benchmark Profile</h1>
+          <h1 className="text-xl font-semibold text-[var(--text-strong)]">Career Vault</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--text-soft)]">
-            Your source of truth for why an employer should pick you. Keep it sharp; the rest of CareerIQ reuses it.
+            Upload your resume and LinkedIn profile once. Then keep adding the best approved bullets, proof points, and success stories from each tailored resume.
           </p>
         </div>
         <button
@@ -1152,7 +1152,7 @@ export function YourProfilePage({
           ) : (
             <GlassCard className="p-6">
               <div className="flex items-center justify-between gap-4">
-                <SectionHeader icon={BookOpen} label="Positioning" title="Your Why-Me Story" />
+                <SectionHeader icon={BookOpen} label="Positioning" title="Why Employers Should Pick You" />
                 {whyMeSaved && (
                   <div className="flex items-center gap-1.5 text-[13px] text-[var(--badge-green-text)] shrink-0">
                     <CheckCircle2 size={13} />
@@ -1162,7 +1162,7 @@ export function YourProfilePage({
               </div>
               <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
                 Three answers that define how LinkedIn Growth, Find Jobs, Tailor Resume, Interview & Offer, and every other
-                tool frames your positioning. This is the most important section on this page.
+                tool frames your story. This is the most important section on this page.
               </p>
               <div className="mt-5">
                 <WhyMeEngine story={story} signals={signals} onUpdate={updateField} />
@@ -1170,10 +1170,24 @@ export function YourProfilePage({
             </GlassCard>
           )}
 
-          {/* TODO: Surface Why-Not-Me here when built. See product model — Benchmark Profile / Positioning section. */}
-          {/* TODO: Surface Target Industries / Ideal Companies / Target Roles here when built. See product model — Benchmark Profile / Positioning section. */}
+          {/* TODO: Surface Why-Not-Me here when built. See product model — Career Vault / Positioning section. */}
+          {/* TODO: Surface Target Industries / Ideal Companies / Target Roles here when built. See product model — Career Vault / Positioning section. */}
         </section>
       )}
+
+      <GlassCard className="p-5">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg bg-[var(--link)]/12 p-2">
+            <Sparkles size={16} className="text-[var(--link)]" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--text-strong)]">Your vault gets sharper as you apply</h2>
+            <p className="mt-1 text-sm leading-relaxed text-[var(--text-soft)]">
+              Every tailored resume can add stronger language and proof back here. After a few applications, CareerIQ is working from a richer bank of role-tested achievements instead of only the resume you started with.
+            </p>
+          </div>
+        </div>
+      </GlassCard>
 
       <details
         className="group rounded-[10px] border border-[var(--line-soft)] bg-[var(--surface-1)]"
@@ -1182,20 +1196,20 @@ export function YourProfilePage({
       >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-left">
           <span>
-            <span className="block text-sm font-semibold text-[var(--text-strong)]">Source Material</span>
+            <span className="block text-sm font-semibold text-[var(--text-strong)]">Resume, LinkedIn & Stories</span>
             <span className="mt-0.5 block text-xs text-[var(--text-soft)]">
-              Resume evidence, story bank, and saved LinkedIn inputs are tucked away until you need to edit them.
+              Your source resume, achievement proof, story bank, and saved LinkedIn inputs live here when you need to inspect or edit them.
             </span>
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform group-open:rotate-180" aria-hidden="true" />
         </summary>
         <div className="flex flex-col gap-6 border-t border-[var(--line-soft)] px-5 py-5">
-          {/* ─── Section 2 — Career Proof ───────────────────────────────────── */}
+          {/* ─── Section 2 — Achievement Proof ───────────────────────────────── */}
           <section
             id="career-evidence"
             className="flex flex-col gap-4 scroll-mt-6"
           >
-            <h2 className="text-base font-semibold text-[var(--text-strong)]">Career Proof</h2>
+            <h2 className="text-base font-semibold text-[var(--text-strong)]">Achievement Proof</h2>
 
             <ResumeSection
               onGetDefaultResume={onGetDefaultResume}
@@ -1205,10 +1219,10 @@ export function YourProfilePage({
 
             <StoryBankSection />
 
-            {/* TODO: Surface Signature Accomplishments as a first-class managed list here when built. See product model — Benchmark Profile / Career Proof section. */}
+            {/* TODO: Surface Signature Accomplishments as a first-class managed list here when built. See product model — Career Vault / Achievement Proof section. */}
           </section>
 
-          {/* ─── Section 3 — Benchmark LinkedIn Brand ────────────────────────── */}
+          {/* ─── Section 3 — LinkedIn Inputs ─────────────────────────────────── */}
           <section
             id="benchmark-linkedin-brand"
             className="flex flex-col gap-4 border-t border-[var(--line-soft)] pt-6 scroll-mt-6"
@@ -1217,8 +1231,8 @@ export function YourProfilePage({
 
             <LinkedInSection />
 
-            {/* TODO: Surface the five-second LinkedIn test audit here when built. See product model — Benchmark Profile / Benchmark LinkedIn Brand section. */}
-            {/* TODO: Surface Blogging / carousels here when built. See product model — Benchmark Profile / Benchmark LinkedIn Brand section. */}
+            {/* TODO: Surface the five-second LinkedIn test audit here when built. See product model — Career Vault / LinkedIn Brand section. */}
+            {/* TODO: Surface Blogging / carousels here when built. See product model — Career Vault / LinkedIn Brand section. */}
           </section>
         </div>
       </details>

@@ -71,7 +71,7 @@ function formatRelativeTime(isoString: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Section 1 — Benchmark Profile Health
+// Section 1 — Career Vault Health
 // ─────────────────────────────────────────────────────────────
 
 function BenchmarkProfileHealth({
@@ -84,14 +84,14 @@ function BenchmarkProfileHealth({
   hasMasterResume: boolean;
   onOpenCareerProfile: () => void;
   /**
-   * Phase 3.1 — deep-link into a specific Benchmark Profile section from the
-   * Section 1 home strip. Falls back to opening the top of Benchmark Profile
+   * Phase 3.1 — deep-link into a specific Career Vault section from the
+   * Section 1 home strip. Falls back to opening the top of Career Vault
    * if no handler is wired.
    */
   onOpenCareerVaultSection: (section: 'positioning' | 'career-evidence' | 'benchmark-linkedin-brand') => void;
 }) {
   const whyMeItem: HealthItem = (() => {
-    const base = { key: 'why-me', label: 'Why Me', onOpen: () => onOpenCareerVaultSection('positioning') };
+    const base = { key: 'why-me', label: 'Why They Pick You', onOpen: () => onOpenCareerVaultSection('positioning') };
     if (dashboardState === 'strong') return { ...base, state: 'done', stateLabel: 'Strong' };
     if (dashboardState === 'refining') return { ...base, state: 'in-progress', stateLabel: 'Building' };
     return { ...base, state: 'not-started', stateLabel: 'Not started' };
@@ -109,8 +109,8 @@ function BenchmarkProfileHealth({
   };
 
   const careerRecordItem: HealthItem = hasMasterResume
-    ? { key: 'career-record', label: 'Career Proof', state: 'done', stateLabel: 'Strong', onOpen: () => onOpenCareerVaultSection('career-evidence') }
-    : { key: 'career-record', label: 'Career Proof', state: 'not-started', stateLabel: 'Not started', onOpen: () => onOpenCareerVaultSection('career-evidence') };
+    ? { key: 'career-record', label: 'Achievement Proof', state: 'done', stateLabel: 'Strong', onOpen: () => onOpenCareerVaultSection('career-evidence') }
+    : { key: 'career-record', label: 'Achievement Proof', state: 'not-started', stateLabel: 'Not started', onOpen: () => onOpenCareerVaultSection('career-evidence') };
 
   const items: HealthItem[] = [whyMeItem, linkedInItem, careerRecordItem];
   const allStrong = items.every((item) => item.state === 'done');
@@ -123,7 +123,7 @@ function BenchmarkProfileHealth({
           onClick={onOpenCareerProfile}
           className="flex w-full items-center justify-between gap-3 text-left text-[13px] text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)]"
         >
-      <span>Your Benchmark Profile is in good shape.</span>
+      <span>Your Career Vault is ready to power applications.</span>
           <ChevronRight size={14} className="text-[var(--text-soft)]" aria-hidden="true" />
         </button>
       </GlassCard>
@@ -289,7 +289,7 @@ function ApplicationsSection({
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Your Pipeline</h2>
+        <h2 className="text-[15px] font-semibold text-[var(--text-strong)]">Your Applications</h2>
         {hasApplications && (
           <div className="flex items-center gap-3 text-[12px] text-[var(--text-muted)]">
             <span>{totalActive} active</span>

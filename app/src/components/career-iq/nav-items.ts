@@ -39,11 +39,11 @@ export const SIDEBAR_NAV: readonly NavItem[] = [
   },
   {
     id: 'career-profile',
-    label: 'Benchmark Profile',
-    description: 'Your positioning, proof, trophies, and career story',
+    label: 'Career Vault',
+    description: 'Your resume, LinkedIn profile, proof, achievements, and story',
     icon: User,
     room: 'career-profile',
-    mobileTab: false,
+    mobileTab: true,
   },
   {
     id: 'linkedin',
@@ -71,8 +71,8 @@ export const SIDEBAR_NAV: readonly NavItem[] = [
   },
   {
     id: 'applications',
-    label: 'Pipeline',
-    description: 'Saved opportunities, applications, assets, and next steps',
+    label: 'Applications',
+    description: 'Saved opportunities, application assets, and next steps',
     icon: BriefcaseBusiness,
     route: '/workspace/applications',
     mobileTab: true,

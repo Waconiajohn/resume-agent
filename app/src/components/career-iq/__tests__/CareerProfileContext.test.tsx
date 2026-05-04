@@ -72,7 +72,7 @@ describe('buildCareerProfileSummary', () => {
     expect(summary.highlightPoints.length).toBeGreaterThan(0);
   });
 
-  it('keeps unfinished profiles focused on Career Profile completion', () => {
+  it('keeps unfinished profiles focused on Career Vault completion', () => {
     const summary = buildCareerProfileSummary(makeProfile({
       narrative: {
         colleagues_came_for_what: '',

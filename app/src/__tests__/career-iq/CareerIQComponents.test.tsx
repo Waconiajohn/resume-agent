@@ -259,11 +259,11 @@ describe('Sidebar', () => {
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="strong" />,
     );
     expect(screen.getByText('Today')).toBeInTheDocument();
-    expect(screen.getByText('Benchmark Profile')).toBeInTheDocument();
+    expect(screen.getByText('Career Vault')).toBeInTheDocument();
     expect(screen.getByText('LinkedIn Growth')).toBeInTheDocument();
     expect(screen.getByText('Find Jobs')).toBeInTheDocument();
     expect(screen.getByText('Tailor Resume')).toBeInTheDocument();
-    expect(screen.getByText('Pipeline')).toBeInTheDocument();
+    expect(screen.getByText('Applications')).toBeInTheDocument();
     expect(screen.getByText('Interview & Offer')).toBeInTheDocument();
     expect(screen.getByText('Playbook')).toBeInTheDocument();
   });
@@ -274,8 +274,9 @@ describe('Sidebar', () => {
     );
     expect(screen.queryByText('Resume Builder')).not.toBeInTheDocument();
     expect(screen.queryByText('Resume Rewriter')).not.toBeInTheDocument();
-    expect(screen.queryByText('Career Vault')).not.toBeInTheDocument();
+    expect(screen.queryByText('Benchmark Profile')).not.toBeInTheDocument();
     expect(screen.queryByText('Job Search')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pipeline')).not.toBeInTheDocument();
     expect(screen.queryByText('Interview Prep')).not.toBeInTheDocument();
     expect(screen.queryByText('Networking')).not.toBeInTheDocument();
     expect(screen.queryByText('Executive Bio')).not.toBeInTheDocument();
@@ -288,15 +289,15 @@ describe('Sidebar', () => {
       <Sidebar activeRoom="dashboard" onNavigate={vi.fn()} dashboardState="new-user" />,
     );
     expect(screen.getByText('Today').closest('button')).not.toBeDisabled();
-    expect(screen.getByText('Benchmark Profile').closest('button')).not.toBeDisabled();
-    expect(screen.getByText('Pipeline').closest('button')).not.toBeDisabled();
+    expect(screen.getByText('Career Vault').closest('button')).not.toBeDisabled();
+    expect(screen.getByText('Applications').closest('button')).not.toBeDisabled();
   });
 
   it('highlights active room', () => {
     renderSidebar(
       <Sidebar activeRoom="career-profile" onNavigate={vi.fn()} dashboardState="strong" />,
     );
-    const vaultButton = screen.getByText('Benchmark Profile').closest('button');
+    const vaultButton = screen.getByText('Career Vault').closest('button');
     expect(vaultButton?.className).toContain('bg-[var(--rail-tab-active-bg)]');
   });
 
@@ -309,7 +310,7 @@ describe('Sidebar', () => {
     expect(onNavigate).toHaveBeenCalledWith('jobs');
   });
 
-  it('calls onNavigateRoute when Pipeline is clicked', () => {
+  it('calls onNavigateRoute when Applications is clicked', () => {
     const onNavigate = vi.fn();
     const onNavigateRoute = vi.fn();
     renderSidebar(
@@ -320,7 +321,7 @@ describe('Sidebar', () => {
         dashboardState="strong"
       />,
     );
-    fireEvent.click(screen.getByText('Pipeline'));
+    fireEvent.click(screen.getByText('Applications'));
     expect(onNavigateRoute).toHaveBeenCalledWith('/workspace/applications');
     expect(onNavigate).not.toHaveBeenCalled();
   });
@@ -431,7 +432,7 @@ import { ZoneYourDay } from '../../components/career-iq/ZoneYourDay';
 describe('ZoneYourDay', () => {
   afterEach(() => cleanup());
 
-  it('new-user state shows "Define your Why-Me story" action', () => {
+  it('new-user state shows Career Vault action', () => {
     render(
       <ZoneYourDay
         userName="test@example.com"
@@ -439,10 +440,10 @@ describe('ZoneYourDay', () => {
         dashboardState="new-user"
       />,
     );
-    expect(screen.getByText('Build your Career Profile')).toBeInTheDocument();
+    expect(screen.getByText('Build your Career Vault')).toBeInTheDocument();
   });
 
-  it('strong state shows "Refine your Why-Me story" action', () => {
+  it('strong state shows job-search action', () => {
     render(
       <ZoneYourDay
         userName="test@example.com"
@@ -466,7 +467,7 @@ describe('ZoneYourDay', () => {
     expect(screen.getByText('Refine story')).toBeInTheDocument();
   });
 
-  it('refining state shows "Refine your Why-Me story" action', () => {
+  it('refining state shows Career Vault action', () => {
     render(
       <ZoneYourDay
         userName="test@example.com"
@@ -474,7 +475,7 @@ describe('ZoneYourDay', () => {
         dashboardState="refining"
       />,
     );
-    expect(screen.getByText('Strengthen your Career Profile')).toBeInTheDocument();
+    expect(screen.getByText('Strengthen your Career Vault')).toBeInTheDocument();
   });
 
   it('displays greeting with first name', () => {

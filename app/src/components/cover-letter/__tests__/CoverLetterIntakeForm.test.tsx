@@ -68,7 +68,7 @@ vi.mock('@/components/GlassInput', () => ({
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const LONG_RESUME = 'A'.repeat(60); // 60 chars — passes the 50-char minimum
-const resumeTextareaMatcher = /paste your master resume text here/i;
+const resumeTextareaMatcher = /paste your Career Vault resume text here/i;
 
 function makeProps(overrides: Record<string, unknown> = {}) {
   return {

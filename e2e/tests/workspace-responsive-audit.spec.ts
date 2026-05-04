@@ -6,13 +6,13 @@ const AUDIT_PAGES = [
     slug: 'workspace-home',
     path: '/workspace',
     readyRole: 'text',
-    readyText: 'Your Pipeline',
+    readyText: 'Your Applications',
   },
   {
     slug: 'career-profile',
     path: '/workspace?room=career-profile',
     readyRole: 'heading',
-    readyText: 'Benchmark Profile',
+    readyText: 'Career Vault',
   },
   {
     slug: 'tailor-resume',
@@ -54,7 +54,7 @@ const AUDIT_PAGES = [
     slug: 'tools',
     path: '/tools',
     readyRole: 'text',
-    readyText: 'Your Pipeline',
+    readyText: 'Your Applications',
   },
   {
     slug: 'settings',
@@ -136,7 +136,7 @@ test.describe('workspace responsive audit', () => {
     test(`audit/${auditPage.slug}: renders without horizontal overflow`, async ({ page }, testInfo) => {
       await page.goto(auditPage.path, { waitUntil: 'domcontentloaded' });
       const readyLocator = (auditPage.slug === 'workspace-home' || auditPage.slug === 'tools') && testInfo.project.name === 'mock-mobile'
-        ? page.getByText('Benchmark Profile powers CareerIQ').first()
+        ? page.getByText('Career Vault powers your job search').first()
         : auditPage.readyRole === 'heading'
           ? page.getByRole('heading', { name: auditPage.readyText }).first()
           : page.getByText(auditPage.readyText).first();

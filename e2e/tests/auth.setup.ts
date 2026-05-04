@@ -19,8 +19,8 @@ setup('authenticate', async ({ page }) => {
 
   // Wait for the authenticated workspace shell. The app now lands in Workspace.
   await Promise.race([
-    page.getByText('Your Pipeline').waitFor({ timeout: 20_000 }),
-    page.getByRole('button', { name: /Open Benchmark Profile|Find Jobs/i }).first().waitFor({ timeout: 20_000 }),
+    page.getByText('Your Applications').waitFor({ timeout: 20_000 }),
+    page.getByRole('button', { name: /Open Career Vault|Find Jobs/i }).first().waitFor({ timeout: 20_000 }),
   ]);
 
   // Save auth state

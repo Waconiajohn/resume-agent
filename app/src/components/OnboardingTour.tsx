@@ -52,12 +52,12 @@ const TOUR_STEPS = [
   {
     target: '[data-tour="nav-career-profile"]',
     placement: 'right' as const,
-    title: 'Benchmark Profile — Start Here',
+    title: 'Career Vault — Start Here',
     content: (
       <p>
-        Your Benchmark Profile is the foundation. It captures your positioning,
-        proof, strengths, and goals so the rest of CareerIQ can make you look
-        like the benchmark candidate.
+        Your Career Vault is the foundation. It captures your resume, LinkedIn
+        profile, proof, strengths, and goals so the rest of CareerIQ can help
+        you pursue the right roles with clearer evidence.
       </p>
     ),
     disableBeacon: true,
@@ -129,7 +129,7 @@ const TOUR_STEPS = [
     title: "You're all set",
     content: (
       <p>
-        Start with your <strong>Career Profile</strong> — everything else builds
+        Start with your <strong>Career Vault</strong> — everything else builds
         from there. You can replay this tour at any time using the{' '}
         <strong>Help</strong> button in the top bar.
       </p>

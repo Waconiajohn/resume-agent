@@ -15,17 +15,17 @@ interface ZoneYourDayProps {
 
 function getRotatingInsight(state: DashboardState): string {
   if (state === 'new-user') {
-    return 'Start by building your Career Profile. It gives the rest of the platform the story, strengths, and direction to work from.';
+    return 'Start by building your Career Vault. It gives the rest of the workspace the proof, story, strengths, and direction to work from.';
   }
   if (state === 'refining') {
-    return 'Your Career Profile is taking shape. Tightening it up will make every resume, interview, and LinkedIn recommendation sharper.';
+    return 'Your Career Vault is taking shape. Tightening it up will make every resume, interview, and LinkedIn recommendation sharper.';
   }
   return 'Your profile is strong. Use it to target better-fit roles and tailor stronger applications.';
 }
 
 const ACTIONS_BY_STATE: Record<DashboardState, string> = {
-  'new-user': 'Build your Career Profile',
-  refining: 'Strengthen your Career Profile',
+  'new-user': 'Build your Career Vault',
+  refining: 'Strengthen your Career Vault',
   strong: 'Find matching roles',
 };
 
@@ -84,7 +84,7 @@ export function ZoneYourDay({ userName, signals, dashboardState, onRefineWhyMe, 
         <div className="flex flex-col items-end gap-3 flex-shrink-0">
           <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
             <div className="text-[13px] font-medium text-[var(--text-soft)] uppercase tracking-wider mb-2">
-              Career Profile Signals
+              Career Vault Signals
             </div>
             <div className="flex gap-4">
               <SignalDot level={signals.clarity} label="Clarity" />

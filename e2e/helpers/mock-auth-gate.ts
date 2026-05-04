@@ -90,7 +90,7 @@ export async function mockAuthSuccess(page: Page): Promise<void> {
           room: 'resume',
           urgency: 'immediate',
           phase: 'career_profile',
-          phase_label: 'Career Profile',
+          phase_label: 'Career Vault',
           rationale: 'Start from the shared profile and the strongest next action.',
         }),
       });

@@ -51,8 +51,8 @@ const HERO_SIGNALS = [
 const WORKFLOW_ITEMS = [
   {
     icon: UserRoundCheck,
-    title: 'Benchmark Profile',
-    copy: 'The source of truth for your career proof, positioning, and why-me story.',
+    title: 'Career Vault',
+    copy: 'Upload your resume and LinkedIn profile once. CareerIQ organizes your proof, achievements, stories, and positioning.',
   },
   {
     icon: Search,
@@ -74,7 +74,7 @@ const WORKFLOW_ITEMS = [
 const METHOD_STEPS = [
   {
     title: 'Build the foundation',
-    copy: 'Load your complete career history once and turn it into a reusable Benchmark Profile.',
+    copy: 'Load your complete career history once and turn it into a Career Vault every tool can reuse.',
   },
   {
     title: 'Pick the role',
@@ -83,6 +83,10 @@ const METHOD_STEPS = [
   {
     title: 'Ship the application',
     copy: 'Generate focused materials, revise them, and keep the next action visible.',
+  },
+  {
+    title: 'Keep the best proof',
+    copy: 'Approved bullets and success stories can flow back into your Career Vault, so the next resume starts sharper.',
   },
 ];
 
@@ -129,7 +133,7 @@ function ProductPreview() {
             <BriefcaseBusiness className="h-5 w-5 text-[var(--link)]" />
             <span className="text-sm font-extrabold text-[var(--text-strong)]">CareerIQ</span>
           </div>
-          {['Benchmark', 'Jobs', 'Applications', 'Networking', 'Interview prep'].map((item, index) => (
+          {['Career Vault', 'Jobs', 'Applications', 'Networking', 'Interview prep'].map((item, index) => (
             <div
               key={item}
               className={`mb-2 rounded-[8px] px-3 py-2 text-sm font-bold ${
@@ -183,7 +187,7 @@ function ProductPreview() {
                   <div>
                     <div className="text-sm font-extrabold text-[var(--text-strong)]">Tailor resume</div>
                     <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-                      Pull proof from the Benchmark Profile and align it to this role before applying.
+                      Pull proof from the Career Vault and align it to this role before applying.
                     </p>
                   </div>
                 </div>
@@ -245,7 +249,7 @@ function Hero() {
             CareerIQ job search workspace
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--text-muted)] sm:text-lg">
-            Build the profile, job search, resume, outreach, interview prep, and follow-up materials for a focused search without scattering the work across ten tools.
+            Build your Career Vault, find better-fit roles, tailor resumes, and keep outreach, interview prep, and follow-up work in one place.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <a href="/workspace?auth=signup">
@@ -317,10 +321,10 @@ function MethodSection() {
           <div>
             <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[var(--link)]">How it works</p>
             <h2 className="mt-3 text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
-              Strategy first. Writing second.
+              Proof first. Writing second.
             </h2>
             <p className="mt-4 text-base leading-7 text-[var(--text-muted)]">
-              CareerIQ starts by organizing the evidence. The writing is stronger because the system already understands the target role and your proof.
+              CareerIQ starts by organizing your evidence. The writing is stronger because the system already understands your target role and the proof behind your claims.
             </p>
           </div>
           <div className="grid gap-4">
@@ -334,6 +338,40 @@ function MethodSection() {
                   <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">{step.copy}</p>
                 </div>
               </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CompoundingVaultSection() {
+  const ref = useFadeIn();
+
+  return (
+    <section className="py-16 sm:py-20">
+      <div ref={ref} className={`mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 ${FADE_CLASS}`}>
+        <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[var(--link)]">Compounds over time</p>
+            <h2 className="mt-3 text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
+              Every application makes the next one stronger.
+            </h2>
+            <p className="mt-4 text-base leading-7 text-[var(--text-muted)]">
+              Each tailored resume uncovers better bullets, cleaner proof, and sharper language. Save the strongest pieces back to your Career Vault and CareerIQ uses them in future resumes, LinkedIn updates, interview prep, and outreach.
+            </p>
+          </div>
+          <div className="grid gap-3">
+            {[
+              'Resume and LinkedIn create the first vault.',
+              'Each job adds role-tested bullets and proof.',
+              'Future applications start from a stronger evidence bank.',
+            ].map((item) => (
+              <div key={item} className="flex items-start gap-3 rounded-[8px] border border-[var(--line-soft)] bg-[var(--surface-1)] p-4">
+                <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-[var(--link)]" />
+                <span className="text-sm font-bold leading-6 text-[var(--text-muted)]">{item}</span>
+              </div>
             ))}
           </div>
         </div>
@@ -446,10 +484,10 @@ function CTASection() {
     <section className="border-t border-[var(--line-soft)] bg-[var(--surface-1)] py-16 sm:py-20">
       <div ref={ref} className={`mx-auto max-w-6xl px-4 text-center sm:px-6 lg:px-8 ${FADE_CLASS}`}>
         <h2 className="mx-auto max-w-2xl text-3xl font-extrabold text-[var(--text-strong)] sm:text-4xl">
-          Start with the profile. Then move the search.
+          Build the vault. Then move the search.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-[var(--text-muted)]">
-          Create the account, confirm your email, and build the foundation for your next application.
+          Create the account, confirm your email, and build the reusable foundation for your next application.
         </p>
         <div className="mt-8">
           <a href="/workspace?auth=signup">
@@ -502,6 +540,7 @@ export function SalesPage() {
       <Hero />
       <WorkflowSection />
       <MethodSection />
+      <CompoundingVaultSection />
       <AudienceSection />
       <TrustSection />
       <FAQSection />

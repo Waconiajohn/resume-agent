@@ -76,7 +76,7 @@ export function ResumeWorkshopRoom({
   // signature for back-compat with mocks/tests but unused at runtime.
   const handleStartTailor = () => openPicker({ source: 'workshop_landing' });
   const defaultResume = useMemo(() => resumes.find((item) => item.is_default), [resumes]);
-  // Sprint B5 — the v3 pipeline keeps its own master (the "knowledge base")
+  // Sprint B5 — the v3 pipeline keeps its own master (the Career Vault)
   // at /api/v3-pipeline/master, which is what the resume intake form reads.
   // Before this fix the landing only checked the legacy v2 master_resumes
   // table for is_default=true and said "Missing" even when a v3 knowledge
@@ -151,7 +151,7 @@ export function ResumeWorkshopRoom({
             <div className="eyebrow-label">Tailor Resume</div>
             <h1 className="room-title">Tailor your resume to a job you actually want</h1>
             <p className="room-subtitle">
-              Choose a saved job or add a job description. CareerIQ compares the role to your Benchmark Profile, strengthens the match, and helps you export a resume built for that opportunity.
+              Choose a saved job or paste a job description you found elsewhere. CareerIQ pulls proof from your Career Vault, writes for that specific role, and lets you save the best new bullets back for future applications.
             </p>
             <div className="room-meta-strip mt-5">
               <div className="room-meta-item">
@@ -173,20 +173,20 @@ export function ResumeWorkshopRoom({
           <ResumeToolCard
             eyebrow="Primary"
             title="Tailor Resume to a Job"
-            description="Select a saved job and build a resume that mirrors the role, proves your fit, and positions you as the benchmark candidate."
-            meta="Best after you have found or saved a real role"
+            description="Select a saved job or bring your own posting. We create an application workspace and tailor the resume around that specific role."
+            meta="Best when you already have a real job posting"
             icon={FilePlus2}
             actionLabel="Tailor My Resume"
             onAction={handleStartTailor}
             accent="primary"
           />
           <ResumeToolCard
-            eyebrow="Source Material"
-            title="Base Resume & Proof"
-            description="Keep your base resume, trophies, proof points, and positioning clean so every tailored resume starts from accurate source material."
+            eyebrow="Career Vault"
+            title="Resume & Achievement Proof"
+            description="Keep your base resume, achievements, proof points, and positioning clean. The best approved bullets from each job can keep strengthening this vault."
             meta={masterDetail}
             icon={LibraryBig}
-            actionLabel="Open Source Material"
+            actionLabel="Open Career Vault"
             onAction={openMasterResume}
           />
           <ResumeToolCard
@@ -282,11 +282,11 @@ export function ResumeWorkshopRoom({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-3xl">
                 <div className="eyebrow-label">
-                  Source Material
+                  Career Vault
                 </div>
                 <h2 className="mt-2 text-2xl text-[var(--text-strong)]">Keep your base resume and proof points clean, current, and reusable</h2>
                 <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
-                  Use this as the durable base you promote strong edits into after job-specific work proves worth keeping.
+                  Use this as the durable base you save strong edits into after job-specific work proves worth keeping. Every approved bullet makes future tailoring easier.
                 </p>
               </div>
               <div className="flex flex-col items-start gap-2">

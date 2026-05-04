@@ -1084,7 +1084,7 @@ export function SalaryNegotiationRoom({
       {careerProfileSummary && (
         <CareerProfileSummaryCard
           summary={careerProfileSummary}
-          title="Career Profile is anchoring your negotiation posture"
+          title="Career Vault is anchoring your negotiation posture"
           description="Negotiation Prep should reflect the same level, scope, and market story the rest of the platform is building for you."
           usagePoints={[
             'Role level and differentiators help frame what makes your ask credible.',
@@ -1126,7 +1126,7 @@ export function SalaryNegotiationRoom({
             )}
             <GlassButton variant="ghost" onClick={() => onOpenCareerProfile?.()} className="text-[13px]">
               <Target size={14} className="mr-1.5" />
-              Review Career Profile
+              Review Career Vault
             </GlassButton>
           </div>
         </div>
@@ -1197,7 +1197,7 @@ export function SalaryNegotiationRoom({
             <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--text-soft)]">Resume context</div>
             <h2 className="mt-2 text-base font-semibold text-[var(--text-strong)]">This strategy gets stronger when the platform can see your full scope and proof</h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--text-soft)]">
-              If your Career Proof is already saved, we will use it. If not, paste it here so the strategy reflects your real level, impact, and credibility.
+              If your achievement proof is already saved, we will use it. If not, paste it here so the strategy reflects your real level, impact, and credibility.
             </p>
           </div>
           {resumeText.length > 50 && !resumeLoading && (
@@ -1216,13 +1216,13 @@ export function SalaryNegotiationRoom({
           ) : resumeText.length > 50 ? (
             <div className="flex items-center gap-2 text-[12px] text-[var(--badge-green-text)]/70">
               <Check size={12} />
-              Resume loaded from Tailor Resume / Career Proof.
+              Resume loaded from Tailor Resume / achievement proof.
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2 text-[12px] text-[var(--badge-amber-text)]/70 mb-1">
                 <AlertCircle size={12} />
-                No Career Proof found — paste your resume below
+                No achievement proof found — paste your resume below
               </div>
               <TextareaField
                 label="Your Resume"

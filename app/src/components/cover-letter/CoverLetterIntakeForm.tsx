@@ -142,7 +142,7 @@ export function CoverLetterIntakeForm({
 
         <h1 className="mb-2 text-2xl font-semibold text-[var(--text-strong)]">Cover Letter</h1>
         <p className="mb-8 text-sm text-[var(--text-soft)]">
-          Use your master resume and the target job description. We'll generate a targeted WHY ME letter, not a resume rehash.
+          Use your Career Vault resume and the target job description. We'll generate a targeted why-you letter, not a resume rehash.
         </p>
 
         {error && (
@@ -157,7 +157,7 @@ export function CoverLetterIntakeForm({
             <div>
               <div className="mb-1.5 flex items-center gap-2">
                 <label htmlFor="cl-resume" className="block text-xs font-medium text-[var(--text-muted)]">
-                  Master Resume Text
+                  Career Vault Resume Text
                 </label>
                 {resumeLoading && (
                   <span
@@ -175,7 +175,7 @@ export function CoverLetterIntakeForm({
                 id="cl-resume"
                 value={resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
-                placeholder="Paste your master resume text here (minimum 50 characters)..."
+                placeholder="Paste your Career Vault resume text here (minimum 50 characters)..."
                 rows={8}
                 disabled={loading}
               />

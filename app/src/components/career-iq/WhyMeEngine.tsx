@@ -119,7 +119,7 @@ export function WhyMeEngine({ story, signals, onUpdate, onClose }: WhyMeEnginePr
             <div className="flex items-center gap-2 mb-1">
               <Sparkles size={16} className="text-[var(--link)]" />
               <span className="text-[13px] font-medium text-[var(--link)] uppercase tracking-widest">
-                Career Profile
+                Career Vault
               </span>
             </div>
             <p className="text-[13px] text-[var(--text-soft)]">

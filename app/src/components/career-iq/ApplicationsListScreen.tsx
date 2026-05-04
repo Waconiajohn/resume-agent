@@ -248,9 +248,9 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {/* Phase 5 — Today / Pipeline tab switcher. Today is default and
-              answers "what should I do right now"; Pipeline is the existing
-              kanban answering "what shape is my pipeline." URL persistence
+          {/* Phase 5 — Today / Board tab switcher. Today is default and
+              answers "what should I do right now"; Board is the existing
+              kanban answering "what shape are my applications." URL persistence
               via ?view=pipeline (today is default, no ?view= param). */}
           <div className="inline-flex rounded-full border border-[var(--line-soft)] p-0.5 text-[11px]">
             <button
@@ -277,7 +277,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
                   : 'rounded-full px-3 py-1 text-[var(--text-soft)] hover:text-[var(--text-strong)]'
               }
             >
-              Pipeline
+              Board
             </button>
           </div>
           {view === 'pipeline' && (
@@ -333,7 +333,7 @@ export function ApplicationsListScreen({ onNavigate }: ApplicationsListScreenPro
           title="New Application"
           whatThisIs="A new application kicks off a complete job pursuit — tailored resume, cover letter, interview prep, and follow-up — all scoped to one specific role."
           whyItMatters="Benchmark candidates treat each application as its own project so nothing gets mixed up between roles."
-          whatWeDo="We use your Benchmark Profile and the job description to generate every artifact."
+          whatWeDo="We use your Career Vault and the job description to generate every artifact."
           whatYouDo="You review, adjust, and apply."
           defaultExpanded
         />

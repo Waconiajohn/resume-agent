@@ -30,7 +30,7 @@ interface V3IntakeFormProps {
   disabled?: boolean;
   /**
    * User's default master resume summary, if one exists. When non-null,
-   * the form renders a "using your knowledge base" card at the top and
+   * the form renders a "using your Career Vault" card at the top and
    * auto-fills the resume textarea with a placeholder message. The user
    * can click "paste a different one" to override.
    */
@@ -220,7 +220,7 @@ export function V3IntakeForm({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-[var(--text-strong)]">
-                    Use my knowledge base
+                    Use my Career Vault
                   </div>
                   <div className="text-[12px] text-[var(--text-muted)] mt-0.5">
                     v{master.version}, last updated {formatRelativeDate(master.updated_at)} · {master.positionCount} positions · {master.evidenceCount} evidence items
@@ -267,7 +267,7 @@ export function V3IntakeForm({
                       Upload a different resume for this run
                     </div>
                     <div className="text-[12px] text-[var(--text-muted)] mt-0.5">
-                      Use a new PDF, DOCX, or TXT — or paste text. Your knowledge base stays unchanged until you choose to promote new bullets.
+                      Use a new PDF, DOCX, or TXT, or paste text. Your Career Vault stays unchanged until you choose to save new bullets back.
                     </div>
                   </div>
                 </div>

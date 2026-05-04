@@ -32,9 +32,9 @@ export function deriveWorkspaceHomeGuidance(params: {
   sessionCount: number;
   coachRecommendation?: CoachRecommendation | null;
   /**
-   * Sprint E3 — whether the user has a v3 knowledge base or any legacy
+   * Sprint E3 — whether the user has a v3 Career Vault or any legacy
    * master resume. When true, we treat the "new-user" dashboard state
-   * (empty Why Me positioning) as "existing user who hasn't completed
+   * (empty positioning story) as "existing user who hasn't completed
    * positioning" rather than "brand-new signup." That avoids the audit
    * finding where returning users saw "Upload your resume" dominating
    * their dashboard even though they already had one.
@@ -59,22 +59,22 @@ export function deriveWorkspaceHomeGuidance(params: {
     if (hasMasterResume) {
       return {
         eyebrow: 'Next step',
-        title: 'Sharpen your Why Me story',
+        title: 'Sharpen why employers should pick you',
         description:
-          'Your resume is loaded. Answer three positioning questions and every tool starts leaning on your strongest angles, not just your titles.',
+          'Your resume is loaded. Answer three positioning questions and every tool starts leaning on your strongest proof, not just your titles.',
         mobileInsight:
-          'Your resume is loaded. Answer three positioning questions to sharpen every tool.',
-        primary: { label: 'Open Benchmark Profile', room: 'career-profile' },
+          'Your resume is loaded. Answer three questions to sharpen every tool.',
+        primary: { label: 'Open Career Vault', room: 'career-profile' },
         secondary: { label: 'Tailor a resume', room: 'resume' },
       };
     }
     return {
       eyebrow: 'Start here',
-      title: 'Complete your Career Assessment',
-      description:
-        'Upload your resume, answer 8 interview questions, and we\'ll build your complete career profile and master resume. Every tool in the workspace reads from this.',
-      mobileInsight:
-        'Upload your resume and answer 8 questions to build your career profile. Every tool reads from this.',
+        title: 'Complete your Career Assessment',
+        description:
+        'Upload your resume and LinkedIn profile, answer a few targeted questions, and we\'ll build the Career Vault every tool reads from.',
+        mobileInsight:
+        'Upload your resume and LinkedIn profile to build the Career Vault every tool reads from.',
       primary: { label: 'Start Career Assessment', room: 'career-profile', route: '/profile-setup' },
     };
   }
@@ -84,7 +84,7 @@ export function deriveWorkspaceHomeGuidance(params: {
       eyebrow: 'Next best move',
       title: 'Find the right jobs before you tailor the resume',
       description:
-        'Your benchmark profile is ready enough to aim the search. Find a real role first, then tailor the resume around that company, job description, and benchmark candidate.',
+        'Your Career Vault is ready enough to aim the search. Find a real role first, then tailor the resume around that company, job description, and proof.',
       mobileInsight:
         'Find a real role first, then tailor the resume around that specific job.',
       primary: { label: 'Find Jobs', room: 'jobs' },
@@ -96,7 +96,7 @@ export function deriveWorkspaceHomeGuidance(params: {
   if (coachCanLead && coachRoom !== 'resume') {
     const labelByRoom: Record<CareerIQRoom, string> = {
       dashboard: 'Open Today',
-      'career-profile': 'Open Benchmark Profile',
+      'career-profile': 'Open Career Vault',
       resume: 'Tailor Resume',
       linkedin: 'Open LinkedIn Growth',
       jobs: 'Find Jobs',
@@ -123,7 +123,7 @@ export function deriveWorkspaceHomeGuidance(params: {
   return {
     eyebrow: 'Daily workspace',
     title: 'Work the active search first, then tailor as needed',
-    description: `You already have ${sessionCount} saved application${sessionCount === 1 ? '' : 's'}. Home should point you to the active search and pipeline first, with Tailor Resume available when a specific role needs tightening.`,
+    description: `You already have ${sessionCount} saved application${sessionCount === 1 ? '' : 's'}. Home should point you to the active search and applications first, with Tailor Resume available when a specific role needs tightening.`,
     mobileInsight:
       'Start with the active search and pipeline, then reopen resume assets only when a specific role needs work.',
     primary: { label: 'Find Jobs', room: 'jobs' },

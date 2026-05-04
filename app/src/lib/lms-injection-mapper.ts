@@ -41,7 +41,7 @@ const UNAVAILABLE_CONFIG: Record<
     link: '/workspace?room=resume',
   },
   positioning: {
-    message: 'Complete your Career Profile to unlock your positioning data.',
+    message: 'Complete your Career Vault to unlock your positioning data.',
     link: '/workspace?room=career-profile',
   },
   'job-finder': {

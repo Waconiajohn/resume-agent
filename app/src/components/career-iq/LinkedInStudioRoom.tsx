@@ -245,7 +245,7 @@ function PostComposer({ signals }: { signals: WhyMeSignals }) {
           <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.04] px-4 py-3 flex items-center gap-3">
             <Sparkles size={16} className="text-[var(--link)] flex-shrink-0" />
             <p className="text-[13px] text-[var(--link)]/70">
-              Strengthen your Clarity signal first — your posts will have sharper positioning once your Career Profile is defined.
+              Strengthen your clarity signal first — your posts will have sharper positioning once your Career Vault is defined.
             </p>
           </div>
         )}
@@ -700,7 +700,7 @@ function ProfileEditor({ signals, currentProfileText }: { signals: WhyMeSignals;
           <div className="rounded-xl border border-[var(--link)]/15 bg-[var(--link)]/[0.04] px-4 py-3 flex items-center gap-3">
             <Sparkles size={16} className="text-[var(--link)] flex-shrink-0" />
             <p className="text-[13px] text-[var(--link)]/70">
-              Strengthen your Clarity signal first — your LinkedIn sections will be sharper once your Career Profile is defined.
+              Strengthen your clarity signal first — your LinkedIn sections will be sharper once your Career Vault is defined.
             </p>
           </div>
         )}
@@ -1862,7 +1862,7 @@ export function LinkedInStudioRoom({ signals, careerProfile }: LinkedInStudioRoo
             <GlassCard className="p-6">
               <h3 className="text-base font-semibold text-[var(--text-strong)] mb-1">Your Current LinkedIn Profile</h3>
               <p className="text-sm text-[var(--text-soft)] mb-4">
-                Paste your current LinkedIn content, or start from the Benchmark Profile direction already saved for this account.
+                Paste your current LinkedIn content, or start from the Career Vault direction already saved for this account.
               </p>
 
               <div className="space-y-4">

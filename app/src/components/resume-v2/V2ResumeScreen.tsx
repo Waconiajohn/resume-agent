@@ -486,7 +486,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     message: string;
   }>({
     tone: 'neutral',
-    message: 'Accepted edits stay in this run unless you choose to sync them to your Career Proof.',
+    message: 'Accepted edits stay in this run unless you choose to save them back to your Career Vault.',
   });
   const [clarificationMemory, setClarificationMemory] = useState<ClarificationMemoryEntry[]>([]);
   const lastMasterSnapshotRef = useRef('');
@@ -965,7 +965,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setMasterSaveMode('session_only');
     setMasterSaveStatus({
       tone: 'neutral',
-      message: 'Accepted edits stay in this run unless you choose to sync them to your Career Proof.',
+      message: 'Accepted edits stay in this run unless you choose to save them back to your Career Vault.',
     });
     if (options?.clearInputs) {
       setResumeText('');
@@ -1368,10 +1368,10 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
       setMasterSaveStatus({
         tone: 'neutral',
         message: selectedPromotableItems.length > 0
-          ? `Auto-sync is on. ${selectedPromotableItems.length} selected edit${selectedPromotableItems.length === 1 ? '' : 's'} can be promoted to your master resume.`
+          ? `Auto-save is on. ${selectedPromotableItems.length} selected edit${selectedPromotableItems.length === 1 ? '' : 's'} can be added to your Career Vault.`
           : currentClarificationMemory.length > 0
-            ? `Auto-sync is on. ${currentClarificationMemory.length} clarification insight${currentClarificationMemory.length === 1 ? '' : 's'} will be saved to your master resume evidence library.`
-            : 'Auto-sync is on, but no accepted draft edits are selected for master resume promotion yet.',
+            ? `Auto-save is on. ${currentClarificationMemory.length} clarification insight${currentClarificationMemory.length === 1 ? '' : 's'} will be saved to your Career Vault evidence library.`
+            : 'Auto-save is on, but no accepted draft edits are selected for your Career Vault yet.',
       });
       return;
     }
@@ -1381,7 +1381,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         ? prev
         : {
             tone: 'neutral',
-            message: 'Accepted edits stay in this run unless you choose to sync them to your Career Proof.',
+            message: 'Accepted edits stay in this run unless you choose to save them back to your Career Vault.',
           }
     ));
   }, [currentClarificationMemory.length, masterSaveMode, selectedPromotableItems.length]);
@@ -1395,12 +1395,12 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     if (promotableMasterItems.length > 0 && selectedPromotableItems.length === 0 && currentClarificationMemory.length === 0) {
       setMasterSaveStatus({
         tone: 'neutral',
-        message: 'Select at least one accepted draft edit before promoting content to the master resume.',
+        message: 'Select at least one accepted draft edit before saving content to your Career Vault.',
       });
       if (reason === 'manual') {
         addToast({
           type: 'error',
-          message: 'No accepted edits are selected for master resume promotion.',
+          message: 'No accepted edits are selected for your Career Vault.',
         });
       }
       return false;
@@ -1429,7 +1429,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
         setMasterSaveMode('session_only');
         addToast({
           type: 'error',
-          message: `${result.message} Auto-sync to master resume was turned off.`,
+          message: `${result.message} Auto-save to Career Vault was turned off.`,
         });
       } else {
         addToast({ type: 'error', message: result.message });
@@ -1444,7 +1444,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     });
     setMasterSaveStatus({
       tone: 'success',
-      message: reason === 'auto' ? 'Auto-synced to your master resume.' : result.message,
+      message: reason === 'auto' ? 'Auto-saved to your Career Vault.' : result.message,
     });
 
     if (reason === 'manual') {
@@ -1718,7 +1718,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setMasterSaveMode('session_only');
     setMasterSaveStatus({
       tone: 'neutral',
-      message: 'Accepted edits stay in this run unless you choose to sync them to your Career Proof.',
+      message: 'Accepted edits stay in this run unless you choose to save them back to your Career Vault.',
     });
     resetHistory();
     resetGapChat();
@@ -1895,7 +1895,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     ));
     setMasterSaveStatus({
       tone: 'neutral',
-      message: 'Promotion selection updated. Only checked edits will be added to your master resume.',
+      message: 'Selection updated. Only checked edits will be added to your Career Vault.',
     });
   }, []);
 
@@ -1903,7 +1903,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setSelectedMasterPromotionIds(promotableMasterItems.map((item) => item.id));
     setMasterSaveStatus({
       tone: 'neutral',
-      message: 'All promotable edits are selected for master resume sync.',
+      message: 'All strong edits are selected for Career Vault save-back.',
     });
   }, [promotableMasterItems]);
 
@@ -1911,7 +1911,7 @@ export function V2ResumeScreen({ accessToken, onBack, initialResumeText, initial
     setSelectedMasterPromotionIds([]);
     setMasterSaveStatus({
       tone: 'neutral',
-      message: 'Master resume sync is now limited to zero selected edits until you check items again.',
+      message: 'Career Vault save-back is limited to zero selected edits until you check items again.',
     });
   }, []);
 

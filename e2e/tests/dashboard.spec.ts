@@ -101,7 +101,7 @@ test.describe('Resume Builder Workspace', () => {
     await openResumeBuilder(page);
 
     await expect(page.getByRole('button', { name: /^Browse Saved Resumes$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Open Source Material$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Open Career Vault$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Write Cover Letter$/i })).toBeVisible();
     await expect(page.getByText(/Choose a saved job or add a job description/i)).toBeVisible();
   });
@@ -159,7 +159,7 @@ test.describe('Resume Builder Workspace', () => {
 
   test('master resume tab renders current editor surface or empty state', async ({ page }) => {
     await openResumeBuilder(page);
-    await page.getByRole('button', { name: /^Open Source Material$/i }).click();
+    await page.getByRole('button', { name: /^Open Career Vault$/i }).click();
 
     await expect
       .poll(async () => {

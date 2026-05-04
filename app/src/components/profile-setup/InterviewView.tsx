@@ -76,7 +76,7 @@ export function InterviewView({
         ...prev,
         {
           role: 'ai',
-          text: 'I have what I need. Give me a moment — I am building your Benchmark Profile.',
+          text: 'I have what I need. Give me a moment — I am building your Career Vault.',
         },
       ]);
       onComplete();

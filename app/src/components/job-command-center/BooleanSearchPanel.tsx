@@ -106,11 +106,11 @@ export function BooleanSearchPanel({
         <h3 className="text-[15px] font-semibold text-[var(--text-strong)]">Search Strings</h3>
       </div>
       <p className="mt-3 text-[13px] leading-relaxed text-[var(--text-soft)]">
-        Generate OR-only job-title strings from your Career Proof, then paste them into LinkedIn or Indeed.
+        Generate OR-only job-title strings from your Career Vault, then paste them into LinkedIn or Indeed.
       </p>
 
       {loadingResume && (
-        <p className="mt-4 text-[12px] text-[var(--text-soft)]">Loading your latest Career Proof...</p>
+        <p className="mt-4 text-[12px] text-[var(--text-soft)]">Loading your latest Career Vault...</p>
       )}
 
       {!loadingResume && !accessToken && (
@@ -119,7 +119,7 @@ export function BooleanSearchPanel({
 
       {!loadingResume && accessToken && !resumeText.trim() && (
         <p className="mt-4 text-[12px] text-[var(--text-soft)]">
-          Save Career Proof first so we can identify the job titles you should be searching for.
+          Build your Career Vault first so we can identify the job titles you should be searching for.
         </p>
       )}
 

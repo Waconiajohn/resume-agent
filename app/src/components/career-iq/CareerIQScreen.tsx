@@ -36,7 +36,7 @@ const LiveWebinarsRoom = lazy(() => import('./LiveWebinarsRoom').then((module) =
 
 const ROOM_LABELS: Record<WorkspaceRoom, string> = {
   dashboard: 'Today',
-  'career-profile': 'Benchmark Profile',
+  'career-profile': 'Career Vault',
   resume: 'Tailor Resume',
   linkedin: 'LinkedIn Growth',
   jobs: 'Find Jobs',
@@ -123,7 +123,7 @@ export function CareerIQScreen({
   const { recommendation: coachRec, refresh: refreshCoachRec } = useCoachRecommendation();
   const { applications } = useJobApplications();
   // Sprint E3 — lets the dashboard hero render the "returning user" variant
-  // when the user already has a knowledge base but hasn't finished the Why
+  // when the user already has a Career Vault but hasn't finished the Why
   // Me positioning interview.
   const v3Master = useV3Master(accessToken);
   const hasMasterResume = Boolean(v3Master.summary) || resumes.some((r) => r.is_default);
@@ -479,7 +479,7 @@ export function CareerIQScreen({
           <div className="px-4 pt-4">
             <CareerProfileSummaryCard
               summary={summary}
-              title="Benchmark Profile powers CareerIQ"
+              title="Career Vault powers your job search"
               onOpenProfile={openCareerProfile}
               onContinue={() => handleRoomNavigate(summary.nextRecommendedRoom === 'career-profile' ? 'career-profile' : 'resume')}
             />

@@ -112,14 +112,14 @@ export function buildCareerProfileSummary(profile: CareerProfileV2 | null): Care
     statusLine: readyForSearch
       ? 'This profile is strong enough to guide resume, job-search, LinkedIn, and interview work.'
       : dashboardState === 'refining'
-        ? 'This profile is usable, but stronger detail here will make the rest of the platform sharper.'
-        : 'This profile still needs a basic story before the rest of the platform can work at full strength.',
+        ? 'This Career Vault is usable, but stronger detail here will make the rest of the workspace sharper.'
+        : 'This Career Vault still needs a basic story before the rest of the workspace can work at full strength.',
     primaryStory,
     strengthSnapshot,
     differentiationSnapshot,
     highlightPoints,
     focusAreas,
     nextRecommendedRoom: readyForSearch ? 'jobs' : 'career-profile',
-    nextRecommendedAction: readyForSearch ? 'Find Jobs' : 'Finish Benchmark Profile',
+    nextRecommendedAction: readyForSearch ? 'Find Jobs' : 'Finish Career Vault',
   };
 }

@@ -6,25 +6,25 @@ test.describe('workspace core actions — home, profile, linkedin', () => {
     await mockWorkspaceApp(page);
   });
 
-  test('workspace home entry points open Benchmark Profile and Find Jobs', async ({ page }) => {
+  test('workspace home entry points open Career Vault and Find Jobs', async ({ page }) => {
     await page.goto('/workspace', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByText('Your Pipeline').first()).toBeVisible();
+    await expect(page.getByText('Your Applications').first()).toBeVisible();
 
-    await page.getByRole('button', { name: /Why Me Strong/i }).click();
+    await page.getByRole('button', { name: /Why They Pick You Strong/i }).click();
     await expect(page).toHaveURL(/room=career-profile/);
-    await expect(page.getByRole('heading', { name: 'Benchmark Profile', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Career Vault', exact: true })).toBeVisible();
 
     await page.goto('/workspace', { waitUntil: 'domcontentloaded' });
-    await page.locator('section', { hasText: 'Your Pipeline' }).getByRole('button', { name: /^Find Jobs$/i }).click();
+    await page.locator('section', { hasText: 'Your Applications' }).getByRole('button', { name: /^Find Jobs$/i }).click();
     await expect(page).toHaveURL(/room=jobs/);
     await expect(page.getByRole('heading', { name: /Find the right jobs before you tailor/i })).toBeVisible();
   });
 
-  test('Career Profile keeps the Why Me prompts visible and editable', async ({ page }) => {
+  test('Career Vault keeps the story prompts visible and editable', async ({ page }) => {
     await page.goto('/workspace?room=career-profile', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: 'Benchmark Profile', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Career Vault', exact: true })).toBeVisible();
     await expect(page.getByText(/Three questions that sharpen the story every tool uses/i)).toBeVisible();
     await expect(page.getByRole('heading', { name: /What did your colleagues come to you for\?/i })).toBeVisible();
 
@@ -61,7 +61,7 @@ test.describe('workspace core actions — home, profile, linkedin', () => {
     await expect(page.getByRole('heading', { name: /Post Draft/i })).toBeVisible();
     await expect(page.getByText(/The meetings were happening, but the business still was not moving/i)).toBeVisible();
 
-    await page.getByRole('button', { name: /Approve Post/i }).click();
+    await page.getByRole('button', { name: /Approve & Save Post/i }).click();
 
     await expect(page.getByRole('heading', { name: /Post Draft Ready/i })).toBeVisible();
     await expect(page.getByText(/Saved to Library/i)).toBeVisible();
@@ -76,12 +76,12 @@ test.describe('workspace core actions — home, profile, linkedin', () => {
     await expect(page.getByRole('heading', { name: 'Headline', exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/Executive operator who builds operating cadence/i)).toBeVisible();
 
-    await page.getByRole('button', { name: /^Approve$/i }).click();
+    await page.getByRole('button', { name: /^Approve & Save$/i }).click();
 
     await expect(page.getByRole('heading', { name: /About Section/i })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/Executive operator known for turning complexity into operating rhythm/i)).toBeVisible();
 
-    await page.getByRole('button', { name: /^Approve$/i }).click();
+    await page.getByRole('button', { name: /^Approve & Save$/i }).click();
 
     await expect(page.getByRole('heading', { name: /Updated Profile Sections/i })).toBeVisible({ timeout: 10_000 });
   });

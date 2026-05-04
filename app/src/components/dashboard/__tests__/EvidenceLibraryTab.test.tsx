@@ -102,10 +102,10 @@ describe('EvidenceLibraryTab', () => {
     expect(pulseElements.length).toBeGreaterThan(0);
   });
 
-  it('shows empty state when no Career Proof found', async () => {
+  it('shows empty state when no achievement proof found', async () => {
     render(<EvidenceLibraryTab {...makeProps({ onGetDefaultResume: vi.fn().mockResolvedValue(null) })} />);
     await waitFor(() => {
-      expect(screen.getByText(/no career proof found/i)).toBeInTheDocument();
+      expect(screen.getByText(/no achievement proof found/i)).toBeInTheDocument();
     });
   });
 

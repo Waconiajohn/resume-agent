@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { deriveWorkspaceHomeGuidance } from '@/components/career-iq/workspaceHomeGuidance';
 
 describe('workspaceHomeGuidance', () => {
-  it('sends new users to Career Profile first', () => {
+  it('sends new users to Career Vault first', () => {
     const guidance = deriveWorkspaceHomeGuidance({
       dashboardState: 'new-user',
       hasResumeSessions: false,
@@ -30,18 +30,18 @@ describe('workspaceHomeGuidance', () => {
       hasResumeSessions: true,
       sessionCount: 3,
       coachRecommendation: {
-        action: 'Review the live pipeline and choose the role closest to interview.',
+        action: 'Review the live applications list and choose the role closest to interview.',
         product: 'job search',
         room: 'jobs',
         urgency: 'immediate',
         phase: 'active_search',
         phase_label: 'Active Search',
-        rationale: 'The user already has strong assets and should work the live pipeline.',
+        rationale: 'The user already has strong assets and should work the live applications list.',
       },
     });
 
     expect(guidance.primary.room).toBe('jobs');
     expect(guidance.secondary?.room).toBe('resume');
-    expect(guidance.coachLine).toContain('Review the live pipeline');
+    expect(guidance.coachLine).toContain('Review the live applications list');
   });
 });

@@ -566,7 +566,7 @@ export function V2IntakeForm({ onSubmit, onBack, loading = false, error, initial
         setResumeText(text);
         setMasterResumeNotice(null);
       } else {
-        setMasterResumeNotice('No Career Proof yet — upload your resume below.');
+        setMasterResumeNotice('No Career Vault resume yet — upload your resume below.');
       }
     } finally {
       setMasterResumeLoading(false);

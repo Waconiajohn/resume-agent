@@ -106,11 +106,11 @@ test.describe('workspace guided flows', () => {
     await expect(page.getByRole('button', { name: /Open Negotiation Prep/i }).first()).toBeVisible({ timeout: 8_000 });
   });
 
-  test('redirects legacy personal-brand room links into Career Profile', async ({ page }) => {
+  test('redirects legacy personal-brand room links into Career Vault', async ({ page }) => {
     await page.goto('/workspace?room=personal-brand', { waitUntil: 'domcontentloaded' });
 
-    await expect(page.getByRole('heading', { name: 'Benchmark Profile', exact: true })).toBeVisible();
-    await expect(page.getByText(/Three answers that define how LinkedIn Growth, Find Jobs, Tailor Resume, Interview & Offer/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Career Vault', exact: true })).toBeVisible();
+    await expect(page.getByText(/Upload your resume and LinkedIn profile once/i)).toBeVisible();
     await expect(page).toHaveURL(/room=career-profile/);
   });
 });

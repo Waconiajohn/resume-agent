@@ -101,10 +101,10 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
           <h1
             className="text-3xl font-semibold text-[var(--text-strong)] mb-3"
           >
-            Build the profile every future application uses.
+            Build the Career Vault every future application uses.
           </h1>
           <p className="text-sm leading-relaxed text-[var(--text-muted)]">
-            Upload your most complete career history once. CareerIQ turns it into the foundation for
+            Upload your most complete resume and LinkedIn profile once. CareerIQ turns them into the foundation for
             role-specific resumes, LinkedIn updates, cover letters, networking messages, interview prep,
             thank-you notes, and follow-up emails.
           </p>
@@ -199,7 +199,7 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
           <p className="text-xs text-[var(--text-muted)] mb-3">
             Add this only when it is your own profile or you have permission to use the content.
             You can paste a public profile URL, add a few brand notes, upload a permitted file, or leave this blank.
-            CareerIQ can build the first Benchmark Profile from the resume alone.
+            CareerIQ can build your first Career Vault from the resume alone.
           </p>
 
           {/* Upload bar + help toggle */}
@@ -317,9 +317,9 @@ export function IntakeForm({ onSubmit, loading }: IntakeFormProps) {
             background: canSubmit ? 'var(--link)' : 'var(--surface-1)',
             color: canSubmit ? 'var(--bg-0)' : 'var(--text-muted)',
           }}
-          aria-label="Build my Benchmark Profile"
+          aria-label="Build my Career Vault"
         >
-          {loading ? 'Analyzing your background...' : 'Build my Benchmark Profile \u2192'}
+          {loading ? 'Analyzing your background...' : 'Build my Career Vault \u2192'}
         </button>
       </div>
     </div>

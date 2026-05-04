@@ -178,10 +178,10 @@ export function WhyMeStoryCard({ benchmarkProfile = null }: { benchmarkProfile?:
         </div>
         <div>
           <div className="text-[13px] font-medium uppercase tracking-widest text-[var(--link)]">
-            Your Why-Me Story
+            Why Employers Should Pick You
           </div>
           <h2 className="mt-1 text-sm font-semibold text-[var(--text-strong)]">
-            The narrative every tool works from
+            The plain-English story every tool works from
           </h2>
         </div>
       </div>
@@ -317,7 +317,7 @@ export function WhyMeStoryCard({ benchmarkProfile = null }: { benchmarkProfile?:
             <div className="rounded-xl border border-[var(--line-soft)] bg-[var(--accent-muted)] px-4 py-3">
               <p className="text-xs leading-relaxed text-[var(--text-soft)]">
                 {displaySnapshotSource === 'benchmark_profile'
-                  ? 'This narrative comes from your Benchmark Profile draft. Approve or edit the draft language above to make every downstream tool more consistent.'
+                  ? 'This narrative comes from your Career Vault draft. Approve or edit the draft language above to make every downstream tool more consistent.'
                   : 'This narrative was saved from a Tailor Resume session. To refresh it, run a new resume session and it will reflect your positioning for that specific role.'}
               </p>
             </div>
